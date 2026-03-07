@@ -1762,9 +1762,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 async function confirmDeleteAccount() {
   if (document.getElementById('deleteConfirmInput').value !== 'DELETE') return;
-  // Delete all tasks from Supabase, then sign out
   if (currentUser) {
-    await db.from('tasks').delete().eq('user_id', currentUser.id);
+    // delete_user() deletes the auth record; cascade removes their tasks
+    const { error } = await db.rpc('delete_user');
+    if (error) { console.error('delete_user:', error.message); return; }
     await db.auth.signOut();
   }
   currentUser = null;
