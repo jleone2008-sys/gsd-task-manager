@@ -379,6 +379,7 @@ footer{background:#13161f;padding:30px 40px;display:flex;align-items:center;just
         <span class="nav-brand-tm">Task Manager</span>
       </div>
     </a>
+    <a href="/app" class="nav-sign-in" style="font-size:13px;font-weight:500;color:var(--mid);text-decoration:none;padding:8px 12px;transition:color .15s;" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--mid)'">Sign In</a>
     <a href="/app" class="nav-cta">
       Get Started — Free
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7 2l4.5 4.5L7 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -910,6 +911,21 @@ function toggleFAQ(el) {
   document.querySelectorAll('.faq-item').forEach(f => f.classList.remove('open'));
   if (!wasOpen) item.classList.add('open');
 }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(async () => {
+  try {
+    const { createClient } = supabase;
+    const db = createClient(
+      'https://dmuwncwptvnnlizuxhta.supabase.co',
+      'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_'
+    );
+    const { data: { session } } = await db.auth.getSession();
+    if (session?.user) window.location.replace('/app');
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>
