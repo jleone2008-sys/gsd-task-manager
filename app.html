@@ -1219,6 +1219,41 @@
     content: attr(data-placeholder); color: var(--muted); pointer-events: none;
   }
 
+
+  /* ── FAQ MODAL ── */
+  #faqModal .modal {
+    max-width: 600px; max-height: 84vh;
+    display: flex; flex-direction: column;
+  }
+  #faqModal .modal-body {
+    flex: 1; overflow-y: auto; padding: 0 2px;
+  }
+  .faq-item {
+    border-bottom: 1px solid var(--border2);
+  }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-q {
+    width: 100%; background: none; border: none; padding: 13px 4px;
+    text-align: left; font-family: inherit; font-size: 13px;
+    font-weight: 600; color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    transition: color .15s;
+  }
+  .faq-q:hover { color: var(--blue); }
+  .faq-q svg { flex-shrink: 0; transition: transform .2s; }
+  .faq-item.open .faq-q svg { transform: rotate(180deg); }
+  .faq-a {
+    display: none; font-size: 12.5px; line-height: 1.7;
+    color: var(--text2); padding: 0 4px 14px;
+  }
+  .faq-item.open .faq-a { display: block; }
+  .faq-a a { color: var(--blue); text-decoration: none; }
+  .faq-a a:hover { text-decoration: underline; }
+  .faq-contact-note {
+    margin-top: 16px; padding: 12px 14px; background: var(--hover);
+    border-radius: 8px; font-size: 12px; color: var(--text2);
+    border: 1px solid var(--border2); text-align: center;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1269,6 +1304,126 @@
 </div>
 
 <!-- ═══════════ LEGAL MODAL (T&C + PRIVACY) ═══════════ -->
+
+<!-- FAQ MODAL -->
+<div class="modal-overlay" id="faqModal" onclick="if(event.target===this)closeFaqModal()">
+  <div class="modal">
+    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <span class="modal-title">Help &amp; FAQ</span>
+      <button onclick="closeFaqModal()" style="background:none;border:none;cursor:pointer;color:var(--text2);padding:2px;" title="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I create a task?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Tap the <strong>+</strong> button at the bottom of any list, or use the <strong>Add Task</strong> input at the top of a column. Type your task and press Enter to save. You can also add due dates, priority flags, and notes by tapping a task to open it.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do the three lists (Business, Personal, Top 3) work?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          <strong>Business</strong> and <strong>Personal</strong> are your full task backlogs — add anything here. <strong>Top 3</strong> is your daily focus list: drag your three most important tasks here each morning and work through them in order. Keeping Top 3 to exactly three tasks is the core GSD habit.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Is my data saved automatically?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Yes. Every change saves automatically to your account in real time. Your tasks are synced across any device you sign in on — nothing is stored only on your local device.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I back up or export my tasks?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Open your profile menu and tap <strong>Backup &amp; Restore</strong>. From there you can download a JSON backup of all your tasks, or restore from a previous backup file. We recommend doing this periodically as an extra safety net.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can I use GSD Task Manager on my phone?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Yes — the app is fully responsive and works on any modern mobile browser. For the best experience on iOS or Android, open <strong>gsdtasks.com/app</strong> in Safari or Chrome and use "Add to Home Screen" to install it as a standalone app.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I mark a task as complete?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Tap the circle checkbox to the left of any task. The task will be marked complete and move to the completed section. You can undo this at any time by tapping the checkmark again.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I delete a task?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Tap a task to open it, then tap the trash icon. Completed tasks can also be bulk-deleted using the <strong>Clear completed</strong> option at the bottom of a list.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I sign in on a new device?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Go to <strong>gsdtasks.com</strong> and click <strong>Sign In</strong>. Use the same Google account or email/password you signed up with. Your tasks will load automatically once you're authenticated.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          I forgot my password. How do I reset it?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. You'll receive a reset link within a few minutes. If you signed up with Google, you don't have a separate password — just use the Google sign-in button.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          How do I delete my account and data?
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-a">
+          Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all associated tasks. This action cannot be undone, so we recommend downloading a backup first.
+        </div>
+      </div>
+
+      <div class="faq-contact-note">
+        Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="legalModal" onclick="if(event.target===this)closeLegalModal()">
   <div class="modal">
     <div class="modal-header">
@@ -1412,7 +1567,11 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Privacy Policy
         </button>
-        <a class="dropdown-item" href="mailto:support@gsdtasks.com" style="text-decoration:none;color:inherit;" onclick="toggleUserDropdown(false)">
+        <button class="dropdown-item" onclick="openFaqModal(); toggleUserDropdown(false)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Help &amp; FAQ
+        </button>
+        <a class="dropdown-item" href="mailto:support@gsdtasks.com" target="_blank" style="text-decoration:none;color:inherit;" onclick="toggleUserDropdown(false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           Contact Support
         </a>
@@ -3018,6 +3177,22 @@ document.addEventListener('keydown', function(e) {
 
 // Start by restoring session (or showing login screen)
 restoreSession();
+
+/* ── FAQ MODAL ── */
+function openFaqModal() {
+  document.getElementById('faqModal').classList.add('open');
+}
+function closeFaqModal() {
+  document.getElementById('faqModal').classList.remove('open');
+}
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  // Open this one if it was closed
+  if (!isOpen) item.classList.add('open');
+}
 </script>
 </body>
 </html>
