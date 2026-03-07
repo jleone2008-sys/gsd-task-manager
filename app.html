@@ -62,6 +62,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
   }
   .header-row {
     display: flex;
@@ -72,13 +73,8 @@
   .header-top {
     padding: 10px 20px;
     justify-content: center;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
   }
-  .header-bottom {
-    padding: 7px 20px;
-    gap: 10px;
-    justify-content: center;
-  }
+  .header-bottom { display: none; }
   .logo {
     display: inline-flex;
     align-items: center;
@@ -127,22 +123,38 @@
     display: none;
   }
 
-  /* FILTERS — inline with header on desktop */
-  .filters {
+  /* FLOATING FILTER BAR */
+  .filter-bar-wrap {
+    position: sticky;
+    top: 52px;
+    z-index: 90;
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px 0;
+    pointer-events: none;
+  }
+  .filter-bar {
     display: flex;
     gap: 5px;
+    align-items: center;
+    background: #fff;
+    border-radius: 40px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.07);
+    padding: 5px 8px;
     overflow-x: auto;
     scrollbar-width: none;
     flex-wrap: nowrap;
-    align-items: center;
+    pointer-events: all;
+    max-width: 720px;
+    width: 100%;
   }
-  .filters::-webkit-scrollbar { display: none; }
+  .filter-bar::-webkit-scrollbar { display: none; }
   .pill {
     padding: 4px 13px;
     border-radius: 20px;
-    border: 1px solid var(--navy-border);
+    border: 1px solid #e5e7eb;
     background: transparent;
-    color: var(--navy-muted);
+    color: #6b7280;
     font-family: inherit;
     font-size: 12px;
     font-weight: 500;
@@ -151,14 +163,16 @@
     transition: all 0.12s;
     flex-shrink: 0;
   }
-  .pill:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.35); }
-  .pill.active { background: #fff; color: var(--navy); border-color: #fff; font-weight: 600; }
-  .pill.biz.active { background: #c8e0f8; color: #0e4f82; border-color: #c8e0f8; }
-  .pill.personal.active { background: #e8d4f4; color: #5a1a72; border-color: #e8d4f4; }
-  .pill.top3-pill.active { background: #fde8c4; color: #8a4000; border-color: #fde8c4; }
+  .pill:hover { background: #f3f4f6; color: #111827; border-color: #d1d5db; }
+  .pill.active { background: var(--navy); color: #fff; border-color: var(--navy); font-weight: 600; }
+  .pill.biz.active { background: #1264a3; color: #fff; border-color: #1264a3; }
+  .pill.personal.active { background: #7c2d96; color: #fff; border-color: #7c2d96; }
+  .pill.top3-pill { color: #b45309; border-color: #fde68a; }
+  .pill.top3-pill:hover { background: #fef9c3; border-color: #fbbf24; }
+  .pill.top3-pill.active { background: #fde8c4; color: #8a4000; border-color: #fbbf24; font-weight: 600; }
 
   /* ADD SECTION */
-  .add-section { max-width: 720px; margin: 0 auto; padding: 14px 16px 0; }
+  .add-section { max-width: 720px; margin: 0 auto; padding: 54px 16px 0; }
   .add-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
   .add-row input[type=text] {
     flex: 1;
@@ -627,15 +641,25 @@
   /* MOBILE */
   @media (max-width: 600px) {
     .header-top { padding: 9px 14px; }
-    .header-bottom { padding: 6px 14px; gap: 8px; }
-    .filters { flex: 1; overflow-x: auto; padding-bottom: 0; gap: 4px; justify-content: flex-start; }
-    .pill { font-size: 11px; padding: 4px 10px; white-space: nowrap; }
+    .pill { font-size: 11px; padding: 4px 10px; }
     .logo-main { font-size: 13px; letter-spacing: 2px; }
     .logo-icon { width: 24px; height: 24px; font-size: 13px; border-radius: 6px; }
     .logo-sub { display: none; }
     .user-menu { flex-shrink: 0; }
-    .search-input { width: 110px; font-size: 12px; }
-    .search-input:focus { width: 140px; }
+    .search-input { font-size: 12px; }
+    .filter-bar-wrap { padding: 8px 12px 0; }
+    .filter-bar { padding: 4px 6px; gap: 4px; }
+    .add-section { padding: 12px 12px 0; }
+    .add-row { gap: 5px; }
+    .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
+    .btn-note { font-size: 11px; padding: 8px 9px; }
+    .btn-add { font-size: 12px; padding: 8px 13px; }
+    .content { padding: 0 12px 72px; }
+    .task-actions { opacity: 1; }
+    .task-text { font-size: 13px; }
+    .stats { padding: 0 14px; }
+    .stats-center { gap: 10px; }
+  }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -652,7 +676,8 @@
   .search-wrap {
     position: relative;
     display: flex; align-items: center;
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
   }
   .search-input {
     background: rgba(255,255,255,0.1);
@@ -662,7 +687,7 @@
     font-family: inherit;
     font-size: 13px;
     padding: 5px 10px 5px 30px;
-    width: 160px;
+    width: 100%;
     outline: none;
     transition: all 0.2s;
   }
@@ -670,7 +695,6 @@
   .search-input:focus {
     background: rgba(255,255,255,0.15);
     border-color: rgba(255,255,255,0.4);
-    width: 200px;
   }
   .search-icon {
     position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
@@ -692,10 +716,6 @@
     color: var(--muted); font-size: 13px; line-height: 1.8;
   }
   .search-empty strong { display: block; font-size: 15px; color: var(--text2); margin-bottom: 4px; }
-  @media (max-width: 600px) {
-    .search-input { width: 100px; font-size: 12px; }
-    .search-input:focus { width: 130px; }
-  }
   #authScreen {
     position: fixed; inset: 0; z-index: 500;
     background: var(--bg);
@@ -1417,7 +1437,7 @@
       </div>
 
       <div class="faq-contact-note">
-        Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.
+        Still have a question? <a href="/cdn-cgi/l/email-protection#b8cbcdc8c8d7caccf8dfcbdcccd9cbd3cb96dbd7d5" target="_blank">Contact support</a> — we typically respond within one business day.
       </div>
 
     </div>
@@ -1556,6 +1576,13 @@
         <span class="logo-sub">Task Manager</span>
       </div>
     </div>
+    <div class="search-wrap" id="searchWrap">
+      <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search…"
+        oninput="handleSearch(this.value)"
+        onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
+      <button class="search-clear" onclick="clearSearch()" title="Clear search">&#x2715;</button>
+    </div>
     <div class="user-menu" id="userMenu" style="display:none">
       <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()" title="Account"></div>
       <div class="user-dropdown" id="userDropdown">
@@ -1579,7 +1606,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Help &amp; FAQ
         </button>
-        <a class="dropdown-item" href="mailto:support@gsdtasks.com" target="_blank" style="text-decoration:none;color:inherit;" onclick="toggleUserDropdown(false)">
+        <a class="dropdown-item" href="/cdn-cgi/l/email-protection#f98a8c8989968b8db99e8a9d8d988a928ad79a9694" target="_blank" style="text-decoration:none;color:inherit;" onclick="toggleUserDropdown(false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           Contact Support
         </a>
@@ -1597,26 +1624,18 @@
     </div>
     </div><!-- /.header-inner -->
   </div>
-  <!-- Row 2: filters + search -->
-  <div class="header-row header-bottom">
-    <div class="header-inner" style="gap:10px;">
-    <div class="filters">
-      <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
-      <button class="pill active" onclick="setFilter('all',this)">All</button>
-      <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
-      <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
-      <button class="pill" onclick="setFilter('someday',this)">Later</button>
-    </div>
-    <div class="search-wrap" id="searchWrap">
-      <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="search-input" id="searchInput" type="text" placeholder="Search…"
-        oninput="handleSearch(this.value)"
-        onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
-      <button class="search-clear" onclick="clearSearch()" title="Clear search">&#x2715;</button>
-    </div>
-    </div><!-- /.header-inner -->
-  </div>
 </header>
+
+<!-- FLOATING FILTER BAR -->
+<div class="filter-bar-wrap">
+  <div class="filter-bar">
+    <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
+    <button class="pill active" onclick="setFilter('all',this)">All</button>
+    <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
+    <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
+    <button class="pill" onclick="setFilter('someday',this)">Later</button>
+  </div>
+</div>
 
 <div class="content">
   <div id="taskContainer"></div>
@@ -1698,7 +1717,7 @@
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', newTags = new Set(), editId = null, showDone = false;
 let noteOpen = false, dueDateOpen = false;
@@ -3237,10 +3256,3 @@ function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
   // Close all
-  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
-  // Open this one if it was closed
-  if (!isOpen) item.classList.add('open');
-}
-</script>
-</body>
-</html>
