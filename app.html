@@ -1690,6 +1690,7 @@ function signInUser(user) {
 }
 
 async function signOut() {
+  db.removeAllChannels();
   await db.auth.signOut();
   currentUser = null;
   tasks = [];
@@ -1759,13 +1760,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-function confirmDeleteAccount() {
+async function confirmDeleteAccount() {
   if (document.getElementById('deleteConfirmInput').value !== 'DELETE') return;
-  // Clear all user data
-  localStorage.removeItem(KEY);
-  const users = getStoredUsers();
-  if (currentUser?.email) delete users[currentUser.email];
-  saveStoredUsers(users);
+  // Delete all tasks from Supabase, then sign out
+  if (currentUser) {
+    await db.from('tasks').delete().eq('user_id', currentUser.id);
+    await db.auth.signOut();
+  }
   currentUser = null;
   tasks = [];
   closeDeleteAccountModal();
@@ -1864,19 +1865,110 @@ function setStatus(state) {
 }
 window.addEventListener('online',  () => setStatus('saved'));
 window.addEventListener('offline', () => setStatus('offline'));
-function saveTask(t) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
-function deleteTask(id) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
-function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); }
-function subscribeToChanges() {}
-function load() {
-  const raw = localStorage.getItem(KEY);
-  const isNew = !raw;
-  if (raw) { try { tasks = JSON.parse(raw); } catch(_) { tasks = buildSeed(); save(); } }
-  else { tasks = buildSeed(); save(); }
-  render();
-  setStatus('saved');
-  if (isNew) setTimeout(startOnboarding, 600);
-  // Auto-backup once per day
+/* ════════════════════════════════════════
+   SUPABASE DATA LAYER
+════════════════════════════════════════ */
+
+function rowToTask(r) {
+  return {
+    id:      r.client_id,
+    text:    r.text    || '',
+    note:    r.note    || '',
+    tags:    r.tags    || [],
+    top3:    r.top3    || false,
+    someday: r.someday || false,
+    done:    r.done    || false,
+    due:     r.due     || null,
+    order:   r.order   || 0,
+  };
+}
+
+function taskToRow(t) {
+  return {
+    user_id:   currentUser.id,
+    client_id: t.id,
+    text:      t.text    || '',
+    note:      t.note    || '',
+    tags:      t.tags    || [],
+    top3:      t.top3    || false,
+    someday:   t.someday || false,
+    done:      t.done    || false,
+    due:       t.due     || null,
+    order:     t.order   || 0,
+  };
+}
+
+async function saveTask(t) {
+  setStatus('syncing');
+  const { error } = await db.from('tasks').upsert(taskToRow(t), { onConflict: 'user_id,client_id' });
+  setStatus(error ? 'error' : 'saved');
+  if (error) console.error('saveTask:', error.message);
+}
+
+async function deleteTask(id) {
+  setStatus('syncing');
+  const { error } = await db.from('tasks').delete().eq('user_id', currentUser.id).eq('client_id', id);
+  setStatus(error ? 'error' : 'saved');
+  if (error) console.error('deleteTask:', error.message);
+}
+
+async function save() {
+  if (!tasks.length) return;
+  setStatus('syncing');
+  const { error } = await db.from('tasks').upsert(tasks.map(taskToRow), { onConflict: 'user_id,client_id' });
+  setStatus(error ? 'error' : 'saved');
+  if (error) console.error('save:', error.message);
+}
+
+function subscribeToChanges() {
+  db.channel('tasks-changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'tasks',
+      filter: `user_id=eq.${currentUser.id}`
+    }, payload => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const incoming = rowToTask(payload.new);
+        const idx = tasks.findIndex(t => t.id === incoming.id);
+        if (idx >= 0) tasks[idx] = incoming; else tasks.push(incoming);
+      } else if (payload.eventType === 'DELETE') {
+        const gone = payload.old.client_id;
+        tasks = tasks.filter(t => t.id !== gone);
+      }
+      render();
+    })
+    .subscribe();
+}
+
+async function load() {
+  setStatus('syncing');
+  const { data, error } = await db.from('tasks')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('order', { ascending: true });
+
+  if (error) {
+    console.error('load:', error.message);
+    setStatus('error');
+    render();
+    return;
+  }
+
+  const isNew = data.length === 0;
+  if (isNew) {
+    tasks = buildSeed();
+    await save();
+    render();
+    setStatus('saved');
+    setTimeout(startOnboarding, 600);
+  } else {
+    tasks = data.map(rowToTask);
+    render();
+    setStatus('saved');
+  }
+
+  subscribeToChanges();
   setTimeout(autoBackup, 2000);
 }
 
