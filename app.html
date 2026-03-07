@@ -1900,9 +1900,12 @@ function taskToRow(t) {
 
 async function saveTask(t) {
   setStatus('syncing');
-  const { error } = await db.from('tasks').upsert(taskToRow(t), { onConflict: 'user_id,client_id' });
+  const { data, error } = await db.from('tasks')
+    .upsert(taskToRow(t), { onConflict: 'user_id,client_id' })
+    .select('id, client_id');
   setStatus(error ? 'error' : 'saved');
-  if (error) console.error('saveTask:', error.message);
+  if (error) { console.error('saveTask:', error.message); return; }
+  if (data?.[0]) rowIdMap.set(data[0].id, data[0].client_id);
 }
 
 async function deleteTask(id) {
@@ -1920,6 +1923,9 @@ async function save() {
   if (error) console.error('save:', error.message);
 }
 
+// Maps Supabase row id (bigint PK) → client_id, so DELETE events can identify the task
+const rowIdMap = new Map();
+
 function subscribeToChanges() {
   db.channel('tasks-changes')
     .on('postgres_changes', {
@@ -1930,11 +1936,16 @@ function subscribeToChanges() {
     }, payload => {
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const incoming = rowToTask(payload.new);
+        rowIdMap.set(payload.new.id, payload.new.client_id);
         const idx = tasks.findIndex(t => t.id === incoming.id);
         if (idx >= 0) tasks[idx] = incoming; else tasks.push(incoming);
       } else if (payload.eventType === 'DELETE') {
-        const gone = payload.old.client_id;
-        tasks = tasks.filter(t => t.id !== gone);
+        // payload.old only contains the PK (id) by default — look up client_id via rowIdMap
+        const clientId = rowIdMap.get(payload.old.id);
+        if (clientId !== undefined) {
+          tasks = tasks.filter(t => t.id !== clientId);
+          rowIdMap.delete(payload.old.id);
+        }
       }
       render();
     })
@@ -1964,6 +1975,8 @@ async function load() {
     setTimeout(startOnboarding, 600);
   } else {
     tasks = data.map(rowToTask);
+    // Populate rowIdMap so realtime DELETE events can resolve client_id
+    data.forEach(r => rowIdMap.set(r.id, r.client_id));
     render();
     setStatus('saved');
   }
