@@ -64,12 +64,26 @@
   .header-top {
     padding: 10px 20px;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
   }
-  .header-bottom {
-    padding: 7px 20px;
-    gap: 10px;
-    justify-content: space-between;
+  /* Floating pill bar — normal flow, no position tricks, styled to look floating */
+  .pill-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 16px 20px 0;
+    background: transparent;
+    pointer-events: none;
+  }
+  .pill-bar-inner {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #fff;
+    border-radius: 100px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.08);
+    padding: 5px 8px;
+    pointer-events: all;
   }
   .logo {
     display: inline-flex;
@@ -130,11 +144,11 @@
   }
   .filters::-webkit-scrollbar { display: none; }
   .pill {
-    padding: 4px 13px;
-    border-radius: 20px;
-    border: 1px solid var(--navy-border);
+    padding: 5px 14px;
+    border-radius: 100px;
+    border: none;
     background: transparent;
-    color: var(--navy-muted);
+    color: #555;
     font-family: inherit;
     font-size: 12px;
     font-weight: 500;
@@ -143,11 +157,11 @@
     transition: all 0.12s;
     flex-shrink: 0;
   }
-  .pill:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.35); }
-  .pill.active { background: #fff; color: var(--navy); border-color: #fff; font-weight: 600; }
-  .pill.biz.active { background: #c8e0f8; color: #0e4f82; border-color: #c8e0f8; }
-  .pill.personal.active { background: #e8d4f4; color: #5a1a72; border-color: #e8d4f4; }
-  .pill.top3-pill.active { background: #fde8c4; color: #8a4000; border-color: #fde8c4; }
+  .pill:hover { background: #f0f0f0; color: #111; }
+  .pill.active { background: var(--navy); color: #fff; font-weight: 600; }
+  .pill.biz.active { background: #1a5fa8; color: #fff; }
+  .pill.personal.active { background: #7c3aad; color: #fff; }
+  .pill.top3-pill.active { background: #c25c00; color: #fff; }
 
   /* ADD SECTION */
   .add-section { max-width: 720px; margin: 0 auto; padding: 14px 16px 0; }
@@ -249,7 +263,7 @@
   .tag-btn.t3.selected { background: var(--top3-bg); }
 
   /* CONTENT */
-  .content { max-width: 720px; margin: 0 auto; padding: 14px 16px 100px; }
+  .content { max-width: 720px; margin: 0 auto; padding: 8px 16px 100px; }
 
   .section-label {
     padding: 14px 0 5px;
@@ -626,21 +640,21 @@
   /* MOBILE */
   @media (max-width: 600px) {
     .header-top { padding: 9px 14px; }
-    .header-bottom { padding: 6px 14px; gap: 8px; }
-    .filters { flex: 1; overflow-x: auto; padding-bottom: 0; gap: 4px; justify-content: flex-start; }
+    .pill-bar { padding: 12px 14px 0; }
+    .pill-bar-inner { padding: 4px 6px; gap: 2px; }
     .pill { font-size: 11px; padding: 4px 10px; white-space: nowrap; }
     .logo-main { font-size: 13px; letter-spacing: 2px; }
     .logo-icon { width: 24px; height: 24px; font-size: 13px; border-radius: 6px; }
     .logo-sub { display: none; }
     .user-menu { flex-shrink: 0; }
-    .search-input { width: 110px; font-size: 12px; }
-    .search-input:focus { width: 140px; }
+    .search-input { width: 100px; font-size: 12px; }
+    .search-input:focus { width: 130px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
     .btn-note { font-size: 11px; padding: 8px 9px; }
     .btn-add { font-size: 12px; padding: 8px 13px; }
-    .content { padding: 0 12px 72px; }
+    .content { padding: 6px 12px 72px; }
     .task-actions { opacity: 1; }
     .task-text { font-size: 13px; }
     .drag-handle { opacity: 0.35; display: flex; color: #c0c0c0; }
@@ -1393,6 +1407,13 @@
         <span class="logo-sub">Task Manager</span>
       </div>
     </div>
+    <div class="search-wrap" id="searchWrap">
+      <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search…"
+        oninput="handleSearch(this.value)"
+        onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
+      <button class="search-clear" onclick="clearSearch()" title="Clear search">&#x2715;</button>
+    </div>
     <div class="user-menu" id="userMenu" style="display:none">
       <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()" title="Account"></div>
       <div class="user-dropdown" id="userDropdown">
@@ -1425,21 +1446,14 @@
       </div>
     </div>
   </div>
-  <!-- Row 2: filters + search -->
-  <div class="header-row header-bottom">
-    <div class="filters">
+  <!-- Row 2: filter pills -->
+  <div class="pill-bar">
+    <div class="pill-bar-inner">
       <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
       <button class="pill active" onclick="setFilter('all',this)">All</button>
       <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
       <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
       <button class="pill" onclick="setFilter('someday',this)">Later</button>
-    </div>
-    <div class="search-wrap" id="searchWrap">
-      <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="search-input" id="searchInput" type="text" placeholder="Search…"
-        oninput="handleSearch(this.value)"
-        onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
-      <button class="search-clear" onclick="clearSearch()" title="Clear search">&#x2715;</button>
     </div>
   </div>
 </header>
@@ -2740,7 +2754,7 @@ const onboardSteps = [
     position: 'below',
   },
   {
-    target: '.filters',
+    target: '.pill-bar-inner',
     arrow: 'top',
     title: 'Filter your tasks',
     desc: 'Switch between <strong>All</strong>, <strong>Business</strong>, <strong>Personal</strong>, <strong>Starred</strong>, and <strong>Later</strong> to focus on what matters right now.',
