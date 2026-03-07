@@ -2932,7 +2932,7 @@ function escHtml(str) {
    ONBOARDING TOOLTIP WALKTHROUGH
    Fires once for new users (no tasks in storage)
 ═══════════════════════════════════════════════ */
-const ONBOARD_KEY = 'gsd_onboarded_v1';
+
 
 const onboardSteps = [
   {
@@ -2976,7 +2976,6 @@ let onboardStep = 0;
 let onboardActive = false;
 
 function startOnboarding() {
-  if (localStorage.getItem(ONBOARD_KEY)) return;
   onboardActive = true;
   onboardStep = 0;
   injectOnboardDOM();
@@ -3101,15 +3100,20 @@ function prevOnboardStep() {
 
 function skipOnboarding() { finishOnboarding(); }
 
-function finishOnboarding() {
+async function finishOnboarding() {
   onboardActive = false;
-  localStorage.setItem(ONBOARD_KEY, '1');
   const overlay = document.getElementById('onboardOverlay');
   const spot    = document.getElementById('onboardSpotlight');
   const tip     = document.getElementById('onboardTooltip');
   if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 300); }
   if (spot)    { spot.style.opacity = '0';    setTimeout(() => spot.remove(),    300); }
   if (tip)     { tip.style.opacity = '0';     setTimeout(() => tip.remove(),     300); }
+  // Clear seed tasks — delete from Supabase and wipe local state
+  if (currentUser && tasks.length) {
+    await db.from('tasks').delete().eq('user_id', currentUser.id);
+    tasks = [];
+    render();
+  }
 }
 
 // Reposition on resize
