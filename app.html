@@ -54,7 +54,6 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    overflow: visible;
   }
   .header-row {
     display: flex;
@@ -68,8 +67,8 @@
   }
   /* Floating pill bar — sits inside <header> but floats below it */
   .pill-bar {
-    position: absolute;
-    top: 100%;
+    position: fixed;
+    top: 49px; /* sits just below the sticky header */
     left: 50%;
     transform: translateX(-50%);
     background: #fff;
@@ -79,7 +78,7 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    z-index: 90;
+    z-index: 50;
     white-space: nowrap;
   }
   .logo {
@@ -621,7 +620,7 @@
   /* MOBILE */
   @media (max-width: 600px) {
     .header-top { padding: 9px 14px; }
-    .pill-bar { padding: 4px 6px; gap: 2px; }
+    .pill-bar { padding: 4px 6px; gap: 2px; top: 42px; }
     .pill { font-size: 11px; padding: 4px 10px; white-space: nowrap; }
     .logo-main { font-size: 13px; letter-spacing: 2px; }
     .logo-icon { width: 24px; height: 24px; font-size: 13px; border-radius: 6px; }
@@ -1464,15 +1463,15 @@
       </div>
     </div>
   </div>
-  <!-- Floating pill bar -->
-  <div class="pill-bar">
-    <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
-    <button class="pill active" onclick="setFilter('all',this)">All</button>
-    <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
-    <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
-    <button class="pill" onclick="setFilter('someday',this)">Later</button>
-  </div>
 </header>
+
+<div class="pill-bar">
+  <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
+  <button class="pill active" onclick="setFilter('all',this)">All</button>
+  <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
+  <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
+  <button class="pill" onclick="setFilter('someday',this)">Later</button>
+</div>
 
 <div class="content">
   <div id="taskContainer"></div>
