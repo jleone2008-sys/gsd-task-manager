@@ -1521,15 +1521,22 @@
       </div>
 
       <div style="border-top:1px solid var(--border);padding-top:16px;">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Restore from a JSON backup file:</div>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-          <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreJSON(this)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Restore from a JSON backup file:</div>
+        <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="onRestoreFileChosen(this)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <button class="btn-sm" onclick="document.getElementById('restoreFile').click()" style="display:flex;align-items:center;gap:6px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Choose file
           </button>
-          <span id="restoreFileName" style="font-size:12px;color:var(--muted);">No file selected</span>
-        </label>
+          <span id="restoreFileName" style="font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file selected</span>
+        </div>
+        <div id="restoreConfirmRow" style="display:none;margin-top:10px;display:none;align-items:center;gap:10px;">
+          <button class="btn-sm-accent" id="restoreConfirmBtn" onclick="restoreJSON()" style="display:flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Restore tasks
+          </button>
+          <button class="btn-sm" onclick="clearRestoreFile()" style="display:flex;align-items:center;gap:6px;color:var(--muted);">Cancel</button>
+        </div>
       </div>
     </div>
     <div style="background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.2);border-radius:7px;padding:10px 12px;font-size:11.5px;color:#92711a;line-height:1.6;">
@@ -2745,6 +2752,8 @@ function switchLegalTab(tab) {
 function openBackupModal() {
   document.getElementById('restoreFileName').textContent = 'No file selected';
   document.getElementById('restoreFile').value = '';
+  document.getElementById('restoreConfirmRow').style.display = 'none';
+  _pendingRestoreData = null;
   document.getElementById('backupModal').classList.add('open');
   renderBackupDates();
 }
@@ -2769,34 +2778,56 @@ function exportJSON() {
   a.click();
   URL.revokeObjectURL(url);
 }
-function restoreJSON(input) {
+let _pendingRestoreData = null;
+
+function onRestoreFileChosen(input) {
   const file = input.files[0]; if (!file) return;
   document.getElementById('restoreFileName').textContent = file.name;
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      const restored = data.tasks || data; // support both wrapped and raw array
+      const restored = data.tasks || data;
       if (!Array.isArray(restored)) throw new Error('Invalid format');
-      showConfirm({
-        icon: '⚠️',
-        title: 'Replace all tasks?',
-        desc: `This will load ${restored.length} tasks from "${file.name}" and replace your current tasks.`,
-        confirmLabel: 'Restore',
-        confirmClass: 'primary',
-        onConfirm: () => {
-          tasks = restored;
-          save();
-          render();
-          closeBackupModal();
-          showUndoToast(`${restored.length} tasks restored from backup`);
-        }
-      });
+      _pendingRestoreData = { tasks: restored, name: file.name };
+      const row = document.getElementById('restoreConfirmRow');
+      row.style.display = 'flex';
     } catch(err) {
+      _pendingRestoreData = null;
+      clearRestoreFile();
       alert('Could not read backup file. Make sure it\'s a valid GSD JSON export.');
     }
   };
   reader.readAsText(file);
+}
+
+function clearRestoreFile() {
+  _pendingRestoreData = null;
+  document.getElementById('restoreFile').value = '';
+  document.getElementById('restoreFileName').textContent = 'No file selected';
+  document.getElementById('restoreConfirmRow').style.display = 'none';
+}
+
+function restoreJSON() {
+  if (!_pendingRestoreData) return;
+  const { tasks: restored, name } = _pendingRestoreData;
+  closeBackupModal();
+  setTimeout(() => {
+    showConfirm({
+      icon: '⚠️',
+      title: 'Replace all tasks?',
+      desc: `This will load ${restored.length} tasks from "${name}" and replace your current tasks.`,
+      confirmLabel: 'Restore',
+      confirmClass: 'primary',
+      onConfirm: () => {
+        tasks = restored;
+        save();
+        render();
+        showUndoToast(`${restored.length} tasks restored from backup`);
+      }
+    });
+    _pendingRestoreData = null;
+  }, 150);
 }
 
 /* ═══════════════════════════════════════════════
