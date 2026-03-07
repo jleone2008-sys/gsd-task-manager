@@ -72,31 +72,33 @@
     width: 100%;
     display: flex;
     align-items: center;
-    padding: 9px 16px;
-    gap: 10px;
+    padding: 7px 16px;
+    gap: 6px;
+    height: 50px;
+    box-sizing: border-box;
   }
   .header-inner .logo { flex-shrink: 0; }
-  .header-inner .search-wrap { flex: 1; max-width: 220px; margin-left: auto; }
-  .header-inner .user-menu { flex-shrink: 0; }
-  /* Floating pill bar — normal flow, no position tricks, styled to look floating */
+  .header-inner .search-wrap { flex-shrink: 0; margin-left: auto; }
+  .header-inner .user-menu { flex-shrink: 0; margin-left: 6px; }
+  /* Floating pill bar */
   .pill-bar {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 16px 12px;
+    padding: 10px 16px 14px;
     background: transparent;
     pointer-events: none;
   }
   .pill-bar-inner {
-    max-width: 720px;
+    max-width: 560px;
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.08);
-    padding: 6px 8px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.11), 0 2px 8px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04);
+    padding: 5px 6px;
     pointer-events: all;
   }
   .logo {
@@ -159,10 +161,10 @@
   .filters::-webkit-scrollbar { display: none; }
   .pill {
     flex: 1;
-    padding: 7px 10px;
+    padding: 7px 8px;
     border-radius: 8px;
-    border: none;
-    background: #f3f4f6;
+    border: 1.5px solid #e2e4e8;
+    background: #f8f9fa;
     color: #555;
     font-family: inherit;
     font-size: 12px;
@@ -172,11 +174,17 @@
     text-align: center;
     transition: all 0.12s;
   }
-  .pill:hover { background: #e5e7eb; color: #111; }
-  .pill.active { background: var(--navy); color: #fff; font-weight: 600; }
-  .pill.biz.active { background: #1a5fa8; color: #fff; }
-  .pill.personal.active { background: #7c3aad; color: #fff; }
-  .pill.top3-pill.active { background: #c25c00; color: #fff; }
+  .pill:hover { background: #f0f1f3; color: #111; border-color: #ccc; }
+  .pill.active { background: var(--navy); color: #fff; font-weight: 600; border-color: var(--navy); }
+  .pill.top3-pill { border-color: #f59e0b; color: #92400e; background: #fffbeb; }
+  .pill.top3-pill:hover { background: #fef3c7; border-color: #d97706; }
+  .pill.top3-pill.active { background: #d97706; color: #fff; border-color: #d97706; }
+  .pill.biz { border-color: #3b82f6; color: #1e40af; background: #eff6ff; }
+  .pill.biz:hover { background: #dbeafe; border-color: #2563eb; }
+  .pill.biz.active { background: #1a5fa8; color: #fff; border-color: #1a5fa8; }
+  .pill.personal { border-color: #a855f7; color: #6b21a8; background: #faf5ff; }
+  .pill.personal:hover { background: #f3e8ff; border-color: #9333ea; }
+  .pill.personal.active { background: #7c3aad; color: #fff; border-color: #7c3aad; }
 
   /* ADD SECTION */
   .add-section { max-width: 720px; margin: 0 auto; padding: 14px 16px 0; }
@@ -654,16 +662,16 @@
 
   /* MOBILE */
   @media (max-width: 600px) {
-    .header-inner { padding: 7px 12px; }
-    .pill-bar { padding: 8px 12px 10px; }
-    .pill-bar-inner { gap: 4px; }
-    .pill { font-size: 11px; padding: 6px 6px; }
+    .header-inner { padding: 6px 12px; height: 48px; gap: 5px; }
+    .pill-bar { padding: 8px 12px 12px; }
+    .pill-bar-inner { max-width: 100%; gap: 4px; padding: 4px 5px; }
+    .pill { font-size: 11px; padding: 6px 5px; }
     .logo-main { font-size: 13px; letter-spacing: 2px; }
     .logo-icon { width: 24px; height: 24px; font-size: 13px; border-radius: 6px; }
     .logo-sub { display: none; }
     .user-menu { flex-shrink: 0; }
-    .search-input { width: 90px; font-size: 12px; }
-    .search-input:focus { width: 120px; }
+    .search-input { width: 85px; font-size: 12px; }
+    .search-input:focus { width: 115px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -691,7 +699,7 @@
     font-family: inherit;
     font-size: 13px;
     padding: 5px 10px 5px 30px;
-    width: 160px;
+    width: 130px;
     outline: none;
     transition: all 0.2s;
   }
