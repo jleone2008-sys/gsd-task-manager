@@ -106,14 +106,18 @@
     letter-spacing: -0.3px;
     text-transform: none;
     color: #fff;
-    display: flex;
-    align-items: baseline;
-    gap: 0;
-    line-height: 1;
   }
+  .logo-main { display: flex; align-items: baseline; gap: 0; line-height: 1; }
   .logo-main .logo-dot { color: #60a5fa; font-style: normal; }
   .logo-main .logo-tm { font-weight: 400; font-size: 13px; color: rgba(255,255,255,0.55); letter-spacing: 0; margin-left: 7px; }
-  .logo-sub { display: none; }
+  .logo-sub {
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-top: 2px;
+    display: none;
+  }
 
   /* FILTERS — inline with header on desktop */
   .filters {
@@ -1257,9 +1261,9 @@
 
     <div class="auth-legal-footer">
       By signing in, you agree to our
-      <a href="/terms" target="_blank" style="color:inherit;text-decoration:underline;cursor:pointer;">Terms &amp; Conditions</a>
+      <button onclick="openLegalModal('terms')">Terms &amp; Conditions</button>
       and
-      <a href="/privacy" target="_blank" style="color:inherit;text-decoration:underline;cursor:pointer;">Privacy Policy</a>.
+      <button onclick="openLegalModal('privacy')">Privacy Policy</button>.
     </div>
   </div>
 </div>
@@ -1400,11 +1404,11 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Backup & Restore
         </button>
-        <a href="/terms" target="_blank" class="dropdown-item" style="text-decoration:none;">
+        <button class="dropdown-item" onclick="openLegalModal('terms'); toggleUserDropdown(false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Terms & Conditions
         </button>
-        <a href="/privacy" target="_blank" class="dropdown-item" style="text-decoration:none;">
+        <button class="dropdown-item" onclick="openLegalModal('privacy'); toggleUserDropdown(false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Privacy Policy
         </button>
@@ -1534,9 +1538,9 @@ const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let currentUser = null;
 let authMode = 'signin';
+
 
 function toggleAuthMode() {
   authMode = authMode === 'signin' ? 'signup' : 'signin';
@@ -1559,6 +1563,7 @@ function clearAuthError() {
 async function signInWithGoogle() {
   const { error } = await db.auth.signInWithOAuth({
     provider: 'google',
+    provider: 'google',
     options: { redirectTo: window.location.origin + '/app' }
   });
   if (error) showAuthError('Google sign-in failed: ' + error.message);
@@ -1573,8 +1578,8 @@ async function handleEmailAuth() {
   const btn = document.getElementById('authSubmitBtn');
   btn.textContent = 'Please wait…';
   btn.disabled = true;
-
   let result;
+
   if (authMode === 'signin') {
     result = await db.auth.signInWithPassword({ email, password });
   } else {
@@ -1594,6 +1599,13 @@ async function handleEmailAuth() {
   }
 }
 
+function signInUser(user) {
+  currentUser = user;
+  document.getElementById('authScreen').classList.add('hidden');
+  setUserUI(user);
+  load();
+}
+
 async function signOut() {
   await db.auth.signOut();
   currentUser = null;
@@ -1601,9 +1613,11 @@ async function signOut() {
   toggleUserDropdown(false);
   document.getElementById('userMenu').style.display = 'none';
   document.getElementById('authScreen').classList.remove('hidden');
+  // Reset auth form
   document.getElementById('authEmail').value = '';
   document.getElementById('authPassword').value = '';
   clearAuthError();
+  // Clear task container and stats
   document.getElementById('taskContainer').innerHTML = '';
 }
 
@@ -1616,6 +1630,7 @@ function setUserUI(user) {
   } else {
     avatar.textContent = name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
   }
+  document.getElementById('userMenu').style.display = 'flex';
   document.getElementById('dropdownName').textContent = name;
   document.getElementById('dropdownEmail').textContent = user.email;
   document.getElementById('userMenu').style.display = 'block';
@@ -1661,11 +1676,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-async function confirmDeleteAccount() {
+function confirmDeleteAccount() {
   if (document.getElementById('deleteConfirmInput').value !== 'DELETE') return;
-  const { error } = await db.rpc('delete_user');
-  if (error) { showToast('Delete failed: ' + error.message, 'error'); return; }
-  await db.auth.signOut();
+  // Clear all user data
+  localStorage.removeItem(KEY);
+  const users = getStoredUsers();
+  if (currentUser?.email) delete users[currentUser.email];
+  saveStoredUsers(users);
   currentUser = null;
   tasks = [];
   closeDeleteAccountModal();
@@ -1696,19 +1713,17 @@ function exportCSV() {
 }
 
 /* ── RESTORE SESSION ON LOAD ── */
-function restoreSession() {
-  db.auth.onAuthStateChange(async (event, session) => {
-    if (session && session.user) {
-      currentUser = session.user;
-      document.getElementById('authScreen').classList.add('hidden');
-      setUserUI(session.user);
-      await load();
-    } else {
-      currentUser = null;
-      tasks = [];
-      document.getElementById('authScreen').classList.remove('hidden');
-      document.getElementById('userMenu').style.display = 'none';
-      document.getElementById('taskContainer').innerHTML = '';
+async function restoreSession() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) {
+    signInUser(session.user);
+  } else {
+    document.getElementById('authScreen').classList.remove('hidden');
+  }
+  // Listen for auth state changes (e.g. OAuth redirect)
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user && !currentUser) {
+      signInUser(session.user);
     }
   });
 }
@@ -1750,91 +1765,22 @@ function setStatus(state) {
   const lbl = document.getElementById('onlineLabel');
   if (!dot || !lbl) return;
   dot.className = 'online-dot';
-  if (state === 'syncing') {
-    lbl.textContent = 'Syncing…';
-    lbl.style.color = 'rgba(255,255,255,0.6)';
-  } else if (state === 'error') {
-    lbl.textContent = 'Offline';
-    lbl.style.color = 'rgba(255,100,100,0.8)';
-  } else {
-    lbl.textContent = 'Saved';
-    lbl.style.color = 'rgba(255,255,255,0.5)';
-  }
+  lbl.textContent = 'Preview';
+  lbl.style.color = 'rgba(255,255,255,0.5)';
 }
-async function saveTask(t) {
-  if (!currentUser) return;
-  const { error } = await db.from('tasks').upsert({
-    id: t.id,
-    user_id: currentUser.id,
-    title: t.text || '',
-    note: t.note || '',
-    section: t.section || 'inbox',
-    tags: t.tags || [],
-    starred: t.top3 || false,
-    done: t.done || false,
-    due_date: t.dueDate || null,
-    sort_order: t.order ?? 0,
-  });
-  if (error) console.error('saveTask error:', error);
-  setStatus('saved');
-}
-
-async function deleteTask(id) {
-  if (!currentUser) return;
-  const { error } = await db.from('tasks').delete().eq('id', id).eq('user_id', currentUser.id);
-  if (error) console.error('deleteTask error:', error);
-}
-
-async function save() {
-  if (!currentUser || !tasks.length) return;
-  const rows = tasks.map((t, i) => ({
-    id: t.id,
-    user_id: currentUser.id,
-    title: t.text || '',
-    note: t.note || '',
-    section: t.section || 'inbox',
-    tags: t.tags || [],
-    starred: t.top3 || false,
-    done: t.done || false,
-    due_date: t.dueDate || null,
-    sort_order: i,
-  }));
-  const { error } = await db.from('tasks').upsert(rows);
-  if (error) console.error('save error:', error);
-  setStatus('saved');
-}
-
+function saveTask(t) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+function deleteTask(id) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); }
 function subscribeToChanges() {}
-
-async function load() {
-  if (!currentUser) return;
-  setStatus('syncing');
-  const { data, error } = await db
-    .from('tasks')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('sort_order');
-  if (error) { console.error('load error:', error); setStatus('error'); return; }
-  const isNew = !data || data.length === 0;
-  if (isNew) {
-    tasks = buildSeed();
-    await save();
-  } else {
-    tasks = data.map(r => ({
-      id: r.id,
-      text: r.title,
-      note: r.note || '',
-      section: r.section || 'inbox',
-      tags: r.tags || [],
-      top3: r.starred || false,
-      done: r.done || false,
-      dueDate: r.due_date || null,
-      order: r.sort_order,
-    }));
-  }
+function load() {
+  const raw = localStorage.getItem(KEY);
+  const isNew = !raw;
+  if (raw) { try { tasks = JSON.parse(raw); } catch(_) { tasks = buildSeed(); save(); } }
+  else { tasks = buildSeed(); save(); }
   render();
   setStatus('saved');
   if (isNew) setTimeout(startOnboarding, 600);
+  // Auto-backup once per day
   setTimeout(autoBackup, 2000);
 }
 
@@ -2633,11 +2579,11 @@ function switchLegalTab(tab) {
   document.getElementById('legalBody').scrollTop = 0;
 }
 
-async function openBackupModal() {
+function openBackupModal() {
   document.getElementById('restoreFileName').textContent = 'No file selected';
   document.getElementById('restoreFile').value = '';
   document.getElementById('backupModal').classList.add('open');
-  await renderBackupDates();
+  renderBackupDates();
 }
 function closeBackupModal() {
   document.getElementById('backupModal').classList.remove('open');
@@ -2701,67 +2647,70 @@ function restoreJSON(input) {
 const BACKUP_KEY  = 'gsd_backups_v1';
 const BACKUP_DAYS = 30;
 
-async function autoBackup() {
-  if (!currentUser) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const snapshot = JSON.stringify({ tasks, savedAt: new Date().toISOString() });
-  const { error } = await db.from('backups').upsert({
-    user_id: currentUser.id,
-    backup_date: today,
-    snapshot,
-    task_count: tasks.length,
-  }, { onConflict: 'user_id,backup_date' });
-  if (error) console.error('autoBackup error:', error);
+function autoBackup() {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  let backups = {};
+  try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}'); } catch(e) {}
+
+  // Only write once per day
+  if (backups[today]) return;
+
+  backups[today] = { tasks: tasks, savedAt: new Date().toISOString() };
+
+  // Prune entries older than 30 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - BACKUP_DAYS);
+  Object.keys(backups).forEach(date => {
+    if (new Date(date) < cutoff) delete backups[date];
+  });
+
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+  } catch(e) {
+    // Storage full — drop oldest day and retry
+    const oldest = Object.keys(backups).sort()[0];
+    if (oldest) { delete backups[oldest]; localStorage.setItem(BACKUP_KEY, JSON.stringify(backups)); }
+  }
 }
 
-async function getBackupDates() {
-  if (!currentUser) return [];
-  const { data, error } = await db
-    .from('backups')
-    .select('backup_date, task_count')
-    .eq('user_id', currentUser.id)
-    .order('backup_date', { ascending: false });
-  if (error) return [];
-  return data || [];
+function getBackupDates() {
+  try { return Object.keys(JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}')).sort().reverse(); }
+  catch(e) { return []; }
 }
 
-async function restoreFromDate(date) {
-  if (!currentUser) return;
-  const { data, error } = await db
-    .from('backups')
-    .select('snapshot, task_count')
-    .eq('user_id', currentUser.id)
-    .eq('backup_date', date)
-    .single();
-  if (error || !data) { alert('Backup not found for ' + date); return; }
-  let snap;
-  try { snap = JSON.parse(data.snapshot); } catch(e) { alert('Backup data corrupted.'); return; }
+function restoreFromDate(date) {
+  let backups = {};
+  try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}'); } catch(e) {}
+  const snap = backups[date];
+  if (!snap || !snap.tasks) { alert('Backup not found for ' + date); return; }
   showConfirm({
     icon: '⏪',
     title: `Restore backup from ${date}?`,
     desc: `This will load ${snap.tasks.length} tasks from ${date} and replace your current tasks.`,
     confirmLabel: 'Restore',
     confirmClass: 'primary',
-    onConfirm: async () => {
+    onConfirm: () => {
       tasks = snap.tasks;
-      await save(); render();
+      save(); render();
       closeBackupModal();
       showUndoToast(`Restored ${snap.tasks.length} tasks from ${date}`);
     }
   });
 }
 
-async function renderBackupDates() {
-  const dates = await getBackupDates();
+function renderBackupDates() {
+  const dates = getBackupDates();
   const el = document.getElementById('backupDateList');
   if (!el) return;
   if (!dates.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0;">No auto-backups yet — one will be created on your next session.</div>';
     return;
   }
-  const today = new Date().toISOString().slice(0,10);
-  el.innerHTML = dates.map(({ backup_date: d, task_count: count }) => {
-    const label = d === today ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
+  el.innerHTML = dates.map(d => {
+    let backups = {};
+    try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY)||'{}'); } catch(e) {}
+    const count = backups[d]?.tasks?.length ?? '?';
+    const label = d === new Date().toISOString().slice(0,10) ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
       <span style="font-size:12px;">${label} <span style="color:var(--muted);font-size:11px;">(${count} tasks)</span></span>
       <button class="btn-sm" onclick="restoreFromDate('${d}')" style="font-size:11px;padding:3px 9px;">Restore</button>
@@ -3065,13 +3014,6 @@ document.addEventListener('keydown', function(e) {
 
 // Start by restoring session (or showing login screen)
 restoreSession();
-
-// Handle #terms and #privacy hash links from landing page
-(function() {
-  const hash = window.location.hash;
-  if (hash === '#terms') { setTimeout(() => openLegalModal('terms'), 300); }
-  else if (hash === '#privacy') { setTimeout(() => openLegalModal('privacy'), 300); }
-})();
 </script>
 </body>
 </html>
