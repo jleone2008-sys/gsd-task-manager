@@ -59,9 +59,9 @@ nav.scrolled{box-shadow:var(--sh-md);}
 .nav-logo{display:flex;align-items:center;gap:9px;text-decoration:none;}
 .nav-logo-icon{width:30px;height:30px;border-radius:8px;overflow:hidden;flex-shrink:0;}
 .nav-logo-icon img{width:100%;height:100%;object-fit:cover;display:block;}
-.nav-brand-wrap{display:flex;align-items:baseline;gap:7px;}
-.nav-brand-gsd{font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1;}
-.nav-brand-tm{font-size:14px;font-weight:400;color:var(--mid);letter-spacing:-.1px;line-height:1;}
+.nav-brand-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
+.nav-brand-gsd{font-size:17px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1;}
+.nav-brand-tm{font-size:11px;font-weight:400;color:var(--mid);letter-spacing:-.1px;line-height:1;}
 .nav-cta{
   background:var(--blue);color:#fff;border:none;
   padding:8px 18px;border-radius:9px;
@@ -74,7 +74,7 @@ nav.scrolled{box-shadow:var(--sh-md);}
 /* ── HERO ── */
 .hero{
   min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:52px 24px 64px;background:var(--white);
+  text-align:center;padding:100px 24px 64px;background:var(--white);
 }
 .hero h1{
   font-size:clamp(34px,5.5vw,62px);font-weight:700;line-height:1.1;
@@ -391,7 +391,7 @@ footer{background:#13161f;padding:30px 40px;display:flex;align-items:center;just
     <div style="display:flex;align-items:center;gap:4px;">
       <a href="/app" class="nav-sign-in" style="font-size:13px;font-weight:500;color:var(--mid);text-decoration:none;padding:8px 12px;transition:color .15s;" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--mid)'">Sign In</a>
       <a href="/app" class="nav-cta">
-        Get Started — Free
+        Get Started
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7 2l4.5 4.5L7 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     </div>
