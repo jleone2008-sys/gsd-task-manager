@@ -2591,9 +2591,9 @@ function swipeDeleteTask(id) {
   undoStack = {...t, _idx: tasks.indexOf(t)};
   tasks = tasks.filter(t=>t.id!==id);
   render();
-  showUndoToast(`"${t.text.length>40?t.text.slice(0,40)+'…':t.text}" deleted`);
+  showUndoToast(`"${t.text.length>40?t.text.slice(0,40)+'…':t.text}" deleted`, id);
 }
-function showUndoToast(msg) {
+function showUndoToast(msg, pendingDeleteId) {
   clearTimeout(undoTimer);
   const toast = document.getElementById('undoToast');
   document.getElementById('undoMsg').textContent = msg;
@@ -2610,17 +2610,21 @@ function showUndoToast(msg) {
   });
   undoTimer = setTimeout(()=>{
     toast.classList.remove('show');
-    undoStack = null;
+    if (undoStack !== null) {
+      // Undo window expired — commit the delete to Supabase
+      deleteTask(pendingDeleteId);
+      undoStack = null;
+    }
   }, 5000);
 }
 function undoDelete() {
   if (!undoStack) return;
   clearTimeout(undoTimer);
   const t = undoStack;
+  undoStack = null; // Nullify before saveTask so the timeout guard won't fire deleteTask
   tasks.splice(Math.min(t._idx, tasks.length), 0, t);
-  undoStack = null;
   document.getElementById('undoToast').classList.remove('show');
-  render(); save();
+  render(); saveTask(t);
 }
 
 /* ═══════════════════════════════════════════════
