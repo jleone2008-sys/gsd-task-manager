@@ -723,6 +723,8 @@
     transition: opacity 0.2s, visibility 0.2s;
   }
   #authScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  /* When auth is showing, kill pointer events on the sticky filter bar */
+  body:has(#authScreen:not(.hidden)) .filter-bar-wrap { visibility: hidden; pointer-events: none; }
 
   .auth-card {
     background: var(--surface);
