@@ -1339,7 +1339,7 @@
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap a task to open it, then tap the trash icon. Completed tasks can be bulk-deleted using <strong>Clear completed</strong>.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">I forgot my password. How do I reset it?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. If you signed up with Google, just use the Google sign-in button.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete my account and data?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all tasks. Download a backup first.</div></div>
-      <div class="faq-contact-note">Still have a question? <a href="/cdn-cgi/l/email-protection#22515752524d50566245514656435149510c414d4f" target="_blank">Contact support</a> — we typically respond within one business day.</div>
+      <div class="faq-contact-note">Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.</div>
     </div>
   </div>
 </div>
@@ -1607,7 +1607,7 @@
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', newTags = new Set(), editId = null, showDone = false;
 let noteOpen = false, dueDateOpen = false;
@@ -1690,13 +1690,9 @@ function signInUser(user) {
 }
 
 async function signOut() {
-  // Unsubscribe from realtime
-  db.removeAllChannels();
   await db.auth.signOut();
   currentUser = null;
   tasks = [];
-  // Clear local cache so next user on this device starts fresh
-  localStorage.removeItem(KEY);
   toggleUserDropdown(false);
   document.getElementById('userMenu').style.display = 'none';
   document.getElementById('authScreen').classList.remove('hidden');
@@ -1763,16 +1759,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-async function confirmDeleteAccount() {
+function confirmDeleteAccount() {
   if (document.getElementById('deleteConfirmInput').value !== 'DELETE') return;
-  if (!currentUser) return;
-  // Delete all tasks from Supabase
-  await db.from('tasks').delete().eq('user_id', currentUser.id);
-  // Clear local storage
+  // Clear all user data
   localStorage.removeItem(KEY);
-  localStorage.removeItem(BACKUP_KEY);
-  // Sign out
-  await db.auth.signOut();
+  const users = getStoredUsers();
+  if (currentUser?.email) delete users[currentUser.email];
+  saveStoredUsers(users);
   currentUser = null;
   tasks = [];
   closeDeleteAccountModal();
@@ -1869,147 +1862,21 @@ function setStatus(state) {
   }
   lbl.style.color = 'rgba(255,255,255,0.5)';
 }
-window.addEventListener('online',  () => setStatus('online'));
+window.addEventListener('online',  () => setStatus('saved'));
 window.addEventListener('offline', () => setStatus('offline'));
-/* ════════════════════════════════════════
-   SUPABASE DATA LAYER — full sync
-════════════════════════════════════════ */
-
-// Convert a Supabase row → local task object
-function rowToTask(r) {
-  return {
-    id:      r.client_id,
-    text:    r.text,
-    note:    r.note    || '',
-    tags:    r.tags    || [],
-    top3:    r.top3    || false,
-    someday: r.someday || false,
-    done:    r.done    || false,
-    due:     r.due     || null,
-    order:   r.order   ?? 0,
-  };
-}
-
-// Convert local task → Supabase upsert payload
-function taskToRow(t) {
-  return {
-    user_id:   currentUser.id,
-    client_id: t.id,
-    text:      t.text,
-    note:      t.note    || '',
-    tags:      t.tags    || [],
-    top3:      t.top3    || false,
-    someday:   t.someday || false,
-    done:      t.done    || false,
-    due:       t.due     || null,
-    order:     t.order   ?? 0,
-  };
-}
-
-// Upsert one task to Supabase (fire-and-forget, optimistic UI)
-async function saveTask(t) {
-  localStorage.setItem(KEY, JSON.stringify(tasks)); // local fallback
-  if (!currentUser) return;
-  setStatus('syncing');
-  const { error } = await db.from('tasks').upsert(taskToRow(t), { onConflict: 'client_id' });
-  setStatus(error ? 'error' : 'saved');
-  if (error) console.error('saveTask:', error.message);
-}
-
-// Upsert multiple tasks at once (used after reorder / restore)
-async function saveAll() {
-  localStorage.setItem(KEY, JSON.stringify(tasks));
-  if (!currentUser) return;
-  setStatus('syncing');
-  const rows = tasks.map(taskToRow);
-  const { error } = await db.from('tasks').upsert(rows, { onConflict: 'client_id' });
-  setStatus(error ? 'error' : 'saved');
-  if (error) console.error('saveAll:', error.message);
-}
-
-// Alias used by legacy callers
-function save() { saveAll(); }
-
-// Hard-delete one task from Supabase
-async function deleteTask(id) {
-  localStorage.setItem(KEY, JSON.stringify(tasks));
-  if (!currentUser) return;
-  setStatus('syncing');
-  const { error } = await db.from('tasks').delete().eq('client_id', id).eq('user_id', currentUser.id);
-  setStatus(error ? 'error' : 'saved');
-  if (error) console.error('deleteTask:', error.message);
-}
-
-// Subscribe to realtime changes from other devices
-function subscribeToChanges() {
-  if (!currentUser) return;
-  db.channel('tasks-sync')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'tasks',
-      filter: `user_id=eq.${currentUser.id}`
-    }, payload => {
-      const { eventType, new: newRow, old: oldRow } = payload;
-      if (eventType === 'INSERT' || eventType === 'UPDATE') {
-        const t = rowToTask(newRow);
-        const idx = tasks.findIndex(x => x.id === t.id);
-        if (idx >= 0) tasks[idx] = t; else tasks.push(t);
-      } else if (eventType === 'DELETE') {
-        tasks = tasks.filter(x => x.id !== oldRow.client_id);
-      }
-      localStorage.setItem(KEY, JSON.stringify(tasks));
-      render();
-    })
-    .subscribe();
-}
-
-// Load tasks from Supabase; fall back to localStorage if offline
-async function load() {
-  // Optimistic: paint from localStorage immediately so UI isn't blank
-  const cached = localStorage.getItem(KEY);
-  if (cached) {
-    try { tasks = JSON.parse(cached); render(); } catch(_) {}
-  }
-
-  if (!currentUser) {
-    // Not signed in — shouldn't happen but guard anyway
-    tasks = buildSeed(); render();
-    return;
-  }
-
-  setStatus('syncing');
-  let { data, error } = await db
-    .from('tasks')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('order', { ascending: true });
-
-  if (error) {
-    console.error('load:', error.message);
-    // Stay on cached data if available
-    if (!cached) { tasks = buildSeed(); render(); }
-    setStatus('error');
-    return;
-  }
-
-  const isNewAccount = data.length === 0;
-  if (isNewAccount) {
-    // Brand-new user — seed demo tasks and push them to DB
-    tasks = buildSeed();
-    render();
-    const rows = tasks.map(taskToRow);
-    await db.from('tasks').upsert(rows, { onConflict: 'client_id' });
-    setTimeout(startOnboarding, 600);
-  } else {
-    tasks = data.map(rowToTask);
-    render();
-  }
-
-  localStorage.setItem(KEY, JSON.stringify(tasks));
+function saveTask(t) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+function deleteTask(id) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+function subscribeToChanges() {}
+function load() {
+  const raw = localStorage.getItem(KEY);
+  const isNew = !raw;
+  if (raw) { try { tasks = JSON.parse(raw); } catch(_) { tasks = buildSeed(); save(); } }
+  else { tasks = buildSeed(); save(); }
+  render();
   setStatus('saved');
-  subscribeToChanges();
-  // Auto-backup once per day (local snapshot)
+  if (isNew) setTimeout(startOnboarding, 600);
+  // Auto-backup once per day
   setTimeout(autoBackup, 2000);
 }
 
@@ -2847,12 +2714,12 @@ function restoreJSON(input) {
         desc: `This will load ${restored.length} tasks from "${file.name}" and replace your current tasks.`,
         confirmLabel: 'Restore',
         confirmClass: 'primary',
-        onConfirm: async () => {
+        onConfirm: () => {
           tasks = restored;
+          save();
           render();
           closeBackupModal();
           showUndoToast(`${restored.length} tasks restored from backup`);
-          await saveAll();
         }
       });
     } catch(err) {
@@ -2915,12 +2782,11 @@ function restoreFromDate(date) {
     desc: `This will load ${snap.tasks.length} tasks from ${date} and replace your current tasks.`,
     confirmLabel: 'Restore',
     confirmClass: 'primary',
-    onConfirm: async () => {
+    onConfirm: () => {
       tasks = snap.tasks;
-      render();
+      save(); render();
       closeBackupModal();
       showUndoToast(`Restored ${snap.tasks.length} tasks from ${date}`);
-      await saveAll();
     }
   });
 }
@@ -3248,4 +3114,9 @@ function closeFaqModal() { document.getElementById('faqModal').classList.remove(
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
-  docum
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+</script>
+</body>
+</html>
