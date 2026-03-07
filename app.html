@@ -1983,7 +1983,8 @@ async function load() {
   }
 
   subscribeToChanges();
-  setTimeout(autoBackup, 2000);
+  // autoBackup runs after tasks are loaded so it snapshots real data, not seed
+  autoBackup();
 }
 
 function highlight(text, query) {
@@ -2849,23 +2850,24 @@ function restoreJSON(input) {
 const BACKUP_DAYS = 30;
 
 async function autoBackup() {
-  if (!currentUser) return;
+  if (!currentUser || !tasks.length) return;
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   // Only write once per day — check if today's backup already exists
   const { data: existing } = await db.from('backups')
-    .select('date')
+    .select('backup_date')
     .eq('user_id', currentUser.id)
-    .eq('date', today)
+    .eq('backup_date', today)
     .maybeSingle();
   if (existing) return;
 
-  // Write today's snapshot
+  // Write today's snapshot — pass object directly, Supabase handles JSONB serialization
   await db.from('backups').upsert({
-    user_id:  currentUser.id,
-    date:     today,
-    snapshot: { tasks, savedAt: new Date().toISOString() },
-  }, { onConflict: 'user_id,date' });
+    user_id:     currentUser.id,
+    backup_date: today,
+    snapshot:    { tasks: tasks, savedAt: new Date().toISOString() },
+    task_count:  tasks.length,
+  }, { onConflict: 'user_id,backup_date' });
 
   // Prune entries older than 30 days
   const cutoff = new Date();
@@ -2873,15 +2875,15 @@ async function autoBackup() {
   await db.from('backups')
     .delete()
     .eq('user_id', currentUser.id)
-    .lt('date', cutoff.toISOString().slice(0, 10));
+    .lt('backup_date', cutoff.toISOString().slice(0, 10));
 }
 
 async function getBackupDates() {
   if (!currentUser) return [];
   const { data } = await db.from('backups')
-    .select('date, snapshot')
+    .select('backup_date, task_count')
     .eq('user_id', currentUser.id)
-    .order('date', { ascending: false });
+    .order('backup_date', { ascending: false });
   return data || [];
 }
 
@@ -2890,10 +2892,10 @@ async function restoreFromDate(date) {
   const { data, error } = await db.from('backups')
     .select('snapshot')
     .eq('user_id', currentUser.id)
-    .eq('date', date)
+    .eq('backup_date', date)
     .maybeSingle();
   if (error || !data?.snapshot?.tasks) { alert('Backup not found for ' + date); return; }
-  const snap = data.snapshot;
+  const snap = typeof data.snapshot === 'string' ? JSON.parse(data.snapshot) : data.snapshot;
   showConfirm({
     icon: '⏪',
     title: `Restore backup from ${date}?`,
@@ -2919,11 +2921,10 @@ async function renderBackupDates() {
     return;
   }
   const todayStr = new Date().toISOString().slice(0, 10);
-  el.innerHTML = dates.map(({ date: d, snapshot: s }) => {
-    const count = s?.tasks?.length ?? '?';
+  el.innerHTML = dates.map(({ backup_date: d, task_count: count }) => {
     const label = d === todayStr ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:12px;">${label} <span style="color:var(--muted);font-size:11px;">(${count} tasks)</span></span>
+      <span style="font-size:12px;">${label} <span style="color:var(--muted);font-size:11px;">(${count ?? '?'} tasks)</span></span>
       <button class="btn-sm" onclick="restoreFromDate('${d}')" style="font-size:11px;padding:3px 9px;">Restore</button>
     </div>`;
   }).join('');
