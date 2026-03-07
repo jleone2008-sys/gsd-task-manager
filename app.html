@@ -1256,6 +1256,20 @@
     content: attr(data-placeholder); color: var(--muted); pointer-events: none;
   }
 
+  /* ── FAQ MODAL ── */
+  #faqModal .modal { max-width: 600px; max-height: 84vh; display: flex; flex-direction: column; }
+  #faqModal .modal-body { flex: 1; overflow-y: auto; padding: 0 2px; }
+  .faq-item { border-bottom: 1px solid var(--border2); }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-q { width: 100%; background: none; border: none; padding: 13px 4px; text-align: left; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: color .15s; }
+  .faq-q:hover { color: var(--blue); }
+  .faq-q svg { flex-shrink: 0; transition: transform .2s; }
+  .faq-item.open .faq-q svg { transform: rotate(180deg); }
+  .faq-a { display: none; font-size: 12.5px; line-height: 1.7; color: var(--text2); padding: 0 4px 14px; }
+  .faq-item.open .faq-a { display: block; }
+  .faq-a a { color: var(--blue); text-decoration: none; }
+  .faq-a a:hover { text-decoration: underline; }
+  .faq-contact-note { margin-top: 16px; padding: 12px 14px; background: var(--hover); border-radius: 8px; font-size: 12px; color: var(--text2); border: 1px solid var(--border2); text-align: center; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1301,6 +1315,30 @@
       <button onclick="openLegalModal('terms')">Terms &amp; Conditions</button>
       and
       <button onclick="openLegalModal('privacy')">Privacy Policy</button>.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ FAQ MODAL ═══════════ -->
+<div class="modal-overlay" id="faqModal" onclick="if(event.target===this)closeFaqModal()">
+  <div class="modal">
+    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <span class="modal-title">Help &amp; FAQ</span>
+      <button onclick="closeFaqModal()" style="background:none;border:none;cursor:pointer;color:var(--text2);padding:2px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I create a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the <strong>+</strong> button at the bottom right, or use the <strong>Add Task</strong> input at the top. Type your task and press Enter to save.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do the lists (Business, Personal, Starred) work?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a"><strong>Business</strong> and <strong>Personal</strong> are your full task backlogs. <strong>Starred</strong> is your daily focus list — star your most important tasks each morning and work through them.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is my data saved automatically?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes. Every change saves automatically to your account in real time, synced across any device you sign in on.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I back up or export my tasks?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Backup &amp; Restore</strong>. Download a JSON backup or restore from a previous file.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I use GSD on my phone?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes — fully responsive. On iOS or Android, open <strong>gsdtasks.com/app</strong> in Safari or Chrome and use "Add to Home Screen" to install it as a standalone app.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I mark a task complete?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the circle checkbox to the left of any task. Tap again to undo.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap a task to open it, then tap the trash icon. Completed tasks can be bulk-deleted using <strong>Clear completed</strong>.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">I forgot my password. How do I reset it?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. If you signed up with Google, just use the Google sign-in button.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete my account and data?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all tasks. Download a backup first.</div></div>
+      <div class="faq-contact-note">Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.</div>
     </div>
   </div>
 </div>
@@ -1381,7 +1419,7 @@
       <div style="background:var(--surface2,#f4f6fb);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <div style="font-size:11.5px;color:var(--text2);line-height:1.6;">
-          <strong style="color:var(--text);">Your data stays on your device.</strong> Backups are stored locally in your browser only — they are never uploaded to a server or shared with anyone. Clearing your browser data will remove them.
+          <strong style="color:var(--text);">Your tasks sync to your account.</strong> Manual backups are downloaded to your device — they are never uploaded to our servers or shared with anyone.
         </div>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;">Export a full backup of all your tasks. JSON preserves everything (notes, due dates, all metadata). CSV is for spreadsheets.</div>
@@ -1456,6 +1494,11 @@
         <button class="dropdown-item" onclick="openLegalModal('privacy'); toggleUserDropdown(false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Privacy Policy
+        </button>
+        <div class="dropdown-sep"></div>
+        <button class="dropdown-item" onclick="openFaqModal(); toggleUserDropdown(false)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Help &amp; FAQ
         </button>
         <div class="dropdown-sep"></div>
         <button class="dropdown-item danger" onclick="openDeleteAccountModal(); toggleUserDropdown(false)">
@@ -1804,9 +1847,22 @@ function setStatus(state) {
   const lbl = document.getElementById('onlineLabel');
   if (!dot || !lbl) return;
   dot.className = 'online-dot';
-  lbl.textContent = 'Preview';
+  if (state === 'offline') {
+    dot.classList.add('offline');
+    lbl.textContent = 'Offline';
+  } else if (state === 'syncing') {
+    dot.classList.add('syncing');
+    lbl.textContent = 'Syncing…';
+  } else if (state === 'error') {
+    dot.classList.add('offline');
+    lbl.textContent = 'Error';
+  } else {
+    lbl.textContent = 'Online';
+  }
   lbl.style.color = 'rgba(255,255,255,0.5)';
 }
+window.addEventListener('online',  () => setStatus('saved'));
+window.addEventListener('offline', () => setStatus('offline'));
 function saveTask(t) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
 function deleteTask(id) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
 function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); }
@@ -2483,7 +2539,7 @@ function undoDelete() {
 /* ═══════════════════════════════════════════════
    LEGAL MODAL
 ═══════════════════════════════════════════════ */
-const LEGAL_EFFECTIVE = 'June 1, 2025';
+const LEGAL_EFFECTIVE = 'March 6, 2026';
 const LEGAL_COMPANY   = 'GSD Technologies LLC';
 const LEGAL_EMAIL     = 'legal@gsdtasks.com';
 
@@ -2563,7 +2619,7 @@ const LEGAL_PRIVACY = `
 <p>We do not use your task content for advertising, machine learning training, or any purpose beyond providing the Service to you.</p>
 
 <h2>4. Local Data &amp; Browser Storage</h2>
-<p>GSD Task Manager stores your task data and automatic backups locally in your browser's storage on your device. <strong>This data never leaves your device unless you are signed in with a synced account.</strong> Clearing your browser data or using a different browser will remove locally stored data. We strongly recommend using the export feature to maintain your own backups.</p>
+<p>GSD Task Manager stores your task data securely in your account on our servers, synced in real time across all your signed-in devices. You can download manual backups at any time from the Backup &amp; Restore menu. We strongly recommend keeping regular backups as an extra safety net.</p>
 
 <h2>5. Data Sharing</h2>
 <p>We do not sell, rent, or trade your personal information. We may share data only in the following limited circumstances:</p>
@@ -3053,6 +3109,16 @@ document.addEventListener('keydown', function(e) {
 
 // Start by restoring session (or showing login screen)
 restoreSession();
+
+/* ── FAQ MODAL ── */
+function openFaqModal() { document.getElementById('faqModal').classList.add('open'); }
+function closeFaqModal() { document.getElementById('faqModal').classList.remove('open'); }
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
 </script>
 </body>
 </html>
