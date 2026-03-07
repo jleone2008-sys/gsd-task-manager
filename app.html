@@ -86,7 +86,7 @@
     align-items: center;
     justify-content: center;
     padding: 10px 16px 14px;
-    background: transparent;
+    background: var(--bg);
     pointer-events: none;
   }
   .pill-bar-inner {
@@ -1471,17 +1471,17 @@
     </div>
     </div>
   </div>
-  <!-- Row 2: filter pills -->
-  <div class="pill-bar">
-    <div class="pill-bar-inner">
-      <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
-      <button class="pill active" onclick="setFilter('all',this)">All</button>
-      <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
-      <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
-      <button class="pill" onclick="setFilter('someday',this)">Later</button>
-    </div>
-  </div>
 </header>
+
+<div class="pill-bar">
+  <div class="pill-bar-inner">
+    <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
+    <button class="pill active" onclick="setFilter('all',this)">All</button>
+    <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
+    <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
+    <button class="pill" onclick="setFilter('someday',this)">Later</button>
+  </div>
+</div>
 
 <div class="content">
   <div id="taskContainer"></div>
@@ -1849,7 +1849,7 @@ function emptyState(type) {
     all:      { icon:'✅', title:'You\'re all caught up!',  desc:'No active tasks. Hit New Task to add something.',                            btn:'Add a task' },
   };
   const s = states[type] || states.all;
-  const btnHtml = s.btn ? `<button class="empty-state-btn" onclick="openCreatePanel()">
+  const btnHtml = s.btn ? `<button class="empty-state-btn" onclick="event.stopPropagation();openCreatePanel()">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     ${s.btn}</button>` : '';
   return `<div class="empty-state">
