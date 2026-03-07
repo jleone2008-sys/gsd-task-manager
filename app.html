@@ -1766,9 +1766,22 @@ function setStatus(state) {
   const lbl = document.getElementById('onlineLabel');
   if (!dot || !lbl) return;
   dot.className = 'online-dot';
-  lbl.textContent = 'Preview';
+  if (state === 'offline') {
+    dot.classList.add('offline');
+    lbl.textContent = 'Offline';
+  } else if (state === 'syncing') {
+    dot.classList.add('syncing');
+    lbl.textContent = 'Syncing…';
+  } else if (state === 'error') {
+    dot.classList.add('offline');
+    lbl.textContent = 'Error';
+  } else {
+    lbl.textContent = 'Online';
+  }
   lbl.style.color = 'rgba(255,255,255,0.5)';
 }
+window.addEventListener('online',  () => setStatus('saved'));
+window.addEventListener('offline', () => setStatus('offline'));
 function saveTask(t) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
 function deleteTask(id) { localStorage.setItem(KEY, JSON.stringify(tasks)); }
 function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); }
@@ -1902,7 +1915,7 @@ function render() {
   document.getElementById('statsBar').innerHTML=`
     <div class="stats-online">
       <div class="online-dot" id="onlineDot"></div>
-      <span class="online-label" id="onlineLabel">Preview</span>
+      <span class="online-label" id="onlineLabel">Online</span>
     </div>
     <div class="stats-center">
       <div class="stat"><strong>${actN}</strong> active</div>
