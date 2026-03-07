@@ -2782,11 +2782,11 @@ function switchLegalTab(tab) {
   document.getElementById('legalBody').scrollTop = 0;
 }
 
-function openBackupModal() {
+async function openBackupModal() {
   document.getElementById('restoreFileName').textContent = 'No file selected';
   document.getElementById('restoreFile').value = '';
   document.getElementById('backupModal').classList.add('open');
-  renderBackupDates();
+  await renderBackupDates();
 }
 function closeBackupModal() {
   document.getElementById('backupModal').classList.remove('open');
@@ -2843,77 +2843,85 @@ function restoreJSON(input) {
    HELPERS
 ═══════════════════════════════════════════════ */
 /* ═══════════════════════════════════════════════
-   AUTO-BACKUP (localStorage, 30-day rolling)
-   In production: swap localStorage for Supabase
+   AUTO-BACKUP (Supabase, 30-day rolling)
    table: backups(user_id, date TEXT, snapshot JSONB)
 ═══════════════════════════════════════════════ */
-const BACKUP_KEY  = 'gsd_backups_v1';
 const BACKUP_DAYS = 30;
 
-function autoBackup() {
+async function autoBackup() {
+  if (!currentUser) return;
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  let backups = {};
-  try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}'); } catch(e) {}
 
-  // Only write once per day
-  if (backups[today]) return;
+  // Only write once per day — check if today's backup already exists
+  const { data: existing } = await db.from('backups')
+    .select('date')
+    .eq('user_id', currentUser.id)
+    .eq('date', today)
+    .maybeSingle();
+  if (existing) return;
 
-  backups[today] = { tasks: tasks, savedAt: new Date().toISOString() };
+  // Write today's snapshot
+  await db.from('backups').upsert({
+    user_id:  currentUser.id,
+    date:     today,
+    snapshot: { tasks, savedAt: new Date().toISOString() },
+  }, { onConflict: 'user_id,date' });
 
   // Prune entries older than 30 days
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - BACKUP_DAYS);
-  Object.keys(backups).forEach(date => {
-    if (new Date(date) < cutoff) delete backups[date];
-  });
-
-  try {
-    localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
-  } catch(e) {
-    // Storage full — drop oldest day and retry
-    const oldest = Object.keys(backups).sort()[0];
-    if (oldest) { delete backups[oldest]; localStorage.setItem(BACKUP_KEY, JSON.stringify(backups)); }
-  }
+  await db.from('backups')
+    .delete()
+    .eq('user_id', currentUser.id)
+    .lt('date', cutoff.toISOString().slice(0, 10));
 }
 
-function getBackupDates() {
-  try { return Object.keys(JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}')).sort().reverse(); }
-  catch(e) { return []; }
+async function getBackupDates() {
+  if (!currentUser) return [];
+  const { data } = await db.from('backups')
+    .select('date, snapshot')
+    .eq('user_id', currentUser.id)
+    .order('date', { ascending: false });
+  return data || [];
 }
 
-function restoreFromDate(date) {
-  let backups = {};
-  try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}'); } catch(e) {}
-  const snap = backups[date];
-  if (!snap || !snap.tasks) { alert('Backup not found for ' + date); return; }
+async function restoreFromDate(date) {
+  if (!currentUser) return;
+  const { data, error } = await db.from('backups')
+    .select('snapshot')
+    .eq('user_id', currentUser.id)
+    .eq('date', date)
+    .maybeSingle();
+  if (error || !data?.snapshot?.tasks) { alert('Backup not found for ' + date); return; }
+  const snap = data.snapshot;
   showConfirm({
     icon: '⏪',
     title: `Restore backup from ${date}?`,
     desc: `This will load ${snap.tasks.length} tasks from ${date} and replace your current tasks.`,
     confirmLabel: 'Restore',
     confirmClass: 'primary',
-    onConfirm: () => {
+    onConfirm: async () => {
       tasks = snap.tasks;
-      save(); render();
+      await save(); render();
       closeBackupModal();
       showUndoToast(`Restored ${snap.tasks.length} tasks from ${date}`);
     }
   });
 }
 
-function renderBackupDates() {
-  const dates = getBackupDates();
+async function renderBackupDates() {
   const el = document.getElementById('backupDateList');
   if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Loading…</div>';
+  const dates = await getBackupDates();
   if (!dates.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0;">No auto-backups yet — one will be created on your next session.</div>';
     return;
   }
-  el.innerHTML = dates.map(d => {
-    let backups = {};
-    try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY)||'{}'); } catch(e) {}
-    const count = backups[d]?.tasks?.length ?? '?';
-    const label = d === new Date().toISOString().slice(0,10) ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  el.innerHTML = dates.map(({ date: d, snapshot: s }) => {
+    const count = s?.tasks?.length ?? '?';
+    const label = d === todayStr ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
       <span style="font-size:12px;">${label} <span style="color:var(--muted);font-size:11px;">(${count} tasks)</span></span>
       <button class="btn-sm" onclick="restoreFromDate('${d}')" style="font-size:11px;padding:3px 9px;">Restore</button>
