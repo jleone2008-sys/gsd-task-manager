@@ -372,14 +372,6 @@
   .star-btn:hover { background: var(--surface2); border-color: var(--border); }
   .del-btn:hover { background: #fdf0ee; color: var(--danger); border-color: #f0c8c0; }
 
-  .drag-handle {
-    display: flex; align-items: center; justify-content: center;
-    cursor: grab; color: #d0d0d0; padding: 2px 3px;
-    opacity: 0; transition: opacity 0.12s, color 0.12s;
-  }
-  .drag-handle:active { cursor: grabbing; }
-  .task-item:hover .drag-handle { opacity: 1; color: #bbb; }
-
   /* touch drag */
   .task-item.touch-dragging {
     opacity: 0.4; transition: none;
@@ -644,7 +636,6 @@
     .content { padding: 0 12px 72px; }
     .task-actions { opacity: 1; }
     .task-text { font-size: 13px; }
-    .drag-handle { opacity: 0.35; display: flex; color: #c0c0c0; }
     .stats { padding: 0 14px; }
     .stats-center { gap: 10px; }
   }
@@ -2011,9 +2002,6 @@ function tHTML(t) {
   const ss = t.top3?'var(--top3)':'currentColor';
   return `<div class="task-item${t.top3?' top3':''}${t.done?' done':''}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
-    <div class="drag-handle" title="Drag to reorder">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
-    </div>
     <div class="checkbox" onclick="toggleDone_t(${t.id})">
       <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
     </div>
