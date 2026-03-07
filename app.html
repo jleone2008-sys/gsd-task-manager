@@ -1331,7 +1331,7 @@
     </div>
     <div class="modal-body">
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I create a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the <strong>+</strong> button at the bottom right, or use the <strong>Add Task</strong> input at the top. Type your task and press Enter to save.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do the lists (Business, Personal, Starred) work?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a"><strong>Business</strong> and <strong>Personal</strong> are your full task backlogs. <strong>Starred</strong> is your daily focus list — star your most important tasks each morning and work through them.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do the lists (Work, Personal, Starred) work?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a"><strong>Work</strong> and <strong>Personal</strong> are your full task backlogs. <strong>Starred</strong> is your daily focus list — star your most important tasks each morning and work through them.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is my data saved automatically?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes. Every change saves automatically to your account in real time, synced across any device you sign in on.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I back up or export my tasks?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Backup &amp; Restore</strong>. Download a JSON backup or restore from a previous file.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I use GSD on my phone?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes — fully responsive. On iOS or Android, open <strong>gsdtasks.com/app</strong> in Safari or Chrome and use "Add to Home Screen" to install it as a standalone app.</div></div>
@@ -1521,7 +1521,7 @@
   <div class="pill-bar-inner">
     <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
     <button class="pill active" onclick="setFilter('all',this)">All</button>
-    <button class="pill biz" onclick="setFilter('biz',this)">Business</button>
+    <button class="pill biz" onclick="setFilter('biz',this)">Work</button>
     <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
     <button class="pill" onclick="setFilter('someday',this)">Later</button>
   </div>
@@ -1552,7 +1552,7 @@
   </div>
   <div class="create-panel-footer">
     <div class="create-panel-tags">
-      <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Business</button>
+      <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Work</button>
       <button class="tag-btn personal" id="opt-personal" onclick="toggleNewTag('personal')">Personal</button>
       <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Star</button>
       <button class="tag-btn" id="opt-someday" onclick="toggleNewTag('someday')">Later</button>
@@ -2006,7 +2006,7 @@ function applySearch(list) {
 function emptyState(type) {
   const states = {
     search:   { icon:'🔍', title:'No results found',        desc:'Try a different word or check your spelling.',                               btn:null },
-    biz:      { icon:'💼', title:'No business tasks',       desc:'Nothing tagged Business yet. Add a task and tag it Business.',               btn:'Add business task' },
+    biz:      { icon:'💼', title:'No work tasks',       desc:'Nothing tagged Work yet. Add a task and tag it Work.',               btn:'Add work task' },
     personal: { icon:'🏠', title:'No personal tasks',       desc:'Nothing tagged Personal yet. Add a task and tag it Personal.',               btn:'Add personal task' },
     top3:     { icon:'⭐', title:'No starred tasks',        desc:'Star any task to flag it as a priority. Tap the ★ on any task card.', btn:null },
     someday:  { icon:'🌱', title:'Nothing in Someday',      desc:'Tasks you\'re not ready for yet live here. Add a task and tag it Someday.',   btn:'Add someday task' },
@@ -2062,7 +2062,7 @@ function render() {
     if (filter==='top3') {
       if (!top3.length) html += emptyState('top3');
     } else {
-      const lbl = filter==='biz'?'Business':filter==='personal'?'Personal':'Tasks';
+      const lbl = filter==='biz'?'Work':filter==='personal'?'Personal':'Tasks';
       if (regular.length) {
         html += slabel(lbl, regular.length);
         html += `<div class="task-list" data-section="main">${regular.map(t=>tHTML(t)).join('')}</div>`;
@@ -2109,7 +2109,7 @@ function render() {
     <div class="stats-center">
       <div class="stat"><strong>${actN}</strong> active</div>
       <div class="stat-sep"></div>
-      <div class="stat"><strong style="color:#a8c8f0">${bizN}</strong> biz</div>
+      <div class="stat"><strong style="color:#a8c8f0">${bizN}</strong> work</div>
       <div class="stat"><strong style="color:#d4a8f0">${perN}</strong> personal</div>
       <div class="stat-sep"></div>
       <div class="stat"><strong>${doneN}</strong> done</div>
@@ -2124,7 +2124,7 @@ function render() {
 }
 
 function slabel(l,n) {
-  const icons = {'Tasks':'📋','Business':'💼','Personal':'🏠','Later':'🌱'};
+  const icons = {'Tasks':'📋','Work':'💼','Personal':'🏠','Later':'🌱'};
   const emoji = Object.entries(icons).find(([k])=>l.includes(k));
   const prefix = emoji ? `<span style="font-size:11px;margin-right:2px">${emoji[1]}</span>` : '';
   return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span></div>`;
@@ -2132,7 +2132,7 @@ function slabel(l,n) {
 
 // Search variant — highlights matched text, disables drag
 function tHTMLsearch(t, query) {
-  const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Business':'Personal'}</span>`).join('');
+  const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const top3tag = t.top3?`<span class="tag top3">&#9733; Starred</span>`:'';
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
@@ -2190,7 +2190,7 @@ function dueBadgeHTML(due) {
 }
 
 function tHTML(t) {
-  const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Business':'Personal'}</span>`).join('');
+  const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const top3tag = t.top3?`<span class="tag top3">&#9733; Starred</span>`:'';
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
@@ -2376,7 +2376,7 @@ function openEdit(id) {
   // Tags
   document.getElementById('editTags').innerHTML = [
     {key:'top3',label:'&#9733;',cls:'t3',title:'Starred'},
-    {key:'biz',label:'Business',cls:'biz'},
+    {key:'biz',label:'Work',cls:'biz'},
     {key:'personal',label:'Personal',cls:'personal'},
     {key:'someday',label:'Later',cls:''},
   ].map(td=>{
@@ -2955,7 +2955,7 @@ const onboardSteps = [
     target: '.pill-bar-inner',
     arrow: 'top',
     title: 'Filter your tasks',
-    desc: 'Switch between <strong>All</strong>, <strong>Business</strong>, <strong>Personal</strong>, <strong>Starred</strong>, and <strong>Later</strong> to focus on what matters right now.',
+    desc: 'Switch between <strong>All</strong>, <strong>Work</strong>, <strong>Personal</strong>, <strong>Starred</strong>, and <strong>Later</strong> to focus on what matters right now.',
     position: 'below',
   },
   {
@@ -2969,7 +2969,7 @@ const onboardSteps = [
     target: '.fab',
     arrow: 'top',
     title: 'Add a task',
-    desc: 'Tap <strong>New Task</strong> to add anything. Tag it Business or Personal, <strong>star it</strong> to flag it as a priority, add a due date, or tuck it in Later.',
+    desc: 'Tap <strong>New Task</strong> to add anything. Tag it Work or Personal, <strong>star it</strong> to flag it as a priority, add a due date, or tuck it in Later.',
     position: 'above',
   },
   {
