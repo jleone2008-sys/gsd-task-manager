@@ -1339,7 +1339,7 @@
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap a task to open it, then tap the trash icon. Completed tasks can be bulk-deleted using <strong>Clear completed</strong>.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">I forgot my password. How do I reset it?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. If you signed up with Google, just use the Google sign-in button.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete my account and data?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all tasks. Download a backup first.</div></div>
-      <div class="faq-contact-note">Still have a question? <a href="/cdn-cgi/l/email-protection#45363035352a3731052236213124362e366b262a28" target="_blank">Contact support</a> — we typically respond within one business day.</div>
+      <div class="faq-contact-note">Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.</div>
     </div>
   </div>
 </div>
@@ -1607,7 +1607,7 @@
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', newTags = new Set(), editId = null, showDone = false;
 let noteOpen = false, dueDateOpen = false;
@@ -1914,17 +1914,6 @@ async function deleteTask(id) {
   const { error } = await db.from('tasks').delete().eq('user_id', currentUser.id).eq('client_id', id);
   setStatus(error ? 'error' : 'saved');
   if (error) console.error('deleteTask:', error.message);
-}
-
-async function logEvent(clientId, eventType, meta = {}) {
-  if (!currentUser) return;
-  const { error } = await db.from('task_events').insert({
-    user_id: currentUser.id,
-    client_id: clientId,
-    event_type: eventType,
-    meta: Object.keys(meta).length ? meta : null
-  });
-  if (error) console.error('logEvent:', error.message);
 }
 
 async function save() {
@@ -2345,19 +2334,17 @@ function addTask() {
   closeCreatePanel();
   render();
   saveTask(newTask);
-  logEvent(newTask.id, 'created', { tags: newTask.tags, top3: newTask.top3, someday: newTask.someday, due: newTask.due });
   const newEl = document.getElementById('ti-' + newTask.id);
   if (newEl) { newEl.classList.add('new-task'); setTimeout(()=>newEl.classList.remove('new-task'), 400); }
 }
 function toggleDone_t(id) {
   const t = tasks.find(t=>t.id===id);
-  if (t) { t.done=!t.done; render(); saveTask(t); logEvent(t.id, t.done ? 'completed' : 'uncompleted'); }
+  if (t) { t.done=!t.done; render(); saveTask(t); }
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);
   if (!t) return;
   t.top3=!t.top3; render(); saveTask(t);
-  logEvent(t.id, t.top3 ? 'starred' : 'unstarred');
 }
 function delTask(id) {
   const t = tasks.find(t=>t.id===id);
@@ -2372,7 +2359,6 @@ function delTask(id) {
       tasks = tasks.filter(t=>t.id!==id);
       render();
       deleteTask(id);
-      logEvent(id, 'deleted');
     }
   });
 }
@@ -2412,7 +2398,6 @@ function saveEdit() {
   t.tags=sel.filter(s=>s==='biz'||s==='personal');
   t.top3=sel.includes('top3'); t.someday=sel.includes('someday');
   closeModal(); render(); saveTask(t);
-  logEvent(t.id, 'edited', { tags: t.tags, top3: t.top3, someday: t.someday, due: t.due });
 }
 function closeModal() { document.getElementById('editModal').classList.remove('open'); editId=null; }
 document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
@@ -2643,7 +2628,6 @@ function showUndoToast(msg, pendingDeleteId) {
     if (undoStack !== null) {
       // Undo window expired — commit the delete to Supabase
       deleteTask(pendingDeleteId);
-      logEvent(pendingDeleteId, 'deleted');
       undoStack = null;
     }
   }, 5000);
@@ -3253,4 +3237,9 @@ function closeFaqModal() { document.getElementById('faqModal').classList.remove(
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
-  docum
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+</script>
+</body>
+</html>
