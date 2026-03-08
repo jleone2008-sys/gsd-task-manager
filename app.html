@@ -1339,7 +1339,7 @@
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap a task to open it, then tap the trash icon. Completed tasks can be bulk-deleted using <strong>Clear completed</strong>.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">I forgot my password. How do I reset it?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. If you signed up with Google, just use the Google sign-in button.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete my account and data?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all tasks. Download a backup first.</div></div>
-      <div class="faq-contact-note">Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.</div>
+      <div class="faq-contact-note">Still have a question? <a href="/cdn-cgi/l/email-protection#becdcbceced1cccafed9cddacadfcdd5cd90ddd1d3" target="_blank">Contact support</a> — we typically respond within one business day.</div>
     </div>
   </div>
 </div>
@@ -1607,7 +1607,7 @@
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', newTags = new Set(), editId = null, showDone = false;
 let noteOpen = false, dueDateOpen = false;
@@ -1872,30 +1872,32 @@ window.addEventListener('offline', () => setStatus('offline'));
 
 function rowToTask(r) {
   return {
-    id:      r.client_id,
-    text:    r.text    || '',
-    note:    r.note    || '',
-    tags:    r.tags    || [],
-    top3:    r.top3    || false,
-    someday: r.someday || false,
-    done:    r.done    || false,
-    due:     r.due     || null,
-    order:   r.order   || 0,
+    id:           r.client_id,
+    text:         r.text    || '',
+    note:         r.note    || '',
+    tags:         r.tags    || [],
+    top3:         r.top3    || false,
+    someday:      r.someday || false,
+    done:         r.done    || false,
+    due:          r.due     || null,
+    order:        r.order   || 0,
+    completed_at: r.completed_at || null,
   };
 }
 
 function taskToRow(t) {
   return {
-    user_id:   currentUser.id,
-    client_id: t.id,
-    text:      t.text    || '',
-    note:      t.note    || '',
-    tags:      t.tags    || [],
-    top3:      t.top3    || false,
-    someday:   t.someday || false,
-    done:      t.done    || false,
-    due:       t.due     || null,
-    order:     t.order   || 0,
+    user_id:      currentUser.id,
+    client_id:    t.id,
+    text:         t.text    || '',
+    note:         t.note    || '',
+    tags:         t.tags    || [],
+    top3:         t.top3    || false,
+    someday:      t.someday || false,
+    done:         t.done    || false,
+    due:          t.due     || null,
+    order:        t.order   || 0,
+    completed_at: t.completed_at || null,
   };
 }
 
@@ -2027,7 +2029,7 @@ function emptyState(type) {
 function render() {
   const c = document.getElementById('taskContainer');
   let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
-  let done = tasks.filter(t=>t.done);
+  let done = tasks.filter(t=>t.done).sort((a,b)=>(b.completed_at??0)-(a.completed_at??0));
   let view = [...active];
   if (filter==='biz') view = view.filter(t=>t.tags.includes('biz'));
   if (filter==='personal') view = view.filter(t=>t.tags.includes('personal'));
@@ -2339,7 +2341,11 @@ function addTask() {
 }
 function toggleDone_t(id) {
   const t = tasks.find(t=>t.id===id);
-  if (t) { t.done=!t.done; render(); saveTask(t); }
+  if (t) {
+    t.done = !t.done;
+    t.completed_at = t.done ? Date.now() : null;
+    render(); saveTask(t);
+  }
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);
@@ -3237,9 +3243,4 @@ function closeFaqModal() { document.getElementById('faqModal').classList.remove(
 function toggleFaq(btn) {
   const item = btn.closest('.faq-item');
   const isOpen = item.classList.contains('open');
-  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
-  if (!isOpen) item.classList.add('open');
-}
-</script>
-</body>
-</html>
+  docum
