@@ -2443,6 +2443,13 @@ async function toggleCompletion(habitClientId, dateStr) {
   }
 }
 
+// Debounced render for realtime — coalesces rapid events into one render
+let _habitRenderTimer = null;
+function debouncedRenderHabits() {
+  if (_habitRenderTimer) clearTimeout(_habitRenderTimer);
+  _habitRenderTimer = setTimeout(() => { _habitRenderTimer = null; renderHabits(); }, 300);
+}
+
 function subscribeToHabitChanges() {
   db.channel('habits-changes')
     .on('postgres_changes', {
@@ -2461,7 +2468,7 @@ function subscribeToHabitChanges() {
           habitRowIdMap.delete(payload.old.id);
         }
       }
-      renderHabits();
+      debouncedRenderHabits();
     })
     .subscribe();
 
@@ -2483,7 +2490,7 @@ function subscribeToHabitChanges() {
         habitCompletions = habitCompletions.filter(c => c.id !== payload.old.id);
         completionRowIdMap.delete(payload.old.id);
       }
-      renderHabits();
+      debouncedRenderHabits();
     })
     .subscribe();
 }
