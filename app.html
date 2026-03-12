@@ -375,15 +375,10 @@
   .tag.top3 { background: #ffefc0; color: var(--top3); }
   .tag.someday { background: var(--surface2); color: var(--muted); }
 
-  /* right column: X top, star bottom */
   .task-actions-col {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
     flex-shrink: 0;
-    align-self: stretch;
-    margin: -6px -2px;
   }
   .star-btn, .del-btn {
     width: 24px; height: 24px;
@@ -397,8 +392,8 @@
     flex-shrink: 0;
     padding: 0;
   }
+  .star-btn { flex-shrink: 0; }
   .star-btn:hover { background: var(--surface2); border-color: var(--border); }
-  .del-btn:hover { background: #fdf0ee; color: var(--danger); border-color: #f0c8c0; }
 
   .drag-handle {
     display: flex; align-items: center; justify-content: center;
@@ -1339,9 +1334,10 @@
   .habit-check svg { display: none; }
   .habit-check.checked { background: var(--check); border-color: var(--check); }
   .habit-check.checked svg { display: block; }
-  .habit-today-card { cursor: default; display: flex; align-items: center; gap: 10px; }
+  .habit-today-card { cursor: default; display: flex; align-items: center; gap: 12px; }
   .habit-today-card:hover { border-color: var(--border); }
   .habit-today-content { flex: 1; min-width: 0; }
+  .habit-emoji-lg { font-size: 28px; flex-shrink: 0; line-height: 1; align-self: center; }
   .habit-streak { font-size: 11px; font-weight: 600; color: var(--top3); background: #fffcf5; border: 1px solid #ffefc0; padding: 2px 8px; border-radius: 8px; }
   .habit-streak.dead { color: var(--muted); background: var(--surface2); border-color: var(--border); }
   .habit-score-ring { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
@@ -2868,10 +2864,10 @@ function renderHabitToday(active) {
     const best = computeBestStreak(h.id);
     const freq = h.frequency === 'daily' ? 'Daily' : h.frequency === 'weekdays' ? 'Weekdays' : 'Custom';
     remHTML += `<div class="habit-card habit-today-card">
-      <div class="habit-check" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <span class="habit-emoji-lg">${h.emoji}</span>
       <div class="habit-today-content">
         <div class="habit-card-top">
-          <span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
+          <span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
         </div>
         <div class="habit-card-footer">
           <div class="habit-card-meta">${freq} · Best: ${best} days</div>
@@ -2882,6 +2878,7 @@ function renderHabitToday(active) {
           </div>
         </div>
       </div>
+      <div class="habit-check" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
     </div>`;
   });
 
@@ -2890,13 +2887,14 @@ function renderHabitToday(active) {
   done.forEach(h => {
     const streak = computeStreak(h.id);
     doneHTML += `<div class="habit-card habit-today-card habit-done" style="opacity:0.5">
-      <div class="habit-check checked" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <span class="habit-emoji-lg">${h.emoji}</span>
       <div class="habit-today-content">
         <div class="habit-card-top">
-          <span class="habit-emoji">${h.emoji}</span><span class="habit-name" style="text-decoration:line-through">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
+          <span class="habit-name" style="text-decoration:line-through">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id})" title="Details" style="margin-left:auto"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
         </div>
       </div>
+      <div class="habit-check checked" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
     </div>`;
   });
 
@@ -3319,21 +3317,18 @@ function tHTMLsearch(t, query) {
   const ss = t.top3?'var(--top3)':'currentColor';
   return `<div class="task-item${t.top3?' top3':''}${doneStyle}" id="ti-${t.id}" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
-    <div class="checkbox" onclick="toggleDone_t(${t.id})">
-      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-    </div>
+    <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
     <div class="task-content" onclick="openEdit(${t.id})">
       <div class="task-text">${highlight(linkify(t.text), query)}</div>
       ${noteHtml}
       ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${dueHtml}</div>` : ''}
     </div>
     <div class="task-actions-col">
-      <button class="del-btn" onclick="delTask(${t.id})" title="Delete">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-      <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      </button>
+      <div class="checkbox" onclick="toggleDone_t(${t.id})">
+        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
     </div>
   </div>`;
 }
@@ -3376,21 +3371,18 @@ function tHTML(t) {
   const ss = t.top3?'var(--top3)':'currentColor';
   return `<div class="task-item${t.top3?' top3':''}${t.done?' done':''}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
-    <div class="checkbox" onclick="toggleDone_t(${t.id})">
-      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-    </div>
+    <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </button>
     <div class="task-content" onclick="openEdit(${t.id})">
       <div class="task-text">${linkify(t.text)}</div>
       ${noteHtml}
       ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${dueHtml}</div>` : ''}
     </div>
     <div class="task-actions-col">
-      <button class="del-btn" onclick="delTask(${t.id})" title="Delete">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-      <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      </button>
+      <div class="checkbox" onclick="toggleDone_t(${t.id})">
+        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
     </div>
   </div>`;
 }
@@ -4090,7 +4082,7 @@ document.addEventListener('touchmove', function(e) {
   const bg = swipeEl.querySelector('.swipe-delete-bg');
   if (bg) bg.style.opacity = progress;
   swipeEl.classList.add('swiping');
-  const inner = swipeEl.querySelectorAll('.checkbox,.task-content,.task-actions-col');
+  const inner = swipeEl.querySelectorAll('.star-btn,.task-content,.task-actions-col');
   inner.forEach(el => el.style.transform = `translateX(${-Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
 }, {passive: false});
 
@@ -4114,7 +4106,7 @@ document.addEventListener('touchend', function(e) {
   if (!swipeEl) return;
   const item  = swipeEl;
   const id    = swipeId;
-  const inner = item.querySelectorAll('.checkbox,.task-content,.task-actions-col');
+  const inner = item.querySelectorAll('.star-btn,.task-content,.task-actions-col');
   if (swipeDelta >= SWIPE_THRESHOLD) {
     item.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
     item.style.transform  = 'translateX(-100%)';
