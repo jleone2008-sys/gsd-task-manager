@@ -1543,6 +1543,50 @@
     .habit-drill-stat-card { padding: 12px 10px; }
     .habit-drill-stat-card .ds-val { font-size: 18px; }
   }
+
+  /* ══════ NOTES ══════ */
+  .notes-layout { display: flex; height: calc(100vh - 110px); gap: 0; }
+  .notes-list-panel { width: 340px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .notes-list-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .notes-list-header .notes-search { flex: 1; border: 1px solid var(--border2); border-radius: 8px; padding: 7px 12px; font-family: inherit; font-size: 13px; outline: none; background: var(--surface2); }
+  .notes-list-header .notes-search:focus { border-color: var(--navy); background: var(--surface); }
+  .notes-list-scroll { flex: 1; overflow-y: auto; padding: 8px; }
+  .note-item { padding: 10px 12px; border-radius: 7px; cursor: pointer; border: 1px solid transparent; margin-bottom: 2px; transition: background 0.1s, border-color 0.1s; }
+  .note-item:hover { background: var(--hover); }
+  .note-item.active { background: rgba(45,95,166,0.08); border-color: var(--navy); }
+  .note-item-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item-preview { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item-meta { font-size: 10px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+  .note-item-star { color: var(--top3); }
+
+  .notes-editor-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .notes-editor-header { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .notes-editor-header .note-title-input { flex: 1; border: none; font-family: inherit; font-size: 18px; font-weight: 700; outline: none; background: transparent; color: var(--text); }
+  .notes-editor-header .note-title-input::placeholder { color: var(--muted); }
+  .note-toolbar { padding: 6px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 2px; flex-wrap: wrap; }
+  .note-toolbar button { background: none; border: 1px solid transparent; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: var(--text2); display: flex; align-items: center; justify-content: center; }
+  .note-toolbar button:hover { background: var(--hover); border-color: var(--border); }
+  .note-toolbar button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .note-toolbar .tb-sep { width: 1px; background: var(--border); margin: 2px 4px; }
+  .notes-editor-body { flex: 1; padding: 16px 20px; overflow-y: auto; }
+  .notes-editor-body .note-content { min-height: 200px; outline: none; font-family: inherit; font-size: 14px; line-height: 1.7; color: var(--text); }
+  .notes-editor-body .note-content:empty::before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; }
+  .notes-editor-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+
+  .note-action-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: var(--muted); transition: color 0.1s; }
+  .note-action-btn:hover { color: var(--text); background: var(--hover); }
+  .note-action-btn.starred { color: var(--top3); }
+
+  @media (max-width: 600px) {
+    .notes-layout { flex-direction: column; height: auto; min-height: calc(100vh - 160px); }
+    .notes-list-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
+    .notes-list-panel.hidden-mobile { display: none; }
+    .notes-editor-panel { min-height: calc(100vh - 160px); }
+    .notes-editor-panel.hidden-mobile { display: none; }
+    .notes-editor-body { padding: 12px 16px; padding-bottom: 130px; }
+    .notes-list-scroll { padding-bottom: 130px; }
+    .note-back-btn { display: flex !important; }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1830,10 +1874,19 @@
 </div>
 
 <div class="content" data-tool-view="notes" style="display:none">
-  <div style="text-align:center;padding:60px 20px;color:var(--muted)">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:4px">Notes — Coming Soon</div>
-    <div style="font-size:13px">Notebooks and quick notes, all in one place.</div>
+  <div class="notes-layout">
+    <!-- List panel -->
+    <div class="notes-list-panel" id="notesListPanel">
+      <div class="notes-list-header">
+        <input class="notes-search" id="notesSearchInput" type="text" placeholder="Search notes...">
+        <button class="note-action-btn" onclick="sortNotesToggle()" title="Sort"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="16" y2="12"/><line x1="4" y1="18" x2="12" y2="18"/></svg></button>
+      </div>
+      <div class="notes-list-scroll" id="notesListScroll"></div>
+    </div>
+    <!-- Editor panel -->
+    <div class="notes-editor-panel" id="notesEditorPanel">
+      <div id="notesEditorContent"></div>
+    </div>
   </div>
 </div>
 <div class="stats" id="statsBar"></div>
@@ -2236,6 +2289,7 @@ function signInUser(user) {
   setUserUI(user);
   load();
   loadHabits();
+  loadNotes();
 }
 
 async function signOut() {
@@ -2244,6 +2298,7 @@ async function signOut() {
   currentUser = null;
   tasks = [];
   habitsArr = []; habitCompletions = [];
+  notesArr = []; activeNoteId = null;
   toggleUserDropdown(false);
   document.getElementById('userMenu').style.display = 'none';
   document.getElementById('authScreen').classList.remove('hidden');
@@ -2315,6 +2370,7 @@ function switchTool(tool) {
   // Update stats bar and render for the active tool
   if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
+  else if (tool === 'notes') { renderNotes(); }
 }
 // Wire click handlers for tool tabs and mobile nav
 document.addEventListener('click', e => {
@@ -2805,6 +2861,7 @@ function dayOfWeek(dateStr) {
   setTimeout(() => {
     if (typeof renderHabits === 'function') renderHabits();
     if (typeof render === 'function') render();
+    if (typeof renderNotes === 'function') renderNotes();
     scheduleMidnightRefresh();
   }, ms);
 })();
@@ -3419,6 +3476,25 @@ function updateHabitStatsBar(active) {
     <span><span class="sv">${active.length}</span> habits</span>`;
 }
 
+function updateNotesStatsBar() {
+  const active = notesArr.filter(n => !n.trashed);
+  const starred = active.filter(n => n.starred).length;
+
+  if (activeTool !== 'notes') return;
+  const statsBar = document.getElementById('statsBar');
+  if (statsBar) statsBar.innerHTML = `<div class="stats-center">
+    <div class="stat"><strong>${active.length}</strong> notes</div>
+    <div class="stat-sep"></div>
+    <div class="stat"><strong style="color:#fcd34d">${starred}</strong> starred</div>
+  </div>`;
+
+  const slimEl = document.getElementById('mobileSlimStats');
+  if (slimEl) slimEl.innerHTML = `
+    <span><span class="sv">${active.length}</span> notes</span>
+    <span class="sep"></span>
+    <span><span class="sv" style="color:#fcd34d">${starred}</span> starred</span>`;
+}
+
 function highlight(text, query) {
   if (!query) return text;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -3723,6 +3799,7 @@ function setFilter(f, el) {
 
 function openCreatePanel() {
   if (activeTool === 'habits') { openHabitCreatePanel(); return; }
+  if (activeTool === 'notes') { createNote(); return; }
   document.getElementById('fabBtn').classList.add('hidden');
   document.getElementById('createPanel').classList.add('open');
   setTimeout(() => document.getElementById('newTaskInput').focus(), 50);
@@ -4126,6 +4203,342 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('habitDrillOverlay').classList.contains('open')) {
     closeDrillIn();
   }
+});
+
+/* ══════ NOTES DATA LAYER ══════ */
+let notesArr = [], notebooksArr = [];
+const noteRowIdMap = new Map();
+const notebookRowIdMap = new Map();
+let activeNoteId = null;
+let noteSearchQuery = '';
+let noteSortOrder = 'updated'; // 'updated' | 'created' | 'alpha'
+let _noteSaveTimer = null;
+
+function rowToNote(r) {
+  return {
+    id: r.client_id,
+    title: r.title || '',
+    content: r.content || '',
+    notebookId: r.notebook_id || null,
+    tags: r.tags || [],
+    starred: r.starred || false,
+    trashed: r.trashed || false,
+    trashedAt: r.trashed_at || null,
+    order: r.order || 0,
+    createdAt: r.created_at || new Date().toISOString(),
+    updatedAt: r.updated_at || new Date().toISOString(),
+  };
+}
+function noteToRow(n) {
+  return {
+    user_id: currentUser.id,
+    client_id: n.id,
+    title: n.title,
+    content: n.content,
+    notebook_id: n.notebookId || null,
+    tags: n.tags,
+    starred: n.starred,
+    trashed: n.trashed,
+    trashed_at: n.trashedAt || null,
+    "order": n.order,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function saveNoteToDB(n) {
+  setStatus('syncing');
+  const { data, error } = await db.from('notes')
+    .upsert(noteToRow(n), { onConflict: 'user_id,client_id' })
+    .select('id, client_id');
+  setStatus(error ? 'error' : 'saved');
+  if (error) { console.error('saveNote:', error.message); return; }
+  if (data?.[0]) noteRowIdMap.set(data[0].id, data[0].client_id);
+}
+
+async function deleteNoteFromDB(id) {
+  setStatus('syncing');
+  const { error } = await db.from('notes').delete().eq('user_id', currentUser.id).eq('client_id', id);
+  setStatus(error ? 'error' : 'saved');
+  if (error) console.error('deleteNote:', error.message);
+}
+
+let _noteRenderTimer = null;
+function debouncedRenderNotes() {
+  if (_noteRenderTimer) clearTimeout(_noteRenderTimer);
+  _noteRenderTimer = setTimeout(() => { _noteRenderTimer = null; renderNotes(); }, 300);
+}
+
+function subscribeToNoteChanges() {
+  db.channel('notes-changes')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'notes',
+      filter: `user_id=eq.${currentUser.id}`
+    }, payload => {
+      let changed = false;
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const incoming = rowToNote(payload.new);
+        noteRowIdMap.set(payload.new.id, payload.new.client_id);
+        const idx = notesArr.findIndex(n => n.id === incoming.id);
+        if (idx >= 0) {
+          const old = notesArr[idx];
+          if (old.title !== incoming.title || old.content !== incoming.content ||
+              old.starred !== incoming.starred || old.trashed !== incoming.trashed) changed = true;
+          notesArr[idx] = incoming;
+        } else { notesArr.push(incoming); changed = true; }
+      } else if (payload.eventType === 'DELETE') {
+        const clientId = noteRowIdMap.get(payload.old.id);
+        if (clientId !== undefined) {
+          notesArr = notesArr.filter(n => n.id !== clientId);
+          noteRowIdMap.delete(payload.old.id);
+          if (activeNoteId === clientId) activeNoteId = null;
+          changed = true;
+        }
+      }
+      if (changed) debouncedRenderNotes();
+    })
+    .subscribe();
+}
+
+async function loadNotes() {
+  const { data, error } = await db.from('notes')
+    .select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false });
+  if (error) { console.error('loadNotes:', error.message); return; }
+  notesArr = data.map(rowToNote);
+  data.forEach(r => noteRowIdMap.set(r.id, r.client_id));
+  subscribeToNoteChanges();
+  renderNotes();
+}
+
+/* ══════ NOTES RENDERING ══════ */
+function renderNotes() {
+  renderNoteList();
+  renderNoteEditor();
+  updateNotesBadge();
+  updateNotesStatsBar();
+}
+
+function getFilteredNotes() {
+  let list = notesArr.filter(n => !n.trashed);
+  if (noteSearchQuery) {
+    const q = noteSearchQuery.toLowerCase();
+    list = list.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q));
+  }
+  if (noteSortOrder === 'updated') list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  else if (noteSortOrder === 'created') list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  else if (noteSortOrder === 'alpha') list.sort((a, b) => a.title.localeCompare(b.title));
+  return list;
+}
+
+function renderNoteList() {
+  const el = document.getElementById('notesListScroll');
+  if (!el) return;
+  const list = getFilteredNotes();
+
+  if (!list.length && !noteSearchQuery) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;opacity:0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px">No notes yet</div>
+      <div style="font-size:12px">Tap + to create your first note.</div>
+    </div>`;
+    return;
+  }
+  if (!list.length && noteSearchQuery) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
+      <div style="font-size:14px;font-weight:600;color:var(--text2)">No results</div>
+      <div style="font-size:12px;margin-top:4px">Try a different search term.</div>
+    </div>`;
+    return;
+  }
+
+  let html = '';
+  list.forEach(n => {
+    const active = n.id === activeNoteId ? ' active' : '';
+    const preview = stripHTML(n.content).slice(0, 80) || 'No content';
+    const date = formatNoteDate(n.updatedAt);
+    const star = n.starred ? '<span class="note-item-star">★</span>' : '';
+    html += `<div class="note-item${active}" onclick="selectNote(${n.id})" data-note-id="${n.id}">
+      <div class="note-item-title">${escHTML(n.title || 'Untitled')}</div>
+      <div class="note-item-preview">${escHTML(preview)}</div>
+      <div class="note-item-meta">${star}<span>${date}</span></div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderNoteEditor() {
+  const el = document.getElementById('notesEditorContent');
+  if (!el) return;
+  const note = notesArr.find(n => n.id === activeNoteId);
+
+  if (!note) {
+    el.innerHTML = `<div class="notes-editor-empty">
+      <div style="text-align:center">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;opacity:0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div>Select a note or create a new one</div>
+      </div>
+    </div>`;
+    // On mobile, show list panel when no note selected
+    document.getElementById('notesListPanel')?.classList.remove('hidden-mobile');
+    document.getElementById('notesEditorPanel')?.classList.add('hidden-mobile');
+    return;
+  }
+
+  // On mobile, show editor panel when note selected
+  document.getElementById('notesListPanel')?.classList.add('hidden-mobile');
+  document.getElementById('notesEditorPanel')?.classList.remove('hidden-mobile');
+
+  const starCls = note.starred ? ' starred' : '';
+  el.innerHTML = `
+    <div class="notes-editor-header">
+      <button class="note-action-btn note-back-btn" onclick="deselectNote()" style="display:none" title="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <input class="note-title-input" id="noteTitleInput" type="text" placeholder="Note title..." value="${escAttr(note.title)}" oninput="onNoteTitleChange(this.value)">
+      <button class="note-action-btn${starCls}" onclick="toggleNoteStar()" title="Star"><svg width="16" height="16" viewBox="0 0 24 24" fill="${note.starred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="note-action-btn" onclick="trashNote()" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    </div>
+    <div class="note-toolbar">
+      <button onmousedown="noteCmd(event,'bold')" title="Bold"><strong>B</strong></button>
+      <button onmousedown="noteCmd(event,'italic')" title="Italic"><em>I</em></button>
+      <button onmousedown="noteCmd(event,'underline')" title="Underline"><u>U</u></button>
+      <button onmousedown="noteCmd(event,'strikeThrough')" title="Strikethrough"><s>S</s></button>
+      <div class="tb-sep"></div>
+      <button onmousedown="noteCmd(event,'insertUnorderedList')" title="Bullet list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg></button>
+      <button onmousedown="noteCmd(event,'insertOrderedList')" title="Numbered list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><text x="2" y="8" font-size="8" fill="currentColor" stroke="none" font-weight="600">1</text><text x="2" y="14" font-size="8" fill="currentColor" stroke="none" font-weight="600">2</text><text x="2" y="20" font-size="8" fill="currentColor" stroke="none" font-weight="600">3</text></svg></button>
+    </div>
+    <div class="notes-editor-body">
+      <div class="note-content" id="noteContentEditable" contenteditable="true" data-placeholder="Start writing..." oninput="onNoteContentChange()">${note.content}</div>
+    </div>
+  `;
+
+  // Show back button on mobile
+  if (window.innerWidth <= 600) {
+    const backBtn = el.querySelector('.note-back-btn');
+    if (backBtn) backBtn.style.display = 'flex';
+  }
+}
+
+function updateNotesBadge() {
+  const count = notesArr.filter(n => !n.trashed).length;
+  const nb = document.getElementById('notesBadge'); if (nb) nb.textContent = count;
+  const nbm = document.getElementById('notesBadgeMobile'); if (nbm) nbm.textContent = count;
+}
+
+/* ══════ NOTES ACTIONS ══════ */
+function createNote() {
+  const note = {
+    id: Date.now(),
+    title: '',
+    content: '',
+    notebookId: null,
+    tags: [],
+    starred: false,
+    trashed: false,
+    trashedAt: null,
+    order: notesArr.length,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  notesArr.unshift(note);
+  activeNoteId = note.id;
+  renderNotes();
+  saveNoteToDB(note);
+  // Focus title input after render
+  setTimeout(() => {
+    const inp = document.getElementById('noteTitleInput');
+    if (inp) inp.focus();
+  }, 50);
+}
+
+function selectNote(id) {
+  activeNoteId = id;
+  renderNotes();
+}
+
+function deselectNote() {
+  activeNoteId = null;
+  renderNotes();
+}
+
+function onNoteTitleChange(val) {
+  const note = notesArr.find(n => n.id === activeNoteId);
+  if (!note) return;
+  note.title = val;
+  note.updatedAt = new Date().toISOString();
+  // Debounced save
+  if (_noteSaveTimer) clearTimeout(_noteSaveTimer);
+  _noteSaveTimer = setTimeout(() => { saveNoteToDB(note); renderNoteList(); }, 500);
+}
+
+function onNoteContentChange() {
+  const note = notesArr.find(n => n.id === activeNoteId);
+  if (!note) return;
+  const el = document.getElementById('noteContentEditable');
+  if (!el) return;
+  note.content = el.innerHTML;
+  note.updatedAt = new Date().toISOString();
+  if (_noteSaveTimer) clearTimeout(_noteSaveTimer);
+  _noteSaveTimer = setTimeout(() => { saveNoteToDB(note); renderNoteList(); }, 500);
+}
+
+function toggleNoteStar() {
+  const note = notesArr.find(n => n.id === activeNoteId);
+  if (!note) return;
+  note.starred = !note.starred;
+  note.updatedAt = new Date().toISOString();
+  renderNotes();
+  saveNoteToDB(note);
+}
+
+function trashNote() {
+  const note = notesArr.find(n => n.id === activeNoteId);
+  if (!note) return;
+  note.trashed = true;
+  note.trashedAt = new Date().toISOString();
+  note.updatedAt = new Date().toISOString();
+  activeNoteId = null;
+  renderNotes();
+  saveNoteToDB(note);
+}
+
+function sortNotesToggle() {
+  const orders = ['updated', 'created', 'alpha'];
+  const idx = orders.indexOf(noteSortOrder);
+  noteSortOrder = orders[(idx + 1) % orders.length];
+  renderNoteList();
+}
+
+function noteCmd(e, cmd) {
+  e.preventDefault();
+  document.getElementById('noteContentEditable')?.focus();
+  document.execCommand(cmd, false, null);
+}
+
+// Helper functions
+function stripHTML(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+function escHTML(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function formatNoteDate(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  if (diff < 604800000) return Math.floor(diff / 86400000) + 'd ago';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Notes search handler
+document.getElementById('notesSearchInput')?.addEventListener('input', e => {
+  noteSearchQuery = e.target.value.trim();
+  renderNoteList();
 });
 
 function toggleNoteField() {
@@ -4711,13 +5124,14 @@ document.getElementById('backupModal').addEventListener('click', function(e) {
   if (e.target === this) closeBackupModal();
 });
 function exportJSON() {
-  if (!tasks.length && !habitsArr.length) { alert('No data to export.'); return; }
+  if (!tasks.length && !habitsArr.length && !notesArr.length) { alert('No data to export.'); return; }
   const data = {
-    version: 2,
+    version: 3,
     exported: new Date().toISOString(),
     tasks: tasks,
     habits: habitsArr,
-    habitCompletions: habitCompletions
+    habitCompletions: habitCompletions,
+    notes: notesArr
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -4737,10 +5151,12 @@ function restoreJSON(input) {
       const restoredTasks = data.tasks || (Array.isArray(data) ? data : null);
       const restoredHabits = data.habits || [];
       const restoredCompletions = data.habitCompletions || [];
-      if (!restoredTasks && !restoredHabits.length) throw new Error('Invalid format');
+      const restoredNotes = data.notes || [];
+      if (!restoredTasks && !restoredHabits.length && !restoredNotes.length) throw new Error('Invalid format');
       const parts = [];
       if (restoredTasks && restoredTasks.length) parts.push(`${restoredTasks.length} tasks`);
       if (restoredHabits.length) parts.push(`${restoredHabits.length} habits`);
+      if (restoredNotes.length) parts.push(`${restoredNotes.length} notes`);
       showConfirm({
         icon: '⚠️',
         title: 'Replace all data?',
@@ -4750,6 +5166,7 @@ function restoreJSON(input) {
         onConfirm: () => {
           if (restoredTasks) { tasks = restoredTasks; save(); render(); }
           if (restoredHabits.length) { habitsArr = restoredHabits; habitCompletions = restoredCompletions; renderHabits(); saveAllHabitsToDB(); }
+          if (restoredNotes.length) { notesArr = restoredNotes; renderNotes(); notesArr.forEach(n => saveNoteToDB(n)); }
           closeBackupModal();
           showUndoToast(`Restored ${parts.join(' + ')} from backup`);
         }
@@ -4786,7 +5203,7 @@ async function autoBackup() {
   await db.from('backups').upsert({
     user_id:     currentUser.id,
     backup_date: today,
-    snapshot:    { tasks: tasks, habits: habitsArr, habitCompletions: habitCompletions, savedAt: new Date().toISOString() },
+    snapshot:    { tasks: tasks, habits: habitsArr, habitCompletions: habitCompletions, notes: notesArr, savedAt: new Date().toISOString() },
     task_count:  tasks.length,
   }, { onConflict: 'user_id,backup_date' });
 
@@ -4820,10 +5237,11 @@ async function restoreFromDate(date) {
     .maybeSingle();
   if (error || !data?.snapshot) { alert('Backup not found for ' + date); return; }
   const snap = typeof data.snapshot === 'string' ? JSON.parse(data.snapshot) : data.snapshot;
-  if (!snap.tasks && !snap.habits) { alert('Backup not found for ' + date); return; }
+  if (!snap.tasks && !snap.habits && !snap.notes) { alert('Backup not found for ' + date); return; }
   const parts = [];
   if (snap.tasks?.length) parts.push(`${snap.tasks.length} tasks`);
   if (snap.habits?.length) parts.push(`${snap.habits.length} habits`);
+  if (snap.notes?.length) parts.push(`${snap.notes.length} notes`);
   showConfirm({
     icon: '⏪',
     title: `Restore backup from ${date}?`,
@@ -4833,6 +5251,7 @@ async function restoreFromDate(date) {
     onConfirm: async () => {
       if (snap.tasks) { tasks = snap.tasks; await save(); render(); }
       if (snap.habits) { habitsArr = snap.habits; habitCompletions = snap.habitCompletions || []; renderHabits(); saveAllHabitsToDB(); }
+      if (snap.notes) { notesArr = snap.notes; renderNotes(); snap.notes.forEach(n => saveNoteToDB(n)); }
       closeBackupModal();
       showUndoToast(`Restored ${parts.join(' + ')} from ${date}`);
     }
