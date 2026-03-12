@@ -1798,11 +1798,11 @@
 
 <div class="pill-bar" data-tool-view="tasks">
   <div class="pill-bar-inner">
-    <button class="pill top3-pill" onclick="setFilter('top3',this)">&#9733; Starred</button>
-    <button class="pill active" onclick="setFilter('all',this)">All</button>
-    <button class="pill biz" onclick="setFilter('biz',this)">Work</button>
-    <button class="pill personal" onclick="setFilter('personal',this)">Personal</button>
-    <button class="pill" onclick="setFilter('someday',this)">Later</button>
+    <button class="pill top3-pill" onclick="toggleStarredFilter(this)">&#9733; Starred</button>
+    <button class="pill active" onclick="setCatFilter('all',this)">All</button>
+    <button class="pill biz" onclick="setCatFilter('biz',this)">Work</button>
+    <button class="pill personal" onclick="setCatFilter('personal',this)">Personal</button>
+    <button class="pill" onclick="setCatFilter('someday',this)">Later</button>
   </div>
 </div>
 
@@ -2153,7 +2153,7 @@
 
 <script>
 const KEY = 'gsd_v3';
-let tasks = [], filter = 'all', newTags = new Set(), editId = null, showDone = false;
+let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false;
 let noteOpen = false, dueDateOpen = false;
 let dragId = null, dragOverId = null;
 let searchQuery = '';
@@ -3443,10 +3443,10 @@ function render() {
   let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
   let done = tasks.filter(t=>t.done);
   let view = [...active];
-  if (filter==='biz') view = view.filter(t=>t.tags.includes('biz'));
-  if (filter==='personal') view = view.filter(t=>t.tags.includes('personal'));
-  if (filter==='top3') view = view.filter(t=>t.top3);
+  if (filter==='biz') { view = view.filter(t=>t.tags.includes('biz')); done = done.filter(t=>t.tags.includes('biz')); }
+  if (filter==='personal') { view = view.filter(t=>t.tags.includes('personal')); done = done.filter(t=>t.tags.includes('personal')); }
   if (filter==='someday') view = view.filter(t=>t.someday);
+  if (filterStarred) { view = view.filter(t=>t.top3); done = done.filter(t=>t.top3); }
 
   // Apply search across active + done
   const isSearching = !!searchQuery;
@@ -3466,16 +3466,23 @@ function render() {
       html += `<div class="task-list" data-section="search">${all.map(t=>tHTMLsearch(t, searchQuery)).join('')}</div>`;
     }
   } else if (filter!=='someday') {
-    const top3 = view.filter(t=>t.top3);
-    const regular = view.filter(t=>!t.top3&&!t.someday);
-    const someday = view.filter(t=>t.someday);
-    if (top3.length) {
-      html += slabel('&#9733; Starred', top3.length);
-      html += `<div class="task-list" data-section="top3">${top3.map(t=>tHTML(t)).join('')}</div>`;
-    }
-    if (filter==='top3') {
-      if (!top3.length) html += emptyState('top3');
+    if (filterStarred) {
+      // Starred filter active — all items in view are already starred
+      const lbl = filter==='biz'?'&#9733; Starred Work':filter==='personal'?'&#9733; Starred Personal':'&#9733; Starred';
+      if (view.length) {
+        html += slabel(lbl, view.length);
+        html += `<div class="task-list" data-section="top3">${view.map(t=>tHTML(t)).join('')}</div>`;
+      } else {
+        html += emptyState('top3');
+      }
     } else {
+      const top3 = view.filter(t=>t.top3);
+      const regular = view.filter(t=>!t.top3&&!t.someday);
+      const someday = view.filter(t=>t.someday);
+      if (top3.length) {
+        html += slabel('&#9733; Starred', top3.length);
+        html += `<div class="task-list" data-section="top3">${top3.map(t=>tHTML(t)).join('')}</div>`;
+      }
       const lbl = filter==='biz'?'Work':filter==='personal'?'Personal':'Tasks';
       if (regular.length) {
         html += slabel(lbl, regular.length);
@@ -3483,10 +3490,10 @@ function render() {
       } else if (!top3.length) {
         html += emptyState(filter === 'all' ? 'all' : filter);
       }
-    }
-    if (someday.length && filter==='all') {
-      html += slabel('Later', someday.length);
-      html += `<div class="task-list" data-section="someday">${someday.map(t=>tHTML(t)).join('')}</div>`;
+      if (someday.length && filter==='all') {
+        html += slabel('Later', someday.length);
+        html += `<div class="task-list" data-section="someday">${someday.map(t=>tHTML(t)).join('')}</div>`;
+      }
     }
   } else {
     if (view.length) {
@@ -3680,11 +3687,20 @@ function reorder(fromId, toId) {
   save();
 }
 
-function setFilter(f, el) {
+function setCatFilter(f, el) {
   filter = f;
-  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.pill:not(.top3-pill)').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   render();
+}
+function toggleStarredFilter(el) {
+  filterStarred = !filterStarred;
+  el.classList.toggle('active', filterStarred);
+  render();
+}
+function setFilter(f, el) {
+  if (f === 'top3') { toggleStarredFilter(el); return; }
+  setCatFilter(f, el);
 }
 
 function openCreatePanel() {
