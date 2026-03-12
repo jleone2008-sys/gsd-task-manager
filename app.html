@@ -2790,11 +2790,24 @@ async function loadHabits() {
 
 /* ══════ HABITS RENDERING ══════ */
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function dayOfWeek(dateStr) {
   return new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun
 }
+
+// Auto-refresh at midnight local time
+(function scheduleMidnightRefresh() {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const ms = tomorrow - now + 1000;
+  setTimeout(() => {
+    if (typeof renderHabits === 'function') renderHabits();
+    if (typeof render === 'function') render();
+    scheduleMidnightRefresh();
+  }, ms);
+})();
 function getWeekDates() {
   // Rolling 7 days: today is always the 7th (last) day
   const now = new Date();
