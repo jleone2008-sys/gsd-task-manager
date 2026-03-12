@@ -568,36 +568,37 @@
 
   /* FLOATING CREATE PANEL */
   .create-panel {
+    display: none;
     position: fixed;
-    bottom: 56px;
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
-    width: calc(100% - 32px);
-    max-width: 520px;
+    inset: 0;
+    z-index: 200;
+    background: rgba(20,20,60,0.35);
+    backdrop-filter: blur(3px);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .create-panel.open {
+    display: flex;
+  }
+  .create-panel-inner {
+    width: 100%;
+    max-width: 480px;
     background: var(--surface);
     border: 1px solid var(--border2);
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.14);
-    z-index: 150;
-    padding: 14px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.18s, transform 0.18s;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    padding: 18px;
   }
-  .create-panel.open {
-    opacity: 1;
-    pointer-events: all;
-    transform: translateX(-50%) translateY(0);
-  }
-  .create-panel .add-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 8px; }
-  .create-panel .add-row input[type=text] {
+  .create-panel-inner .add-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 8px; }
+  .create-panel-inner .add-row input[type=text] {
     flex: 1; padding: 9px 12px; border-radius: 7px;
     border: 1px solid var(--border2); font-size: 13.5px;
     font-family: inherit; color: var(--text); background: var(--surface);
     outline: none; transition: border-color 0.12s, box-shadow 0.12s;
   }
-  .create-panel .add-row input[type=text]:focus { border-color: var(--navy-light); box-shadow: 0 0 0 3px rgba(61,61,143,0.1); }
-  .create-panel .add-row input[type=text]::placeholder { color: var(--muted); }
+  .create-panel-inner .add-row input[type=text]:focus { border-color: var(--navy-light); box-shadow: 0 0 0 3px rgba(61,61,143,0.1); }
+  .create-panel-inner .add-row input[type=text]::placeholder { color: var(--muted); }
   .create-panel-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .create-panel-tags { display: flex; gap: 5px; flex-wrap: wrap; }
   .create-panel-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
@@ -1385,8 +1386,9 @@
   .habit-stat-num .l { font-size: 9px; color: var(--muted); }
 
   /* Habit create panel */
-  .habit-create-panel { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border2); padding: 16px 20px 20px; z-index: 300; transform: translateY(100%); transition: transform 0.2s ease; box-shadow: 0 -4px 24px rgba(0,0,0,0.1); }
-  .habit-create-panel.open { transform: translateY(0); }
+  .habit-create-panel { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: 16px; }
+  .habit-create-panel.open { display: flex; }
+  .habit-create-inner { width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,0.18); padding: 18px; }
   .habit-create-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
   .habit-create-row input[type=text] { flex: 1; border: 1px solid var(--border2); border-radius: 8px; padding: 8px 12px; font-family: inherit; font-size: 13px; outline: none; }
   .habit-create-row input[type=text]:focus { border-color: var(--navy); }
@@ -1819,67 +1821,71 @@
 </button>
 
 <!-- FLOATING CREATE PANEL -->
-<div class="create-panel" id="createPanel">
-  <div class="add-row">
-    <input type="text" id="newTaskInput" placeholder="Add a task..."
-      onkeydown="if(event.key==='Enter')addTask();if(event.key==='Escape')closeCreatePanel()">
-  </div>
-  <div class="add-note-wrap" id="noteWrap">
-    <textarea id="newNoteInput" placeholder="Add a note or paste a URL..."></textarea>
-  </div>
-  <div class="add-note-wrap" id="dueDateWrap" style="padding: 0 0 4px;">
-    <input type="date" id="newDueDate" class="auth-input" style="font-size:12px;padding:7px 10px;color:var(--muted);" onkeydown="if(event.key==='Enter'){event.preventDefault();addTask()}" formnovalidate>
-  </div>
-  <div class="create-panel-footer">
-    <div class="create-panel-tags">
-      <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Work</button>
-      <button class="tag-btn personal" id="opt-personal" onclick="toggleNewTag('personal')">Personal</button>
-      <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Star</button>
-      <button class="tag-btn" id="opt-someday" onclick="toggleNewTag('someday')">Later</button>
+<div class="create-panel" id="createPanel" onclick="if(event.target===this)closeCreatePanel()">
+  <div class="create-panel-inner">
+    <div class="add-row">
+      <input type="text" id="newTaskInput" placeholder="Add a task..."
+        onkeydown="if(event.key==='Enter')addTask();if(event.key==='Escape')closeCreatePanel()">
     </div>
-    <div class="create-panel-actions">
-      <button class="btn-note" id="noteToggle" onclick="toggleNoteField()">+ Note</button>
-      <button class="btn-note" id="dueDateToggle" onclick="toggleDueDateField()">📅 Due</button>
-      <button class="btn-add" onclick="addTask()">Add</button>
+    <div class="add-note-wrap" id="noteWrap">
+      <textarea id="newNoteInput" placeholder="Add a note or paste a URL..."></textarea>
+    </div>
+    <div class="add-note-wrap" id="dueDateWrap" style="padding: 0 0 4px;">
+      <input type="date" id="newDueDate" class="auth-input" style="font-size:12px;padding:7px 10px;color:var(--muted);" onkeydown="if(event.key==='Enter'){event.preventDefault();addTask()}" formnovalidate>
+    </div>
+    <div class="create-panel-footer">
+      <div class="create-panel-tags">
+        <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Work</button>
+        <button class="tag-btn personal" id="opt-personal" onclick="toggleNewTag('personal')">Personal</button>
+        <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Star</button>
+        <button class="tag-btn" id="opt-someday" onclick="toggleNewTag('someday')">Later</button>
+      </div>
+      <div class="create-panel-actions">
+        <button class="btn-note" id="noteToggle" onclick="toggleNoteField()">+ Note</button>
+        <button class="btn-note" id="dueDateToggle" onclick="toggleDueDateField()">📅 Due</button>
+        <button class="btn-add" onclick="addTask()">Add</button>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- HABIT CREATE PANEL -->
-<div class="habit-create-panel" id="habitCreatePanel">
-  <div class="habit-create-row">
-    <button class="emoji-pick-btn" id="habitEmojiBtn" onclick="document.getElementById('habitEmojiGrid').style.display=document.getElementById('habitEmojiGrid').style.display==='grid'?'none':'grid'">✅</button>
-    <input type="text" id="habitNameInput" placeholder="Habit name..." onkeydown="if(event.key==='Enter')addHabit();if(event.key==='Escape')closeHabitCreatePanel()">
-  </div>
-  <div class="emoji-grid" id="habitEmojiGrid" style="display:none">
-    <button onclick="pickHabitEmoji('🏃')">🏃</button><button onclick="pickHabitEmoji('📖')">📖</button>
-    <button onclick="pickHabitEmoji('🧠')">🧠</button><button onclick="pickHabitEmoji('💧')">💧</button>
-    <button onclick="pickHabitEmoji('🧘')">🧘</button><button onclick="pickHabitEmoji('✍️')">✍️</button>
-    <button onclick="pickHabitEmoji('💪')">💪</button><button onclick="pickHabitEmoji('🥗')">🥗</button>
-    <button onclick="pickHabitEmoji('😴')">😴</button><button onclick="pickHabitEmoji('🎯')">🎯</button>
-    <button onclick="pickHabitEmoji('🎨')">🎨</button><button onclick="pickHabitEmoji('🎸')">🎸</button>
-    <button onclick="pickHabitEmoji('📝')">📝</button><button onclick="pickHabitEmoji('🚶')">🚶</button>
-    <button onclick="pickHabitEmoji('🧹')">🧹</button><button onclick="pickHabitEmoji('✅')">✅</button>
-  </div>
-  <div class="freq-options" id="habitFreqOptions">
-    <button class="freq-btn active" data-freq="daily">Daily</button>
-    <button class="freq-btn" data-freq="weekdays">Weekdays</button>
-    <button class="freq-btn" data-freq="custom">Custom</button>
-  </div>
-  <div id="habitCustomDays" style="display:none;margin-bottom:10px">
-    <div class="freq-options">
-      <button class="freq-btn custom-day" data-day="Mon">Mon</button>
-      <button class="freq-btn custom-day" data-day="Tue">Tue</button>
-      <button class="freq-btn custom-day" data-day="Wed">Wed</button>
-      <button class="freq-btn custom-day" data-day="Thu">Thu</button>
-      <button class="freq-btn custom-day" data-day="Fri">Fri</button>
-      <button class="freq-btn custom-day" data-day="Sat">Sat</button>
-      <button class="freq-btn custom-day" data-day="Sun">Sun</button>
+<div class="habit-create-panel" id="habitCreatePanel" onclick="if(event.target===this)closeHabitCreatePanel()">
+  <div class="habit-create-inner">
+    <div class="habit-create-row">
+      <button class="emoji-pick-btn" id="habitEmojiBtn" onclick="document.getElementById('habitEmojiGrid').style.display=document.getElementById('habitEmojiGrid').style.display==='grid'?'none':'grid'">✅</button>
+      <input type="text" id="habitNameInput" placeholder="Habit name..." onkeydown="if(event.key==='Enter')addHabit();if(event.key==='Escape')closeHabitCreatePanel()">
     </div>
-  </div>
-  <div class="habit-create-actions">
-    <button class="btn-cancel" onclick="closeHabitCreatePanel()">Cancel</button>
-    <button class="btn-save" onclick="addHabit()">Add Habit</button>
+    <div class="emoji-grid" id="habitEmojiGrid" style="display:none">
+      <button onclick="pickHabitEmoji('🏃')">🏃</button><button onclick="pickHabitEmoji('📖')">📖</button>
+      <button onclick="pickHabitEmoji('🧠')">🧠</button><button onclick="pickHabitEmoji('💧')">💧</button>
+      <button onclick="pickHabitEmoji('🧘')">🧘</button><button onclick="pickHabitEmoji('✍️')">✍️</button>
+      <button onclick="pickHabitEmoji('💪')">💪</button><button onclick="pickHabitEmoji('🥗')">🥗</button>
+      <button onclick="pickHabitEmoji('😴')">😴</button><button onclick="pickHabitEmoji('🎯')">🎯</button>
+      <button onclick="pickHabitEmoji('🎨')">🎨</button><button onclick="pickHabitEmoji('🎸')">🎸</button>
+      <button onclick="pickHabitEmoji('📝')">📝</button><button onclick="pickHabitEmoji('🚶')">🚶</button>
+      <button onclick="pickHabitEmoji('🧹')">🧹</button><button onclick="pickHabitEmoji('✅')">✅</button>
+    </div>
+    <div class="freq-options" id="habitFreqOptions">
+      <button class="freq-btn active" data-freq="daily">Daily</button>
+      <button class="freq-btn" data-freq="weekdays">Weekdays</button>
+      <button class="freq-btn" data-freq="custom">Custom</button>
+    </div>
+    <div id="habitCustomDays" style="display:none;margin-bottom:10px">
+      <div class="freq-options">
+        <button class="freq-btn custom-day" data-day="Mon">Mon</button>
+        <button class="freq-btn custom-day" data-day="Tue">Tue</button>
+        <button class="freq-btn custom-day" data-day="Wed">Wed</button>
+        <button class="freq-btn custom-day" data-day="Thu">Thu</button>
+        <button class="freq-btn custom-day" data-day="Fri">Fri</button>
+        <button class="freq-btn custom-day" data-day="Sat">Sat</button>
+        <button class="freq-btn custom-day" data-day="Sun">Sun</button>
+      </div>
+    </div>
+    <div class="habit-create-actions">
+      <button class="btn-cancel" onclick="closeHabitCreatePanel()">Cancel</button>
+      <button class="btn-save" onclick="addHabit()">Add Habit</button>
+    </div>
   </div>
 </div>
 
