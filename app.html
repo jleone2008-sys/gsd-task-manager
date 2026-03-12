@@ -733,7 +733,9 @@
     .stat-card .sc-val { font-size: 20px; }
     .week-bar-chart { padding: 12px 14px; }
     .heatmap-section { padding: 12px 14px; }
-    .heatmap-cell { width: 10px; height: 10px; }
+    .heatmap-cell { width: 11px; height: 11px; }
+    .heatmap-day-labels span { height: 11px; line-height: 11px; font-size: 8px; }
+    .heatmap-month-labels span { width: 11px; font-size: 8px; }
     .habit-stat-row { padding: 10px 12px; flex-wrap: wrap; }
     .habit-stat-nums { gap: 8px; width: 100%; justify-content: space-around; margin-top: 6px; }
   }
@@ -1413,14 +1415,20 @@
   .stat-card .sc-lbl { font-size: 10.5px; color: var(--muted); font-weight: 500; }
   .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; overflow-x: auto; }
   .heatmap-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .heatmap-wrap { display: flex; gap: 0; }
+  .heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-right: 6px; padding-top: 18px; }
+  .heatmap-day-labels span { height: 14px; font-size: 9px; color: var(--muted); line-height: 14px; text-align: right; }
+  .heatmap-inner { flex: 1; min-width: 0; }
+  .heatmap-month-labels { display: flex; gap: 3px; margin-bottom: 4px; }
+  .heatmap-month-labels span { font-size: 9px; color: var(--muted); width: 14px; text-align: center; }
   .heatmap-grid { display: flex; gap: 3px; }
   .heatmap-col { display: flex; flex-direction: column; gap: 3px; }
-  .heatmap-cell { width: 12px; height: 12px; border-radius: 2px; background: var(--surface2); }
+  .heatmap-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--surface2); }
   .heatmap-cell.l1 { background: #c7d9f0; }
   .heatmap-cell.l2 { background: #7aacdf; }
   .heatmap-cell.l3 { background: #3d7ec4; }
   .heatmap-cell.l4 { background: var(--navy); }
-  .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 10px; color: var(--muted); }
+  .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 10px; color: var(--muted); }
   .heatmap-legend .heatmap-cell { width: 10px; height: 10px; }
   .habit-stat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 12px; }
   .habit-stat-info { flex: 1; min-width: 0; }
@@ -3124,14 +3132,28 @@ function renderHabitStats(active) {
   let monthCount = 0;
   habitCompletions.forEach(c => { if (c.completedDate >= monthStart && c.completedDate <= today) monthCount++; });
 
-  // Heatmap — 16 weeks
+  // Heatmap — 16 weeks with axis labels
+  const HEAT_WEEKS = 16;
   let heatmapHTML = '';
+  let monthLabels = '';
   const heatToday = new Date(today + 'T12:00:00');
-  const heatStart = new Date(heatToday); heatStart.setDate(heatToday.getDate() - 16 * 7 + 1);
+  const heatStart = new Date(heatToday); heatStart.setDate(heatToday.getDate() - HEAT_WEEKS * 7 + 1);
   // Align to Monday
   const startDay = heatStart.getDay();
   heatStart.setDate(heatStart.getDate() - ((startDay + 6) % 7));
-  for (let w = 0; w < 16; w++) {
+  const shortMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let lastMonth = -1;
+  for (let w = 0; w < HEAT_WEEKS; w++) {
+    // Month label for this column (show if first day of column is a new month)
+    const colStart = new Date(heatStart);
+    colStart.setDate(heatStart.getDate() + w * 7);
+    const m = colStart.getMonth();
+    if (m !== lastMonth) {
+      monthLabels += `<span>${shortMonths[m]}</span>`;
+      lastMonth = m;
+    } else {
+      monthLabels += `<span></span>`;
+    }
     let col = '<div class="heatmap-col">';
     for (let d = 0; d < 7; d++) {
       const cellDate = new Date(heatStart);
@@ -3147,11 +3169,13 @@ function renderHabitStats(active) {
       if (ratio >= 0.4) lvl = 'l2';
       if (ratio >= 0.7) lvl = 'l3';
       if (ratio >= 0.9) lvl = 'l4';
-      col += `<div class="heatmap-cell${lvl?' '+lvl:''}"></div>`;
+      col += `<div class="heatmap-cell${lvl?' '+lvl:''}" title="${ds}: ${count}/${maxH}"></div>`;
     }
     col += '</div>';
     heatmapHTML += col;
   }
+  // Day-of-week labels (Mon through Sun, showing Mon/Wed/Fri)
+  const dayLabelsHTML = ['Mon','','Wed','','Fri','',''].map(l => `<span>${l}</span>`).join('');
 
   // Per-habit breakdown
   let breakdownHTML = '<div class="section-label">📊 PER-HABIT BREAKDOWN</div>';
@@ -3186,8 +3210,14 @@ function renderHabitStats(active) {
       <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${monthCount}</div><div class="sc-lbl">This Month</div></div>
     </div>
     <div class="heatmap-section">
-      <div class="heatmap-title">Activity — Last 16 Weeks</div>
-      <div class="heatmap-grid">${heatmapHTML}</div>
+      <div class="heatmap-title">Activity — Last ${HEAT_WEEKS} Weeks</div>
+      <div class="heatmap-wrap">
+        <div class="heatmap-day-labels">${dayLabelsHTML}</div>
+        <div class="heatmap-inner">
+          <div class="heatmap-month-labels">${monthLabels}</div>
+          <div class="heatmap-grid">${heatmapHTML}</div>
+        </div>
+      </div>
       <div class="heatmap-legend">Less <div class="heatmap-cell"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div> More</div>
     </div>
     ${breakdownHTML}
