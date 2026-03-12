@@ -2883,8 +2883,8 @@ function renderHabitToday(active) {
   remaining.forEach(h => {
     const streak = computeStreak(h.id);
     remHTML += `<div class="habit-card habit-today-card">
-      <span class="habit-emoji-lg">${h.emoji}</span>
-      <div class="habit-today-content">
+      <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
+      <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
         <div class="habit-card-top">
           <span class="habit-name">${h.name}</span>
         </div>
@@ -2906,8 +2906,8 @@ function renderHabitToday(active) {
   done.forEach(h => {
     const streak = computeStreak(h.id);
     doneHTML += `<div class="habit-card habit-today-card habit-done" style="opacity:0.5">
-      <span class="habit-emoji-lg">${h.emoji}</span>
-      <div class="habit-today-content">
+      <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
+      <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
         <div class="habit-card-top">
           <span class="habit-name" style="text-decoration:line-through">${h.name}</span>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id})" title="Details" style="margin-left:auto"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
