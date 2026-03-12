@@ -733,9 +733,9 @@
     .stat-card .sc-val { font-size: 20px; }
     .week-bar-chart { padding: 12px 14px; }
     .heatmap-section { padding: 12px 14px; }
-    .heatmap-cell { width: 11px; height: 11px; }
-    .heatmap-day-labels span { height: 11px; line-height: 11px; font-size: 8px; }
-    .heatmap-month-labels span { width: 11px; font-size: 8px; }
+    .heatmap-cell { max-width: 13px; }
+    .heatmap-day-labels span { height: 13px; line-height: 13px; font-size: 8px; }
+    .heatmap-month-labels span { font-size: 8px; }
     .habit-stat-row { padding: 9px 10px; flex-wrap: wrap; }
     .habit-stat-nums { gap: 8px; width: 100%; justify-content: space-around; margin-top: 6px; }
   }
@@ -1419,17 +1419,17 @@
   .heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-right: 6px; padding-top: 18px; }
   .heatmap-day-labels span { height: 14px; font-size: 9px; color: var(--muted); line-height: 14px; text-align: right; }
   .heatmap-inner { flex: 1; min-width: 0; }
-  .heatmap-month-labels { display: flex; gap: 3px; margin-bottom: 4px; }
-  .heatmap-month-labels span { font-size: 9px; color: var(--muted); width: 14px; text-align: center; }
-  .heatmap-grid { display: flex; gap: 3px; }
-  .heatmap-col { display: flex; flex-direction: column; gap: 3px; }
-  .heatmap-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--surface2); }
+  .heatmap-month-labels { display: flex; margin-bottom: 4px; justify-content: space-between; }
+  .heatmap-month-labels span { font-size: 9px; color: var(--muted); flex: 1; text-align: center; }
+  .heatmap-grid { display: flex; justify-content: space-between; }
+  .heatmap-col { display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: center; }
+  .heatmap-cell { width: 100%; aspect-ratio: 1; max-width: 18px; border-radius: 3px; background: var(--surface2); }
   .heatmap-cell.l1 { background: #c7d9f0; }
   .heatmap-cell.l2 { background: #7aacdf; }
   .heatmap-cell.l3 { background: #3d7ec4; }
   .heatmap-cell.l4 { background: var(--navy); }
   .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 10px; color: var(--muted); }
-  .heatmap-legend .heatmap-cell { width: 10px; height: 10px; }
+  .heatmap-legend .heatmap-cell { width: 10px; height: 10px; aspect-ratio: auto; max-width: none; flex: none; }
   .habit-stat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; margin-bottom: 2px; display: flex; align-items: center; gap: 10px; }
   .habit-stat-info { flex: 1; min-width: 0; }
   .habit-stat-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
@@ -3209,7 +3209,7 @@ function renderHabitAll(active) {
         <span style="font-size:28px;line-height:1">${h.emoji}</span>
       </div>
       <div class="habit-week-dots">${dots}</div>
-      <div class="habit-card-footer" style="padding-left:0;margin-top:6px">
+      <div class="habit-card-footer" style="padding-left:0;margin-top:12px;margin-bottom:-2px">
         <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--check)">✓</span> ${w7pct}%</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
