@@ -4439,10 +4439,13 @@ async function autoBackup() {
 async function getBackupDates() {
   if (!currentUser) return [];
   const { data } = await db.from('backups')
-    .select('backup_date, task_count')
+    .select('backup_date, task_count, snapshot')
     .eq('user_id', currentUser.id)
     .order('backup_date', { ascending: false });
-  return data || [];
+  return (data || []).map(r => {
+    const snap = typeof r.snapshot === 'string' ? JSON.parse(r.snapshot) : (r.snapshot || {});
+    return { backup_date: r.backup_date, task_count: r.task_count, habit_count: snap.habits?.length || 0 };
+  });
 }
 
 async function restoreFromDate(date) {
@@ -4483,10 +4486,14 @@ async function renderBackupDates() {
     return;
   }
   const todayStr = new Date().toISOString().slice(0, 10);
-  el.innerHTML = dates.map(({ backup_date: d, task_count: count }) => {
+  el.innerHTML = dates.map(({ backup_date: d, task_count: tCount, habit_count: hCount }) => {
     const label = d === todayStr ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
+    const parts = [];
+    if (tCount) parts.push(`${tCount} tasks`);
+    if (hCount) parts.push(`${hCount} habits`);
+    const summary = parts.length ? parts.join(', ') : 'no data';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:12px;">${label} <span style="color:var(--muted);font-size:11px;">(${count ?? '?'} tasks${count ? '+' : ''})</span></span>
+      <span style="font-size:12px;">${label} <span style="color:var(--muted);font-size:11px;">(${summary})</span></span>
       <button class="btn-sm" onclick="restoreFromDate('${d}')" style="font-size:11px;padding:3px 9px;">Restore</button>
     </div>`;
   }).join('');
