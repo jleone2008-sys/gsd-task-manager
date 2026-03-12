@@ -80,6 +80,30 @@
   .header-inner .logo { flex-shrink: 0; }
   .header-inner .search-wrap { flex-shrink: 0; margin-left: auto; }
   .header-inner .user-menu { flex-shrink: 0; margin-left: 6px; }
+
+  /* Tool Switcher (desktop only) */
+  .tool-switcher {
+    display: flex; align-items: center; gap: 2px;
+    margin-left: 16px; background: rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 3px; border: 1px solid rgba(255,255,255,0.08);
+  }
+  .tool-tab {
+    padding: 5px 14px; border-radius: 8px; border: none;
+    background: transparent; color: rgba(255,255,255,0.55);
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px; line-height: 1;
+  }
+  .tool-tab:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+  .tool-tab.active { background: rgba(255,255,255,0.18); color: #fff; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  .tool-tab svg { width: 14px; height: 14px; opacity: 0.7; }
+  .tool-tab.active svg { opacity: 1; }
+  .tool-badge { font-size: 9px; background: rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 8px; font-weight: 600; }
+  .tool-tab.active .tool-badge { background: rgba(255,255,255,0.25); }
+  @media (max-width: 600px) {
+    .tool-switcher { display: none; }
+  }
+
   /* Floating pill bar */
   .pill-bar {
     display: flex;
@@ -1469,6 +1493,21 @@
         <span class="logo-main">GSD<em class="logo-dot">.</em><span class="logo-tm">Task Manager</span></span>
         <span class="logo-sub">Task Manager</span>
       </div>
+    </div>
+    <!-- Tool Switcher (desktop) -->
+    <div class="tool-switcher">
+      <button class="tool-tab active" data-tool="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tasks <span class="tool-badge" id="tasksBadge">0</span>
+      </button>
+      <button class="tool-tab" data-tool="habits">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        Habits <span class="tool-badge" id="habitsBadge">0</span>
+      </button>
+      <button class="tool-tab" data-tool="notes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Notes <span class="tool-badge" id="notesBadge">0</span>
+      </button>
     </div>
     <div class="search-wrap" id="searchWrap">
       <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
