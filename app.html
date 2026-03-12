@@ -1329,8 +1329,8 @@
   /* Habit cards */
   .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 4px; animation: slideDown 0.18s ease; cursor: pointer; transition: border-color 0.1s; }
   .habit-card:hover { border-color: var(--border2); }
-  .habit-card-top { display: flex; align-items: center; gap: 10px; }
-  .habit-emoji { font-size: 18px; flex-shrink: 0; line-height: 1; }
+  .habit-card-top { display: flex; align-items: center; gap: 8px; }
+  .habit-emoji { font-size: 16px; flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
   .habit-name { font-size: 13.5px; font-weight: 600; flex: 1; }
 
   /* Circle checkbox for Today view */
@@ -1357,7 +1357,7 @@
   .habit-day-dot.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
   .habit-card-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
   .habit-card-meta .tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 500; }
-  .habit-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-left: 28px; }
+  .habit-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-left: 28px; }
   .habit-card-actions { display: flex; gap: 2px; }
   .habit-action-btn { background: none; border: none; cursor: pointer; padding: 4px 7px; border-radius: 6px; color: var(--muted); transition: all 0.12s; line-height: 1; }
   .habit-action-btn:hover { background: var(--hover); color: var(--navy); }
@@ -1881,10 +1881,6 @@
       <button class="freq-btn custom-day" data-day="Sun">Sun</button>
     </div>
   </div>
-  <div class="create-panel-tags" style="margin-bottom:10px">
-    <button class="tag-btn biz" id="habit-opt-biz" onclick="toggleHabitTag('biz')">Work</button>
-    <button class="tag-btn personal" id="habit-opt-personal" onclick="toggleHabitTag('personal')">Personal</button>
-  </div>
   <div class="habit-create-actions">
     <button class="btn-cancel" onclick="closeHabitCreatePanel()">Cancel</button>
     <button class="btn-save" onclick="addHabit()">Add Habit</button>
@@ -1932,13 +1928,6 @@
           <button class="freq-btn custom-day-edit" data-day="Sat">Sat</button>
           <button class="freq-btn custom-day-edit" data-day="Sun">Sun</button>
         </div>
-      </div>
-    </div>
-    <div class="habit-edit-field">
-      <label>Tags</label>
-      <div class="create-panel-tags">
-        <button class="tag-btn biz" id="habit-edit-opt-biz" onclick="toggleHabitEditTag('biz')">Work</button>
-        <button class="tag-btn personal" id="habit-edit-opt-personal" onclick="toggleHabitEditTag('personal')">Personal</button>
       </div>
     </div>
     <div class="habit-edit-actions">
@@ -2023,13 +2012,6 @@
                 <button class="freq-btn custom-day-drill" data-day="Sat">Sat</button>
                 <button class="freq-btn custom-day-drill" data-day="Sun">Sun</button>
               </div>
-            </div>
-          </div>
-          <div class="habit-edit-field">
-            <label>Tags</label>
-            <div class="create-panel-tags">
-              <button class="tag-btn biz" id="drill-edit-opt-biz" onclick="toggleDrillEditTag('biz')">Work</button>
-              <button class="tag-btn personal" id="drill-edit-opt-personal" onclick="toggleDrillEditTag('personal')">Personal</button>
             </div>
           </div>
           <div class="drill-edit-actions">
