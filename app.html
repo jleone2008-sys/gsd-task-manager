@@ -1453,8 +1453,8 @@
   .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-bottom: 10px; }
   .emoji-grid button { font-size: 20px; border: none; background: none; cursor: pointer; padding: 4px; border-radius: 6px; }
   .emoji-grid button:hover { background: var(--hover); }
-  .freq-options { display: flex; gap: 6px; margin-bottom: 10px; }
-  .freq-btn { padding: 5px 12px; border: 1px solid var(--border2); border-radius: 8px; background: var(--surface); font-family: inherit; font-size: 12px; cursor: pointer; }
+  .freq-options { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+  .freq-btn { padding: 5px 10px; border: 1px solid var(--border2); border-radius: 8px; background: var(--surface); font-family: inherit; font-size: 11px; cursor: pointer; }
   .freq-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
   .habit-create-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .habit-create-actions button { padding: 8px 18px; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
@@ -1929,7 +1929,9 @@
     <div class="freq-options" id="habitFreqOptions">
       <button class="freq-btn active" data-freq="daily">Daily</button>
       <button class="freq-btn" data-freq="weekdays">Weekdays</button>
-      <button class="freq-btn" data-freq="custom">Custom</button>
+      <button class="freq-btn" data-freq="custom">Specific days</button>
+      <button class="freq-btn" data-freq="x_per_week">X / week</button>
+      <button class="freq-btn" data-freq="x_per_month">X / month</button>
     </div>
     <div id="habitCustomDays" style="display:none;margin-bottom:10px">
       <div class="freq-options">
@@ -1940,6 +1942,12 @@
         <button class="freq-btn custom-day" data-day="Fri">Fri</button>
         <button class="freq-btn custom-day" data-day="Sat">Sat</button>
         <button class="freq-btn custom-day" data-day="Sun">Sun</button>
+      </div>
+    </div>
+    <div id="habitFreqCount" style="display:none;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="number" id="habitFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
+        <span style="font-size:12px;color:var(--muted)" id="habitFreqCountLabel">days per week</span>
       </div>
     </div>
     <div class="habit-create-actions">
@@ -1975,7 +1983,9 @@
       <div class="freq-options" id="habitEditFreqOptions">
         <button class="freq-btn active" data-freq="daily">Daily</button>
         <button class="freq-btn" data-freq="weekdays">Weekdays</button>
-        <button class="freq-btn" data-freq="custom">Custom</button>
+        <button class="freq-btn" data-freq="custom">Specific days</button>
+        <button class="freq-btn" data-freq="x_per_week">X / week</button>
+        <button class="freq-btn" data-freq="x_per_month">X / month</button>
       </div>
       <div id="habitEditCustomDays" style="display:none;margin-top:8px">
         <div class="freq-options">
@@ -1986,6 +1996,12 @@
           <button class="freq-btn custom-day-edit" data-day="Fri">Fri</button>
           <button class="freq-btn custom-day-edit" data-day="Sat">Sat</button>
           <button class="freq-btn custom-day-edit" data-day="Sun">Sun</button>
+        </div>
+      </div>
+      <div id="habitEditFreqCount" style="display:none;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="habitEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
+          <span style="font-size:12px;color:var(--muted)" id="habitEditFreqCountLabel">days per week</span>
         </div>
       </div>
     </div>
@@ -2056,7 +2072,9 @@
             <div class="freq-options" id="drillEditFreqOptions">
               <button class="freq-btn active" data-freq="daily">Daily</button>
               <button class="freq-btn" data-freq="weekdays">Weekdays</button>
-              <button class="freq-btn" data-freq="custom">Custom</button>
+              <button class="freq-btn" data-freq="custom">Specific days</button>
+              <button class="freq-btn" data-freq="x_per_week">X / week</button>
+              <button class="freq-btn" data-freq="x_per_month">X / month</button>
             </div>
             <div id="drillEditCustomDays" style="display:none;margin-top:8px">
               <div class="freq-options">
@@ -2067,6 +2085,12 @@
                 <button class="freq-btn custom-day-drill" data-day="Fri">Fri</button>
                 <button class="freq-btn custom-day-drill" data-day="Sat">Sat</button>
                 <button class="freq-btn custom-day-drill" data-day="Sun">Sun</button>
+              </div>
+            </div>
+            <div id="drillEditFreqCount" style="display:none;margin-top:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="drillEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
+                <span style="font-size:12px;color:var(--muted)" id="drillEditFreqCountLabel">days per week</span>
               </div>
             </div>
           </div>
@@ -2576,6 +2600,7 @@ function rowToHabit(r) {
     name: r.name || '',
     emoji: r.emoji || '✅',
     frequency: r.frequency || 'daily',
+    frequencyCount: r.frequency_count || 0,
     customDays: r.custom_days || [],
     tags: r.tags || [],
     archived: r.archived || false,
@@ -2589,6 +2614,7 @@ function habitToRow(h) {
     name: h.name,
     emoji: h.emoji,
     frequency: h.frequency,
+    frequency_count: h.frequencyCount || 0,
     custom_days: h.customDays,
     tags: h.tags,
     archived: h.archived,
@@ -2789,9 +2815,38 @@ function isHabitDueOnDate(habit, dateStr) {
   const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow];
   if (habit.frequency === 'weekdays') return dow >= 1 && dow <= 5;
   if (habit.frequency === 'custom') return (habit.customDays || []).includes(dayName);
+  // x_per_week and x_per_month: every day is a valid day to complete
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') return true;
   return true;
 }
-function isHabitDueToday(habit) { return isHabitDueOnDate(habit, todayStr()); }
+function isHabitDueToday(habit) {
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') return true;
+  return isHabitDueOnDate(habit, todayStr());
+}
+
+// For x_per_week: count completions in the same Mon-Sun week as dateStr
+function getWeekCompletions(habitId, dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dow = d.getDay(); // 0=Sun
+  const mon = new Date(d); mon.setDate(d.getDate() - ((dow + 6) % 7)); // Monday
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6); // Sunday
+  const monStr = mon.toISOString().slice(0, 10);
+  const sunStr = sun.toISOString().slice(0, 10);
+  return completionsForHabit(habitId).filter(c => c.completedDate >= monStr && c.completedDate <= sunStr).length;
+}
+
+// For x_per_month: count completions in the same calendar month
+function getMonthCompletions(habitId, dateStr) {
+  const monthPrefix = dateStr.slice(0, 7); // "2026-03"
+  return completionsForHabit(habitId).filter(c => c.completedDate.startsWith(monthPrefix)).length;
+}
+
+// Check if quota-based habit has met its goal for the period containing dateStr
+function isQuotaMet(habit, dateStr) {
+  if (habit.frequency === 'x_per_week') return getWeekCompletions(habit.id, dateStr) >= (habit.frequencyCount || 1);
+  if (habit.frequency === 'x_per_month') return getMonthCompletions(habit.id, dateStr) >= (habit.frequencyCount || 1);
+  return false;
+}
 
 function freqLabel(h) {
   if (h.frequency === 'daily') return 'Every day';
@@ -2799,6 +2854,14 @@ function freqLabel(h) {
   if (h.frequency === 'custom') {
     const n = (h.customDays || []).length;
     return n === 7 ? 'Every day' : `${n} day${n !== 1 ? 's' : ''} per week`;
+  }
+  if (h.frequency === 'x_per_week') {
+    const n = h.frequencyCount || 1;
+    return `${n} day${n !== 1 ? 's' : ''} per week`;
+  }
+  if (h.frequency === 'x_per_month') {
+    const n = h.frequencyCount || 1;
+    return `${n} day${n !== 1 ? 's' : ''} per month`;
   }
   return 'Every day';
 }
@@ -2826,18 +2889,50 @@ function completionsForHabit(habitClientId) {
 
 function computeStreak(habitClientId) {
   const habit = habitsArr.find(x => x.id === habitClientId);
+  if (!habit) return 0;
   const comps = new Set(completionsForHabit(habitClientId).map(c => c.completedDate));
   if (!comps.size) return 0;
   const today = todayStr();
+
+  // Quota-based: streak = consecutive weeks/months where quota met
+  if (habit.frequency === 'x_per_week') {
+    let streak = 0;
+    const d = new Date(today + 'T12:00:00');
+    const dow = d.getDay();
+    const thisMon = new Date(d); thisMon.setDate(d.getDate() - ((dow + 6) % 7));
+    // Check current week — if not met yet, start from previous week
+    let checkDate = thisMon;
+    const thisWeekMet = isQuotaMet(habit, today);
+    if (!thisWeekMet) { checkDate = new Date(thisMon); checkDate.setDate(thisMon.getDate() - 7); }
+    for (let i = 0; i < 52; i++) {
+      const ds = checkDate.toISOString().slice(0, 10);
+      if (isQuotaMet(habit, ds)) { streak++; checkDate.setDate(checkDate.getDate() - 7); }
+      else break;
+    }
+    return streak;
+  }
+  if (habit.frequency === 'x_per_month') {
+    let streak = 0;
+    const d = new Date(today + 'T12:00:00');
+    let y = d.getFullYear(), m = d.getMonth();
+    const thisMonthMet = isQuotaMet(habit, today);
+    if (!thisMonthMet) { m--; if (m < 0) { m = 11; y--; } }
+    for (let i = 0; i < 24; i++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-15`;
+      if (isQuotaMet(habit, ds)) { streak++; m--; if (m < 0) { m = 11; y--; } }
+      else break;
+    }
+    return streak;
+  }
+
+  // Day-based streak (daily/weekdays/custom)
   let streak = 0;
   let d = new Date(today + 'T12:00:00');
-  // Walk backwards through due dates only
-  // If today is due but not completed, start from yesterday
-  if (habit && isHabitDueOnDate(habit, today) && !comps.has(today)) d.setDate(d.getDate() - 1);
-  else if (habit && !isHabitDueOnDate(habit, today)) { /* skip today, not a due day */ }
+  if (isHabitDueOnDate(habit, today) && !comps.has(today)) d.setDate(d.getDate() - 1);
+  else if (!isHabitDueOnDate(habit, today)) { /* skip today */ }
   for (let safety = 0; safety < 365; safety++) {
     const ds = d.toISOString().slice(0, 10);
-    if (habit && !isHabitDueOnDate(habit, ds)) { d.setDate(d.getDate() - 1); continue; }
+    if (!isHabitDueOnDate(habit, ds)) { d.setDate(d.getDate() - 1); continue; }
     if (comps.has(ds)) { streak++; d.setDate(d.getDate() - 1); }
     else break;
   }
@@ -2846,17 +2941,45 @@ function computeStreak(habitClientId) {
 
 function computeBestStreak(habitClientId) {
   const habit = habitsArr.find(x => x.id === habitClientId);
+  if (!habit) return 0;
   const comps = new Set(completionsForHabit(habitClientId).map(c => c.completedDate));
   if (!comps.size) return 0;
-  // Build sorted list of due dates that were completed, going back 1 year
+
+  // Quota-based: best consecutive weeks/months
+  if (habit.frequency === 'x_per_week') {
+    const d = new Date(todayStr() + 'T12:00:00');
+    const dow = d.getDay();
+    const thisMon = new Date(d); thisMon.setDate(d.getDate() - ((dow + 6) % 7));
+    let best = 0, cur = 0;
+    for (let i = 0; i < 52; i++) {
+      const checkDate = new Date(thisMon); checkDate.setDate(thisMon.getDate() - i * 7);
+      if (isQuotaMet(habit, checkDate.toISOString().slice(0, 10))) { cur++; if (cur > best) best = cur; }
+      else cur = 0;
+    }
+    return best;
+  }
+  if (habit.frequency === 'x_per_month') {
+    const d = new Date(todayStr() + 'T12:00:00');
+    let y = d.getFullYear(), m = d.getMonth();
+    let best = 0, cur = 0;
+    for (let i = 0; i < 24; i++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-15`;
+      if (isQuotaMet(habit, ds)) { cur++; if (cur > best) best = cur; }
+      else cur = 0;
+      m--; if (m < 0) { m = 11; y--; }
+    }
+    return best;
+  }
+
+  // Day-based best streak
   const today = new Date(todayStr() + 'T12:00:00');
   const dueDates = [];
   for (let i = 0; i < 365; i++) {
     const d = new Date(today); d.setDate(today.getDate() - i);
     const ds = d.toISOString().slice(0, 10);
-    if (!habit || isHabitDueOnDate(habit, ds)) dueDates.push(ds);
+    if (isHabitDueOnDate(habit, ds)) dueDates.push(ds);
   }
-  dueDates.reverse(); // oldest first
+  dueDates.reverse();
   let best = 0, cur = 0;
   for (const ds of dueDates) {
     if (comps.has(ds)) { cur++; if (cur > best) best = cur; }
@@ -2867,8 +2990,32 @@ function computeBestStreak(habitClientId) {
 
 function computeScore(habit) {
   const today = new Date(todayStr() + 'T12:00:00');
-  const thirtyAgo = new Date(today); thirtyAgo.setDate(today.getDate() - 30);
   const comps = completionsForHabit(habit.id);
+
+  // Quota-based: what % of recent periods met the quota
+  if (habit.frequency === 'x_per_week') {
+    const dow = today.getDay();
+    const thisMon = new Date(today); thisMon.setDate(today.getDate() - ((dow + 6) % 7));
+    let met = 0;
+    for (let i = 0; i < 4; i++) {
+      const checkDate = new Date(thisMon); checkDate.setDate(thisMon.getDate() - i * 7);
+      if (isQuotaMet(habit, checkDate.toISOString().slice(0, 10))) met++;
+    }
+    return Math.round((met / 4) * 100);
+  }
+  if (habit.frequency === 'x_per_month') {
+    let y = today.getFullYear(), m = today.getMonth();
+    let met = 0;
+    for (let i = 0; i < 3; i++) {
+      const ds = `${y}-${String(m + 1).padStart(2, '0')}-15`;
+      if (isQuotaMet(habit, ds)) met++;
+      m--; if (m < 0) { m = 11; y--; }
+    }
+    return Math.round((met / 3) * 100);
+  }
+
+  // Day-based score (last 30 days)
+  const thirtyAgo = new Date(today); thirtyAgo.setDate(today.getDate() - 30);
   let actual = 0, expected = 0;
   for (let i = 0; i < 30; i++) {
     const d = new Date(thirtyAgo); d.setDate(thirtyAgo.getDate() + i + 1);
@@ -3573,6 +3720,8 @@ function openHabitCreatePanel() {
   // Reset freq
   document.querySelectorAll('#habitFreqOptions .freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === 'daily'));
   document.getElementById('habitCustomDays').style.display = 'none';
+  document.getElementById('habitFreqCount').style.display = 'none';
+  document.getElementById('habitFreqCountInput').value = 3;
   document.querySelectorAll('.custom-day').forEach(b => b.classList.remove('active'));
   setTimeout(() => document.getElementById('habitNameInput').focus(), 50);
 }
@@ -3596,7 +3745,11 @@ document.addEventListener('click', e => {
   if (fb) {
     document.querySelectorAll('#habitFreqOptions .freq-btn').forEach(b => b.classList.remove('active'));
     fb.classList.add('active');
-    document.getElementById('habitCustomDays').style.display = fb.dataset.freq === 'custom' ? '' : 'none';
+    const f = fb.dataset.freq;
+    document.getElementById('habitCustomDays').style.display = f === 'custom' ? '' : 'none';
+    document.getElementById('habitFreqCount').style.display = (f === 'x_per_week' || f === 'x_per_month') ? '' : 'none';
+    if (f === 'x_per_week') { document.getElementById('habitFreqCountLabel').textContent = 'days per week'; document.getElementById('habitFreqCountInput').max = 7; }
+    if (f === 'x_per_month') { document.getElementById('habitFreqCountLabel').textContent = 'days per month'; document.getElementById('habitFreqCountInput').max = 31; }
     return;
   }
   // Create panel custom day toggle
@@ -3607,7 +3760,11 @@ document.addEventListener('click', e => {
   if (efb) {
     document.querySelectorAll('#habitEditFreqOptions .freq-btn').forEach(b => b.classList.remove('active'));
     efb.classList.add('active');
-    document.getElementById('habitEditCustomDays').style.display = efb.dataset.freq === 'custom' ? '' : 'none';
+    const ef = efb.dataset.freq;
+    document.getElementById('habitEditCustomDays').style.display = ef === 'custom' ? '' : 'none';
+    document.getElementById('habitEditFreqCount').style.display = (ef === 'x_per_week' || ef === 'x_per_month') ? '' : 'none';
+    if (ef === 'x_per_week') { document.getElementById('habitEditFreqCountLabel').textContent = 'days per week'; document.getElementById('habitEditFreqCountInput').max = 7; }
+    if (ef === 'x_per_month') { document.getElementById('habitEditFreqCountLabel').textContent = 'days per month'; document.getElementById('habitEditFreqCountInput').max = 31; }
     return;
   }
   // Edit panel custom day toggle
@@ -3618,7 +3775,11 @@ document.addEventListener('click', e => {
   if (dfb) {
     document.querySelectorAll('#drillEditFreqOptions .freq-btn').forEach(b => b.classList.remove('active'));
     dfb.classList.add('active');
-    document.getElementById('drillEditCustomDays').style.display = dfb.dataset.freq === 'custom' ? '' : 'none';
+    const df = dfb.dataset.freq;
+    document.getElementById('drillEditCustomDays').style.display = df === 'custom' ? '' : 'none';
+    document.getElementById('drillEditFreqCount').style.display = (df === 'x_per_week' || df === 'x_per_month') ? '' : 'none';
+    if (df === 'x_per_week') { document.getElementById('drillEditFreqCountLabel').textContent = 'days per week'; document.getElementById('drillEditFreqCountInput').max = 7; }
+    if (df === 'x_per_month') { document.getElementById('drillEditFreqCountLabel').textContent = 'days per month'; document.getElementById('drillEditFreqCountInput').max = 31; }
     return;
   }
   // Drill-in custom day toggle
@@ -3633,12 +3794,16 @@ function addHabit() {
   const freqBtn = document.querySelector('#habitFreqOptions .freq-btn.active');
   const frequency = freqBtn ? freqBtn.dataset.freq : 'daily';
   let customDays = [];
+  let frequencyCount = 0;
   if (frequency === 'custom') {
     document.querySelectorAll('.custom-day.active').forEach(b => customDays.push(b.dataset.day));
   }
+  if (frequency === 'x_per_week' || frequency === 'x_per_month') {
+    frequencyCount = parseInt(document.getElementById('habitFreqCountInput').value) || 1;
+  }
   const habit = {
     id: Date.now(),
-    name, emoji, frequency, customDays,
+    name, emoji, frequency, frequencyCount, customDays,
     tags: [...newHabitTags],
     archived: false,
     order: habitsArr.length,
@@ -3660,6 +3825,13 @@ function openHabitEdit(habitId) {
   document.querySelectorAll('#habitEditFreqOptions .freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === h.frequency));
   document.getElementById('habitEditCustomDays').style.display = h.frequency === 'custom' ? '' : 'none';
   document.querySelectorAll('.custom-day-edit').forEach(b => b.classList.toggle('active', (h.customDays || []).includes(b.dataset.day)));
+  const isXFreq = h.frequency === 'x_per_week' || h.frequency === 'x_per_month';
+  document.getElementById('habitEditFreqCount').style.display = isXFreq ? '' : 'none';
+  if (isXFreq) {
+    document.getElementById('habitEditFreqCountInput').value = h.frequencyCount || 1;
+    document.getElementById('habitEditFreqCountLabel').textContent = h.frequency === 'x_per_week' ? 'days per week' : 'days per month';
+    document.getElementById('habitEditFreqCountInput').max = h.frequency === 'x_per_week' ? 7 : 31;
+  }
   editHabitTags = new Set(h.tags);
   document.getElementById('habitEditOverlay').classList.add('open');
 }
@@ -3685,6 +3857,9 @@ function saveHabitEdit() {
   if (h.frequency === 'custom') {
     h.customDays = [];
     document.querySelectorAll('.custom-day-edit.active').forEach(b => h.customDays.push(b.dataset.day));
+  }
+  if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') {
+    h.frequencyCount = parseInt(document.getElementById('habitEditFreqCountInput').value) || 1;
   }
   h.tags = [...editHabitTags];
   closeHabitEdit();
@@ -3855,6 +4030,13 @@ function populateDrillEdit() {
   document.querySelectorAll('#drillEditFreqOptions .freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === h.frequency));
   document.getElementById('drillEditCustomDays').style.display = h.frequency === 'custom' ? '' : 'none';
   document.querySelectorAll('.custom-day-drill').forEach(b => b.classList.toggle('active', (h.customDays || []).includes(b.dataset.day)));
+  const isXFreq = h.frequency === 'x_per_week' || h.frequency === 'x_per_month';
+  document.getElementById('drillEditFreqCount').style.display = isXFreq ? '' : 'none';
+  if (isXFreq) {
+    document.getElementById('drillEditFreqCountInput').value = h.frequencyCount || 1;
+    document.getElementById('drillEditFreqCountLabel').textContent = h.frequency === 'x_per_week' ? 'days per week' : 'days per month';
+    document.getElementById('drillEditFreqCountInput').max = h.frequency === 'x_per_week' ? 7 : 31;
+  }
   drillEditTags = new Set(h.tags);
 }
 
@@ -3877,6 +4059,9 @@ function saveHabitDrill() {
   if (h.frequency === 'custom') {
     h.customDays = [];
     document.querySelectorAll('.custom-day-drill.active').forEach(b => h.customDays.push(b.dataset.day));
+  }
+  if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') {
+    h.frequencyCount = parseInt(document.getElementById('drillEditFreqCountInput').value) || 1;
   }
   h.tags = [...drillEditTags];
   closeDrillIn();
