@@ -1953,25 +1953,22 @@
 <div class="habit-edit-overlay" id="habitEditOverlay" onclick="if(event.target===this)closeHabitEdit()">
   <div class="habit-edit-modal">
     <h3>Edit Habit</h3>
-    <div class="habit-edit-field">
-      <label>Name</label>
-      <input type="text" id="habitEditName" onkeydown="if(event.key==='Enter')saveHabitEdit()">
+    <div class="habit-create-row">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <button class="emoji-pick-btn" id="habitEditEmojiBtn" onclick="document.getElementById('habitEditEmojiGrid').style.display=document.getElementById('habitEditEmojiGrid').style.display==='grid'?'none':'grid'" title="Tap to change icon">✅</button>
+        <span style="font-size:9px;color:var(--muted);white-space:nowrap">Tap icon</span>
+      </div>
+      <input type="text" id="habitEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')saveHabitEdit()">
     </div>
-    <div class="habit-edit-field">
-      <label>Emoji</label>
-      <div class="habit-create-row">
-        <button class="emoji-pick-btn" id="habitEditEmojiBtn" onclick="document.getElementById('habitEditEmojiGrid').style.display=document.getElementById('habitEditEmojiGrid').style.display==='grid'?'none':'grid'">✅</button>
-      </div>
-      <div class="emoji-grid" id="habitEditEmojiGrid" style="display:none">
-        <button onclick="pickHabitEditEmoji('🏃')">🏃</button><button onclick="pickHabitEditEmoji('📖')">📖</button>
-        <button onclick="pickHabitEditEmoji('🧠')">🧠</button><button onclick="pickHabitEditEmoji('💧')">💧</button>
-        <button onclick="pickHabitEditEmoji('🧘')">🧘</button><button onclick="pickHabitEditEmoji('✍️')">✍️</button>
-        <button onclick="pickHabitEditEmoji('💪')">💪</button><button onclick="pickHabitEditEmoji('🥗')">🥗</button>
-        <button onclick="pickHabitEditEmoji('😴')">😴</button><button onclick="pickHabitEditEmoji('🎯')">🎯</button>
-        <button onclick="pickHabitEditEmoji('🎨')">🎨</button><button onclick="pickHabitEditEmoji('🎸')">🎸</button>
-        <button onclick="pickHabitEditEmoji('📝')">📝</button><button onclick="pickHabitEditEmoji('🚶')">🚶</button>
-        <button onclick="pickHabitEditEmoji('🧹')">🧹</button><button onclick="pickHabitEditEmoji('✅')">✅</button>
-      </div>
+    <div class="emoji-grid" id="habitEditEmojiGrid" style="display:none">
+      <button onclick="pickHabitEditEmoji('🏃')">🏃</button><button onclick="pickHabitEditEmoji('📖')">📖</button>
+      <button onclick="pickHabitEditEmoji('🧠')">🧠</button><button onclick="pickHabitEditEmoji('💧')">💧</button>
+      <button onclick="pickHabitEditEmoji('🧘')">🧘</button><button onclick="pickHabitEditEmoji('✍️')">✍️</button>
+      <button onclick="pickHabitEditEmoji('💪')">💪</button><button onclick="pickHabitEditEmoji('🥗')">🥗</button>
+      <button onclick="pickHabitEditEmoji('😴')">😴</button><button onclick="pickHabitEditEmoji('🎯')">🎯</button>
+      <button onclick="pickHabitEditEmoji('🎨')">🎨</button><button onclick="pickHabitEditEmoji('🎸')">🎸</button>
+      <button onclick="pickHabitEditEmoji('📝')">📝</button><button onclick="pickHabitEditEmoji('🚶')">🚶</button>
+      <button onclick="pickHabitEditEmoji('🧹')">🧹</button><button onclick="pickHabitEditEmoji('✅')">✅</button>
     </div>
     <div class="habit-edit-field">
       <label>Frequency</label>
@@ -2037,25 +2034,22 @@
       <!-- Edit Tab -->
       <div class="habit-drill-tab-content" id="drillTabEdit">
         <div class="drill-edit-section">
-          <div class="habit-edit-field">
-            <label>Name</label>
-            <input type="text" id="drillEditName" onkeydown="if(event.key==='Enter')saveHabitDrill()">
+          <div class="habit-create-row" style="margin-bottom:10px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+              <button class="emoji-pick-btn" id="drillEditEmojiBtn" onclick="document.getElementById('drillEditEmojiGrid').style.display=document.getElementById('drillEditEmojiGrid').style.display==='grid'?'none':'grid'" title="Tap to change icon">✅</button>
+              <span style="font-size:9px;color:var(--muted);white-space:nowrap">Tap icon</span>
+            </div>
+            <input type="text" id="drillEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')saveHabitDrill()">
           </div>
-          <div class="habit-edit-field">
-            <label>Emoji</label>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="emoji-pick-btn" id="drillEditEmojiBtn" onclick="document.getElementById('drillEditEmojiGrid').style.display=document.getElementById('drillEditEmojiGrid').style.display==='grid'?'none':'grid'">✅</button>
-            </div>
-            <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
-              <button onclick="pickDrillEditEmoji('🏃')">🏃</button><button onclick="pickDrillEditEmoji('📖')">📖</button>
-              <button onclick="pickDrillEditEmoji('🧠')">🧠</button><button onclick="pickDrillEditEmoji('💧')">💧</button>
-              <button onclick="pickDrillEditEmoji('🧘')">🧘</button><button onclick="pickDrillEditEmoji('✍️')">✍️</button>
-              <button onclick="pickDrillEditEmoji('💪')">💪</button><button onclick="pickDrillEditEmoji('🥗')">🥗</button>
-              <button onclick="pickDrillEditEmoji('😴')">😴</button><button onclick="pickDrillEditEmoji('🎯')">🎯</button>
-              <button onclick="pickDrillEditEmoji('🎨')">🎨</button><button onclick="pickDrillEditEmoji('🎸')">🎸</button>
-              <button onclick="pickDrillEditEmoji('📝')">📝</button><button onclick="pickDrillEditEmoji('🚶')">🚶</button>
-              <button onclick="pickDrillEditEmoji('🧹')">🧹</button><button onclick="pickDrillEditEmoji('✅')">✅</button>
-            </div>
+          <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
+            <button onclick="pickDrillEditEmoji('🏃')">🏃</button><button onclick="pickDrillEditEmoji('📖')">📖</button>
+            <button onclick="pickDrillEditEmoji('🧠')">🧠</button><button onclick="pickDrillEditEmoji('💧')">💧</button>
+            <button onclick="pickDrillEditEmoji('🧘')">🧘</button><button onclick="pickDrillEditEmoji('✍️')">✍️</button>
+            <button onclick="pickDrillEditEmoji('💪')">💪</button><button onclick="pickDrillEditEmoji('🥗')">🥗</button>
+            <button onclick="pickDrillEditEmoji('😴')">😴</button><button onclick="pickDrillEditEmoji('🎯')">🎯</button>
+            <button onclick="pickDrillEditEmoji('🎨')">🎨</button><button onclick="pickDrillEditEmoji('🎸')">🎸</button>
+            <button onclick="pickDrillEditEmoji('📝')">📝</button><button onclick="pickDrillEditEmoji('🚶')">🚶</button>
+            <button onclick="pickDrillEditEmoji('🧹')">🧹</button><button onclick="pickDrillEditEmoji('✅')">✅</button>
           </div>
           <div class="habit-edit-field">
             <label>Frequency</label>
