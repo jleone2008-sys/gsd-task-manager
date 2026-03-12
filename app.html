@@ -691,9 +691,8 @@
     .habit-sub-pills { padding: 8px 12px 10px; }
     .progress-section { flex-direction: column; align-items: center; text-align: center; padding: 16px; }
     .progress-stats { justify-content: center; }
-    .habit-week-dots { padding-left: 0; justify-content: center; gap: 4px; }
-    .habit-day-dot { width: 32px; height: 32px; }
-    .habit-day-dot svg { width: 14px; height: 14px; }
+    .habit-week-dots { gap: 2px; }
+    .habit-day-dot { width: 34px; height: 34px; font-size: 12px; }
     .habit-card-footer { padding-left: 0; }
     .habit-today-card .habit-card-footer { padding-left: 0; }
     .stat-cards-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
@@ -1197,7 +1196,7 @@
   }
   .swipe-delete-bg {
     position: absolute; right: 0; top: 0; bottom: 0;
-    width: 80px;
+    width: 120px;
     background: #e53e3e;
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 18px;
@@ -1207,7 +1206,22 @@
     border-radius: 0 7px 7px 0;
     z-index: 0;
   }
+  .swipe-complete-bg {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 120px;
+    background: #38a169;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    border-radius: 7px 0 0 7px;
+    z-index: 0;
+  }
   .task-item.swiping .swipe-delete-bg { opacity: 1; }
+  .task-item.swiping-right .swipe-complete-bg { opacity: 1; }
+  .habit-card { position: relative; overflow: hidden; touch-action: pan-y; }
+  .habit-card.swiping-right .swipe-complete-bg { opacity: 1; }
   .task-item-inner {
     display: contents;
   }
@@ -1323,14 +1337,14 @@
   .week-bar-val { font-size: 9px; color: var(--text2); font-weight: 600; }
 
   /* Habit cards */
-  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 4px; animation: slideDown 0.18s ease; cursor: pointer; transition: border-color 0.1s; }
+  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 8px; animation: slideDown 0.18s ease; cursor: pointer; transition: border-color 0.1s; }
   .habit-card:hover { border-color: var(--border2); }
   .habit-card-top { display: flex; align-items: center; gap: 8px; }
   .habit-emoji { font-size: 16px; flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
   .habit-name { font-size: 13.5px; font-weight: 600; flex: 1; }
 
   /* Circle checkbox for Today view */
-  .habit-check { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.12s; background: #fff; align-self: center; }
+  .habit-check { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.12s; background: #fff; align-self: center; position: relative; z-index: 1; }
   .habit-check:hover { border-color: var(--check); }
   .habit-check svg { display: none; }
   .habit-check.checked { background: var(--check); border-color: var(--check); }
@@ -1338,21 +1352,20 @@
   .habit-today-card { cursor: default; display: flex; align-items: center; gap: 12px; }
   .habit-today-card:hover { border-color: var(--border); }
   .habit-today-card .habit-card-footer { padding-left: 0; margin-top: 2px; }
-  .habit-today-content { flex: 1; min-width: 0; }
-  .habit-emoji-lg { font-size: 28px; flex-shrink: 0; line-height: 1; align-self: center; }
+  .habit-today-content { flex: 1; min-width: 0; position: relative; z-index: 1; }
+  .habit-emoji-lg { font-size: 28px; flex-shrink: 0; line-height: 1; align-self: center; position: relative; z-index: 1; }
   .habit-streak { font-size: 11px; font-weight: 600; color: var(--top3); }
   .habit-streak.dead { color: var(--muted); }
   .habit-score-ring { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
   .habit-score-ring svg { transform: rotate(-90deg); }
   .habit-score-ring .score-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; }
-  .habit-week-dots { display: flex; gap: 6px; padding-left: 28px; margin-top: 8px; }
-  .habit-day { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  .habit-day-label { font-size: 9px; color: var(--muted); font-weight: 500; text-transform: uppercase; }
-  .habit-day-dot { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; transition: all 0.15s; cursor: pointer; }
-  .habit-day-dot.done { background: var(--check); border-color: var(--check); }
-  .habit-day-dot.done svg { display: block; }
-  .habit-day-dot svg { display: none; width: 12px; height: 12px; color: #fff; }
-  .habit-day-dot.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
+  .habit-week-dots { display: flex; gap: 4px; margin-top: 12px; justify-content: center; }
+  .habit-day { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+  .habit-day-label { font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; }
+  .habit-day-dot { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; transition: all 0.15s; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); }
+  .habit-day-dot.done { background: var(--check); border-color: var(--check); color: #fff; }
+  .habit-day-dot.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.18); }
+  .habit-day-dot.disabled { opacity: 0.25; pointer-events: none; border-style: dashed; }
   .habit-card-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
   .habit-card-meta .tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 500; }
   .habit-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-left: 28px; }
@@ -2772,31 +2785,42 @@ function completionsForHabit(habitClientId) {
 }
 
 function computeStreak(habitClientId) {
-  const comps = completionsForHabit(habitClientId).map(c => c.completedDate).sort();
-  if (!comps.length) return 0;
+  const habit = habitsArr.find(x => x.id === habitClientId);
+  const comps = new Set(completionsForHabit(habitClientId).map(c => c.completedDate));
+  if (!comps.size) return 0;
   const today = todayStr();
   let streak = 0;
   let d = new Date(today + 'T12:00:00');
-  // If not completed today, start from yesterday
-  if (!comps.includes(today)) d.setDate(d.getDate() - 1);
-  while (true) {
+  // Walk backwards through due dates only
+  // If today is due but not completed, start from yesterday
+  if (habit && isHabitDueOnDate(habit, today) && !comps.has(today)) d.setDate(d.getDate() - 1);
+  else if (habit && !isHabitDueOnDate(habit, today)) { /* skip today, not a due day */ }
+  for (let safety = 0; safety < 365; safety++) {
     const ds = d.toISOString().slice(0, 10);
-    if (comps.includes(ds)) { streak++; d.setDate(d.getDate() - 1); }
+    if (habit && !isHabitDueOnDate(habit, ds)) { d.setDate(d.getDate() - 1); continue; }
+    if (comps.has(ds)) { streak++; d.setDate(d.getDate() - 1); }
     else break;
   }
   return streak;
 }
 
 function computeBestStreak(habitClientId) {
-  const comps = completionsForHabit(habitClientId).map(c => c.completedDate).sort();
-  if (!comps.length) return 0;
-  let best = 1, cur = 1;
-  for (let i = 1; i < comps.length; i++) {
-    const prev = new Date(comps[i-1] + 'T12:00:00');
-    const curr = new Date(comps[i] + 'T12:00:00');
-    const diff = (curr - prev) / 86400000;
-    if (diff === 1) { cur++; if (cur > best) best = cur; }
-    else if (diff > 1) cur = 1;
+  const habit = habitsArr.find(x => x.id === habitClientId);
+  const comps = new Set(completionsForHabit(habitClientId).map(c => c.completedDate));
+  if (!comps.size) return 0;
+  // Build sorted list of due dates that were completed, going back 1 year
+  const today = new Date(todayStr() + 'T12:00:00');
+  const dueDates = [];
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    if (!habit || isHabitDueOnDate(habit, ds)) dueDates.push(ds);
+  }
+  dueDates.reverse(); // oldest first
+  let best = 0, cur = 0;
+  for (const ds of dueDates) {
+    if (comps.has(ds)) { cur++; if (cur > best) best = cur; }
+    else cur = 0;
   }
   return best;
 }
@@ -2882,7 +2906,8 @@ function renderHabitToday(active) {
   let remHTML = '';
   remaining.forEach(h => {
     const streak = computeStreak(h.id);
-    remHTML += `<div class="habit-card habit-today-card">
+    remHTML += `<div class="habit-card habit-today-card" data-habit-id="${h.id}">
+      <div class="swipe-complete-bg">✓</div>
       <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
       <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
         <div class="habit-card-top">
@@ -2905,7 +2930,8 @@ function renderHabitToday(active) {
   let doneHTML = '';
   done.forEach(h => {
     const streak = computeStreak(h.id);
-    doneHTML += `<div class="habit-card habit-today-card habit-done" style="opacity:0.5">
+    doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="opacity:0.5">
+      <div class="swipe-complete-bg">✓</div>
       <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
       <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
         <div class="habit-card-top">
@@ -2974,21 +3000,21 @@ function renderHabitAll(active) {
 
   let html = '<div class="section-label">🔥 ALL HABITS</div>';
   active.forEach(h => {
-    const score = computeScore(h);
-    const sColor = scoreColor(score);
     const streak = computeStreak(h.id);
-    const best = computeBestStreak(h.id);
-    const total = completionsForHabit(h.id).length;
-    const scoreCirc = 2 * Math.PI * 13;
-    const scoreOff = scoreCirc * (1 - score / 100);
 
-    // Weekly dots
+    // Weekly dots — date numbers inside circles
     let dots = '';
     weekDates.forEach((ds, i) => {
-      const done = isCompletedOn(h.id, ds);
+      const due = isHabitDueOnDate(h, ds);
+      const done = due && isCompletedOn(h.id, ds);
       const isToday = ds === today;
-      const cls = `habit-day-dot${done?' done':''}${isToday?' today':''}`;
-      dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="${cls}" onclick="event.stopPropagation();toggleCompletion(${h.id},'${ds}')">${CHECK_SVG}</div></div>`;
+      const dayNum = parseInt(ds.slice(8), 10);
+      if (!due) {
+        dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="habit-day-dot disabled">${dayNum}</div></div>`;
+      } else {
+        const cls = `habit-day-dot${done?' done':''}${isToday?' today':''}`;
+        dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="${cls}" onclick="event.stopPropagation();toggleCompletion(${h.id},'${ds}')">${dayNum}</div></div>`;
+      }
     });
 
     // 7-day completion %
@@ -2997,17 +3023,16 @@ function renderHabitAll(active) {
     const w7pct = w7due ? Math.round((w7done / w7due) * 100) : 0;
 
     html += `<div class="habit-card" onclick="openHabitDrillIn(${h.id})">
-      <div class="habit-card-top">
-        <span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span>
-        <div class="habit-score-ring"><svg width="32" height="32" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="13" fill="none" stroke="#e2e4e8" stroke-width="3"/>
-          <circle cx="16" cy="16" r="13" fill="none" stroke="${sColor}" stroke-width="3"
-            stroke-dasharray="${scoreCirc.toFixed(1)}" stroke-dashoffset="${scoreOff.toFixed(1)}" stroke-linecap="round"/>
-        </svg><span class="score-val" style="color:${sColor}">${score}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="habit-name" style="font-size:15px;font-weight:600">${h.name}</div>
+          <div style="font-size:12px;color:var(--check);margin-top:2px">${freqLabel(h)}</div>
+        </div>
+        <span style="font-size:28px;line-height:1">${h.emoji}</span>
       </div>
       <div class="habit-week-dots">${dots}</div>
-      <div class="habit-card-footer">
-        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)} · <span style="color:var(--check)">✓</span> ${w7pct}%</div>
+      <div class="habit-card-footer" style="padding-left:0;margin-top:8px">
+        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--check)">✓</span> ${w7pct}%</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'stats')" title="Statistics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
@@ -3336,6 +3361,7 @@ function tHTMLsearch(t, query) {
   const ss = t.top3?'var(--top3)':'currentColor';
   return `<div class="task-item${t.top3?' top3':''}${doneStyle}" id="ti-${t.id}" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
+    <div class="swipe-complete-bg">✓</div>
     <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     </button>
@@ -3390,6 +3416,7 @@ function tHTML(t) {
   const ss = t.top3?'var(--top3)':'currentColor';
   return `<div class="task-item${t.top3?' top3':''}${t.done?' done':''}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
+    <div class="swipe-complete-bg">✓</div>
     <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
     </button>
@@ -4030,6 +4057,7 @@ function getTouchItem(y) {
 document.addEventListener('touchstart', function(e) {
   const handle = e.target.closest('.drag-handle');
   const item   = e.target.closest('.task-item');
+  const habitCard = e.target.closest('.habit-today-card');
 
   if (handle && item && !item.classList.contains('done')) {
     // Drag mode — initiated from handle
@@ -4038,12 +4066,24 @@ document.addEventListener('touchstart', function(e) {
     tdStartX   = e.touches[0].clientX;
     tdDragging = false;
     e.preventDefault(); // prevent scroll
-  } else if (item && !item.classList.contains('done')) {
-    // Potential swipe-to-delete (left swipe)
+  } else if (item) {
+    // Potential swipe on task card
     swipeEl      = item;
+    swipeType    = 'task';
     swipeId      = parseInt(item.dataset.id);
     swipeStartX  = e.touches[0].clientX;
+    swipeStartY  = e.touches[0].clientY;
     swipeDelta   = 0;
+    swipeDir     = null; // null = undecided, 'h' = horizontal, 'v' = vertical
+  } else if (habitCard) {
+    // Potential swipe on habit card
+    swipeEl      = habitCard;
+    swipeType    = 'habit';
+    swipeId      = parseInt(habitCard.dataset.habitId);
+    swipeStartX  = e.touches[0].clientX;
+    swipeStartY  = e.touches[0].clientY;
+    swipeDelta   = 0;
+    swipeDir     = null;
   }
 }, {passive: false});
 
@@ -4085,17 +4125,55 @@ document.addEventListener('touchmove', function(e) {
     return;
   }
 
-  // ── SWIPE TO DELETE ──
+  // ── SWIPE (DELETE LEFT / COMPLETE RIGHT) ──
   if (!swipeEl) return;
   const dx = e.touches[0].clientX - swipeStartX;
-  if (dx >= 0) { swipeDelta = 0; return; }
-  swipeDelta = Math.abs(dx);
-  const progress = Math.min(swipeDelta / SWIPE_THRESHOLD, 1);
-  const bg = swipeEl.querySelector('.swipe-delete-bg');
-  if (bg) bg.style.opacity = progress;
-  swipeEl.classList.add('swiping');
-  const inner = swipeEl.querySelectorAll('.star-btn,.task-content,.task-actions-col');
-  inner.forEach(el => el.style.transform = `translateX(${-Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
+  const dy = e.touches[0].clientY - swipeStartY;
+
+  // Direction lock: decide on first 15px of movement
+  if (swipeDir === null) {
+    if (Math.abs(dx) < 15 && Math.abs(dy) < 15) return; // dead zone
+    swipeDir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+  }
+  if (swipeDir === 'v') { swipeEl = null; return; } // vertical scroll, cancel swipe
+
+  e.preventDefault(); // lock to horizontal
+
+  if (dx < 0 && swipeType === 'task') {
+    // Left swipe — delete (tasks only)
+    swipeDelta = Math.abs(dx);
+    swipeIsRight = false;
+    const progress = Math.min(swipeDelta / SWIPE_THRESHOLD, 1);
+    const bg = swipeEl.querySelector('.swipe-delete-bg');
+    if (bg) bg.style.opacity = progress;
+    const cbg = swipeEl.querySelector('.swipe-complete-bg');
+    if (cbg) cbg.style.opacity = 0;
+    swipeEl.classList.add('swiping');
+    swipeEl.classList.remove('swiping-right');
+    const inner = swipeEl.querySelectorAll('.star-btn,.task-content,.task-actions-col');
+    inner.forEach(el => el.style.transform = `translateX(${-Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
+  } else if (dx > 0) {
+    // Right swipe — complete
+    swipeDelta = dx;
+    swipeIsRight = true;
+    const progress = Math.min(swipeDelta / SWIPE_THRESHOLD, 1);
+    const cbg = swipeEl.querySelector('.swipe-complete-bg');
+    if (cbg) cbg.style.opacity = progress;
+    const dbg = swipeEl.querySelector('.swipe-delete-bg');
+    if (dbg) dbg.style.opacity = 0;
+    swipeEl.classList.add('swiping-right');
+    swipeEl.classList.remove('swiping');
+    // Shift inner content right
+    if (swipeType === 'task') {
+      const inner = swipeEl.querySelectorAll('.star-btn,.task-content,.task-actions-col');
+      inner.forEach(el => el.style.transform = `translateX(${Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
+    } else {
+      const inner = swipeEl.querySelectorAll('.habit-emoji-lg,.habit-today-content,.habit-check');
+      inner.forEach(el => el.style.transform = `translateX(${Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
+    }
+  } else {
+    swipeDelta = 0;
+  }
 }, {passive: false});
 
 document.addEventListener('touchend', function(e) {
@@ -4114,28 +4192,54 @@ document.addEventListener('touchend', function(e) {
     return;
   }
 
-  // ── END SWIPE TO DELETE ──
+  // ── END SWIPE ──
   if (!swipeEl) return;
   const item  = swipeEl;
   const id    = swipeId;
-  const inner = item.querySelectorAll('.star-btn,.task-content,.task-actions-col');
+  const type  = swipeType;
+  const isRight = swipeIsRight;
+
+  const innerSel = type === 'task'
+    ? '.star-btn,.task-content,.task-actions-col'
+    : '.habit-emoji-lg,.habit-today-content,.habit-check';
+  const inner = item.querySelectorAll(innerSel);
+
   if (swipeDelta >= SWIPE_THRESHOLD) {
-    item.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-    item.style.transform  = 'translateX(-100%)';
-    item.style.opacity    = '0';
-    setTimeout(() => swipeDeleteTask(id), 200);
+    if (isRight) {
+      // Swipe right — complete
+      inner.forEach(el => { el.style.transition = 'transform 0.2s ease'; el.style.transform = ''; });
+      const cbg = item.querySelector('.swipe-complete-bg');
+      if (cbg) { cbg.style.transition = 'opacity 0.2s ease'; cbg.style.opacity = '0'; }
+      item.classList.remove('swiping-right');
+      if (type === 'task') {
+        toggleDone_t(id);
+      } else {
+        toggleCompletion(id, todayStr());
+      }
+      setTimeout(() => { inner.forEach(el => el.style.transition = ''); if (cbg) cbg.style.transition = ''; }, 200);
+    } else {
+      // Swipe left — delete (tasks only)
+      item.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      item.style.transform  = 'translateX(-100%)';
+      item.style.opacity    = '0';
+      setTimeout(() => swipeDeleteTask(id), 200);
+    }
   } else {
+    // Snap back
     inner.forEach(el => { el.style.transition = 'transform 0.2s ease'; el.style.transform = ''; });
     const bg = item.querySelector('.swipe-delete-bg');
     if (bg) bg.style.opacity = '';
-    item.classList.remove('swiping');
-    setTimeout(() => inner.forEach(el => el.style.transition = ''), 200);
+    const cbg = item.querySelector('.swipe-complete-bg');
+    if (cbg) cbg.style.opacity = '';
+    item.classList.remove('swiping', 'swiping-right');
+    setTimeout(() => { inner.forEach(el => el.style.transition = ''); }, 200);
   }
-  swipeEl = null; swipeId = null; swipeDelta = 0;
+  swipeEl = null; swipeId = null; swipeDelta = 0; swipeDir = null; swipeType = null; swipeIsRight = false;
 });
 
-let swipeStartX = 0, swipeEl = null, swipeId = null, swipeDelta = 0;
-const SWIPE_THRESHOLD = 80;
+let swipeStartX = 0, swipeStartY = 0, swipeEl = null, swipeId = null, swipeDelta = 0;
+let swipeDir = null, swipeType = null, swipeIsRight = false;
+const SWIPE_THRESHOLD = 120;
 
 
 let undoStack = null, undoTimer = null;
