@@ -720,8 +720,8 @@
     .stats { display: none; }
     .fab { bottom: 100px; right: 16px; width: 44px; height: 44px; border-radius: 8px; z-index: 250; }
     /* Habits mobile */
-    .habits-content { padding: 0 12px 130px; }
-    .habit-sub-pills { padding: 8px 12px 10px; }
+    .habits-content { padding: 6px 12px 130px; }
+    .habit-sub-pills { padding: 6px 12px 8px; }
     .progress-section { flex-direction: column; align-items: center; text-align: center; padding: 16px; }
     .progress-stats { justify-content: center; }
     .habit-week-dots { gap: 2px; }
@@ -736,7 +736,7 @@
     .heatmap-cell { width: 11px; height: 11px; }
     .heatmap-day-labels span { height: 11px; line-height: 11px; font-size: 8px; }
     .heatmap-month-labels span { width: 11px; font-size: 8px; }
-    .habit-stat-row { padding: 10px 12px; flex-wrap: wrap; }
+    .habit-stat-row { padding: 9px 10px; flex-wrap: wrap; }
     .habit-stat-nums { gap: 8px; width: 100%; justify-content: space-around; margin-top: 6px; }
   }
 
@@ -1342,8 +1342,8 @@
   .faq-contact-note { margin-top: 16px; padding: 12px 14px; background: var(--hover); border-radius: 8px; font-size: 12px; color: var(--text2); border: 1px solid var(--border2); text-align: center; }
 
   /* ══════ HABITS ══════ */
-  .habits-content { max-width: 720px; margin: 0 auto; padding: 0 16px 100px; }
-  .habit-sub-pills { display: flex; align-items: center; justify-content: center; padding: 10px 0 14px; }
+  .habits-content { max-width: 720px; margin: 0 auto; padding: 8px 16px 100px; }
+  .habit-sub-pills { display: flex; align-items: center; justify-content: center; padding: 8px 0 10px; }
   .habit-sub-content { display: none; }
   .habit-sub-content.active { display: block; }
   .pill.habit-pill { border-color: var(--check); color: #065f46; background: #ecfdf5; }
@@ -1352,7 +1352,7 @@
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* Today — progress ring */
-  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 24px; }
+  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 20px; }
   .progress-ring-wrap { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
   .progress-ring-wrap svg { transform: rotate(-90deg); }
   .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 22px; font-weight: 700; color: var(--navy); }
@@ -1362,7 +1362,7 @@
   .progress-stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
   /* Today — week bar chart */
-  .week-bar-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; }
+  .week-bar-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 12px 16px; margin-bottom: 8px; }
   .week-bar-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
   .week-bars { display: flex; align-items: flex-end; gap: 8px; height: 80px; }
   .week-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
@@ -1372,7 +1372,7 @@
   .week-bar-val { font-size: 9px; color: var(--text2); font-weight: 600; }
 
   /* Habit cards */
-  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 8px; animation: slideDown 0.18s ease; cursor: pointer; transition: border-color 0.1s; }
+  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 11px; margin-bottom: 2px; cursor: pointer; transition: border-color 0.1s; }
   .habit-card:hover { border-color: var(--border2); }
   .habit-card-top { display: flex; align-items: center; gap: 8px; }
   .habit-emoji { font-size: 16px; flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
@@ -1384,7 +1384,7 @@
   .habit-check svg { display: none; }
   .habit-check.checked { background: var(--check); border-color: var(--check); }
   .habit-check.checked svg { display: block; }
-  .habit-today-card { cursor: default; display: flex; align-items: center; gap: 12px; }
+  .habit-today-card { cursor: default; display: flex; align-items: center; gap: 10px; }
   .habit-today-card:hover { border-color: var(--border); }
   .habit-today-card .habit-card-footer { padding-left: 0; margin-top: 2px; }
   .habit-today-content { flex: 1; min-width: 0; position: relative; z-index: 1; }
@@ -1394,7 +1394,7 @@
   .habit-score-ring { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
   .habit-score-ring svg { transform: rotate(-90deg); }
   .habit-score-ring .score-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; }
-  .habit-week-dots { display: flex; gap: 4px; margin-top: 12px; justify-content: center; }
+  .habit-week-dots { display: flex; gap: 4px; margin-top: 8px; justify-content: center; }
   .habit-day { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
   .habit-day-label { font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; }
   .habit-day-dot { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; transition: all 0.15s; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); }
@@ -1409,11 +1409,11 @@
   .habit-action-btn:hover { background: var(--hover); color: var(--navy); }
 
   /* Habit stats view */
-  .stat-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; text-align: center; }
+  .stat-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 4px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; text-align: center; }
   .stat-card .sc-val { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 2px; }
   .stat-card .sc-lbl { font-size: 10.5px; color: var(--muted); font-weight: 500; }
-  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; overflow-x: auto; }
+  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 12px 16px; margin-bottom: 8px; overflow-x: auto; }
   .heatmap-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
   .heatmap-wrap { display: flex; gap: 0; }
   .heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-right: 6px; padding-top: 18px; }
@@ -1430,7 +1430,7 @@
   .heatmap-cell.l4 { background: var(--navy); }
   .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 10px; color: var(--muted); }
   .heatmap-legend .heatmap-cell { width: 10px; height: 10px; }
-  .habit-stat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 12px; }
+  .habit-stat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; margin-bottom: 2px; display: flex; align-items: center; gap: 10px; }
   .habit-stat-info { flex: 1; min-width: 0; }
   .habit-stat-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
   .habit-stat-bar-wrap { height: 6px; background: var(--surface2); border-radius: 8px; overflow: hidden; }
@@ -3058,7 +3058,7 @@ function renderHabitAll(active) {
     weekDates.forEach(ds => { if (isHabitDueOnDate(h, ds)) { w7due++; if (isCompletedOn(h.id, ds)) w7done++; } });
     const w7pct = w7due ? Math.round((w7done / w7due) * 100) : 0;
 
-    html += `<div class="habit-card" onclick="openHabitDrillIn(${h.id})" style="padding:14px 16px 10px">
+    html += `<div class="habit-card" onclick="openHabitDrillIn(${h.id})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div class="habit-name" style="font-size:15px;font-weight:600">${h.name}</div>
@@ -3067,7 +3067,7 @@ function renderHabitAll(active) {
         <span style="font-size:28px;line-height:1">${h.emoji}</span>
       </div>
       <div class="habit-week-dots">${dots}</div>
-      <div class="habit-card-footer" style="padding-left:0;margin-top:10px">
+      <div class="habit-card-footer" style="padding-left:0;margin-top:6px">
         <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--check)">✓</span> ${w7pct}%</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
