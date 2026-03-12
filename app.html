@@ -2456,19 +2456,27 @@ function subscribeToHabitChanges() {
       event: '*', schema: 'public', table: 'habits',
       filter: `user_id=eq.${currentUser.id}`
     }, payload => {
+      let changed = false;
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const incoming = rowToHabit(payload.new);
         habitRowIdMap.set(payload.new.id, payload.new.client_id);
         const idx = habitsArr.findIndex(h => h.id === incoming.id);
-        if (idx >= 0) habitsArr[idx] = incoming; else habitsArr.push(incoming);
+        if (idx >= 0) {
+          // Only flag changed if data actually differs
+          const old = habitsArr[idx];
+          if (old.name !== incoming.name || old.emoji !== incoming.emoji || old.archived !== incoming.archived ||
+              old.frequency !== incoming.frequency || JSON.stringify(old.tags) !== JSON.stringify(incoming.tags)) changed = true;
+          habitsArr[idx] = incoming;
+        } else { habitsArr.push(incoming); changed = true; }
       } else if (payload.eventType === 'DELETE') {
         const clientId = habitRowIdMap.get(payload.old.id);
         if (clientId !== undefined) {
           habitsArr = habitsArr.filter(h => h.id !== clientId);
           habitRowIdMap.delete(payload.old.id);
+          changed = true;
         }
       }
-      debouncedRenderHabits();
+      if (changed) debouncedRenderHabits();
     })
     .subscribe();
 
@@ -2477,20 +2485,25 @@ function subscribeToHabitChanges() {
       event: '*', schema: 'public', table: 'habit_completions',
       filter: `user_id=eq.${currentUser.id}`
     }, payload => {
+      let changed = false;
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const incoming = rowToCompletion(payload.new);
         completionRowIdMap.set(payload.new.id, payload.new.id);
         const idx = habitCompletions.findIndex(c => c.id === incoming.id);
-        if (idx >= 0) habitCompletions[idx] = incoming; else {
-          // Avoid duplicate if we already have a temp entry for same habit+date
+        if (idx >= 0) { habitCompletions[idx] = incoming; }
+        else {
+          // Check if we already have this habit+date (optimistic temp entry)
           const dupIdx = habitCompletions.findIndex(c => c.habitId === incoming.habitId && c.completedDate === incoming.completedDate);
-          if (dupIdx >= 0) habitCompletions[dupIdx] = incoming; else habitCompletions.push(incoming);
+          if (dupIdx >= 0) { habitCompletions[dupIdx] = incoming; /* just upgrade temp id, no visual change */ }
+          else { habitCompletions.push(incoming); changed = true; }
         }
       } else if (payload.eventType === 'DELETE') {
+        const before = habitCompletions.length;
         habitCompletions = habitCompletions.filter(c => c.id !== payload.old.id);
         completionRowIdMap.delete(payload.old.id);
+        changed = habitCompletions.length !== before;
       }
-      debouncedRenderHabits();
+      if (changed) debouncedRenderHabits();
     })
     .subscribe();
 }
