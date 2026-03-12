@@ -2513,17 +2513,22 @@ function dayOfWeek(dateStr) {
   return new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun
 }
 function getWeekDates() {
-  const now = new Date(); const day = now.getDay();
-  const mon = new Date(now); mon.setDate(now.getDate() - ((day + 6) % 7));
+  // Rolling 7 days: today is always the 7th (last) day
+  const now = new Date();
   const dates = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(mon); d.setDate(mon.getDate() + i);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(now.getDate() - i);
     dates.push(d.toISOString().slice(0, 10));
   }
   return dates;
 }
-const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const DAY_SHORTS = ['M','T','W','T','F','S','S'];
+const SHORT_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function dayLabel(dateStr) {
+  return SHORT_DAYS[new Date(dateStr + 'T12:00:00').getDay()];
+}
+function dayShort(dateStr) {
+  return dayLabel(dateStr).charAt(0);
+}
 
 function isHabitDueOnDate(habit, dateStr) {
   if (habit.frequency === 'daily') return true;
@@ -2656,7 +2661,7 @@ function renderHabitToday(active) {
     const isFuture = ds > today;
     const bg = isFuture ? 'var(--border)' : (isToday ? 'var(--navy-light)' : 'var(--navy)');
     const val = isFuture ? '—' : dayDone;
-    weekBars += `<div class="week-bar-col"><div class="week-bar-val">${val}</div><div class="week-bar-fill${isToday?' today':''}" style="height:${isFuture?4:hPct}%;background:${bg}"></div><div class="week-bar-day">${DAY_LABELS[i]}</div></div>`;
+    weekBars += `<div class="week-bar-col"><div class="week-bar-val">${val}</div><div class="week-bar-fill${isToday?' today':''}" style="height:${isFuture?4:hPct}%;background:${bg}"></div><div class="week-bar-day">${dayLabel(ds)}</div></div>`;
   });
 
   // Remaining cards
@@ -2709,7 +2714,7 @@ function renderHabitToday(active) {
       </div>
     </div>
     <div class="week-bar-chart">
-      <div class="week-bar-title">This Week</div>
+      <div class="week-bar-title">Last 7 Days</div>
       <div class="week-bars">${weekBars}</div>
     </div>
     ${remaining.length ? `<div class="section-label">⏳ REMAINING TODAY</div>${remHTML}` : ''}
@@ -2749,7 +2754,7 @@ function renderHabitAll(active) {
       const done = isCompletedOn(h.id, ds);
       const isToday = ds === today;
       const cls = `habit-day-dot${done?' done':''}${isToday?' today':''}`;
-      dots += `<div class="habit-day"><span class="habit-day-label">${DAY_SHORTS[i]}</span><div class="${cls}" onclick="event.stopPropagation();toggleCompletion(${h.id},'${ds}')">${CHECK_SVG}</div></div>`;
+      dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="${cls}" onclick="event.stopPropagation();toggleCompletion(${h.id},'${ds}')">${CHECK_SVG}</div></div>`;
     });
 
     const tag = h.tags.includes('biz') ? '<span class="tag tag-biz" style="font-size:10px;padding:1px 6px;border-radius:8px;">Work</span>' :
