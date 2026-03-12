@@ -1405,6 +1405,74 @@
   .habit-edit-danger button { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-family: inherit; font-size: 12px; cursor: pointer; color: var(--text2); }
   .habit-edit-danger button:hover { border-color: var(--danger); color: var(--danger); }
   .habit-edit-save { display: flex; gap: 8px; }
+
+  /* ══════ HABIT DRILL-IN ══════ */
+  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: 400; background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); align-items: center; justify-content: center; }
+  .habit-drill-overlay.open { display: flex; }
+  .habit-drill-panel { width: 90%; max-width: 600px; max-height: 85vh; background: var(--surface); border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
+  .habit-drill-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .habit-drill-back { background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text2); padding: 0 4px; line-height: 1; }
+  .habit-drill-back:hover { color: var(--navy); }
+  .habit-drill-emoji { font-size: 20px; }
+  .habit-drill-name { font-size: 15px; font-weight: 700; flex: 1; }
+  .habit-drill-tabs { display: flex; justify-content: center; gap: 4px; padding: 12px 16px 0; }
+  .habit-drill-tabs .drill-tab { padding: 6px 18px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text2); transition: all 0.12s; }
+  .habit-drill-tabs .drill-tab:hover { border-color: var(--navy-light); }
+  .habit-drill-tabs .drill-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .habit-drill-body { flex: 1; overflow-y: auto; padding: 16px; }
+  .habit-drill-tab-content { display: none; }
+  .habit-drill-tab-content.active { display: block; }
+
+  /* Calendar */
+  .habit-cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .habit-cal-nav button { background: none; border: 1px solid var(--border); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; color: var(--text2); display: flex; align-items: center; justify-content: center; }
+  .habit-cal-nav button:hover { border-color: var(--navy); color: var(--navy); }
+  .habit-cal-month { font-size: 15px; font-weight: 700; }
+  .habit-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+  .habit-cal-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; padding: 4px 0 8px; }
+  .habit-cal-cell { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 2px auto; font-size: 12px; font-weight: 500; color: var(--text); cursor: pointer; transition: all 0.12s; border: 2px solid transparent; }
+  .habit-cal-cell:hover { background: var(--hover); }
+  .habit-cal-cell.completed { background: var(--check); color: #fff; border-color: var(--check); }
+  .habit-cal-cell.completed:hover { background: #006048; }
+  .habit-cal-cell.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
+  .habit-cal-cell.today.completed { border-color: var(--check); box-shadow: none; }
+  .habit-cal-cell.empty { cursor: default; color: transparent; }
+  .habit-cal-cell.empty:hover { background: none; }
+  .habit-cal-cell.other-month { color: var(--border2); cursor: default; }
+  .habit-cal-cell.other-month:hover { background: none; }
+  .habit-cal-cell.future { color: var(--border2); cursor: default; }
+  .habit-cal-cell.future:hover { background: none; }
+  .habit-cal-streak { display: flex; justify-content: center; gap: 32px; padding: 20px 0 8px; }
+  .habit-cal-streak-item { text-align: center; }
+  .habit-cal-streak-item .streak-val { font-size: 28px; font-weight: 700; line-height: 1; }
+  .habit-cal-streak-item .streak-lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Drill-in Statistics */
+  .habit-drill-stat-ring { text-align: center; margin-bottom: 24px; position: relative; }
+  .habit-drill-stat-ring svg { transform: rotate(-90deg); }
+  .habit-drill-stat-ring .ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 700; }
+  .habit-drill-stat-ring .ring-sub { font-size: 11px; color: var(--muted); font-weight: 400; display: block; }
+  .habit-drill-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .habit-drill-stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .habit-drill-stat-card .ds-val { font-size: 22px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .habit-drill-stat-card .ds-lbl { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+  /* Info button on Today cards */
+  .habit-info-btn { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 6px; opacity: 0.35; transition: opacity 0.12s; line-height: 1; }
+  .habit-info-btn:hover { opacity: 0.8; }
+
+  /* Drill-in edit tab reuses habit-edit-field styles */
+  .drill-edit-section { padding-top: 4px; }
+  .drill-edit-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 600px) {
+    .habit-drill-overlay { background: var(--surface); }
+    .habit-drill-panel { width: 100%; max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; box-shadow: none; }
+    .habit-cal-cell { width: 32px; height: 32px; font-size: 11px; }
+    .habit-drill-stat-grid { gap: 8px; }
+    .habit-drill-stat-card { padding: 12px 10px; }
+    .habit-drill-stat-card .ds-val { font-size: 18px; }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1870,6 +1938,99 @@
       <div class="habit-edit-save">
         <button class="btn-cancel" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer" onclick="closeHabitEdit()">Cancel</button>
         <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="saveHabitEdit()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HABIT DRILL-IN -->
+<div class="habit-drill-overlay" id="habitDrillOverlay" onclick="if(event.target===this)closeDrillIn()">
+  <div class="habit-drill-panel">
+    <div class="habit-drill-header">
+      <button class="habit-drill-back" onclick="closeDrillIn()">&larr;</button>
+      <span class="habit-drill-emoji" id="drillEmoji"></span>
+      <span class="habit-drill-name" id="drillName"></span>
+    </div>
+    <div class="habit-drill-tabs">
+      <button class="drill-tab active" data-drill-tab="calendar" onclick="switchDrillTab('calendar')">Calendar</button>
+      <button class="drill-tab" data-drill-tab="stats" onclick="switchDrillTab('stats')">Statistics</button>
+      <button class="drill-tab" data-drill-tab="edit" onclick="switchDrillTab('edit')">Edit</button>
+    </div>
+    <div class="habit-drill-body">
+      <!-- Calendar Tab -->
+      <div class="habit-drill-tab-content active" id="drillTabCalendar">
+        <div class="habit-cal-nav">
+          <button onclick="drillCalPrev()">&lsaquo;</button>
+          <span class="habit-cal-month" id="drillCalMonth"></span>
+          <button onclick="drillCalNext()">&rsaquo;</button>
+        </div>
+        <div class="habit-cal-grid" id="drillCalGrid"></div>
+        <div class="habit-cal-streak" id="drillCalStreak"></div>
+      </div>
+      <!-- Statistics Tab -->
+      <div class="habit-drill-tab-content" id="drillTabStats">
+        <div class="habit-drill-stat-ring" id="drillStatRing"></div>
+        <div class="habit-drill-stat-grid" id="drillStatGrid"></div>
+      </div>
+      <!-- Edit Tab -->
+      <div class="habit-drill-tab-content" id="drillTabEdit">
+        <div class="drill-edit-section">
+          <div class="habit-edit-field">
+            <label>Name</label>
+            <input type="text" id="drillEditName" onkeydown="if(event.key==='Enter')saveHabitDrill()">
+          </div>
+          <div class="habit-edit-field">
+            <label>Emoji</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="emoji-pick-btn" id="drillEditEmojiBtn" onclick="document.getElementById('drillEditEmojiGrid').style.display=document.getElementById('drillEditEmojiGrid').style.display==='grid'?'none':'grid'">✅</button>
+            </div>
+            <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
+              <button onclick="pickDrillEditEmoji('🏃')">🏃</button><button onclick="pickDrillEditEmoji('📖')">📖</button>
+              <button onclick="pickDrillEditEmoji('🧠')">🧠</button><button onclick="pickDrillEditEmoji('💧')">💧</button>
+              <button onclick="pickDrillEditEmoji('🧘')">🧘</button><button onclick="pickDrillEditEmoji('✍️')">✍️</button>
+              <button onclick="pickDrillEditEmoji('💪')">💪</button><button onclick="pickDrillEditEmoji('🥗')">🥗</button>
+              <button onclick="pickDrillEditEmoji('😴')">😴</button><button onclick="pickDrillEditEmoji('🎯')">🎯</button>
+              <button onclick="pickDrillEditEmoji('🎨')">🎨</button><button onclick="pickDrillEditEmoji('🎸')">🎸</button>
+              <button onclick="pickDrillEditEmoji('📝')">📝</button><button onclick="pickDrillEditEmoji('🚶')">🚶</button>
+              <button onclick="pickDrillEditEmoji('🧹')">🧹</button><button onclick="pickDrillEditEmoji('✅')">✅</button>
+            </div>
+          </div>
+          <div class="habit-edit-field">
+            <label>Frequency</label>
+            <div class="freq-options" id="drillEditFreqOptions">
+              <button class="freq-btn active" data-freq="daily">Daily</button>
+              <button class="freq-btn" data-freq="weekdays">Weekdays</button>
+              <button class="freq-btn" data-freq="custom">Custom</button>
+            </div>
+            <div id="drillEditCustomDays" style="display:none;margin-top:8px">
+              <div class="freq-options">
+                <button class="freq-btn custom-day-drill" data-day="Mon">Mon</button>
+                <button class="freq-btn custom-day-drill" data-day="Tue">Tue</button>
+                <button class="freq-btn custom-day-drill" data-day="Wed">Wed</button>
+                <button class="freq-btn custom-day-drill" data-day="Thu">Thu</button>
+                <button class="freq-btn custom-day-drill" data-day="Fri">Fri</button>
+                <button class="freq-btn custom-day-drill" data-day="Sat">Sat</button>
+                <button class="freq-btn custom-day-drill" data-day="Sun">Sun</button>
+              </div>
+            </div>
+          </div>
+          <div class="habit-edit-field">
+            <label>Tags</label>
+            <div class="create-panel-tags">
+              <button class="tag-btn biz" id="drill-edit-opt-biz" onclick="toggleDrillEditTag('biz')">Work</button>
+              <button class="tag-btn personal" id="drill-edit-opt-personal" onclick="toggleDrillEditTag('personal')">Personal</button>
+            </div>
+          </div>
+          <div class="drill-edit-actions">
+            <div class="habit-edit-danger">
+              <button onclick="archiveHabitDrill()">Archive</button>
+              <button onclick="confirmDeleteHabitDrill()">Delete</button>
+            </div>
+            <div class="habit-edit-save">
+              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer" onclick="saveHabitDrill()">Save</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2693,7 +2854,7 @@ function renderHabitToday(active) {
                 h.tags.includes('personal') ? '<span class="tag tag-personal" style="font-size:10px;padding:1px 6px;border-radius:8px;">Personal</span>' : '';
     const freq = h.frequency === 'daily' ? 'Daily' : h.frequency === 'weekdays' ? 'Weekdays' : 'Custom';
     remHTML += `<div class="habit-card" onclick="toggleCompletion(${h.id},'${today}')">
-      <div class="habit-card-top"><span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span></div>
+      <div class="habit-card-top"><span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span><button class="habit-info-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id})" title="Details">→</button></div>
       <div class="habit-card-meta">${tag}${tag?'<span class="dot-sep"></span>':''}${freq} · Best: ${best} days</div>
     </div>`;
   });
@@ -2703,7 +2864,7 @@ function renderHabitToday(active) {
   done.forEach(h => {
     const streak = computeStreak(h.id);
     doneHTML += `<div class="habit-card" style="opacity:0.5" onclick="toggleCompletion(${h.id},'${today}')">
-      <div class="habit-card-top"><span class="habit-emoji">${h.emoji}</span><span class="habit-name" style="text-decoration:line-through">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span></div>
+      <div class="habit-card-top"><span class="habit-emoji">${h.emoji}</span><span class="habit-name" style="text-decoration:line-through">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span><button class="habit-info-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id})" title="Details">→</button></div>
     </div>`;
   });
 
@@ -2781,7 +2942,7 @@ function renderHabitAll(active) {
                 h.tags.includes('personal') ? '<span class="tag tag-personal" style="font-size:10px;padding:1px 6px;border-radius:8px;">Personal</span>' : '';
     const freq = h.frequency === 'daily' ? 'Daily' : h.frequency === 'weekdays' ? 'Weekdays' : 'Custom';
 
-    html += `<div class="habit-card" onclick="openHabitEdit(${h.id})">
+    html += `<div class="habit-card" onclick="openHabitDrillIn(${h.id})">
       <div class="habit-card-top">
         <span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span>
         <div class="habit-score-ring"><svg width="32" height="32" viewBox="0 0 32 32">
@@ -3296,6 +3457,17 @@ document.addEventListener('click', e => {
   // Edit panel custom day toggle
   const ecd = e.target.closest('.custom-day-edit');
   if (ecd) { ecd.classList.toggle('active'); return; }
+  // Drill-in freq
+  const dfb = e.target.closest('#drillEditFreqOptions .freq-btn');
+  if (dfb) {
+    document.querySelectorAll('#drillEditFreqOptions .freq-btn').forEach(b => b.classList.remove('active'));
+    dfb.classList.add('active');
+    document.getElementById('drillEditCustomDays').style.display = dfb.dataset.freq === 'custom' ? '' : 'none';
+    return;
+  }
+  // Drill-in custom day toggle
+  const dcd = e.target.closest('.custom-day-drill');
+  if (dcd) { dcd.classList.toggle('active'); return; }
 });
 
 function addHabit() {
@@ -3382,6 +3554,209 @@ function confirmDeleteHabit() {
   renderHabits();
   deleteHabitFromDB(id);
 }
+
+/* ══════ HABIT DRILL-IN ══════ */
+let drillHabitId = null;
+let drillCalYear = null;
+let drillCalMonth = null;
+let drillEditTags = new Set();
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function openHabitDrillIn(habitId, tab) {
+  const h = habitsArr.find(x => x.id === habitId);
+  if (!h) return;
+  drillHabitId = habitId;
+  const now = new Date();
+  drillCalYear = now.getFullYear();
+  drillCalMonth = now.getMonth();
+  document.getElementById('drillEmoji').textContent = h.emoji;
+  document.getElementById('drillName').textContent = h.name;
+  switchDrillTab(tab || 'calendar');
+  document.getElementById('habitDrillOverlay').classList.add('open');
+}
+
+function closeDrillIn() {
+  document.getElementById('habitDrillOverlay').classList.remove('open');
+  drillHabitId = null;
+}
+
+function switchDrillTab(tabName) {
+  document.querySelectorAll('.drill-tab').forEach(t => t.classList.toggle('active', t.dataset.drillTab === tabName));
+  document.querySelectorAll('.habit-drill-tab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById('drillTab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+  if (target) target.classList.add('active');
+  if (tabName === 'calendar') renderDrillCalendar();
+  if (tabName === 'stats') renderDrillStats();
+  if (tabName === 'edit') populateDrillEdit();
+}
+
+function renderDrillCalendar() {
+  if (!drillHabitId) return;
+  const today = todayStr();
+  document.getElementById('drillCalMonth').textContent = MONTH_NAMES[drillCalMonth] + ' ' + drillCalYear;
+
+  const firstDay = new Date(drillCalYear, drillCalMonth, 1);
+  const daysInMonth = new Date(drillCalYear, drillCalMonth + 1, 0).getDate();
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // Convert to Mon=0
+
+  let html = '';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    html += `<div class="habit-cal-label">${d}</div>`;
+  });
+
+  // Empty cells before first day
+  for (let i = 0; i < startDow; i++) {
+    html += '<div class="habit-cal-cell empty"></div>';
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${drillCalYear}-${String(drillCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday = ds === today;
+    const isFuture = ds > today;
+    const completed = isCompletedOn(drillHabitId, ds);
+    let cls = 'habit-cal-cell';
+    if (completed) cls += ' completed';
+    if (isToday) cls += ' today';
+    if (isFuture) cls += ' future';
+    const onclick = isFuture ? '' : `onclick="toggleDrillCompletion('${ds}')"`;
+    html += `<div class="${cls}" ${onclick}>${d}</div>`;
+  }
+
+  document.getElementById('drillCalGrid').innerHTML = html;
+
+  // Streaks
+  const streak = computeStreak(drillHabitId);
+  const best = computeBestStreak(drillHabitId);
+  document.getElementById('drillCalStreak').innerHTML = `
+    <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--top3)">${streak}</div><div class="streak-lbl">Current Streak</div></div>
+    <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--navy)">${best}</div><div class="streak-lbl">Best Streak</div></div>
+  `;
+}
+
+function drillCalPrev() { drillCalMonth--; if (drillCalMonth < 0) { drillCalMonth = 11; drillCalYear--; } renderDrillCalendar(); }
+function drillCalNext() {
+  const now = new Date();
+  // Don't navigate past current month
+  if (drillCalYear === now.getFullYear() && drillCalMonth === now.getMonth()) return;
+  drillCalMonth++; if (drillCalMonth > 11) { drillCalMonth = 0; drillCalYear++; } renderDrillCalendar();
+}
+
+async function toggleDrillCompletion(dateStr) {
+  await toggleCompletion(drillHabitId, dateStr);
+  renderDrillCalendar();
+  renderDrillStats();
+}
+
+function renderDrillStats() {
+  if (!drillHabitId) return;
+  const h = habitsArr.find(x => x.id === drillHabitId);
+  if (!h) return;
+
+  const score = computeScore(h);
+  const sColor = scoreColor(score);
+  const streak = computeStreak(drillHabitId);
+  const best = computeBestStreak(drillHabitId);
+  const comps = completionsForHabit(drillHabitId);
+
+  // Time-based counts
+  const today = todayStr();
+  const weekDates = getWeekDates();
+  const weekCount = comps.filter(c => weekDates.includes(c.completedDate)).length;
+  const monthStart = today.slice(0, 8) + '01';
+  const monthCount = comps.filter(c => c.completedDate >= monthStart && c.completedDate <= today).length;
+  const yearStart = today.slice(0, 5) + '01-01';
+  const yearCount = comps.filter(c => c.completedDate >= yearStart && c.completedDate <= today).length;
+  const allCount = comps.length;
+
+  // Score ring
+  const r = 50, cx = 60, cy = 60;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - score / 100);
+
+  document.getElementById('drillStatRing').innerHTML = `
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e2e4e8" stroke-width="10"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${sColor}" stroke-width="10"
+        stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
+    </svg>
+    <div class="ring-label" style="color:${sColor}">${score}<span class="ring-sub">Habit Score</span></div>
+  `;
+
+  document.getElementById('drillStatGrid').innerHTML = `
+    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--top3)">${streak}</div><div class="ds-lbl">Current Streak</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--navy)">${best}</div><div class="ds-lbl">Best Streak</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--check)">${weekCount}</div><div class="ds-lbl">This Week</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val">${monthCount}</div><div class="ds-lbl">This Month</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val">${yearCount}</div><div class="ds-lbl">This Year</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val">${allCount}</div><div class="ds-lbl">All Time</div></div>
+  `;
+}
+
+function populateDrillEdit() {
+  const h = habitsArr.find(x => x.id === drillHabitId);
+  if (!h) return;
+  document.getElementById('drillEditName').value = h.name;
+  document.getElementById('drillEditEmojiBtn').textContent = h.emoji;
+  document.getElementById('drillEditEmojiGrid').style.display = 'none';
+  document.querySelectorAll('#drillEditFreqOptions .freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === h.frequency));
+  document.getElementById('drillEditCustomDays').style.display = h.frequency === 'custom' ? '' : 'none';
+  document.querySelectorAll('.custom-day-drill').forEach(b => b.classList.toggle('active', (h.customDays || []).includes(b.dataset.day)));
+  drillEditTags = new Set(h.tags);
+  document.getElementById('drill-edit-opt-biz').classList.toggle('selected', drillEditTags.has('biz'));
+  document.getElementById('drill-edit-opt-personal').classList.toggle('selected', drillEditTags.has('personal'));
+}
+
+function pickDrillEditEmoji(em) {
+  document.getElementById('drillEditEmojiBtn').textContent = em;
+  document.getElementById('drillEditEmojiGrid').style.display = 'none';
+}
+function toggleDrillEditTag(tag) {
+  if (drillEditTags.has(tag)) drillEditTags.delete(tag); else drillEditTags.add(tag);
+  document.getElementById('drill-edit-opt-' + tag).classList.toggle('selected', drillEditTags.has(tag));
+}
+
+function saveHabitDrill() {
+  const h = habitsArr.find(x => x.id === drillHabitId);
+  if (!h) return;
+  h.name = document.getElementById('drillEditName').value.trim() || h.name;
+  h.emoji = document.getElementById('drillEditEmojiBtn').textContent;
+  const freqBtn = document.querySelector('#drillEditFreqOptions .freq-btn.active');
+  h.frequency = freqBtn ? freqBtn.dataset.freq : h.frequency;
+  if (h.frequency === 'custom') {
+    h.customDays = [];
+    document.querySelectorAll('.custom-day-drill.active').forEach(b => h.customDays.push(b.dataset.day));
+  }
+  h.tags = [...drillEditTags];
+  closeDrillIn();
+  renderHabits();
+  saveHabitToDB(h);
+}
+
+function archiveHabitDrill() {
+  const h = habitsArr.find(x => x.id === drillHabitId);
+  if (!h) return;
+  h.archived = true;
+  closeDrillIn();
+  renderHabits();
+  saveHabitToDB(h);
+}
+
+function confirmDeleteHabitDrill() {
+  if (!confirm('Delete this habit and all its data? This cannot be undone.')) return;
+  const id = drillHabitId;
+  habitsArr = habitsArr.filter(h => h.id !== id);
+  closeDrillIn();
+  renderHabits();
+  deleteHabitFromDB(id);
+}
+
+// Escape to close drill-in
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('habitDrillOverlay').classList.contains('open')) {
+    closeDrillIn();
+  }
+});
 
 function toggleNoteField() {
   noteOpen = !noteOpen;
