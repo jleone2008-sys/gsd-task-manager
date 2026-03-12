@@ -2883,8 +2883,6 @@ function renderHabitToday(active) {
   remaining.forEach(h => {
     const streak = computeStreak(h.id);
     const best = computeBestStreak(h.id);
-    const tag = h.tags.includes('biz') ? '<span class="tag tag-biz" style="font-size:10px;padding:1px 6px;border-radius:8px;">Work</span>' :
-                h.tags.includes('personal') ? '<span class="tag tag-personal" style="font-size:10px;padding:1px 6px;border-radius:8px;">Personal</span>' : '';
     const freq = h.frequency === 'daily' ? 'Daily' : h.frequency === 'weekdays' ? 'Weekdays' : 'Custom';
     remHTML += `<div class="habit-card habit-today-card">
       <div class="habit-card-top">
@@ -2892,7 +2890,7 @@ function renderHabitToday(active) {
         <span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
       </div>
       <div class="habit-card-footer" style="padding-left:27px;">
-        <div class="habit-card-meta">${tag}${tag?'<span class="dot-sep"></span>':''}${freq} · Best: ${best} days</div>
+        <div class="habit-card-meta">${freq} · Best: ${best} days</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'stats')" title="Statistics"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
@@ -2986,8 +2984,6 @@ function renderHabitAll(active) {
       dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="${cls}" onclick="event.stopPropagation();toggleCompletion(${h.id},'${ds}')">${CHECK_SVG}</div></div>`;
     });
 
-    const tag = h.tags.includes('biz') ? '<span class="tag tag-biz" style="font-size:10px;padding:1px 6px;border-radius:8px;">Work</span>' :
-                h.tags.includes('personal') ? '<span class="tag tag-personal" style="font-size:10px;padding:1px 6px;border-radius:8px;">Personal</span>' : '';
     const freq = h.frequency === 'daily' ? 'Daily' : h.frequency === 'weekdays' ? 'Weekdays' : 'Custom';
 
     // 7-day completion %
@@ -3007,7 +3003,7 @@ function renderHabitAll(active) {
       </div>
       <div class="habit-week-dots">${dots}</div>
       <div class="habit-card-footer">
-        <div class="habit-card-meta">${tag}${tag?'<span class="dot-sep"></span>':''}🔗 ${streak} <span style="color:var(--check)">✓</span> ${w7pct}%</div>
+        <div class="habit-card-meta">🔗 ${streak} <span style="color:var(--check)">✓</span> ${w7pct}%</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'stats')" title="Statistics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
