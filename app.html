@@ -721,9 +721,9 @@
     .fab { bottom: 100px; right: 16px; width: 44px; height: 44px; border-radius: 8px; z-index: 250; }
     /* Habits mobile */
     .habits-content { padding: 6px 12px 130px; }
-    .habit-sub-pills { padding: 6px 12px 8px; }
-    .progress-section { flex-direction: column; align-items: center; text-align: center; padding: 16px; }
-    .progress-stats { justify-content: center; }
+    .habit-sub-pills { padding: 8px 12px 12px; }
+    .progress-section { padding: 12px; }
+    .progress-stats { gap: 6px 12px; }
     .habit-week-dots { gap: 2px; }
     .habit-day-dot { width: 34px; height: 34px; font-size: 12px; }
     .habit-card-footer { padding-left: 0; }
@@ -1357,8 +1357,8 @@
   .progress-ring-wrap svg { transform: rotate(-90deg); }
   .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 22px; font-weight: 700; color: var(--navy); }
   .progress-ring-sub { font-size: 10px; color: var(--muted); font-weight: 400; display: block; text-align: center; }
-  .progress-stats { display: flex; gap: 20px; flex-wrap: wrap; flex: 1; }
-  .progress-stat .val { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+  .progress-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; flex: 1; }
+  .progress-stat .val { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
   .progress-stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
   /* Today — week bar chart */
@@ -2932,13 +2932,14 @@ function renderHabitToday(active) {
   let weekBars = '';
   const maxPerDay = active.length || 1;
   weekDates.forEach((ds, i) => {
-    let dayDone = 0;
-    active.forEach(h => { if (isHabitDueOnDate(h, ds) && isCompletedOn(h.id, ds)) dayDone++; });
-    const hPct = Math.max(4, (dayDone / maxPerDay) * 100);
+    let dayDue = 0, dayDone = 0;
+    active.forEach(h => { if (isHabitDueOnDate(h, ds)) { dayDue++; if (isCompletedOn(h.id, ds)) dayDone++; } });
+    const dayPct = dayDue ? Math.round((dayDone / dayDue) * 100) : 0;
+    const hPct = Math.max(4, dayPct);
     const isToday = ds === today;
     const isFuture = ds > today;
     const bg = isFuture ? 'var(--border)' : (isToday ? 'var(--navy-light)' : 'var(--navy)');
-    const val = isFuture ? '—' : dayDone;
+    const val = isFuture ? '—' : `${dayPct}%`;
     weekBars += `<div class="week-bar-col"><div class="week-bar-val">${val}</div><div class="week-bar-fill${isToday?' today':''}" style="height:${isFuture?4:hPct}%;background:${bg}"></div><div class="week-bar-day">${dayLabel(ds)}</div></div>`;
   });
 
