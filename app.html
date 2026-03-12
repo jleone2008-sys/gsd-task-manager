@@ -699,6 +699,7 @@
     .habit-day-dot { width: 32px; height: 32px; }
     .habit-day-dot svg { width: 14px; height: 14px; }
     .habit-card-footer { padding-left: 0; }
+    .habit-today-card .habit-card-footer { padding-left: 32px; }
     .stat-cards-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
     .stat-card { padding: 10px 8px; }
     .stat-card .sc-val { font-size: 20px; }
@@ -1329,8 +1330,17 @@
   .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 4px; animation: slideDown 0.18s ease; cursor: pointer; transition: border-color 0.1s; }
   .habit-card:hover { border-color: var(--border2); }
   .habit-card-top { display: flex; align-items: center; gap: 10px; }
-  .habit-emoji { font-size: 18px; flex-shrink: 0; }
+  .habit-emoji { font-size: 18px; flex-shrink: 0; line-height: 1; }
   .habit-name { font-size: 13.5px; font-weight: 600; flex: 1; }
+
+  /* Circle checkbox for Today view */
+  .habit-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; background: var(--surface); }
+  .habit-check:hover { border-color: var(--check); background: rgba(0,128,96,0.06); }
+  .habit-check svg { display: none; width: 13px; height: 13px; }
+  .habit-check.checked { background: var(--check); border-color: var(--check); }
+  .habit-check.checked svg { display: block; }
+  .habit-today-card { cursor: default; }
+  .habit-today-card:hover { border-color: var(--border); }
   .habit-streak { font-size: 11px; font-weight: 600; color: var(--top3); background: #fffcf5; border: 1px solid #ffefc0; padding: 2px 8px; border-radius: 8px; }
   .habit-streak.dead { color: var(--muted); background: var(--surface2); border-color: var(--border); }
   .habit-score-ring { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
@@ -2876,9 +2886,12 @@ function renderHabitToday(active) {
     const tag = h.tags.includes('biz') ? '<span class="tag tag-biz" style="font-size:10px;padding:1px 6px;border-radius:8px;">Work</span>' :
                 h.tags.includes('personal') ? '<span class="tag tag-personal" style="font-size:10px;padding:1px 6px;border-radius:8px;">Personal</span>' : '';
     const freq = h.frequency === 'daily' ? 'Daily' : h.frequency === 'weekdays' ? 'Weekdays' : 'Custom';
-    remHTML += `<div class="habit-card" onclick="toggleCompletion(${h.id},'${today}')">
-      <div class="habit-card-top"><span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span></div>
-      <div class="habit-card-footer">
+    remHTML += `<div class="habit-card habit-today-card">
+      <div class="habit-card-top">
+        <div class="habit-check" onclick="toggleCompletion(${h.id},'${today}')"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span class="habit-emoji">${h.emoji}</span><span class="habit-name">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
+      </div>
+      <div class="habit-card-footer" style="padding-left:32px;">
         <div class="habit-card-meta">${tag}${tag?'<span class="dot-sep"></span>':''}${freq} · Best: ${best} days</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
@@ -2893,8 +2906,10 @@ function renderHabitToday(active) {
   let doneHTML = '';
   done.forEach(h => {
     const streak = computeStreak(h.id);
-    doneHTML += `<div class="habit-card" style="opacity:0.5" onclick="toggleCompletion(${h.id},'${today}')">
-      <div class="habit-card-top"><span class="habit-emoji">${h.emoji}</span><span class="habit-name" style="text-decoration:line-through">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
+    doneHTML += `<div class="habit-card habit-today-card habit-done" style="opacity:0.5">
+      <div class="habit-card-top">
+        <div class="habit-check checked" onclick="toggleCompletion(${h.id},'${today}')"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span class="habit-emoji">${h.emoji}</span><span class="habit-name" style="text-decoration:line-through">${h.name}</span><span class="habit-streak${streak===0?' dead':''}"> ${streak>0?'🔥 ':''} ${streak>0?streak:'— 0'}</span>
         <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id})" title="Details" style="margin-left:auto"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
       </div>
     </div>`;
