@@ -1680,6 +1680,7 @@
     .mobile-nb-drawer { display: none; background: var(--surface); border-bottom: 1px solid var(--border); padding: 4px 8px 8px; }
     .mobile-nb-drawer.open { display: block; }
     .mobile-nb-drawer .ns-item { padding: 8px 10px; font-size: 13px; }
+    .tb-desktop-only { display: none !important; }
   }
   @media (min-width: 601px) {
     .mobile-note-header { display: none !important; }
@@ -2503,10 +2504,12 @@ function closeDeleteAccountModal() {
 }
 // ── Tool switching ──────────────────────────────────────
 let activeTool = 'tasks';
+let _navFromPop = false; // flag to prevent pushState during popstate handling
 function switchTool(tool) {
   if (tool === activeTool) return;
   if (activeTool === 'tasks' && searchQuery) clearSearch();
   activeTool = tool;
+  if (!_navFromPop) history.pushState({tool, note: null, drill: false}, '');
   // Show/hide tool views
   document.querySelectorAll('[data-tool-view]').forEach(el => {
     el.style.display = el.dataset.toolView === tool ? '' : 'none';
@@ -2528,6 +2531,22 @@ function switchTool(tool) {
 document.addEventListener('click', e => {
   const tab = e.target.closest('.tool-tab, .mobile-nav-btn');
   if (tab && tab.dataset.tool) switchTool(tab.dataset.tool);
+});
+// Set initial history state
+history.replaceState({tool: 'tasks', note: null, drill: false}, '');
+// Handle browser back/forward (swipe gestures on mobile)
+window.addEventListener('popstate', e => {
+  _navFromPop = true;
+  // Close any open overlay first
+  const drillOverlay = document.getElementById('habitDrillOverlay');
+  if (drillOverlay && drillOverlay.classList.contains('open')) { closeDrillIn(); _navFromPop = false; return; }
+  // Close open note on mobile
+  if (activeNoteId && activeTool === 'notes') { deselectNote(); _navFromPop = false; return; }
+  // Restore tool from state
+  const state = e.state || {tool: 'tasks', note: null, drill: false};
+  if (state.tool && state.tool !== activeTool) switchTool(state.tool);
+  if (state.tool === 'notes' && state.note) { activeNoteId = state.note; renderNotes(); }
+  _navFromPop = false;
 });
 // Habit sub-pill switching
 document.addEventListener('click', e => {
@@ -4205,6 +4224,7 @@ function openHabitDrillIn(habitId, tab) {
   document.getElementById('drillName').textContent = h.name;
   switchDrillTab(tab || 'calendar');
   document.getElementById('habitDrillOverlay').classList.add('open');
+  if (!_navFromPop) history.pushState({tool: 'habits', note: null, drill: true}, '');
 }
 
 function closeDrillIn() {
@@ -4821,7 +4841,7 @@ function renderNoteEditor() {
       </div>
     </div>
     <div class="ne-toolbar">
-      <div class="tb-group">
+      <div class="tb-group tb-desktop-only">
         <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         </button>
@@ -4857,7 +4877,7 @@ function renderNoteEditor() {
         <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </button>
-        <button class="tb-btn" onmousedown="noteHighlight(event)" title="Highlight">
+        <button class="tb-btn tb-highlight" onmousedown="noteHighlight(event)" title="Highlight" style="background:#fef08a;border-radius:4px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
       </div>
@@ -4869,7 +4889,7 @@ function renderNoteEditor() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
         </button>
       </div>
-      <div class="tb-group" style="margin-left:auto;border-right:none">
+      <div class="tb-group tb-desktop-only" style="margin-left:auto;border-right:none">
         <button class="tb-btn" onclick="showNoteMenu(event)" title="More options">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </button>
@@ -4969,6 +4989,7 @@ function createNote() {
   };
   notesArr.unshift(note);
   activeNoteId = note.id;
+  if (!_navFromPop) history.pushState({tool: 'notes', note: note.id, drill: false}, '');
   renderNotes();
   saveNoteToDB(note);
   // Focus title input after render
@@ -4980,6 +5001,7 @@ function createNote() {
 
 function selectNote(id) {
   activeNoteId = id;
+  if (!_navFromPop) history.pushState({tool: 'notes', note: id, drill: false}, '');
   renderNotes();
 }
 
@@ -5110,7 +5132,7 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
   setTimeout(() => { inp.focus(); inp.select(); }, 50);
   const doConfirm = () => { const v = inp.value.trim(); overlay.style.display = 'none'; if (v) onConfirm(v); };
   confirmBtn.onclick = doConfirm;
-  inp.onkeydown = e => { if (e.key === 'Enter') doConfirm(); if (e.key === 'Escape') overlay.style.display = 'none'; };
+  inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doConfirm(); } if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); overlay.style.display = 'none'; } };
   overlay.onclick = e => { if (e.target === overlay) overlay.style.display = 'none'; };
 }
 
