@@ -78,8 +78,7 @@
     box-sizing: border-box;
   }
   .header-inner .logo { flex-shrink: 0; }
-  .header-inner .search-wrap { flex-shrink: 0; margin-left: auto; }
-  .header-inner .user-menu { flex-shrink: 0; margin-left: 6px; }
+  .header-inner .user-menu { flex-shrink: 0; margin-left: auto; }
 
   /* Tool Switcher (desktop only) */
   .tool-switcher {
@@ -710,8 +709,8 @@
     .pill { font-size: 11px; padding: 6px 5px; }
     .logo-main { font-size: 20px; }
     .user-menu { flex-shrink: 0; }
-    .search-input { width: 85px; font-size: 12px; }
-    .search-input:focus { width: 115px; }
+    .task-search input { width: 80px; }
+    .task-search input:focus { width: 100px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -726,13 +725,11 @@
     /* Habits mobile */
     .habits-content { padding: 0; }
     /* .habit-sub-pills inherits .pill-bar mobile padding */
-    .today-stats-row { flex-direction: row; gap: 6px; }
-    .today-stats-row > * { min-width: 0; overflow: hidden; }
-    .progress-section { padding: 10px; gap: 8px; flex-wrap: wrap; }
+    .progress-section { padding: 12px 14px; gap: 16px; }
     .progress-ring-wrap { width: 76px; height: 76px; }
     .progress-ring-wrap svg { width: 76px; height: 76px; }
     .progress-ring-label { font-size: 18px; }
-    .progress-stats { gap: 4px 10px; }
+    .progress-stats { gap: 16px; }
     .progress-stat .val { font-size: 18px; }
     .progress-stat .lbl { font-size: 10px; }
     .habit-week-dots { gap: 2px; }
@@ -747,11 +744,6 @@
     .stat-cards-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
     .stat-card { padding: 10px 8px; }
     .stat-card .sc-val { font-size: 20px; }
-    .week-bar-chart { padding: 10px 10px; }
-    .week-bar-title { font-size: 10px; margin-bottom: 8px; }
-    .week-bars { gap: 3px; min-height: 60px; }
-    .week-bar-val { font-size: 9px; }
-    .week-bar-day { font-size: 9px; }
     .heatmap-section { padding: 12px 14px; }
     .heatmap-cell { max-width: 13px; }
     .heatmap-day-labels span { height: 13px; line-height: 13px; font-size: 8px; }
@@ -760,42 +752,15 @@
     .habit-stat-nums { gap: 8px; width: 100%; justify-content: space-around; margin-top: 6px; }
   }
 
-  /* SEARCH */
-  .search-wrap {
-    position: relative;
-    display: flex; align-items: center;
-    flex-shrink: 0;
+  /* TASK SEARCH */
+  .task-search {
+    display: flex; align-items: center; background: var(--surface2); border-radius: 8px;
+    padding: 0 8px; height: 30px; gap: 5px; border: 1px solid transparent; margin-left: auto;
   }
-  .search-input {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 8px;
-    color: #fff;
-    font-family: inherit;
-    font-size: 13px;
-    padding: 5px 10px 5px 30px;
-    width: 130px;
-    outline: none;
-    transition: all 0.2s;
-  }
-  .search-input::placeholder { color: rgba(255,255,255,0.4); }
-  .search-input:focus {
-    background: rgba(255,255,255,0.15);
-    border-color: rgba(255,255,255,0.4);
-    width: 200px;
-  }
-  .search-icon {
-    position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
-    pointer-events: none; color: rgba(255,255,255,0.45);
-  }
-  .search-clear {
-    position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
-    background: none; border: none; cursor: pointer; padding: 0;
-    color: rgba(255,255,255,0.45); display: none; line-height: 1;
-    font-size: 14px;
-  }
-  .search-clear:hover { color: #fff; }
-  .search-wrap.has-query .search-clear { display: block; }
+  .task-search:focus-within { border-color: var(--navy-light); background: var(--surface); }
+  .task-search svg { flex-shrink: 0; color: var(--muted); width: 13px; height: 13px; }
+  .task-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 120px; }
+  .task-search input::placeholder { color: var(--muted); }
   /* highlight matched text in task */
   .search-hl { background: #fde68a; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
   /* no results state */
@@ -804,10 +769,6 @@
     color: var(--muted); font-size: 13px; line-height: 1.8;
   }
   .search-empty strong { display: block; font-size: 15px; color: var(--text2); margin-bottom: 4px; }
-  @media (max-width: 600px) {
-    .search-input { width: 100px; font-size: 12px; }
-    .search-input:focus { width: 130px; }
-  }
   #authScreen {
     position: fixed; inset: 0; z-index: 500;
     background: var(--bg);
@@ -1372,27 +1333,15 @@
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* Today — progress ring */
-  .today-stats-row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .today-stats-row .progress-section { flex: 1; margin-bottom: 0; }
-  .today-stats-row .week-bar-chart { flex: 1; margin-bottom: 0; }
-  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 16px; }
+  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 16px 24px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 28px; }
   .progress-ring-wrap { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
   .progress-ring-wrap svg { transform: rotate(-90deg); }
   .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 22px; font-weight: 700; color: var(--navy); }
   .progress-ring-sub { font-size: 10px; color: var(--muted); font-weight: 400; display: block; text-align: center; }
-  .progress-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; flex: 1; }
+  .progress-stats { display: flex; gap: 28px; }
+  .progress-stat { text-align: center; }
   .progress-stat .val { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
   .progress-stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  /* Today — week bar chart */
-  .week-bar-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 12px 16px; margin-bottom: 8px; display: flex; flex-direction: column; }
-  .week-bar-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-  .week-bars { display: flex; align-items: flex-end; gap: 6px; flex: 1; min-height: 80px; }
-  .week-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
-  .week-bar-fill { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.3s ease; min-height: 2px; }
-  .week-bar-fill.today { box-shadow: 0 0 0 2px rgba(45,95,166,0.2); }
-  .week-bar-day { font-size: 9px; color: var(--muted); font-weight: 500; text-transform: uppercase; }
-  .week-bar-val { font-size: 9px; color: var(--text2); font-weight: 600; }
 
   /* Habit cards */
   .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 11px; margin-bottom: 2px; cursor: pointer; transition: border-color 0.1s; }
@@ -1950,13 +1899,6 @@
         Notes <span class="tool-badge" id="notesBadge">0</span>
       </button>
     </div>
-    <div class="search-wrap" id="searchWrap">
-      <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="search-input" id="searchInput" type="text" placeholder="Search…"
-        oninput="handleSearch(this.value)"
-        onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
-      <button class="search-clear" onclick="clearSearch()" title="Clear search">&#x2715;</button>
-    </div>
     <div class="user-menu" id="userMenu" style="display:none">
       <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()" title="Account"></div>
       <div class="user-dropdown" id="userDropdown">
@@ -2004,6 +1946,10 @@
     <button class="pill biz" onclick="setCatFilter('biz',this)">Work</button>
     <button class="pill personal" onclick="setCatFilter('personal',this)">Personal</button>
     <button class="pill" onclick="setCatFilter('someday',this)">Later</button>
+    <div class="task-search" id="searchWrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Search tasks..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
+    </div>
   </div>
 </div>
 
@@ -2038,7 +1984,7 @@
         <div class="nl-title" id="nlTitle">All Notes <span class="nl-count" id="nlCount">0</span></div>
         <div class="nl-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="notesSearchInput" placeholder="Filter notes...">
+          <input type="text" id="notesSearchInput" placeholder="Search notes...">
         </div>
       </div>
       <div class="nl-scroll" id="nlScroll"></div>
@@ -2557,6 +2503,7 @@ function closeDeleteAccountModal() {
 let activeTool = 'tasks';
 function switchTool(tool) {
   if (tool === activeTool) return;
+  if (activeTool === 'tasks' && searchQuery) clearSearch();
   activeTool = tool;
   // Show/hide tool views
   document.querySelectorAll('[data-tool-view]').forEach(el => {
@@ -3364,36 +3311,9 @@ function renderHabitToday(active) {
   // Best streak across all habits
   const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
 
-  // This week %
-  const weekDates = getWeekDates();
-  let weekDue = 0, weekDone = 0;
-  weekDates.forEach(ds => {
-    active.forEach(h => {
-      if (isHabitDueOnDate(h, ds)) {
-        weekDue++;
-        if (isCompletedOn(h.id, ds)) weekDone++;
-      }
-    });
-  });
-  const weekPct = weekDue ? Math.round((weekDone / weekDue) * 100) : 0;
-
   // Progress ring
   const circ = 2 * Math.PI * 38; // r=38
   const offset = circ * (1 - pct / 100);
-
-  // Week bar chart
-  let weekBars = '';
-  weekDates.forEach((ds) => {
-    let dayDue = 0, dayDone = 0;
-    active.forEach(h => { if (isHabitDueOnDate(h, ds)) { dayDue++; if (isCompletedOn(h.id, ds)) dayDone++; } });
-    const dayPct = dayDue ? Math.round((dayDone / dayDue) * 100) : 0;
-    const hPct = Math.max(4, dayPct);
-    const isToday = ds === today;
-    const isFuture = ds > today;
-    const bg = isFuture ? 'var(--border)' : (isToday ? 'var(--navy-light)' : 'var(--navy)');
-    const val = isFuture ? '—' : `${dayPct}%`;
-    weekBars += `<div class="week-bar-col"><div class="week-bar-val">${val}</div><div class="week-bar-fill${isToday?' today':''}" style="height:${isFuture?4:hPct}%;background:${bg}"></div><div class="week-bar-day">${dayLabel(ds)}</div></div>`;
-  });
 
   // Remaining cards
   let remHTML = '';
@@ -3426,7 +3346,7 @@ function renderHabitToday(active) {
       // Extras-enabled: full opacity, +/- buttons, count badge
       const countBadge = todayCount > 1 ? `<span style="font-size:10px;font-weight:700;color:var(--navy);background:rgba(45,95,166,0.12);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>` : '';
       const progressMeta = periodLabel ? `<span style="color:var(--check);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}` : '';
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="opacity:0.85;border-color:var(--check)">
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:#ecfdf5;border-color:#d1fae5">
         <div class="swipe-complete-bg">✓</div>
         <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
         <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
@@ -3441,12 +3361,12 @@ function renderHabitToday(active) {
         </div>
       </div>`;
     } else {
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="opacity:0.5">
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:#ecfdf5;border-color:#d1fae5">
         <div class="swipe-complete-bg">✓</div>
         <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
         <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
           <div class="habit-card-top">
-            <span class="habit-name" style="text-decoration:line-through">${h.name}</span>
+            <span class="habit-name">${h.name}</span>
           </div>
           <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
         </div>
@@ -3465,26 +3385,19 @@ function renderHabitToday(active) {
   }
 
   el.innerHTML = `
-    <div class="today-stats-row">
-      <div class="progress-section">
-        <div class="progress-ring-wrap">
-          <svg width="90" height="90" viewBox="0 0 90 90">
-            <circle cx="45" cy="45" r="38" fill="none" stroke="#e2e4e8" stroke-width="7"/>
-            <circle cx="45" cy="45" r="38" fill="none" stroke="#2d5fa6" stroke-width="7"
-              stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
-          </svg>
-          <div class="progress-ring-label">${pct}%<span class="progress-ring-sub">today</span></div>
-        </div>
-        <div class="progress-stats">
-          <div class="progress-stat"><div class="val" style="color:var(--check)">${done.length}</div><div class="lbl">Done</div></div>
-          <div class="progress-stat"><div class="val" style="color:var(--muted)">${remaining.length}</div><div class="lbl">Left</div></div>
-          <div class="progress-stat"><div class="val" style="color:var(--top3)">${bestStreak}</div><div class="lbl">Best streak</div></div>
-          <div class="progress-stat"><div class="val" style="color:var(--navy)">${weekPct}%</div><div class="lbl">This week</div></div>
-        </div>
+    <div class="progress-section">
+      <div class="progress-ring-wrap">
+        <svg width="90" height="90" viewBox="0 0 90 90">
+          <circle cx="45" cy="45" r="38" fill="none" stroke="#e2e4e8" stroke-width="7"/>
+          <circle cx="45" cy="45" r="38" fill="none" stroke="#2d5fa6" stroke-width="7"
+            stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
+        </svg>
+        <div class="progress-ring-label">${pct}%<span class="progress-ring-sub">today</span></div>
       </div>
-      <div class="week-bar-chart">
-        <div class="week-bar-title">Last 7 Days</div>
-        <div class="week-bars">${weekBars}</div>
+      <div class="progress-stats">
+        <div class="progress-stat"><div class="val" style="color:var(--check)">${done.length}</div><div class="lbl">Done</div></div>
+        <div class="progress-stat"><div class="val" style="color:var(--muted)">${remaining.length}</div><div class="lbl">Left</div></div>
+        <div class="progress-stat"><div class="val" style="color:var(--top3)">${bestStreak}</div><div class="lbl">Best streak</div></div>
       </div>
     </div>
     ${remaining.length ? `<div class="section-label">⏳ REMAINING TODAY</div>${remHTML}` : ''}
@@ -3944,13 +3857,12 @@ function tHTMLsearch(t, query) {
 
 function handleSearch(val) {
   searchQuery = val.trim();
-  document.getElementById('searchWrap').classList.toggle('has-query', !!searchQuery);
   render();
 }
 function clearSearch() {
   searchQuery = '';
-  document.getElementById('searchInput').value = '';
-  document.getElementById('searchWrap').classList.remove('has-query');
+  const si = document.getElementById('searchInput');
+  if (si) si.value = '';
   render();
 }
 
@@ -6468,8 +6380,8 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // / → focus search
-  if (e.key === '/') {
+  // / → focus task search (only when on tasks tab)
+  if (e.key === '/' && activeTool === 'tasks') {
     e.preventDefault();
     const si = document.getElementById('searchInput');
     if (si) { si.focus(); si.select(); }
