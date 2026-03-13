@@ -4825,6 +4825,13 @@ function renderNoteEditor() {
 
   const starFill = note.starred ? 'currentColor' : 'none';
   const nbOptions = notebooksArr.map(nb => `<option value="${nb.id}"${note.notebookId === nb.id ? ' selected' : ''}>${escHTML(nb.name)}</option>`).join('') + '<option value="__new__">+ New notebook</option>';
+  const noteNb = note.notebookId ? notebooksArr.find(nb => nb.id === note.notebookId) : null;
+  let noteNbTag = '';
+  if (noteNb) {
+    const tc = noteNb.color === 'var(--biz)' ? 'tag-biz' : noteNb.color === 'var(--personal)' ? 'tag-personal' : '';
+    const ts = tc ? '' : ` style="background:${noteNb.color}22;color:${noteNb.color}"`;
+    noteNbTag = `<span class="nl-tag ${tc}"${ts}>${escHTML(noteNb.name)}</span><span class="dot-sep"></span>`;
+  }
 
   el.innerHTML = `
     <div class="mobile-note-header">
@@ -4903,6 +4910,7 @@ function renderNoteEditor() {
         <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" oninput="onNoteTitleChange(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="ne-meta">
           <div class="ne-meta-item">
+            ${noteNbTag}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             ${formatNoteDate(note.updatedAt)}
           </div>
