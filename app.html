@@ -5032,16 +5032,26 @@ async function loadNotes() {
 
 /* ══════ NOTEBOOKS DATA ══════ */
 function rowToNotebook(r) {
-  return { id: r.client_id, name: r.name || '', color: r.color || '#2d5fa6', order: r.order || 0 };
+  return { id: r.client_id, name: r.name || '', color: r.color || '#2d5fa6', order: r.order || 0, icon: r.icon || '' };
 }
 function notebookToRow(nb) {
-  return { user_id: currentUser.id, client_id: nb.id, name: nb.name, color: nb.color, "order": nb.order, updated_at: new Date().toISOString() };
+  return { user_id: currentUser.id, client_id: nb.id, name: nb.name, color: nb.color, "order": nb.order, icon: nb.icon || '', updated_at: new Date().toISOString() };
 }
-async function saveNotebookToDB(nb) {
+async function saveNotebookToDB(nb, retries = 2) {
   setStatus('syncing');
+  const row = notebookToRow(nb);
   const { data, error } = await db.from('notebooks')
-    .upsert(notebookToRow(nb), { onConflict: 'user_id,client_id' })
+    .upsert(row, { onConflict: 'user_id,client_id' })
     .select('id, client_id');
+  if (error && error.message && error.message.includes('icon') && retries > 0) {
+    // icon column may not exist yet — retry without it
+    delete row.icon;
+    const r2 = await db.from('notebooks').upsert(row, { onConflict: 'user_id,client_id' }).select('id, client_id');
+    setStatus(r2.error ? 'error' : 'saved');
+    if (r2.error) { console.error('saveNotebook:', r2.error.message); return; }
+    if (r2.data?.[0]) notebookRowIdMap.set(r2.data[0].id, r2.data[0].client_id);
+    return;
+  }
   setStatus(error ? 'error' : 'saved');
   if (error) { console.error('saveNotebook:', error.message); return; }
   if (data?.[0]) notebookRowIdMap.set(data[0].id, data[0].client_id);
@@ -5141,8 +5151,9 @@ function renderNotesSidebar() {
   notebooksArr.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(nb => {
     const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
     const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
+    const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
     html += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
-      <div class="nb-dot" style="background:${nb.color}"></div>
+      ${nbIcon}
       <span>${escHTML(nb.name || 'Untitled')}</span><span class="cnt">${nbCount}</span>
       <button class="nb-edit-btn" onclick="event.stopPropagation();showNotebookMenu(event,${nb.id})" title="Edit notebook">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -5225,8 +5236,9 @@ function renderNotesSidebar() {
     notebooksArr.forEach(nb => {
       const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
       const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
+      const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
       drawerHtml += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}');document.getElementById('mobileNbDrawer').classList.remove('open')">
-        <div class="nb-dot" style="background:${nb.color}"></div>
+        ${nbIcon}
         ${escHTML(nb.name || 'Untitled')} <span class="cnt">${nbCount}</span>
       </div>`;
     });
@@ -5392,8 +5404,11 @@ function renderNoteEditor() {
         <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="showNoteMenu(event)" title="More">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:#d44">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button class="mobile-note-action" onclick="toggleNoteStar()" title="Star">
+          <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2" style="color:var(--top3)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>
     </div>
@@ -5446,11 +5461,7 @@ function renderNoteEditor() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
         </button>
       </div>
-      <div class="tb-group tb-desktop-only" style="margin-left:auto;border-right:none">
-        <button class="tb-btn" onclick="showNoteMenu(event)" title="More options">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-        </button>
-      </div>
+      <div class="tb-group tb-desktop-only" style="margin-left:auto;border-right:none"></div>
     </div>
     <div class="ne-body">
       <div class="ne-page">
@@ -5461,11 +5472,17 @@ function renderNoteEditor() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             ${formatNoteDate(note.updatedAt)}
           </div>
-          <div class="ne-meta-item" style="margin-left:auto">
+          <div class="ne-meta-item" style="margin-left:auto;gap:8px">
             <select onchange="handleNoteNbChange(this, ${note.id})" style="border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--text2);cursor:pointer">
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
+            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:#d44;padding:3px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            <button class="note-action-btn${note.starred ? ' starred' : ''}" id="noteStarBtn" onclick="toggleNoteStar()" title="Star" style="padding:3px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
           </div>
         </div>
         <div class="ne-text" id="noteContentEditable" contenteditable="true" data-placeholder="Start writing..." oninput="onNoteContentChange()">${note.content}</div>
@@ -5594,15 +5611,23 @@ function toggleNoteStar() {
   if (!note) return;
   note.starred = !note.starred;
   note.updatedAt = new Date().toISOString();
-  // Update star buttons without re-rendering editor
+  // Update all star buttons without re-rendering editor
   const fill = note.starred ? 'currentColor' : 'none';
-  document.querySelectorAll('.mobile-note-action svg polygon, .tb-btn svg polygon').forEach(p => {
-    if (p.closest('[title="Star"]') || p.closest('button[onclick*="toggleNoteStar"]')) p.setAttribute('fill', fill);
-  });
+  document.querySelectorAll('button[onclick*="toggleNoteStar"] svg polygon').forEach(p => p.setAttribute('fill', fill));
+  const starBtn = document.getElementById('noteStarBtn');
+  if (starBtn) starBtn.classList.toggle('starred', note.starred);
   renderNotesSidebar(); renderNoteList();
   saveNoteToDB(note);
 }
 
+function confirmTrashNote() {
+  const note = notesArr.find(n => n.id === activeNoteId);
+  if (!note) return;
+  const title = note.title || 'Untitled';
+  showInlineConfirm(`Move "${title}" to Trash?`, 'You can restore it from Trash later.', () => {
+    trashNote();
+  });
+}
 function trashNote() {
   const note = notesArr.find(n => n.id === activeNoteId);
   if (!note) return;
@@ -5645,7 +5670,7 @@ function showNotebookMenu(e, id) {
   menu.innerHTML = `
     <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();renameNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--text)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Rename
+      Edit
     </button>
     <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:#d44">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -5695,12 +5720,12 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
 }
 
 function createNotebook() {
-  showInlinePrompt('New notebook', '', name => {
-    const colors = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c'];
+  showNotebookPrompt('New notebook', '', '', null, (name, icon, color) => {
     const nb = {
       id: Date.now(),
       name: name,
-      color: colors[notebooksArr.length % colors.length],
+      icon: icon || '',
+      color: color,
       order: notebooksArr.length,
     };
     notebooksArr.push(nb);
@@ -5713,11 +5738,68 @@ function createNotebook() {
 function renameNotebook(id) {
   const nb = notebooksArr.find(n => n.id === id);
   if (!nb) return;
-  showInlinePrompt('Rename notebook', nb.name, name => {
+  showNotebookPrompt('Edit notebook', nb.name, nb.icon || '', nb.color, (name, icon, color) => {
     nb.name = name;
+    nb.icon = icon || '';
+    nb.color = color;
     renderNotes();
     saveNotebookToDB(nb);
   });
+}
+
+function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onConfirm) {
+  const NB_COLORS = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#607d8b'];
+  const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻'];
+  const selectedColor = defaultColor || NB_COLORS[notebooksArr.length % NB_COLORS.length];
+  let overlay = document.getElementById('nbPromptOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'nbPromptOverlay';
+    Object.assign(overlay.style, {position:'fixed',inset:'0',background:'rgba(20,20,60,0.35)',backdropFilter:'blur(3px)',zIndex:'500',display:'flex',alignItems:'center',justifyContent:'center'});
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px 24px;width:90%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.15);max-height:80vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:700;margin-bottom:14px">${title}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="emoji-pick-btn" id="nbEmojiBtn" title="Tap to pick icon">${defaultIcon || '📓'}</button>
+      <div style="flex:1">
+        <input id="nbPromptInput" type="text" value="${escAttr(defaultName || '')}" placeholder="Notebook name..." style="width:100%;box-sizing:border-box;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
+      </div>
+    </div>
+    <div class="emoji-grid" id="nbEmojiGrid" style="display:none">
+      ${NB_EMOJIS.map(e => `<button onclick="document.getElementById('nbEmojiBtn').textContent='${e}';document.getElementById('nbEmojiGrid').style.display='none'">${e}</button>`).join('')}
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:500">Color</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="nbColorPicker">
+        ${NB_COLORS.map(c => `<button onclick="document.querySelectorAll('#nbColorPicker button').forEach(b=>b.style.outline='none');this.style.outline='2px solid var(--text)';this.dataset.selected='true'" data-color="${c}" style="width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;background:${c}${c === selectedColor ? ';outline:2px solid var(--text)' : ''}" ${c === selectedColor ? 'data-selected="true"' : ''}></button>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button onclick="document.getElementById('nbPromptOverlay').style.display='none'" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
+      <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+    </div>
+  </div>`;
+  const emojiBtn = document.getElementById('nbEmojiBtn');
+  emojiBtn.onclick = () => {
+    const grid = document.getElementById('nbEmojiGrid');
+    grid.style.display = grid.style.display === 'grid' ? 'none' : 'grid';
+  };
+  const inp = document.getElementById('nbPromptInput');
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  const doConfirm = () => {
+    const name = inp.value.trim();
+    if (!name) return;
+    overlay.style.display = 'none';
+    const icon = emojiBtn.textContent.trim();
+    const selColorBtn = document.querySelector('#nbColorPicker button[data-selected="true"]');
+    const color = selColorBtn ? selColorBtn.dataset.color : selectedColor;
+    onConfirm(name, icon, color);
+  };
+  document.getElementById('nbPromptConfirm').onclick = doConfirm;
+  inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doConfirm(); } if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); overlay.style.display = 'none'; } };
+  overlay.onclick = e => { if (e.target === overlay) overlay.style.display = 'none'; };
 }
 
 function deleteNotebook(id) {
