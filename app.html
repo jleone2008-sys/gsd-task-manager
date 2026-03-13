@@ -2008,7 +2008,7 @@
 <div class="error-toast" id="errorToast">
   <span class="err-dot red" id="errDot"></span>
   <span class="err-msg" id="errMsg">You're offline — changes saved locally</span>
-  <button class="err-retry" id="errRetry" style="display:none" onclick="location.reload()">Retry now</button>
+  <button class="err-retry" id="errRetry" style="display:none" onclick="retrySyncAll()">Retry now</button>
   <button class="err-dismiss" onclick="hideToast()">✕</button>
 </div>
 
@@ -2732,14 +2732,26 @@ function taskToRow(t) {
   };
 }
 
-async function saveTask(t) {
+async function saveTask(t, retries = 2) {
   setStatus('syncing');
   const { data, error } = await db.from('tasks')
     .upsert(taskToRow(t), { onConflict: 'user_id,client_id' })
     .select('id, client_id');
+  if (error && retries > 0) {
+    await new Promise(r => setTimeout(r, 1500));
+    return saveTask(t, retries - 1);
+  }
   setStatus(error ? 'error' : 'saved');
   if (error) { console.error('saveTask:', error.message); return; }
   if (data?.[0]) rowIdMap.set(data[0].id, data[0].client_id);
+}
+
+async function retrySyncAll() {
+  hideToast();
+  try {
+    await saveAllHabitsToDB();
+    for (const n of notesArr) await saveNoteToDB(n);
+  } catch(e) { console.error('retrySyncAll:', e); setStatus('error'); }
 }
 
 async function deleteTask(id) {
@@ -2863,11 +2875,24 @@ function rowToCompletion(r) {
   return { id: r.id, habitId: r.habit_id, completedDate: r.completed_date };
 }
 
-async function saveHabitToDB(h) {
+async function saveHabitToDB(h, retries = 2) {
   setStatus('syncing');
-  const { data, error } = await db.from('habits')
-    .upsert(habitToRow(h), { onConflict: 'user_id,client_id' })
+  const row = habitToRow(h);
+  let { data, error } = await db.from('habits')
+    .upsert(row, { onConflict: 'user_id,client_id' })
     .select('id, client_id');
+  // If allow_extras column doesn't exist, retry without it
+  if (error && error.message && error.message.includes('allow_extras')) {
+    delete row.allow_extras;
+    ({ data, error } = await db.from('habits')
+      .upsert(row, { onConflict: 'user_id,client_id' })
+      .select('id, client_id'));
+  }
+  // Generic retry on transient errors
+  if (error && retries > 0) {
+    await new Promise(r => setTimeout(r, 1500));
+    return saveHabitToDB(h, retries - 1);
+  }
   setStatus(error ? 'error' : 'saved');
   if (error) { console.error('saveHabit:', error.message); return; }
   if (data?.[0]) habitRowIdMap.set(data[0].id, data[0].client_id);
@@ -4467,11 +4492,15 @@ function noteToRow(n) {
   };
 }
 
-async function saveNoteToDB(n) {
+async function saveNoteToDB(n, retries = 2) {
   setStatus('syncing');
   const { data, error } = await db.from('notes')
     .upsert(noteToRow(n), { onConflict: 'user_id,client_id' })
     .select('id, client_id');
+  if (error && retries > 0) {
+    await new Promise(r => setTimeout(r, 1500));
+    return saveNoteToDB(n, retries - 1);
+  }
   setStatus(error ? 'error' : 'saved');
   if (error) { console.error('saveNote:', error.message); return; }
   if (data?.[0]) noteRowIdMap.set(data[0].id, data[0].client_id);
