@@ -1632,6 +1632,7 @@
     color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
   .tb-btn:hover { background: var(--surface2); }
+  .tb-btn.tb-active { background: var(--navy); color: #fff; }
   .tb-btn svg { width: 15px; height: 15px; }
   .tb-select { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-family: inherit; font-size: 11px; cursor: pointer; outline: none; }
   .ne-body { flex: 1; overflow-y: auto; padding: 16px 20px 60px; }
@@ -1664,10 +1665,11 @@
   .ne-text li { margin-bottom: 3px; }
   .ne-text blockquote { border-left: 3px solid var(--navy); padding: 3px 0 3px 14px; margin: 10px 0; color: var(--text2); font-style: italic; }
   .ne-text a { color: var(--navy); text-decoration: underline; cursor: pointer; }
-  .ne-text .note-checklist-item { display: flex; align-items: flex-start; gap: 6px; padding: 2px 0; }
-  .ne-text .note-checklist-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--navy); cursor: pointer; }
+  .ne-text .note-checklist-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; margin: 2px 0; }
+  .ne-text .note-checklist-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; border-radius: 3px; }
+  .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
-  .notes-editor-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; min-height: 0; padding-bottom: 60px; }
+  .notes-editor-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; height: 100%; }
 
   .nl-item.dragging { opacity: 0.4; }
   .nl-item.drag-target { border-color: var(--navy); background: rgba(45,95,166,0.06); }
@@ -1679,7 +1681,7 @@
   @media (max-width: 600px) {
     .notes-layout { flex-direction: column; height: auto; min-height: calc(100vh - 160px); }
     .notes-sidebar { display: none; }
-    .notes-list { width: 100%; border-right: none; max-height: none; background: var(--bg); }
+    .notes-list { width: 100%; border-right: none; max-height: none; background: var(--bg); padding-bottom: 100px; }
     .nl-header { padding: 12px 16px 10px; background: var(--bg); border-bottom: none; }
     .nl-title { font-size: 16px; }
     .nl-search { height: 34px; }
@@ -4547,7 +4549,16 @@ async function deleteNoteFromDB(id) {
 let _noteRenderTimer = null;
 function debouncedRenderNotes() {
   if (_noteRenderTimer) clearTimeout(_noteRenderTimer);
-  _noteRenderTimer = setTimeout(() => { _noteRenderTimer = null; renderNotes(); }, 300);
+  _noteRenderTimer = setTimeout(() => {
+    _noteRenderTimer = null;
+    // If user is actively editing, only update sidebar/list, not the editor
+    const ce = document.getElementById('noteContentEditable');
+    if (ce && document.activeElement === ce) {
+      renderNotesSidebar(); renderNoteList(); updateNotesBadge(); updateNotesStatsBar();
+    } else {
+      renderNotes();
+    }
+  }, 300);
 }
 
 function subscribeToNoteChanges() {
@@ -4876,24 +4887,34 @@ function renderNoteEditor() {
   editorEl?.classList.add('mobile-open');
 
   const starFill = note.starred ? 'currentColor' : 'none';
-  const nbOptions = notebooksArr.map(nb => `<option value="${nb.id}"${note.notebookId === nb.id ? ' selected' : ''}>${escHTML(nb.name)}</option>`).join('');
+  const nbOptions = notebooksArr.map(nb => `<option value="${nb.id}"${note.notebookId === nb.id ? ' selected' : ''}>${escHTML(nb.name)}</option>`).join('') + '<option value="__new__">+ New notebook</option>';
 
   el.innerHTML = `
     <div class="mobile-note-header">
       <button class="mobile-note-back" onclick="deselectNote()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Notes
       </button>
       <div class="mobile-note-actions">
-        <button class="mobile-note-action" onclick="toggleNoteStar()" title="Star">
-          <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="trashNote()" title="Delete">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+        </button>
+        <button class="mobile-note-action" onclick="showNoteMenu(event)" title="More">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>
       </div>
     </div>
     <div class="ne-toolbar">
+      <div class="tb-group">
+        <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
+        <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+        </button>
+      </div>
       <div class="tb-group">
         <select class="tb-select" onchange="noteHeading(this.value)">
           <option value="p">Normal</option>
@@ -4913,38 +4934,41 @@ function renderNoteEditor() {
         </button>
       </div>
       <div class="tb-group">
+        <button class="tb-btn" onmousedown="noteInsertChecklist(event)" title="Checklist">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M5 8l1.5 1.5L9 6"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
+        </button>
         <button class="tb-btn" onmousedown="noteCmd(event,'insertUnorderedList')" title="Bullet list">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="noteInsertChecklist(event)" title="Checklist">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="17" y1="14" x2="22" y2="14"/><line x1="17" y1="20" x2="22" y2="20"/><rect x="2" y="14" width="6" height="6" rx="1"/></svg>
         </button>
         <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </button>
-      </div>
-      <div class="tb-group" style="margin-left:auto;border-right:none">
         <button class="tb-btn" onmousedown="noteHighlight(event)" title="Highlight">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
-        <button class="tb-btn" onclick="toggleNoteStar()" title="Star">
-          <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div class="tb-group" style="margin-left:auto;border-right:none">
+        <button class="tb-btn" onmousedown="noteCmd(event,'indent')" title="Indent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="3 12 6 14 3 16"/></svg>
         </button>
-        <button class="tb-btn" onclick="trashNote()" title="Delete">
+        <button class="tb-btn" onmousedown="noteCmd(event,'outdent')" title="Outdent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
+        </button>
+        <button class="tb-btn" onclick="showNoteMenu(event)" title="More options">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
         </button>
       </div>
     </div>
     <div class="ne-body">
       <div class="ne-page">
-        <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" oninput="onNoteTitleChange(this.value)">
+        <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" oninput="onNoteTitleChange(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="ne-meta">
           <div class="ne-meta-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             ${formatNoteDate(note.updatedAt)}
           </div>
-          <div class="ne-meta-item">
-            <select onchange="moveNoteToNotebook(${note.id}, this.value ? parseInt(this.value) : null)" style="border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--text2);cursor:pointer">
+          <div class="ne-meta-item" style="margin-left:auto">
+            <select onchange="handleNoteNbChange(this, ${note.id})" style="border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--text2);cursor:pointer">
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
@@ -4959,7 +4983,10 @@ function noteHeading(tag) {
   const ce = document.getElementById('noteContentEditable');
   if (!ce) return;
   ce.focus();
-  document.execCommand('formatBlock', false, tag);
+  // Normalize tag for formatBlock
+  const blockTag = tag === 'p' ? 'p' : tag;
+  document.execCommand('formatBlock', false, '<' + blockTag + '>');
+  onNoteContentChange();
 }
 
 function updateNotesBadge() {
@@ -5024,7 +5051,7 @@ function onNoteContentChange() {
   note.content = el.innerHTML;
   note.updatedAt = new Date().toISOString();
   if (_noteSaveTimer) clearTimeout(_noteSaveTimer);
-  _noteSaveTimer = setTimeout(() => { saveNoteToDB(note); renderNoteList(); }, 500);
+  _noteSaveTimer = setTimeout(() => { saveNoteToDB(note); renderNoteList(); updateNoteToolbarState(); }, 1000);
 }
 
 function toggleNoteStar() {
@@ -5032,7 +5059,12 @@ function toggleNoteStar() {
   if (!note) return;
   note.starred = !note.starred;
   note.updatedAt = new Date().toISOString();
-  renderNotes();
+  // Update star buttons without re-rendering editor
+  const fill = note.starred ? 'currentColor' : 'none';
+  document.querySelectorAll('.mobile-note-action svg polygon, .tb-btn svg polygon').forEach(p => {
+    if (p.closest('[title="Star"]') || p.closest('button[onclick*="toggleNoteStar"]')) p.setAttribute('fill', fill);
+  });
+  renderNotesSidebar(); renderNoteList();
   saveNoteToDB(note);
 }
 
@@ -5185,6 +5217,23 @@ function showInlineConfirm(title, message, onConfirm) {
   document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
 }
 
+function handleNoteNbChange(selectEl, noteId) {
+  if (selectEl.value === '__new__') {
+    selectEl.value = ''; // reset dropdown
+    showInlinePrompt('New notebook', '', name => {
+      if (!name) return;
+      const colors = ['#2d5fa6','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#be185d'];
+      const nb = { id: Date.now(), name, color: colors[notebooksArr.length % colors.length], order: notebooksArr.length };
+      notebooksArr.push(nb);
+      moveNoteToNotebook(noteId, nb.id);
+      renderNotes();
+      saveNotebookToDB(nb);
+    });
+  } else {
+    moveNoteToNotebook(noteId, selectEl.value ? parseInt(selectEl.value) : null);
+  }
+}
+
 function moveNoteToNotebook(noteId, nbId) {
   const note = notesArr.find(n => n.id === noteId);
   if (!note) return;
@@ -5243,6 +5292,7 @@ function noteCmd(e, cmd) {
   e.preventDefault();
   document.getElementById('noteContentEditable')?.focus();
   document.execCommand(cmd, false, null);
+  setTimeout(updateNoteToolbarState, 10);
 }
 function noteInsertChecklist(e) {
   e.preventDefault();
@@ -5262,20 +5312,83 @@ function noteFontSize(size) {
 }
 function noteInsertLink(e) {
   e.preventDefault();
-  const url = prompt('Enter URL:');
-  if (!url) return;
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand('createLink', false, url);
-  // Make links open in new tab
-  setTimeout(() => {
-    document.querySelectorAll('#noteContentEditable a').forEach(a => {
-      a.setAttribute('target', '_blank');
-      a.setAttribute('rel', 'noopener');
-    });
-  }, 50);
+  // Save selection before opening modal
+  const sel = window.getSelection();
+  const range = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+  showInlinePrompt('Insert link', 'https://', url => {
+    if (!url) return;
+    const editor = document.getElementById('noteContentEditable');
+    if (!editor) return;
+    editor.focus();
+    if (range) { sel.removeAllRanges(); sel.addRange(range); }
+    document.execCommand('createLink', false, url);
+    setTimeout(() => {
+      document.querySelectorAll('#noteContentEditable a').forEach(a => {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener');
+      });
+    }, 50);
+  });
 }
 
-// Tab indent/outdent in note editor
+function showNoteMenu(e) {
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.nb-context-menu').forEach(m => m.remove());
+  const menu = document.createElement('div');
+  menu.className = 'nb-context-menu';
+  Object.assign(menu.style, {
+    position:'fixed', zIndex:'450', background:'var(--surface)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'4px', boxShadow:'0 4px 16px rgba(0,0,0,0.12)',
+    minWidth:'150px', animation:'fadeUp 0.15s ease both'
+  });
+  const note = notesArr.find(n => n.id === activeNoteId);
+  const starLabel = note?.starred ? 'Unstar' : 'Star';
+  menu.innerHTML = `
+    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();toggleNoteStar()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="${note?.starred?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      ${starLabel}
+    </button>
+    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();trashNote()" style="color:#d44">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Move to Trash
+    </button>`;
+  menu.querySelectorAll('.nb-menu-btn').forEach(b => {
+    Object.assign(b.style, {display:'flex',alignItems:'center',gap:'8px',width:'100%',padding:'8px 12px',border:'none',background:'none',fontFamily:'inherit',fontSize:'12px',cursor:'pointer',borderRadius:'7px',color:b.style.color||'var(--text)'});
+    b.addEventListener('mouseenter', () => b.style.background = 'var(--surface2)');
+    b.addEventListener('mouseleave', () => b.style.background = 'none');
+  });
+  document.body.appendChild(menu);
+  const x = Math.min(e.clientX || (window.innerWidth - 160), window.innerWidth - 170);
+  const y = Math.min(e.clientY || 60, window.innerHeight - 100);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  setTimeout(() => {
+    const close = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 10);
+}
+
+// Toolbar active state tracking
+function updateNoteToolbarState() {
+  const btns = document.querySelectorAll('.ne-toolbar .tb-btn');
+  btns.forEach(btn => {
+    const title = btn.getAttribute('title');
+    let active = false;
+    if (title === 'Bold') active = document.queryCommandState('bold');
+    else if (title === 'Italic') active = document.queryCommandState('italic');
+    else if (title === 'Underline') active = document.queryCommandState('underline');
+    btn.classList.toggle('tb-active', active);
+  });
+  // Update heading dropdown
+  const sel = document.querySelector('.ne-toolbar .tb-select');
+  if (sel) {
+    const block = document.queryCommandValue('formatBlock');
+    if (block === 'h1') sel.value = 'h1';
+    else if (block === 'h2') sel.value = 'h2';
+    else sel.value = 'p';
+  }
+}
+
+// Tab indent/outdent in note editor + Enter to break out of indent
 document.addEventListener('keydown', e => {
   const editor = document.getElementById('noteContentEditable');
   if (!editor || !editor.contains(e.target)) return;
@@ -5283,6 +5396,15 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null);
   }
+  // Ctrl+Z / Ctrl+Y for undo/redo
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); document.execCommand('undo'); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); document.execCommand('redo'); }
+});
+
+// Track selection changes for toolbar state
+document.addEventListener('selectionchange', () => {
+  const editor = document.getElementById('noteContentEditable');
+  if (editor && editor.contains(document.activeElement)) updateNoteToolbarState();
 });
 
 // Helper functions
@@ -5904,12 +6026,13 @@ document.getElementById('backupModal').addEventListener('click', function(e) {
 function exportJSON() {
   if (!tasks.length && !habitsArr.length && !notesArr.length) { alert('No data to export.'); return; }
   const data = {
-    version: 3,
+    version: 4,
     exported: new Date().toISOString(),
     tasks: tasks,
     habits: habitsArr,
     habitCompletions: habitCompletions,
-    notes: notesArr
+    notes: notesArr,
+    notebooks: notebooksArr
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -5930,11 +6053,13 @@ function restoreJSON(input) {
       const restoredHabits = data.habits || [];
       const restoredCompletions = data.habitCompletions || [];
       const restoredNotes = data.notes || [];
+      const restoredNotebooks = data.notebooks || [];
       if (!restoredTasks && !restoredHabits.length && !restoredNotes.length) throw new Error('Invalid format');
       const parts = [];
       if (restoredTasks && restoredTasks.length) parts.push(`${restoredTasks.length} tasks`);
       if (restoredHabits.length) parts.push(`${restoredHabits.length} habits`);
       if (restoredNotes.length) parts.push(`${restoredNotes.length} notes`);
+      if (restoredNotebooks.length) parts.push(`${restoredNotebooks.length} notebooks`);
       showConfirm({
         icon: '⚠️',
         title: 'Replace all data?',
@@ -5945,6 +6070,7 @@ function restoreJSON(input) {
           if (restoredTasks) { tasks = restoredTasks; save(); render(); }
           if (restoredHabits.length) { habitsArr = restoredHabits; habitCompletions = restoredCompletions; renderHabits(); saveAllHabitsToDB(); }
           if (restoredNotes.length) { notesArr = restoredNotes; renderNotes(); notesArr.forEach(n => saveNoteToDB(n)); }
+          if (restoredNotebooks.length) { notebooksArr = restoredNotebooks; renderNotes(); restoredNotebooks.forEach(nb => saveNotebookToDB(nb)); }
           closeBackupModal();
           showUndoToast(`Restored ${parts.join(' + ')} from backup`);
         }
@@ -5981,7 +6107,7 @@ async function autoBackup() {
   await db.from('backups').upsert({
     user_id:     currentUser.id,
     backup_date: today,
-    snapshot:    { tasks: tasks, habits: habitsArr, habitCompletions: habitCompletions, notes: notesArr, savedAt: new Date().toISOString() },
+    snapshot:    { tasks: tasks, habits: habitsArr, habitCompletions: habitCompletions, notes: notesArr, notebooks: notebooksArr, savedAt: new Date().toISOString() },
     task_count:  tasks.length,
   }, { onConflict: 'user_id,backup_date' });
 
@@ -6030,6 +6156,7 @@ async function restoreFromDate(date) {
       if (snap.tasks) { tasks = snap.tasks; await save(); render(); }
       if (snap.habits) { habitsArr = snap.habits; habitCompletions = snap.habitCompletions || []; renderHabits(); saveAllHabitsToDB(); }
       if (snap.notes) { notesArr = snap.notes; renderNotes(); snap.notes.forEach(n => saveNoteToDB(n)); }
+      if (snap.notebooks) { notebooksArr = snap.notebooks; renderNotes(); snap.notebooks.forEach(nb => saveNotebookToDB(nb)); }
       closeBackupModal();
       showUndoToast(`Restored ${parts.join(' + ')} from ${date}`);
     }
