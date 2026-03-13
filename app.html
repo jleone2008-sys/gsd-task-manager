@@ -1514,7 +1514,7 @@
   }
 
   /* ══════ NOTES ══════ */
-  .notes-layout { display: flex; height: calc(100vh - 86px); }
+  .notes-layout { display: flex; height: calc(100vh - 86px); max-width: 1400px; margin: 0 auto; }
   .notes-sidebar {
     width: 240px; background: var(--surface); border-right: 1px solid var(--border);
     display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
@@ -1628,6 +1628,30 @@
   .note-action-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: var(--muted); transition: color 0.1s; }
   .note-action-btn:hover { color: var(--text); background: var(--surface2); }
   .note-action-btn.starred { color: var(--top3); }
+
+  /* Bulk select mode */
+  .nl-bulk-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .nl-bulk-bar button { border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-family: inherit; cursor: pointer; background: var(--surface); color: var(--text2); }
+  .nl-bulk-bar button:hover { background: var(--surface2); }
+  .nl-bulk-bar button.danger { color: #d44; border-color: #d4444433; }
+  .nl-bulk-bar button.danger:hover { background: #d4441a; color: #fff; }
+  .nl-bulk-bar .bulk-count { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .nl-item.select-mode { display: flex; align-items: flex-start; gap: 8px; }
+  .nl-item .nl-checkbox { display: none; width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
+  .nl-item.select-mode .nl-checkbox { display: block; }
+
+  /* Note context menu */
+  .note-ctx-menu { position: fixed; z-index: 500; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 170px; animation: fadeUp 0.12s ease both; }
+  .note-ctx-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: none; font-family: inherit; font-size: 12px; cursor: pointer; border-radius: 7px; color: var(--text); }
+  .note-ctx-menu button:hover { background: var(--surface2); }
+  .note-ctx-menu button.danger { color: #d44; }
+  .note-ctx-menu .ctx-divider { height: 1px; background: var(--border); margin: 3px 6px; }
+  .note-ctx-menu .ctx-submenu { position: relative; }
+  .note-ctx-menu .ctx-sub-items { display: none; position: absolute; left: 100%; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 140px; }
+  .note-ctx-menu .ctx-submenu:hover .ctx-sub-items { display: block; }
+
+  /* Sidebar drop targets */
+  .ns-item.drop-target { background: rgba(45,95,166,0.12); border: 1px dashed var(--navy); }
 
   /* ──── MOBILE NOTES ──── */
   @media (max-width: 600px) {
@@ -1988,12 +2012,17 @@
       <div class="mobile-nb-toggle" id="mobileNbToggle" onclick="document.getElementById('mobileNbDrawer').classList.toggle('open')" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <div class="nl-header">
-        <div class="nl-title" id="nlTitle">All Notes <span class="nl-count" id="nlCount">0</span></div>
+        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span>
+          <button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+          </button>
+        </div>
         <div class="nl-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="notesSearchInput" placeholder="Search notes...">
         </div>
       </div>
+      <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
     </div>
     <!-- Editor -->
@@ -4707,6 +4736,44 @@ function renderNotesSidebar() {
 
   el.innerHTML = html;
 
+  // Wire sidebar items as drop targets for drag-to-trash/notebook
+  el.querySelectorAll('.ns-item').forEach(item => {
+    item.addEventListener('dragover', e => {
+      if (!noteDragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('drop-target');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drop-target'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drop-target');
+      if (!noteDragId) return;
+      const note = notesArr.find(n => n.id === noteDragId);
+      if (!note) return;
+      // Determine target from onclick attr
+      const onclick = item.getAttribute('onclick') || '';
+      if (onclick.includes("'trash'")) {
+        note.trashed = true;
+        note.trashedAt = new Date().toISOString();
+        note.updatedAt = new Date().toISOString();
+        if (activeNoteId === note.id) activeNoteId = null;
+      } else if (onclick.includes("'starred'")) {
+        note.starred = true;
+        note.updatedAt = new Date().toISOString();
+      } else if (onclick.includes("'all'")) {
+        note.notebookId = null;
+        note.updatedAt = new Date().toISOString();
+      } else if (onclick.includes("'notebook-")) {
+        const m = onclick.match(/notebook-(\d+)/);
+        if (m) { note.notebookId = parseInt(m[1]); note.updatedAt = new Date().toISOString(); }
+      }
+      saveNoteToDB(note);
+      noteDragId = null;
+      renderNotes();
+    });
+  });
+
   // Populate mobile notebook toggle + drawer
   const mobileToggle = document.getElementById('mobileNbToggle');
   const mobileDrawer = document.getElementById('mobileNbDrawer');
@@ -4784,6 +4851,25 @@ function renderNoteList() {
   const list = getFilteredNotes();
   updateNlTitle();
 
+  // Render bulk bar
+  const bulkBar = document.getElementById('nlBulkBar');
+  if (bulkBar) {
+    if (noteSelectMode && notesSidebarView !== 'trash') {
+      const cnt = selectedNoteIds.size;
+      bulkBar.style.display = '';
+      bulkBar.innerHTML = `
+        <button onclick="toggleSelectAllNotes()">
+          ${cnt === list.length && list.length > 0 ? 'Deselect all' : 'Select all'}
+        </button>
+        <button class="danger" onclick="bulkTrashNotes()" ${cnt === 0 ? 'disabled' : ''}>Trash (${cnt})</button>
+        <button onclick="bulkMoveNotes(event)" ${cnt === 0 ? 'disabled' : ''}>Move (${cnt})</button>
+        <span class="bulk-count">${cnt} selected</span>
+        <button onclick="exitNoteSelectMode()" style="border:none;padding:4px;color:var(--muted)">✕</button>`;
+    } else {
+      bulkBar.style.display = 'none';
+    }
+  }
+
   if (!list.length && !noteSearchQuery) {
     el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;opacity:0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -4803,6 +4889,8 @@ function renderNoteList() {
   let html = '';
   list.forEach(n => {
     const active = n.id === activeNoteId ? ' active' : '';
+    const selClass = noteSelectMode ? ' select-mode' : '';
+    const checked = selectedNoteIds.has(n.id) ? ' checked' : '';
     const preview = stripHTML(n.content).slice(0, 120) || 'No content';
     const date = formatNoteDate(n.updatedAt);
     const nb = n.notebookId ? notebooksArr.find(nb => nb.id === n.notebookId) : null;
@@ -4813,7 +4901,7 @@ function renderNoteList() {
       tagHtml = `<span class="nl-tag ${tagClass}"${tagStyle}>${escHTML(nb.name)}</span><span class="dot-sep"></span>`;
     }
     if (notesSidebarView === 'trash') {
-      html += `<div class="nl-item${active}" data-note-id="${n.id}">
+      html += `<div class="nl-item${active}${selClass}" data-note-id="${n.id}" oncontextmenu="showNoteContextMenu(event,${n.id})">
         <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
         <div class="nl-item-preview">${escHTML(preview)}</div>
         <div class="nl-item-meta" style="gap:4px">
@@ -4823,16 +4911,19 @@ function renderNoteList() {
       </div>`;
     } else {
       const borderColor = nb ? nb.color : 'transparent';
-      html += `<div class="nl-item${active}" onclick="selectNote(${n.id})" data-note-id="${n.id}" draggable="true" style="border-left-color:${borderColor};animation-delay:${list.indexOf(n) * 0.03}s">
-        <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
-        <div class="nl-item-preview">${escHTML(preview)}</div>
-        <div class="nl-item-meta">${tagHtml}<span>${date}</span></div>
+      html += `<div class="nl-item${active}${selClass}" onclick="${noteSelectMode ? `toggleNoteSelect(${n.id})` : `selectNote(${n.id})`}" data-note-id="${n.id}" draggable="true" style="border-left-color:${borderColor};animation-delay:${list.indexOf(n) * 0.03}s" oncontextmenu="showNoteContextMenu(event,${n.id})">
+        <input type="checkbox" class="nl-checkbox" ${checked} onclick="event.stopPropagation();toggleNoteSelect(${n.id})">
+        <div style="flex:1;min-width:0">
+          <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
+          <div class="nl-item-preview">${escHTML(preview)}</div>
+          <div class="nl-item-meta">${tagHtml}<span>${date}</span></div>
+        </div>
       </div>`;
     }
   });
   el.innerHTML = html;
 
-  // Wire drag-to-reorder
+  // Wire drag events (for reorder + drag to sidebar)
   el.querySelectorAll('.nl-item[draggable]').forEach(item => {
     item.addEventListener('dragstart', onNoteDragStart);
     item.addEventListener('dragend', onNoteDragEnd);
@@ -5270,6 +5361,135 @@ function moveNoteToNotebook(noteId, nbId) {
   saveNoteToDB(note);
 }
 
+/* ══════ BULK SELECT ══════ */
+function enterNoteSelectMode() {
+  noteSelectMode = true;
+  selectedNoteIds.clear();
+  renderNoteList();
+}
+function exitNoteSelectMode() {
+  noteSelectMode = false;
+  selectedNoteIds.clear();
+  renderNoteList();
+}
+function toggleNoteSelect(id) {
+  if (selectedNoteIds.has(id)) selectedNoteIds.delete(id);
+  else selectedNoteIds.add(id);
+  renderNoteList();
+}
+function toggleSelectAllNotes() {
+  const list = getFilteredNotes();
+  if (selectedNoteIds.size === list.length) {
+    selectedNoteIds.clear();
+  } else {
+    list.forEach(n => selectedNoteIds.add(n.id));
+  }
+  renderNoteList();
+}
+function bulkTrashNotes() {
+  if (selectedNoteIds.size === 0) return;
+  showInlineConfirm(`Trash ${selectedNoteIds.size} note${selectedNoteIds.size > 1 ? 's' : ''}?`, 'They can be restored from trash.', () => {
+    selectedNoteIds.forEach(id => {
+      const note = notesArr.find(n => n.id === id);
+      if (note) {
+        note.trashed = true;
+        note.trashedAt = new Date().toISOString();
+        note.updatedAt = new Date().toISOString();
+        saveNoteToDB(note);
+      }
+    });
+    activeNoteId = null;
+    exitNoteSelectMode();
+    renderNotes();
+  });
+}
+function bulkMoveNotes(e) {
+  e.stopPropagation();
+  if (selectedNoteIds.size === 0) return;
+  document.querySelectorAll('.note-ctx-menu').forEach(m => m.remove());
+  const menu = document.createElement('div');
+  menu.className = 'note-ctx-menu';
+  let html = `<button onclick="this.closest('.note-ctx-menu').remove();bulkMoveToNotebook(null)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    No notebook</button>`;
+  notebooksArr.forEach(nb => {
+    html += `<button onclick="this.closest('.note-ctx-menu').remove();bulkMoveToNotebook(${nb.id})">
+      <div class="nb-dot" style="background:${nb.color}"></div>${escHTML(nb.name)}</button>`;
+  });
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  const x = Math.min(e.clientX || 100, window.innerWidth - 180);
+  const y = Math.min(e.clientY || 100, window.innerHeight - 200);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  setTimeout(() => {
+    const close = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 10);
+}
+function bulkMoveToNotebook(nbId) {
+  selectedNoteIds.forEach(id => {
+    const note = notesArr.find(n => n.id === id);
+    if (note) { note.notebookId = nbId; note.updatedAt = new Date().toISOString(); saveNoteToDB(note); }
+  });
+  exitNoteSelectMode();
+  renderNotes();
+}
+
+/* ══════ NOTE CONTEXT MENU ══════ */
+function showNoteContextMenu(e, noteId) {
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.note-ctx-menu').forEach(m => m.remove());
+  const note = notesArr.find(n => n.id === noteId);
+  if (!note) return;
+  const menu = document.createElement('div');
+  menu.className = 'note-ctx-menu';
+  let html = '';
+  if (note.trashed) {
+    html = `
+      <button onclick="this.closest('.note-ctx-menu').remove();restoreNote(${noteId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        Restore</button>
+      <button class="danger" onclick="this.closest('.note-ctx-menu').remove();permanentDeleteNote(${noteId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete permanently</button>`;
+  } else {
+    const starLabel = note.starred ? 'Unstar' : 'Star';
+    const starFill = note.starred ? 'currentColor' : 'none';
+    html = `
+      <button onclick="this.closest('.note-ctx-menu').remove();activeNoteId=${noteId};toggleNoteStar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        ${starLabel}</button>
+      <div class="ctx-submenu">
+        <button style="justify-content:space-between">
+          <span style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Move to</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="ctx-sub-items">
+          <button onclick="this.closest('.note-ctx-menu').remove();moveNoteToNotebook(${noteId},null)">No notebook</button>`;
+    notebooksArr.forEach(nb => {
+      html += `<button onclick="this.closest('.note-ctx-menu').remove();moveNoteToNotebook(${noteId},${nb.id})">
+        <div class="nb-dot" style="background:${nb.color}"></div>${escHTML(nb.name)}</button>`;
+    });
+    html += `</div></div>
+      <button onclick="this.closest('.note-ctx-menu').remove();enterNoteSelectMode();toggleNoteSelect(${noteId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+        Select</button>
+      <div class="ctx-divider"></div>
+      <button class="danger" onclick="this.closest('.note-ctx-menu').remove();activeNoteId=${noteId};trashNote()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Move to Trash</button>`;
+  }
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  const x = Math.min(e.clientX, window.innerWidth - 190);
+  const y = Math.min(e.clientY, window.innerHeight - 200);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  setTimeout(() => {
+    const close = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 10);
+}
+
 function sortNotesToggle() {
   const orders = ['updated', 'created', 'alpha', 'manual'];
   const idx = orders.indexOf(noteSortOrder);
@@ -5279,6 +5499,8 @@ function sortNotesToggle() {
 
 // Note drag-to-reorder
 let noteDragId = null;
+let noteSelectMode = false;
+let selectedNoteIds = new Set();
 function onNoteDragStart(e) {
   noteDragId = parseInt(e.currentTarget.dataset.noteId);
   e.currentTarget.classList.add('dragging');
@@ -5287,6 +5509,7 @@ function onNoteDragStart(e) {
 function onNoteDragEnd(e) {
   e.currentTarget.classList.remove('dragging');
   document.querySelectorAll('.nl-item').forEach(el => el.classList.remove('drag-target'));
+  document.querySelectorAll('.ns-item').forEach(el => el.classList.remove('drop-target'));
   noteDragId = null;
 }
 function onNoteDragOver(e) {
