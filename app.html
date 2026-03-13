@@ -1408,12 +1408,7 @@
   .heatmap-legend .heatmap-cell { width: 10px; height: 10px; aspect-ratio: auto; max-width: none; flex: none; }
 
   /* ──── Stats tabs ──── */
-  .stats-tab-bar { display: flex; gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
-  .stats-tab-btn { flex: 1; padding: 7px 0; text-align: center; font-size: 12.5px; font-weight: 600; font-family: inherit; border: none; background: none; cursor: pointer; border-radius: 8px; color: var(--muted); transition: all 0.15s; }
-  .stats-tab-btn.active { background: var(--navy); color: #fff; }
-  .stats-tab-btn:hover:not(.active) { color: var(--text); }
-  .stats-view { display: none; }
-  .stats-view.active { display: block; }
+  /* stats views removed — drill-down replaces tabs */
 
   /* Stats card */
   .st-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 10px; }
@@ -3688,7 +3683,7 @@ function unarchiveHabit(habitId) {
 let statsMonth = new Date().getMonth();
 let statsMonthYear = new Date().getFullYear();
 let statsYear = new Date().getFullYear();
-let statsTab = 'monthly';
+let statsView = 'yearly'; // 'yearly' or 'monthly'
 
 function renderHabitStats(active) {
   const el = document.getElementById('habit-stats');
@@ -3703,31 +3698,15 @@ function renderHabitStats(active) {
     return;
   }
 
-  el.innerHTML = `
-    <div class="stats-tab-bar">
-      <button class="stats-tab-btn${statsTab==='monthly'?' active':''}" onclick="statsTab='monthly';renderHabits()">Monthly</button>
-      <button class="stats-tab-btn${statsTab==='yearly'?' active':''}" onclick="statsTab='yearly';renderHabits()">Yearly</button>
-    </div>
-    <div class="stats-view${statsTab==='monthly'?' active':''}" id="statsMonthly"></div>
-    <div class="stats-view${statsTab==='yearly'?' active':''}" id="statsYearly"></div>
-  `;
-
-  if (statsTab === 'monthly') renderStatsMonthly(active);
+  el.innerHTML = '<div id="statsContent"></div>';
+  if (statsView === 'monthly') renderStatsMonthly(active);
   else renderStatsYearly(active);
 }
 
-function buildStatsView(active, dateRange) {
-  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function computeStatsData(active, startDate, endDate) {
   const today = todayStr();
-  const { startDate, endDate, isMonthly } = dateRange;
-
-  // Collect daily data for the range
+  const dailyData = {};
   let totalDue = 0, totalDone = 0;
-  const dowCounts = Array(7).fill(0);
-  const dowTotals = Array(7).fill(0);
-  const dailyData = {}; // ds -> { due, done }
-
   const start = new Date(startDate + 'T12:00:00');
   const end = new Date(endDate + 'T12:00:00');
   for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
@@ -3739,159 +3718,9 @@ function buildStatsView(active, dateRange) {
     });
     dailyData[ds] = { due, done, future: false };
     totalDue += due; totalDone += done;
-    const dow = (dt.getDay() + 6) % 7; // 0=Mon
-    dowTotals[dow] += due; dowCounts[dow] += done;
   }
-
   const completionRate = totalDue > 0 ? Math.round((totalDone / totalDue) * 100) : 0;
-
-  // GitHub-style heatmap
-  const startDow = (new Date(startDate + 'T12:00:00').getDay() + 6) % 7;
-  let hmHtml = '';
   const allDates = Object.keys(dailyData).sort();
-
-  if (isMonthly) {
-    // Monthly: calendar layout — 7 columns (Mon-Sun), rows = weeks
-    const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
-    // Pad start (empty cells before day 1)
-    for (let i = 0; i < startDow; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
-    // Day cells in row order (Mon-Sun per week)
-    allDates.forEach(ds => {
-      const d = dailyData[ds];
-      if (d.future) { hmHtml += '<div class="st-hm-cell"></div>'; return; }
-      const ratio = d.due > 0 ? d.done / d.due : 0;
-      let lvl = '';
-      if (ratio > 0) lvl = ' l1';
-      if (ratio >= 0.4) lvl = ' l2';
-      if (ratio >= 0.7) lvl = ' l3';
-      if (ratio >= 0.95) lvl = ' l4';
-      const dayNum = parseInt(ds.split('-')[2]);
-      hmHtml += `<div class="st-hm-cell${lvl}" title="${ds}: ${d.done}/${d.due}" style="position:relative"><span style="position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:8px;color:${lvl === ' l3' || lvl === ' l4' ? '#fff' : 'var(--muted)'};pointer-events:none;line-height:1">${dayNum}</span></div>`;
-    });
-    // Pad end
-    const totalCells = startDow + daysInMonth;
-    const remainder = totalCells % 7;
-    if (remainder > 0) for (let i = 0; i < 7 - remainder; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
-  } else {
-    for (let i = 0; i < startDow; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
-    allDates.forEach(ds => {
-      const d = dailyData[ds];
-      if (d.future) { hmHtml += '<div class="st-hm-cell"></div>'; return; }
-      const ratio = d.due > 0 ? d.done / d.due : 0;
-      let lvl = '';
-      if (ratio > 0) lvl = ' l1';
-      if (ratio >= 0.4) lvl = ' l2';
-      if (ratio >= 0.7) lvl = ' l3';
-      if (ratio >= 0.95) lvl = ' l4';
-      hmHtml += `<div class="st-hm-cell${lvl}" title="${ds}: ${d.done}/${d.due}"></div>`;
-    });
-  }
-
-  // Month/week labels for heatmap
-  let hmMonthsHtml = '';
-  let hmDayLabelsHtml = '';
-  if (isMonthly) {
-    // Day-of-week labels across top (Mon-Sun)
-    hmMonthsHtml = `<div class="st-hm-day-labels-top">${DAYS.map(d => `<span>${d.charAt(0)}</span>`).join('')}</div>`;
-    hmDayLabelsHtml = ''; // No side labels needed for calendar layout
-  } else {
-    hmMonthsHtml = `<div class="st-hm-months">${MO_SHORT.map(m => `<span>${m}</span>`).join('')}</div>`;
-  }
-
-  // Second chart: DOW (monthly) or Week of Year (yearly)
-  let secondChartTitle = '';
-  let secondChartHtml = '';
-  if (isMonthly) {
-    // DOW chart for monthly
-    secondChartTitle = 'Day of Week Performance';
-    DAYS.forEach((d, i) => {
-      const pct = dowTotals[i] > 0 ? Math.round((dowCounts[i] / dowTotals[i]) * 100) : 0;
-      const h = (pct / 100) * 70;
-      const opacity = pct > 80 ? 1 : pct > 60 ? 0.7 : pct > 30 ? 0.5 : 0.25;
-      secondChartHtml += `<div class="st-dow-wrap"><div class="st-dow-pct">${pct}%</div><div class="st-dow-bar" style="height:${Math.max(h, 2)}px;opacity:${opacity}"></div><div class="st-dow-lbl">${d}</div></div>`;
-    });
-    secondChartHtml = `<div class="st-dow">${secondChartHtml}</div>`;
-  } else {
-    // Week of Year performance for yearly — compact heatmap grid, no scroll
-    secondChartTitle = 'Week of Year Performance';
-    const weekData = [];
-    // Calculate ISO week data
-    for (let w = 0; w < 53; w++) {
-      const wStart = new Date(dateRange.year, 0, 1 + w * 7);
-      // Adjust to Monday
-      const dayOfWeek = wStart.getDay();
-      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      wStart.setDate(wStart.getDate() + diff);
-      if (wStart.getFullYear() > dateRange.year && w > 0) break;
-      let wDue = 0, wDone = 0;
-      for (let d = 0; d < 7; d++) {
-        const wd = new Date(wStart);
-        wd.setDate(wd.getDate() + d);
-        const ds = `${wd.getFullYear()}-${String(wd.getMonth() + 1).padStart(2, '0')}-${String(wd.getDate()).padStart(2, '0')}`;
-        if (wd.getFullYear() !== dateRange.year) continue;
-        const dd = dailyData[ds];
-        if (dd && !dd.future) { wDue += dd.due; wDone += dd.done; }
-      }
-      const pct = wDue > 0 ? Math.round((wDone / wDue) * 100) : 0;
-      weekData.push({ week: w + 1, pct, due: wDue });
-    }
-    let woyHtml = '';
-    weekData.forEach(w => {
-      let lvl = '';
-      if (w.due === 0) { lvl = ''; }
-      else if (w.pct > 0) lvl = ' l1';
-      if (w.pct >= 40) lvl = ' l2';
-      if (w.pct >= 70) lvl = ' l3';
-      if (w.pct >= 95) lvl = ' l4';
-      woyHtml += `<div class="st-woy-cell${lvl}" title="Week ${w.week}: ${w.pct}%"></div>`;
-    });
-    const woyLabels = `<div class="st-woy-labels"><span>W1</span><span>W13</span><span>W26</span><span>W39</span><span>W52</span></div>`;
-    secondChartHtml = `<div class="st-woy">${woyHtml}</div>${woyLabels}`;
-  }
-
-  // Weekly trend (monthly) or monthly trend (yearly)
-  let trendHtml = '';
-  if (isMonthly) {
-    // 4-5 week bars
-    const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
-    const weeks = [];
-    let weekDue = 0, weekDone = 0, weekNum = 1;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const ds = `${dateRange.year}-${String(dateRange.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dd = dailyData[ds];
-      if (dd && !dd.future) { weekDue += dd.due; weekDone += dd.done; }
-      const dow = (new Date(ds + 'T12:00:00').getDay() + 6) % 7;
-      if (dow === 6 || d === daysInMonth) {
-        weeks.push({ label: `W${weekNum}`, pct: weekDue > 0 ? Math.round((weekDone / weekDue) * 100) : 0 });
-        weekDue = 0; weekDone = 0; weekNum++;
-      }
-    }
-    weeks.forEach(w => {
-      const h = w.pct > 0 ? (w.pct / 100) * 65 : 0;
-      const isCurrent = dateRange.year === new Date().getFullYear() && dateRange.month === new Date().getMonth();
-      const barColor = w.pct > 0 ? 'var(--navy)' : 'var(--surface2)';
-      trendHtml += `<div class="st-trend-wrap">${w.pct > 0 ? `<div class="st-trend-pct">${w.pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor}"></div><div class="st-trend-mo">${w.label}</div></div>`;
-    });
-  } else {
-    // 12-month bars
-    for (let mo = 0; mo < 12; mo++) {
-      const moStart = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-01`;
-      const moDays = new Date(dateRange.year, mo + 1, 0).getDate();
-      let mDue = 0, mDone = 0;
-      for (let d = 1; d <= moDays; d++) {
-        const ds = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dd = dailyData[ds];
-        if (dd && !dd.future) { mDue += dd.due; mDone += dd.done; }
-      }
-      const pct = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
-      const h = pct > 0 ? (pct / 100) * 65 : 0;
-      const isCurrent = dateRange.year === new Date().getFullYear() && mo === new Date().getMonth();
-      const isPast = moStart <= today;
-      const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? '#22c55e' : 'var(--surface2)';
-      const opacity = isPast ? 1 : 0.2;
-      trendHtml += `<div class="st-trend-wrap">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
-    }
-  }
 
   // Habit ranking
   const rankings = active.map(h => {
@@ -3913,60 +3742,79 @@ function buildStatsView(active, dateRange) {
     rankHtml += `<div class="st-rank"><span class="rn">${i + 1}</span><span class="re">${h.emoji}</span><span class="rname">${h.name}</span><div class="rbar"><div class="rbar-fill" style="width:${h.pct}%;background:${color}"></div></div><span class="rpct" style="color:${color}">${h.pct}%</span></div>`;
   });
 
+  return { dailyData, totalDue, totalDone, completionRate, allDates, rankings, rankHtml };
+}
+
+function renderStatsYearly(active) {
+  const el = document.getElementById('statsContent');
+  if (!el) return;
+  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = statsYear;
+  const today = todayStr();
+  const isCurrentYear = y === new Date().getFullYear();
+  const startDate = `${y}-01-01`;
+  const endDate = `${y}-12-31`;
+
+  const s = computeStatsData(active, startDate, endDate);
+
+  // Monthly trend bars (clickable to drill into month)
+  let trendHtml = '';
+  let bestMonthIdx = 0, bestMonthRate = 0;
+  for (let mo = 0; mo < 12; mo++) {
+    const moStart = `${y}-${String(mo + 1).padStart(2, '0')}-01`;
+    const moDays = new Date(y, mo + 1, 0).getDate();
+    let mDue = 0, mDone = 0;
+    for (let d = 1; d <= moDays; d++) {
+      const ds = `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dd = s.dailyData[ds];
+      if (dd && !dd.future) { mDue += dd.due; mDone += dd.done; }
+    }
+    const pct = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
+    if (pct > bestMonthRate) { bestMonthRate = pct; bestMonthIdx = mo; }
+    const h = pct > 0 ? (pct / 100) * 65 : 0;
+    const isCurrent = y === new Date().getFullYear() && mo === new Date().getMonth();
+    const isPast = moStart <= today;
+    const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? '#22c55e' : 'var(--surface2)';
+    const opacity = isPast ? 1 : 0.2;
+    trendHtml += `<div class="st-trend-wrap" style="cursor:pointer" onclick="statsMonth=${mo};statsMonthYear=${y};statsView='monthly';renderHabits()" title="View ${MO_SHORT[mo]} ${y}">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
+  }
+  const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
+
   // Insight
   let insightText = '';
-  if (totalDue > 0) {
-    const strongest = rankings[0];
-    if (isMonthly) {
-      // Best week for monthly
-      const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
-      const weeks = [];
-      let weekDue2 = 0, weekDone2 = 0, weekNum2 = 1;
-      for (let d = 1; d <= daysInMonth; d++) {
-        const ds = `${dateRange.year}-${String(dateRange.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dd = dailyData[ds];
-        if (dd && !dd.future) { weekDue2 += dd.due; weekDone2 += dd.done; }
-        const dow = (new Date(ds + 'T12:00:00').getDay() + 6) % 7;
-        if (dow === 6 || d === daysInMonth) {
-          weeks.push({ label: `Week ${weekNum2}`, pct: weekDue2 > 0 ? Math.round((weekDone2 / weekDue2) * 100) : 0 });
-          weekDue2 = 0; weekDone2 = 0; weekNum2++;
-        }
-      }
-      const bestWeek = weeks.reduce((best, w) => w.pct > best.pct ? w : best, { label: 'Week 1', pct: 0 });
-      if (strongest && strongest.pct > 0) {
-        insightText = `<strong>Best week: ${bestWeek.label}</strong> at ${bestWeek.pct}%.`;
-        insightText += ` <strong>${strongest.name}</strong> leads at ${strongest.pct}%.`;
-      }
-    } else {
-      // Best month for yearly
-      let bestMoIdx = 0, bestMoRate = 0;
-      for (let mo = 0; mo < 12; mo++) {
-        const moDays = new Date(dateRange.year, mo + 1, 0).getDate();
-        let mDue2 = 0, mDone2 = 0;
-        for (let d = 1; d <= moDays; d++) {
-          const ds = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          const dd = dailyData[ds];
-          if (dd && !dd.future) { mDue2 += dd.due; mDone2 += dd.done; }
-        }
-        const rate = mDue2 > 0 ? Math.round((mDone2 / mDue2) * 100) : 0;
-        if (rate > bestMoRate) { bestMoRate = rate; bestMoIdx = mo; }
-      }
-      if (strongest && strongest.pct > 0) {
-        insightText = `<strong>Best month: ${MO_SHORT[bestMoIdx]}</strong> at ${bestMoRate}%.`;
-        insightText += ` <strong>${strongest.name}</strong> leads at ${strongest.pct}%.`;
-      }
-    }
+  if (s.totalDue > 0 && s.rankings[0] && s.rankings[0].pct > 0) {
+    insightText = `<strong>Best month: ${MO_SHORT[bestMonthIdx]}</strong> at ${bestMonthRate}%. <strong>${s.rankings[0].name}</strong> leads at ${s.rankings[0].pct}%.`;
   }
 
-  const trendTitle = isMonthly ? 'Weekly Trend' : 'Monthly Trend';
-  const hmLegend = `<div class="st-hm-legend">Less <div class="st-hm-legend-cell" style="background:var(--surface2)"></div><div class="st-hm-legend-cell" style="background:#c7d9f0"></div><div class="st-hm-legend-cell" style="background:#7aacdf"></div><div class="st-hm-legend-cell" style="background:#3d7ec4"></div><div class="st-hm-legend-cell" style="background:var(--navy)"></div> More</div>`;
-  const hmClass = isMonthly ? ' monthly' : '';
-
-  return { completionRate, hmHtml, hmMonthsHtml, hmDayLabelsHtml, hmLegend, hmClass, secondChartTitle, secondChartHtml, trendHtml, trendTitle, rankHtml, insightText };
+  el.innerHTML = `
+    <div class="stat-cards-grid" style="margin-bottom:10px">
+      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
+    </div>
+    <div class="st-card">
+      <div class="st-nav">
+        <button onclick="statsYear=${y - 1};renderHabits()">← ${y - 1}</button>
+        <span class="st-nav-label">${y}</span>
+        <button onclick="statsYear=${y + 1};renderHabits()" ${isCurrentYear?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
+      </div>
+      <div class="st-card-title" style="margin-top:8px">Monthly Trend</div>
+      <div class="st-trend">${trendHtml}</div>
+      <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:6px">Tap a month to drill in</div>
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">Habit Ranking</div>
+      ${s.rankHtml}
+    </div>
+    ${insightText ? `<div class="st-insight" style="margin-top:10px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div class="st-insight-text">${insightText}</div>
+    </div>` : ''}
+  `;
 }
 
 function renderStatsMonthly(active) {
-  const el = document.getElementById('statsMonthly');
+  const el = document.getElementById('statsContent');
   if (!el) return;
   const MO = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -3981,108 +3829,59 @@ function renderStatsMonthly(active) {
   const nextY = m === 11 ? y + 1 : y;
   const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
 
-  const v = buildStatsView(active, { startDate, endDate, isMonthly: true, year: y, month: m });
+  const s = computeStatsData(active, startDate, endDate);
   const currentStreak = Math.max(...active.map(h => computeStreak(h.id)), 0);
   const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
 
+  // Weekly trend bars
+  let trendHtml = '';
+  const weeks = [];
+  let weekDue = 0, weekDone = 0, weekNum = 1;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dd = s.dailyData[ds];
+    if (dd && !dd.future) { weekDue += dd.due; weekDone += dd.done; }
+    const dow = (new Date(ds + 'T12:00:00').getDay() + 6) % 7;
+    if (dow === 6 || d === daysInMonth) {
+      weeks.push({ label: `W${weekNum}`, pct: weekDue > 0 ? Math.round((weekDone / weekDue) * 100) : 0 });
+      weekDue = 0; weekDone = 0; weekNum++;
+    }
+  }
+  weeks.forEach(w => {
+    const h = w.pct > 0 ? (w.pct / 100) * 65 : 0;
+    const barColor = w.pct > 0 ? 'var(--navy)' : 'var(--surface2)';
+    trendHtml += `<div class="st-trend-wrap">${w.pct > 0 ? `<div class="st-trend-pct">${w.pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor}"></div><div class="st-trend-mo">${w.label}</div></div>`;
+  });
+
+  // Insight — best week
+  let insightText = '';
+  if (s.totalDue > 0 && s.rankings[0] && s.rankings[0].pct > 0) {
+    const bestWeek = weeks.reduce((best, w) => w.pct > best.pct ? w : best, { label: 'W1', pct: 0 });
+    insightText = `<strong>Best week: ${bestWeek.label}</strong> at ${bestWeek.pct}%. <strong>${s.rankings[0].name}</strong> leads at ${s.rankings[0].pct}%.`;
+  }
+
   el.innerHTML = `
     <div class="stat-cards-grid" style="margin-bottom:10px">
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${v.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
       <div class="stat-card"><div class="sc-val" style="color:var(--check)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
       <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
     <div class="st-card">
       <div class="st-nav">
         <button onclick="statsMonth=${prevM};statsMonthYear=${prevY};renderHabits()">← ${MO_SHORT[prevM]}</button>
-        <span class="st-nav-label">${MO[m]} ${y}</span>
+        <span class="st-nav-label" style="cursor:pointer" onclick="statsView='yearly';statsYear=${y};renderHabits()" title="Back to ${y} overview">${MO[m]} ${y} ▴</span>
         <button onclick="statsMonth=${nextM};statsMonthYear=${nextY};renderHabits()" ${isCurrentMonth?'disabled style="opacity:0.3;cursor:default"':''}>${MO_SHORT[nextM]} →</button>
       </div>
-      ${v.hmMonthsHtml}
-      <div class="st-hm-wrap${v.hmClass}"><div class="st-hm${v.hmClass}">${v.hmHtml}</div></div>
-      ${v.hmLegend}
-    </div>
-    <div class="st-card">
-      <div class="st-card-title">${v.secondChartTitle}</div>
-      ${v.secondChartHtml}
-    </div>
-    <div class="st-card">
-      <div class="st-card-title">${v.trendTitle}</div>
-      <div class="st-trend">${v.trendHtml}</div>
+      <div class="st-card-title" style="margin-top:8px">Weekly Trend</div>
+      <div class="st-trend">${trendHtml}</div>
     </div>
     <div class="st-card">
       <div class="st-card-title">Habit Ranking</div>
-      ${v.rankHtml}
+      ${s.rankHtml}
     </div>
-    ${v.insightText ? `<div class="st-insight" style="margin-top:10px">
+    ${insightText ? `<div class="st-insight" style="margin-top:10px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-      <div class="st-insight-text">${v.insightText}</div>
-    </div>` : ''}
-  `;
-}
-
-function renderStatsYearly(active) {
-  const el = document.getElementById('statsYearly');
-  if (!el) return;
-  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const y = statsYear;
-  const isCurrentYear = y === new Date().getFullYear();
-  const startDate = `${y}-01-01`;
-  const totalDaysInYear = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
-  const endDate = `${y}-12-${totalDaysInYear === 366 ? 31 : 31}`;
-
-  const v = buildStatsView(active, { startDate, endDate, isMonthly: false, year: y });
-
-  // Best month
-  const today = todayStr();
-  let bestMonthIdx = 0, bestMonthRate = 0;
-  for (let mo = 0; mo < 12; mo++) {
-    const moStart = `${y}-${String(mo + 1).padStart(2, '0')}-01`;
-    if (moStart > today) continue;
-    const moDays = new Date(y, mo + 1, 0).getDate();
-    let mDue = 0, mDone = 0;
-    for (let d = 1; d <= moDays; d++) {
-      const ds = `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      if (ds > today) break;
-      active.forEach(h => {
-        if (isHabitDueOnDate(h, ds)) { mDue++; if (isCompletedOn(h.id, ds)) mDone++; }
-      });
-    }
-    const rate = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
-    if (rate > bestMonthRate) { bestMonthRate = rate; bestMonthIdx = mo; }
-  }
-  const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
-
-  el.innerHTML = `
-    <div class="stat-cards-grid" style="margin-bottom:10px">
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${v.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
-    </div>
-    <div class="st-card">
-      <div class="st-nav">
-        <button onclick="statsYear=${y - 1};renderHabits()">← ${y - 1}</button>
-        <span class="st-nav-label">${y} Activity</span>
-        <button onclick="statsYear=${y + 1};renderHabits()" ${isCurrentYear?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
-      </div>
-      ${v.hmMonthsHtml}
-      <div class="st-hm-wrap"><div class="st-hm">${v.hmHtml}</div></div>
-      ${v.hmLegend}
-    </div>
-    <div class="st-card">
-      <div class="st-card-title">${v.secondChartTitle}</div>
-      ${v.secondChartHtml}
-    </div>
-    <div class="st-card">
-      <div class="st-card-title">${v.trendTitle}</div>
-      <div class="st-trend">${v.trendHtml}</div>
-    </div>
-    <div class="st-card">
-      <div class="st-card-title">Habit Ranking</div>
-      ${v.rankHtml}
-    </div>
-    ${v.insightText ? `<div class="st-insight" style="margin-top:10px">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      <div class="st-insight-text">${v.insightText}</div>
+      <div class="st-insight-text">${insightText}</div>
     </div>` : ''}
   `;
 }
@@ -5829,10 +5628,8 @@ function showInlineConfirm(title, message, onConfirm) {
 function handleNoteNbChange(selectEl, noteId) {
   if (selectEl.value === '__new__') {
     selectEl.value = ''; // reset dropdown
-    showInlinePrompt('New notebook', '', name => {
-      if (!name) return;
-      const colors = ['#2d5fa6','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#be185d'];
-      const nb = { id: Date.now(), name, color: colors[notebooksArr.length % colors.length], order: notebooksArr.length };
+    showNotebookPrompt('New notebook', '', '', null, (name, icon, color) => {
+      const nb = { id: Date.now(), name, icon: icon || '', color, order: notebooksArr.length };
       notebooksArr.push(nb);
       moveNoteToNotebook(noteId, nb.id);
       renderNotes();
