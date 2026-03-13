@@ -709,8 +709,7 @@
     .pill { font-size: 11px; padding: 6px 5px; }
     .logo-main { font-size: 20px; }
     .user-menu { flex-shrink: 0; }
-    .task-search input { width: 80px; }
-    .task-search input:focus { width: 100px; }
+    .task-search-bar { padding: 0 12px 6px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -753,13 +752,14 @@
   }
 
   /* TASK SEARCH */
+  .task-search-bar { padding: 0 16px 8px; }
   .task-search {
     display: flex; align-items: center; background: var(--surface2); border-radius: 8px;
-    padding: 0 8px; height: 30px; gap: 5px; border: 1px solid transparent; margin-left: auto;
+    padding: 0 10px; height: 34px; gap: 6px; border: 1px solid transparent; width: 100%; box-sizing: border-box;
   }
   .task-search:focus-within { border-color: var(--navy-light); background: var(--surface); }
   .task-search svg { flex-shrink: 0; color: var(--muted); width: 13px; height: 13px; }
-  .task-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 120px; }
+  .task-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 100%; }
   .task-search input::placeholder { color: var(--muted); }
   /* highlight matched text in task */
   .search-hl { background: #fde68a; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
@@ -1949,10 +1949,13 @@
     <button class="pill biz" onclick="setCatFilter('biz',this)">Work</button>
     <button class="pill personal" onclick="setCatFilter('personal',this)">Personal</button>
     <button class="pill" onclick="setCatFilter('someday',this)">Later</button>
-    <div class="task-search" id="searchWrap">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="searchInput" placeholder="Search tasks..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
-    </div>
+  </div>
+</div>
+
+<div class="task-search-bar" data-tool-view="tasks">
+  <div class="task-search" id="searchWrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="Search tasks..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
   </div>
 </div>
 
