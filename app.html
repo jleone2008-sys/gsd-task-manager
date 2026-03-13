@@ -3702,70 +3702,62 @@ function renderHabitStats(active) {
   else renderStatsYearly(active);
 }
 
-function renderStatsMonthly(active) {
-  const el = document.getElementById('statsMonthly');
-  if (!el) return;
-  const MO = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function buildStatsView(active, dateRange) {
   const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const today = todayStr();
-  const y = statsMonthYear, m = statsMonth;
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // 0=Mon
+  const { startDate, endDate, isMonthly } = dateRange;
 
-  // Prev/next labels
-  const prevM = m === 0 ? 11 : m - 1;
-  const prevY = m === 0 ? y - 1 : y;
-  const nextM = m === 11 ? 0 : m + 1;
-  const nextY = m === 11 ? y + 1 : y;
-  const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
-  const nextDisabled = isCurrentMonth;
-
-  // Calculate daily completion rates for the month
+  // Collect daily data for the range
   let totalDue = 0, totalDone = 0;
   const dowCounts = Array(7).fill(0);
   const dowTotals = Array(7).fill(0);
+  const dailyData = {}; // ds -> { due, done }
 
-  let calHtml = DAYS.map(d => `<div class="st-cal-hdr">${d}</div>`).join('');
-  for (let i = 0; i < firstDow; i++) calHtml += '<div class="st-cal-day empty"></div>';
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isFuture = ds > today;
-    const isToday = ds === today;
-    const dow = (firstDow + d - 1) % 7;
-
-    let done = 0, due = 0;
-    if (!isFuture) {
-      active.forEach(h => {
-        if (isHabitDueOnDate(h, ds)) {
-          due++;
-          if (isCompletedOn(h.id, ds)) done++;
-        }
-      });
-      totalDue += due;
-      totalDone += done;
-      dowTotals[dow] += due;
-      dowCounts[dow] += done;
-    }
-
-    let cls = 'st-cal-day';
-    if (isFuture) cls += ' future';
-    else if (isToday) cls += ' today';
-    if (!isFuture && due > 0) {
-      const ratio = done / due;
-      if (ratio >= 1) cls += ' done';
-      else if (ratio > 0) cls += ' partial';
-      else cls += ' missed';
-    } else if (!isFuture && due === 0) {
-      cls += ' empty';
-    }
-    calHtml += `<div class="${cls}" title="${ds}: ${done}/${due}">${d}</div>`;
+  const start = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
+  for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
+    const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    if (ds > today) { dailyData[ds] = { due: 0, done: 0, future: true }; continue; }
+    let due = 0, done = 0;
+    active.forEach(h => {
+      if (isHabitDueOnDate(h, ds)) { due++; if (isCompletedOn(h.id, ds)) done++; }
+    });
+    dailyData[ds] = { due, done, future: false };
+    totalDue += due; totalDone += done;
+    const dow = (dt.getDay() + 6) % 7; // 0=Mon
+    dowTotals[dow] += due; dowCounts[dow] += done;
   }
 
   const completionRate = totalDue > 0 ? Math.round((totalDone / totalDue) * 100) : 0;
-  const bestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
-  const currentStreak = Math.max(...active.map(h => computeStreak(h.id)), 0);
+
+  // GitHub-style heatmap
+  const startDow = (new Date(startDate + 'T12:00:00').getDay() + 6) % 7;
+  let hmHtml = '';
+  for (let i = 0; i < startDow; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
+  const allDates = Object.keys(dailyData).sort();
+  allDates.forEach(ds => {
+    const d = dailyData[ds];
+    if (d.future) { hmHtml += '<div class="st-hm-cell"></div>'; return; }
+    const ratio = d.due > 0 ? d.done / d.due : 0;
+    let lvl = '';
+    if (ratio > 0) lvl = ' l1';
+    if (ratio >= 0.4) lvl = ' l2';
+    if (ratio >= 0.7) lvl = ' l3';
+    if (ratio >= 0.95) lvl = ' l4';
+    hmHtml += `<div class="st-hm-cell${lvl}" title="${ds}: ${d.done}/${d.due}"></div>`;
+  });
+
+  // Month labels for heatmap
+  let hmMonthsHtml = '';
+  if (isMonthly) {
+    // For monthly, show week numbers or just the month name centered
+    const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
+    const weeks = Math.ceil((startDow + daysInMonth) / 7);
+    hmMonthsHtml = `<div class="st-hm-months" style="justify-content:center"><span>${MO_SHORT[dateRange.month]} ${dateRange.year}</span></div>`;
+  } else {
+    hmMonthsHtml = `<div class="st-hm-months">${MO_SHORT.map(m => `<span>${m}</span>`).join('')}</div>`;
+  }
 
   // DOW chart
   let dowHtml = '';
@@ -3776,165 +3768,61 @@ function renderStatsMonthly(active) {
     dowHtml += `<div class="st-dow-wrap"><div class="st-dow-pct">${pct}%</div><div class="st-dow-bar" style="height:${Math.max(h, 2)}px;opacity:${opacity}"></div><div class="st-dow-lbl">${d}</div></div>`;
   });
 
-  // Insight
-  let bestDay = 0, bestDayPct = 0, worstDay = 0, worstDayPct = 100;
-  DAYS.forEach((_, i) => {
-    const pct = dowTotals[i] > 0 ? Math.round((dowCounts[i] / dowTotals[i]) * 100) : 0;
-    if (pct > bestDayPct) { bestDayPct = pct; bestDay = i; }
-    if (pct < worstDayPct && dowTotals[i] > 0) { worstDayPct = pct; worstDay = i; }
-  });
-
-  // Compare vs previous month
-  const prevMonthStart = `${prevY}-${String(prevM + 1).padStart(2, '0')}-01`;
-  const prevMonthEnd = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(new Date(prevY, prevM + 1, 0).getDate()).padStart(2, '0')}`;
-  let prevDue = 0, prevDone = 0;
-  const prevDays = new Date(prevY, prevM + 1, 0).getDate();
-  for (let d = 1; d <= prevDays; d++) {
-    const ds = `${prevY}-${String(prevM + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    if (ds > today) break;
-    active.forEach(h => {
-      if (isHabitDueOnDate(h, ds)) { prevDue++; if (isCompletedOn(h.id, ds)) prevDone++; }
-    });
-  }
-  const prevRate = prevDue > 0 ? Math.round((prevDone / prevDue) * 100) : 0;
-  const diff = completionRate - prevRate;
-  const diffStr = diff > 0 ? `+${diff}%` : `${diff}%`;
-  const diffColor = diff >= 0 ? 'var(--check)' : 'var(--danger)';
-
-  let insightText = '';
-  if (totalDue > 0) {
-    insightText = `<strong>Best day: ${DAYS[bestDay]}</strong> at ${bestDayPct}%.`;
-    if (dowTotals[worstDay] > 0 && worstDayPct < bestDayPct) insightText += ` ${DAYS[worstDay]} dips to ${worstDayPct}%.`;
-    if (prevDue > 0) insightText += ` <strong style="color:${diffColor}">${diffStr} vs ${MO_SHORT[prevM]}</strong>.`;
-  }
-
-  el.innerHTML = `
-    <div class="stat-cards-grid" style="margin-bottom:10px">
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${bestStreak}</div><div class="sc-lbl">Best Streak</div></div>
-    </div>
-    <div class="st-card">
-      <div class="st-nav">
-        <button onclick="statsMonth=${prevM};statsMonthYear=${prevY};renderHabits()">← ${MO_SHORT[prevM]}</button>
-        <span class="st-nav-label">${MO[m]} ${y}</span>
-        <button onclick="statsMonth=${nextM};statsMonthYear=${nextY};renderHabits()" ${nextDisabled?'disabled style="opacity:0.3;cursor:default"':''}>${MO_SHORT[nextM]} →</button>
-      </div>
-      <div class="st-cal">${calHtml}</div>
-    </div>
-    <div class="st-card">
-      <div class="st-card-title">Day of Week Performance</div>
-      <div class="st-dow">${dowHtml}</div>
-    </div>
-    ${insightText ? `<div class="st-insight">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-      <div class="st-insight-text">${insightText}</div>
-    </div>` : ''}
-  `;
-}
-
-function renderStatsYearly(active) {
-  const el = document.getElementById('statsYearly');
-  if (!el) return;
-  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const today = todayStr();
-  const y = statsYear;
-  const isCurrentYear = y === new Date().getFullYear();
-  const nextDisabled = isCurrentYear;
-
-  // Yearly summary
-  const yearStart = `${y}-01-01`;
-  const yearEnd = isCurrentYear ? today : `${y}-12-31`;
-  let totalComps = 0, totalDue = 0, totalDone = 0;
-  const monthlyRates = [];
-  let bestMonthIdx = 0, bestMonthRate = 0, longestStreak = 0, longestStreakHabit = '';
-
-  // Monthly rates
-  for (let mo = 0; mo < 12; mo++) {
-    const moStart = `${y}-${String(mo + 1).padStart(2, '0')}-01`;
-    const moDays = new Date(y, mo + 1, 0).getDate();
-    const moEnd = `${y}-${String(mo + 1).padStart(2, '0')}-${String(moDays).padStart(2, '0')}`;
-    if (moStart > today) { monthlyRates.push(0); continue; }
-    let mDue = 0, mDone = 0;
-    for (let d = 1; d <= moDays; d++) {
-      const ds = `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      if (ds > today) break;
-      active.forEach(h => {
-        if (isHabitDueOnDate(h, ds)) { mDue++; if (isCompletedOn(h.id, ds)) { mDone++; totalComps++; } }
-      });
-    }
-    totalDue += mDue; totalDone += mDone;
-    const rate = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
-    monthlyRates.push(rate);
-    if (rate > bestMonthRate) { bestMonthRate = rate; bestMonthIdx = mo; }
-  }
-  const avgRate = totalDue > 0 ? Math.round((totalDone / totalDue) * 100) : 0;
-
-  // Best streak per habit
-  active.forEach(h => {
-    const bs = computeBestStreak(h.id);
-    if (bs > longestStreak) { longestStreak = bs; longestStreakHabit = h.name; }
-  });
-
-  // Compare vs last year
-  const lastYearDue = (() => { let d = 0, dn = 0; return ''; })(); // skip for now
-
-  // GitHub heatmap
-  const jan1Dow = (new Date(y, 0, 1).getDay() + 6) % 7; // 0=Mon
-  const totalDaysInYear = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
-  let hmHtml = '';
-  for (let i = 0; i < jan1Dow; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
-
-  for (let d = 0; d < totalDaysInYear; d++) {
-    const dt = new Date(y, 0, d + 1);
-    const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-    if (ds > today) { hmHtml += '<div class="st-hm-cell"></div>'; continue; }
-    let count = 0, due = 0;
-    active.forEach(h => {
-      if (isHabitDueOnDate(h, ds)) { due++; if (isCompletedOn(h.id, ds)) count++; }
-    });
-    const ratio = due > 0 ? count / due : 0;
-    let lvl = '';
-    if (ratio > 0) lvl = ' l1';
-    if (ratio >= 0.4) lvl = ' l2';
-    if (ratio >= 0.7) lvl = ' l3';
-    if (ratio >= 0.95) lvl = ' l4';
-    hmHtml += `<div class="st-hm-cell${lvl}" title="${ds}: ${count}/${due}"></div>`;
-  }
-
-  // Month labels for heatmap
-  const hmMonths = MO_SHORT.map(m => `<span>${m}</span>`).join('');
-
-  // Trend bars
+  // Weekly trend (monthly) or monthly trend (yearly)
   let trendHtml = '';
-  const maxRate = Math.max(...monthlyRates, 1);
-  MO_SHORT.forEach((m, i) => {
-    const pct = monthlyRates[i];
-    const h = pct > 0 ? (pct / 100) * 65 : 0;
-    const moStart = `${y}-${String(i + 1).padStart(2, '0')}-01`;
-    const isCurrent = y === new Date().getFullYear() && i === new Date().getMonth();
-    const isPast = moStart <= today;
-    const barColor = isCurrent ? 'var(--navy)' : isPast ? '#22c55e' : 'var(--surface2)';
-    const opacity = isPast ? 1 : 0.2;
-    trendHtml += `<div class="st-trend-wrap">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${m}</div></div>`;
-  });
+  if (isMonthly) {
+    // 4-5 week bars
+    const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
+    const weeks = [];
+    let weekDue = 0, weekDone = 0, weekNum = 1;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${dateRange.year}-${String(dateRange.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dd = dailyData[ds];
+      if (dd && !dd.future) { weekDue += dd.due; weekDone += dd.done; }
+      const dow = (new Date(ds + 'T12:00:00').getDay() + 6) % 7;
+      if (dow === 6 || d === daysInMonth) {
+        weeks.push({ label: `W${weekNum}`, pct: weekDue > 0 ? Math.round((weekDone / weekDue) * 100) : 0 });
+        weekDue = 0; weekDone = 0; weekNum++;
+      }
+    }
+    weeks.forEach(w => {
+      const h = w.pct > 0 ? (w.pct / 100) * 65 : 0;
+      const isCurrent = dateRange.year === new Date().getFullYear() && dateRange.month === new Date().getMonth();
+      const barColor = w.pct > 0 ? 'var(--navy)' : 'var(--surface2)';
+      trendHtml += `<div class="st-trend-wrap">${w.pct > 0 ? `<div class="st-trend-pct">${w.pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor}"></div><div class="st-trend-mo">${w.label}</div></div>`;
+    });
+  } else {
+    // 12-month bars
+    for (let mo = 0; mo < 12; mo++) {
+      const moStart = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-01`;
+      const moDays = new Date(dateRange.year, mo + 1, 0).getDate();
+      let mDue = 0, mDone = 0;
+      for (let d = 1; d <= moDays; d++) {
+        const ds = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dd = dailyData[ds];
+        if (dd && !dd.future) { mDue += dd.due; mDone += dd.done; }
+      }
+      const pct = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
+      const h = pct > 0 ? (pct / 100) * 65 : 0;
+      const isCurrent = dateRange.year === new Date().getFullYear() && mo === new Date().getMonth();
+      const isPast = moStart <= today;
+      const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? '#22c55e' : 'var(--surface2)';
+      const opacity = isPast ? 1 : 0.2;
+      trendHtml += `<div class="st-trend-wrap">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
+    }
+  }
 
   // Habit ranking
   const rankings = active.map(h => {
-    const comps = completionsForHabit(h.id);
-    // Count completions in this year
-    const yearComps = comps.filter(c => c.completedDate >= yearStart && c.completedDate <= yearEnd).length;
-    // Approximate due days
-    let dueDays = 0;
-    const dayCount = Math.min(totalDaysInYear, Math.floor((new Date(yearEnd + 'T12:00:00') - new Date(yearStart + 'T12:00:00')) / 86400000) + 1);
-    for (let d = 0; d < dayCount; d++) {
-      const dt = new Date(y, 0, d + 1);
-      const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      if (ds > today) break;
-      if (isHabitDueOnDate(h, ds)) dueDays++;
-    }
-    const pct = dueDays > 0 ? Math.round((yearComps / dueDays) * 100) : 0;
+    let dueDays = 0, doneCount = 0;
+    allDates.forEach(ds => {
+      const dd = dailyData[ds];
+      if (dd && !dd.future && isHabitDueOnDate(h, ds)) {
+        dueDays++;
+        if (isCompletedOn(h.id, ds)) doneCount++;
+      }
+    });
+    const pct = dueDays > 0 ? Math.round((doneCount / dueDays) * 100) : 0;
     return { emoji: h.emoji, name: h.name, pct: Math.min(pct, 100) };
   }).sort((a, b) => b.pct - a.pct);
 
@@ -3945,50 +3833,146 @@ function renderStatsYearly(active) {
   });
 
   // Insight
-  const strongest = rankings[0];
-  const mostImproved = (() => {
-    // Compare last month vs 2 months ago
-    const cm = new Date().getMonth();
-    if (cm < 1) return null;
-    return null; // Simplify for now
-  })();
+  let bestDay = 0, bestDayPct = 0, worstDay = 0, worstDayPct = 100;
+  DAYS.forEach((_, i) => {
+    const pct = dowTotals[i] > 0 ? Math.round((dowCounts[i] / dowTotals[i]) * 100) : 0;
+    if (pct > bestDayPct) { bestDayPct = pct; bestDay = i; }
+    if (pct < worstDayPct && dowTotals[i] > 0) { worstDayPct = pct; worstDay = i; }
+  });
   let insightText = '';
-  if (strongest && strongest.pct > 0) {
-    insightText = `<strong>${strongest.name}</strong> is your strongest habit at ${strongest.pct}%.`;
-    if (rankings.length > 1) {
-      const weakest = rankings[rankings.length - 1];
-      insightText += ` <strong>${weakest.name}</strong> could use more attention at ${weakest.pct}%.`;
+  if (totalDue > 0) {
+    const strongest = rankings[0];
+    if (strongest && strongest.pct > 0) {
+      insightText = `<strong>Best day: ${DAYS[bestDay]}</strong> at ${bestDayPct}%.`;
+      if (dowTotals[worstDay] > 0 && worstDayPct < bestDayPct) insightText += ` ${DAYS[worstDay]} dips to ${worstDayPct}%.`;
+      insightText += ` <strong>${strongest.name}</strong> leads at ${strongest.pct}%.`;
     }
   }
 
+  const trendTitle = isMonthly ? 'Weekly Trend' : 'Monthly Trend';
+  const hmLegend = `<div class="st-hm-legend">Less <div class="st-hm-legend-cell" style="background:var(--surface2)"></div><div class="st-hm-legend-cell" style="background:#c7d9f0"></div><div class="st-hm-legend-cell" style="background:#7aacdf"></div><div class="st-hm-legend-cell" style="background:#3d7ec4"></div><div class="st-hm-legend-cell" style="background:var(--navy)"></div> More</div>`;
+
+  return { completionRate, hmHtml, hmMonthsHtml, hmLegend, dowHtml, trendHtml, trendTitle, rankHtml, insightText };
+}
+
+function renderStatsMonthly(active) {
+  const el = document.getElementById('statsMonthly');
+  if (!el) return;
+  const MO = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = statsMonthYear, m = statsMonth;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const startDate = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  const endDate = `${y}-${String(m + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  const prevM = m === 0 ? 11 : m - 1;
+  const prevY = m === 0 ? y - 1 : y;
+  const nextM = m === 11 ? 0 : m + 1;
+  const nextY = m === 11 ? y + 1 : y;
+  const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
+
+  const v = buildStatsView(active, { startDate, endDate, isMonthly: true, year: y, month: m });
+  const currentStreak = Math.max(...active.map(h => computeStreak(h.id)), 0);
+  const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
+
   el.innerHTML = `
-    <div class="st-year-grid">
-      <div class="st-year-card"><div class="yv">${totalComps.toLocaleString()}</div><div class="yl">Total Completions</div><div class="ys">across ${active.length} habits</div></div>
-      <div class="st-year-card"><div class="yv">${avgRate}%</div><div class="yl">Avg Completion Rate</div></div>
-      <div class="st-year-card"><div class="yv">${longestStreak} days</div><div class="yl">Longest Streak</div>${longestStreakHabit ? `<div class="ys">${longestStreakHabit}</div>` : ''}</div>
-      <div class="st-year-card"><div class="yv">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="yl">Best Month</div>${bestMonthRate > 0 ? `<div class="ys">${bestMonthRate}% completion</div>` : ''}</div>
+    <div class="stat-cards-grid" style="margin-bottom:10px">
+      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${v.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
+    </div>
+    <div class="st-card">
+      <div class="st-nav">
+        <button onclick="statsMonth=${prevM};statsMonthYear=${prevY};renderHabits()">← ${MO_SHORT[prevM]}</button>
+        <span class="st-nav-label">${MO[m]} ${y}</span>
+        <button onclick="statsMonth=${nextM};statsMonthYear=${nextY};renderHabits()" ${isCurrentMonth?'disabled style="opacity:0.3;cursor:default"':''}>${MO_SHORT[nextM]} →</button>
+      </div>
+      ${v.hmMonthsHtml}
+      <div class="st-hm-wrap"><div class="st-hm">${v.hmHtml}</div></div>
+      ${v.hmLegend}
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">Day of Week Performance</div>
+      <div class="st-dow">${v.dowHtml}</div>
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">${v.trendTitle}</div>
+      <div class="st-trend">${v.trendHtml}</div>
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">Habit Ranking</div>
+      ${v.rankHtml}
+    </div>
+    ${v.insightText ? `<div class="st-insight" style="margin-top:10px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div class="st-insight-text">${v.insightText}</div>
+    </div>` : ''}
+  `;
+}
+
+function renderStatsYearly(active) {
+  const el = document.getElementById('statsYearly');
+  if (!el) return;
+  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = statsYear;
+  const isCurrentYear = y === new Date().getFullYear();
+  const startDate = `${y}-01-01`;
+  const totalDaysInYear = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
+  const endDate = `${y}-12-${totalDaysInYear === 366 ? 31 : 31}`;
+
+  const v = buildStatsView(active, { startDate, endDate, isMonthly: false, year: y });
+
+  // Best month
+  const today = todayStr();
+  let bestMonthIdx = 0, bestMonthRate = 0;
+  for (let mo = 0; mo < 12; mo++) {
+    const moStart = `${y}-${String(mo + 1).padStart(2, '0')}-01`;
+    if (moStart > today) continue;
+    const moDays = new Date(y, mo + 1, 0).getDate();
+    let mDue = 0, mDone = 0;
+    for (let d = 1; d <= moDays; d++) {
+      const ds = `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (ds > today) break;
+      active.forEach(h => {
+        if (isHabitDueOnDate(h, ds)) { mDue++; if (isCompletedOn(h.id, ds)) mDone++; }
+      });
+    }
+    const rate = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
+    if (rate > bestMonthRate) { bestMonthRate = rate; bestMonthIdx = mo; }
+  }
+  const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
+
+  el.innerHTML = `
+    <div class="stat-cards-grid" style="margin-bottom:10px">
+      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${v.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
     <div class="st-card">
       <div class="st-nav">
         <button onclick="statsYear=${y - 1};renderHabits()">← ${y - 1}</button>
         <span class="st-nav-label">${y} Activity</span>
-        <button onclick="statsYear=${y + 1};renderHabits()" ${nextDisabled?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
+        <button onclick="statsYear=${y + 1};renderHabits()" ${isCurrentYear?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
       </div>
-      <div class="st-hm-months">${hmMonths}</div>
-      <div class="st-hm-wrap"><div class="st-hm">${hmHtml}</div></div>
-      <div class="st-hm-legend">Less <div class="st-hm-legend-cell" style="background:var(--surface2)"></div><div class="st-hm-legend-cell" style="background:#c7d9f0"></div><div class="st-hm-legend-cell" style="background:#7aacdf"></div><div class="st-hm-legend-cell" style="background:#3d7ec4"></div><div class="st-hm-legend-cell" style="background:var(--navy)"></div> More</div>
+      ${v.hmMonthsHtml}
+      <div class="st-hm-wrap"><div class="st-hm">${v.hmHtml}</div></div>
+      ${v.hmLegend}
     </div>
     <div class="st-card">
-      <div class="st-card-title">Monthly Trend</div>
-      <div class="st-trend">${trendHtml}</div>
+      <div class="st-card-title">Day of Week Performance</div>
+      <div class="st-dow">${v.dowHtml}</div>
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">${v.trendTitle}</div>
+      <div class="st-trend">${v.trendHtml}</div>
     </div>
     <div class="st-card">
       <div class="st-card-title">Habit Ranking</div>
-      ${rankHtml}
+      ${v.rankHtml}
     </div>
-    ${insightText ? `<div class="st-insight" style="margin-top:10px">
+    ${v.insightText ? `<div class="st-insight" style="margin-top:10px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      <div class="st-insight-text">${insightText}</div>
+      <div class="st-insight-text">${v.insightText}</div>
     </div>` : ''}
   `;
 }
