@@ -5628,10 +5628,8 @@ function showInlineConfirm(title, message, onConfirm) {
 function handleNoteNbChange(selectEl, noteId) {
   if (selectEl.value === '__new__') {
     selectEl.value = ''; // reset dropdown
-    showInlinePrompt('New notebook', '', name => {
-      if (!name) return;
-      const colors = ['#2d5fa6','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#be185d'];
-      const nb = { id: Date.now(), name, color: colors[notebooksArr.length % colors.length], order: notebooksArr.length };
+    showNotebookPrompt('New notebook', '', '', null, (name, icon, color) => {
+      const nb = { id: Date.now(), name, icon: icon || '', color, order: notebooksArr.length };
       notebooksArr.push(nb);
       moveNoteToNotebook(noteId, nb.id);
       renderNotes();
