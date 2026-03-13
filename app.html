@@ -748,6 +748,9 @@
     .heatmap-month-labels span { font-size: 8px; }
     .habit-stat-row { padding: 9px 10px; flex-wrap: wrap; }
     .habit-stat-nums { gap: 8px; width: 100%; justify-content: space-around; margin-top: 6px; }
+    .st-year-grid { grid-template-columns: 1fr; }
+    .st-hm:not(.monthly) .st-hm-cell { width: 10px; height: 10px; }
+    .st-hm-months:not(.monthly) span { width: calc(10px * 4.33 + 2px * 3.33); }
   }
 
   /* TASK SEARCH */
@@ -1323,7 +1326,7 @@
   .faq-contact-note { margin-top: 16px; padding: 12px 14px; background: var(--hover); border-radius: 8px; font-size: 12px; color: var(--text2); border: 1px solid var(--border2); text-align: center; }
 
   /* ══════ HABITS ══════ */
-  .habits-content { padding: 0; }
+  .habits-content { padding: 0; -webkit-user-select: none; user-select: none; }
   .habit-sub-pills { /* inherits .pill-bar layout */ }
   .habit-sub-content { display: none; }
   .habit-sub-content.active { display: block; }
@@ -1403,6 +1406,101 @@
   .heatmap-cell.l4 { background: var(--navy); }
   .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 10px; color: var(--muted); }
   .heatmap-legend .heatmap-cell { width: 10px; height: 10px; aspect-ratio: auto; max-width: none; flex: none; }
+
+  /* ──── Stats tabs ──── */
+  .stats-tab-bar { display: flex; gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
+  .stats-tab-btn { flex: 1; padding: 7px 0; text-align: center; font-size: 12.5px; font-weight: 600; font-family: inherit; border: none; background: none; cursor: pointer; border-radius: 8px; color: var(--muted); transition: all 0.15s; }
+  .stats-tab-btn.active { background: var(--navy); color: #fff; }
+  .stats-tab-btn:hover:not(.active) { color: var(--text); }
+  .stats-view { display: none; }
+  .stats-view.active { display: block; }
+
+  /* Stats card */
+  .st-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 10px; }
+  .st-card-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+
+  /* Month nav */
+  .st-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .st-nav .st-nav-label { font-size: 14px; font-weight: 700; }
+  .st-nav button { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 11px; color: var(--text2); }
+  .st-nav button:hover { background: var(--surface2); }
+
+  /* Calendar heatmap */
+  .st-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .st-cal-hdr { font-size: 10px; font-weight: 600; color: var(--muted); text-align: center; padding: 4px 0; }
+  .st-cal-day { aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--text2); cursor: default; transition: transform 0.1s; }
+  .st-cal-day:hover { transform: scale(1.08); }
+  .st-cal-day.empty { background: none; }
+  .st-cal-day.missed { background: var(--surface2); color: var(--muted); }
+  .st-cal-day.partial { background: #dcfce7; color: #15803d; }
+  .st-cal-day.done { background: #22c55e; color: #fff; }
+  .st-cal-day.today { box-shadow: inset 0 0 0 2px var(--navy); }
+  .st-cal-day.future { background: none; color: var(--border2); }
+
+  /* DOW chart */
+  .st-dow { display: flex; align-items: flex-end; gap: 6px; height: 90px; padding-top: 8px; }
+  .st-dow-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .st-dow-bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--navy); min-height: 2px; transition: height 0.3s; }
+  .st-dow-lbl { font-size: 10px; color: var(--muted); font-weight: 500; }
+  .st-dow-pct { font-size: 9px; color: var(--text2); font-weight: 600; }
+
+  /* Insight */
+  .st-insight { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(45,95,166,0.05); border-radius: 8px; border-left: 3px solid var(--navy); }
+  .st-insight svg { flex-shrink: 0; color: var(--navy); }
+  .st-insight-text { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .st-insight-text strong { color: var(--text); }
+
+  /* Year summary */
+  .st-year-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .st-year-card { background: var(--surface2); border-radius: 8px; padding: 14px; }
+  .st-year-card .yv { font-size: 22px; font-weight: 800; color: var(--navy); line-height: 1; }
+  .st-year-card .yl { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+  .st-year-card .ys { font-size: 11px; color: var(--text2); margin-top: 2px; font-weight: 500; }
+
+  /* GitHub heatmap (yearly) */
+  .st-hm-wrap { overflow-x: auto; padding-bottom: 4px; }
+  .st-hm-wrap.monthly { overflow-x: visible; }
+  .st-hm { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 2px; width: max-content; }
+  .st-hm.monthly { width: 100%; grid-template-columns: repeat(7, 1fr); grid-template-rows: auto; grid-auto-flow: row; }
+  .st-hm-cell { width: 13px; height: 13px; border-radius: 2px; background: var(--surface2); transition: transform 0.1s; cursor: default; }
+  .st-hm.monthly .st-hm-cell { width: auto; height: auto; aspect-ratio: 1; border-radius: 3px; }
+  .st-hm-cell:hover { transform: scale(1.3); z-index: 2; }
+  .st-hm-cell.l1 { background: #c7d9f0; }
+  .st-hm-cell.l2 { background: #7aacdf; }
+  .st-hm-cell.l3 { background: #3d7ec4; }
+  .st-hm-cell.l4 { background: var(--navy); }
+  .st-hm-months { display: flex; font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+  .st-hm-months span { width: calc(13px * 4.33 + 2px * 3.33); text-align: left; }
+  .st-hm-day-labels-top { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px; font-size: 10px; color: var(--muted); text-align: center; font-weight: 500; }
+  .st-hm-week-labels { font-size: 9px; color: var(--muted); text-align: right; padding-right: 6px; display: flex; align-items: center; justify-content: flex-end; }
+  .st-hm-legend { display: flex; align-items: center; gap: 3px; margin-top: 8px; justify-content: flex-end; font-size: 10px; color: var(--muted); }
+  .st-hm-legend-cell { width: 11px; height: 11px; border-radius: 2px; }
+  .st-woy { display: grid; grid-template-columns: repeat(auto-fill, minmax(8px, 1fr)); gap: 2px; }
+  .st-woy-cell { aspect-ratio: 1; border-radius: 2px; background: var(--surface2); cursor: default; transition: transform 0.1s; }
+  .st-woy-cell:hover { transform: scale(1.4); z-index: 2; }
+  .st-woy-cell.l1 { background: #c7d9f0; }
+  .st-woy-cell.l2 { background: #7aacdf; }
+  .st-woy-cell.l3 { background: #3d7ec4; }
+  .st-woy-cell.l4 { background: var(--navy); }
+  .st-woy-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 4px; }
+
+  /* 12-month trend */
+  .st-trend { display: flex; align-items: flex-end; gap: 5px; height: 80px; }
+  .st-trend-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .st-trend-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s; }
+  .st-trend-mo { font-size: 9px; color: var(--muted); font-weight: 500; }
+  .st-trend-pct { font-size: 8px; color: var(--text2); font-weight: 600; }
+
+  /* Habit ranking */
+  .st-rank { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .st-rank:last-child { border-bottom: none; }
+  .st-rank .rn { font-size: 12px; font-weight: 700; color: var(--muted); width: 18px; text-align: center; }
+  .st-rank .re { font-size: 18px; }
+  .st-rank .rname { font-size: 13px; font-weight: 600; flex: 1; }
+  .st-rank .rbar { width: 80px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .st-rank .rbar-fill { height: 100%; border-radius: 3px; }
+  .st-rank .rpct { font-size: 12px; font-weight: 700; width: 40px; text-align: right; }
+
   .habit-stat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 12px; }
   .habit-stat-info { flex: 1; min-width: 0; }
   .habit-stat-name { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
@@ -1514,10 +1612,12 @@
   }
 
   /* ══════ NOTES ══════ */
-  .notes-layout { display: flex; height: calc(100vh - 86px); }
+  .notes-layout { display: flex; flex-wrap: wrap; height: calc(100vh - 86px); max-width: 1400px; margin: 0 auto; transition: all 0.3s ease; }
+  .notes-left-col { display: contents; }
   .notes-sidebar {
     width: 240px; background: var(--surface); border-right: 1px solid var(--border);
     display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+    transition: width 0.3s ease, border 0.3s ease;
   }
   .ns-section { padding: 14px 12px 4px; }
   .ns-label {
@@ -1546,6 +1646,7 @@
   .notes-list {
     width: 300px; background: var(--surface); border-right: 1px solid var(--border);
     display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+    transition: width 0.3s ease;
   }
   .nl-header { padding: 12px 14px 8px; border-bottom: 1px solid var(--border); }
   .nl-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
@@ -1570,11 +1671,12 @@
   .tag-personal { background: #ece6f4; color: var(--personal); }
   .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); }
 
-  .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex 0.3s ease; min-width: 480px; }
   .notes-editor > div { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
   .ne-toolbar {
-    display: flex; align-items: center; gap: 4px; padding: 8px 20px;
+    display: flex; align-items: center; gap: 4px; padding: 6px 0;
     border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 5; margin-bottom: 14px;
   }
   .tb-group { display: flex; align-items: center; gap: 1px; padding-right: 8px; border-right: 1px solid var(--border); margin-right: 6px; }
   .tb-group:last-child { border-right: none; margin-right: 0; padding-right: 0; }
@@ -1590,9 +1692,10 @@
   .ne-page {
     max-width: 740px; margin: 0 auto; background: var(--surface);
     border-radius: 10px; border: 1px solid var(--border);
-    padding: 36px 44px 50px; min-height: 500px;
+    padding: 36px 44px 50px; min-height: 500px; min-width: 0;
     box-shadow: 0 2px 16px rgba(0,0,0,0.05);
     animation: fadeUp 0.25s ease both;
+    transition: max-width 0.3s ease, padding 0.3s ease;
   }
   .ne-title {
     font-size: 24px; font-weight: 700; border: none; outline: none; width: 100%;
@@ -1629,11 +1732,37 @@
   .note-action-btn:hover { color: var(--text); background: var(--surface2); }
   .note-action-btn.starred { color: var(--top3); }
 
+  /* Bulk select mode */
+  .nl-bulk-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .nl-bulk-bar button { border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-family: inherit; cursor: pointer; background: var(--surface); color: var(--text2); }
+  .nl-bulk-bar button:hover { background: var(--surface2); }
+  .nl-bulk-bar button.danger { color: #d44; border-color: #d4444433; }
+  .nl-bulk-bar button.danger:hover { background: #d4441a; color: #fff; }
+  .nl-bulk-bar .bulk-count { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .nl-item.select-mode { display: flex; align-items: flex-start; gap: 8px; }
+  .nl-item .nl-checkbox { display: none; width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
+  .nl-item.select-mode .nl-checkbox { display: block; }
+
+  /* Note context menu */
+  .note-ctx-menu { position: fixed; z-index: 500; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 170px; animation: fadeUp 0.12s ease both; }
+  .note-ctx-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: none; font-family: inherit; font-size: 12px; cursor: pointer; border-radius: 7px; color: var(--text); }
+  .note-ctx-menu button:hover { background: var(--surface2); }
+  .note-ctx-menu button.danger { color: #d44; }
+  .note-ctx-menu .ctx-divider { height: 1px; background: var(--border); margin: 3px 6px; }
+  .note-ctx-menu .ctx-submenu { position: relative; }
+  .note-ctx-menu .ctx-sub-items { display: none; position: absolute; left: 100%; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 140px; }
+  .note-ctx-menu .ctx-submenu:hover .ctx-sub-items { display: block; }
+
+  /* Sidebar drop targets */
+  .ns-item.drop-target { background: rgba(45,95,166,0.12); border: 1px dashed var(--navy); }
+
   /* ──── MOBILE NOTES ──── */
   @media (max-width: 600px) {
-    .notes-layout { flex-direction: column; height: auto; min-height: calc(100vh - 160px); }
+    .notes-layout { flex-direction: column; flex-wrap: nowrap; height: auto; min-height: calc(100vh - 160px); }
+    .notes-left-col { display: contents; }
     .notes-sidebar { display: none; }
     .notes-list { width: 100%; border-right: none; max-height: none; background: var(--bg); padding-bottom: 100px; }
+    .notes-editor { min-width: 0; }
     .nl-header { padding: 12px 16px 10px; background: var(--bg); border-bottom: none; }
     .nl-title { font-size: 16px; }
     .nl-search { height: 34px; }
@@ -1647,7 +1776,7 @@
       z-index: 150; flex-direction: column;
     }
     .ne-page { padding: 20px 16px 80px; border-radius: 0; border-left: none; border-right: none; box-shadow: none; min-height: auto; }
-    .ne-toolbar { padding: 6px 10px; overflow-x: auto; flex-wrap: nowrap; }
+    .ne-toolbar { padding: 6px 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
     .ne-body { padding: 0 0 40px; }
     .ne-title { font-size: 20px; }
     .ne-meta { gap: 8px; font-size: 11px; }
@@ -1688,10 +1817,17 @@
     .mobile-nb-toggle { display: none !important; }
     .mobile-nb-drawer { display: none !important; }
   }
-  @media (max-width: 900px) and (min-width: 601px) {
-    .notes-sidebar { width: 200px; }
-    .notes-list { width: 250px; }
-    .ne-page { padding: 28px 24px 40px; }
+  /* Medium: sidebar + list stack into one column, editor beside it */
+  @media (max-width: 1080px) and (min-width: 601px) {
+    .notes-left-col { display: flex; flex-direction: column; width: 280px; flex-shrink: 0; height: calc(100vh - 86px); border-right: 1px solid var(--border); transition: width 0.3s ease; }
+    .notes-sidebar { width: 100%; border-right: none; max-height: 45%; overflow-y: auto; border-bottom: 1px solid var(--border); }
+    .notes-list { width: 100%; border-right: none; flex: 1; min-height: 0; }
+    .notes-editor { flex: 1; min-width: 0; }
+    .ne-page { padding: 28px 28px 40px; }
+  }
+  @media (max-width: 800px) and (min-width: 601px) {
+    .notes-left-col { width: 240px; }
+    .ne-page { padding: 24px 20px 40px; }
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1981,6 +2117,7 @@
 
 <div class="content" data-tool-view="notes" style="display:none">
   <div class="notes-layout">
+    <div class="notes-left-col">
     <!-- Sidebar -->
     <aside class="notes-sidebar" id="notesSidebar"></aside>
     <!-- Notes list -->
@@ -1988,14 +2125,20 @@
       <div class="mobile-nb-toggle" id="mobileNbToggle" onclick="document.getElementById('mobileNbDrawer').classList.toggle('open')" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <div class="nl-header">
-        <div class="nl-title" id="nlTitle">All Notes <span class="nl-count" id="nlCount">0</span></div>
+        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span>
+          <button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+          </button>
+        </div>
         <div class="nl-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="notesSearchInput" placeholder="Search notes...">
         </div>
       </div>
+      <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
     </div>
+    </div><!-- /notes-left-col -->
     <!-- Editor -->
     <div class="notes-editor" id="notesEditor">
       <div id="notesEditorContent"></div>
@@ -3542,6 +3685,11 @@ function unarchiveHabit(habitId) {
   saveHabitToDB(h);
 }
 
+let statsMonth = new Date().getMonth();
+let statsMonthYear = new Date().getFullYear();
+let statsYear = new Date().getFullYear();
+let statsTab = 'monthly';
+
 function renderHabitStats(active) {
   const el = document.getElementById('habit-stats');
   if (!el) return;
@@ -3555,111 +3703,402 @@ function renderHabitStats(active) {
     return;
   }
 
-  const overallScore = Math.round(active.reduce((s, h) => s + computeScore(h), 0) / active.length);
-  const allComps = habitCompletions.length;
-  const bestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
+  el.innerHTML = `
+    <div class="stats-tab-bar">
+      <button class="stats-tab-btn${statsTab==='monthly'?' active':''}" onclick="statsTab='monthly';renderHabits()">Monthly</button>
+      <button class="stats-tab-btn${statsTab==='yearly'?' active':''}" onclick="statsTab='yearly';renderHabits()">Yearly</button>
+    </div>
+    <div class="stats-view${statsTab==='monthly'?' active':''}" id="statsMonthly"></div>
+    <div class="stats-view${statsTab==='yearly'?' active':''}" id="statsYearly"></div>
+  `;
 
-  // This week
-  const weekDates = getWeekDates();
-  let weekCount = 0;
-  weekDates.forEach(ds => { active.forEach(h => { if (isCompletedOn(h.id, ds)) weekCount++; }); });
+  if (statsTab === 'monthly') renderStatsMonthly(active);
+  else renderStatsYearly(active);
+}
 
-  // This month
+function buildStatsView(active, dateRange) {
+  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const today = todayStr();
-  const monthStart = today.slice(0, 8) + '01';
-  let monthCount = 0;
-  habitCompletions.forEach(c => { if (c.completedDate >= monthStart && c.completedDate <= today) monthCount++; });
+  const { startDate, endDate, isMonthly } = dateRange;
 
-  // Heatmap — 16 weeks with axis labels
-  const HEAT_WEEKS = 16;
-  let heatmapHTML = '';
-  let monthLabels = '';
-  const heatToday = new Date(today + 'T12:00:00');
-  const heatStart = new Date(heatToday); heatStart.setDate(heatToday.getDate() - HEAT_WEEKS * 7 + 1);
-  // Align to Monday
-  const startDay = heatStart.getDay();
-  heatStart.setDate(heatStart.getDate() - ((startDay + 6) % 7));
-  const shortMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  let lastMonth = -1;
-  for (let w = 0; w < HEAT_WEEKS; w++) {
-    // Month label for this column (show if first day of column is a new month)
-    const colStart = new Date(heatStart);
-    colStart.setDate(heatStart.getDate() + w * 7);
-    const m = colStart.getMonth();
-    if (m !== lastMonth) {
-      monthLabels += `<span>${shortMonths[m]}</span>`;
-      lastMonth = m;
-    } else {
-      monthLabels += `<span></span>`;
-    }
-    let col = '<div class="heatmap-col">';
-    for (let d = 0; d < 7; d++) {
-      const cellDate = new Date(heatStart);
-      cellDate.setDate(heatStart.getDate() + w * 7 + d);
-      const ds = cellDate.toISOString().slice(0, 10);
-      if (ds > today) { col += '<div class="heatmap-cell"></div>'; continue; }
-      let count = 0;
-      active.forEach(h => { if (isCompletedOn(h.id, ds)) count++; });
-      const maxH = active.length || 1;
-      const ratio = count / maxH;
-      let lvl = '';
-      if (ratio > 0) lvl = 'l1';
-      if (ratio >= 0.4) lvl = 'l2';
-      if (ratio >= 0.7) lvl = 'l3';
-      if (ratio >= 0.9) lvl = 'l4';
-      col += `<div class="heatmap-cell${lvl?' '+lvl:''}" title="${ds}: ${count}/${maxH}"></div>`;
-    }
-    col += '</div>';
-    heatmapHTML += col;
+  // Collect daily data for the range
+  let totalDue = 0, totalDone = 0;
+  const dowCounts = Array(7).fill(0);
+  const dowTotals = Array(7).fill(0);
+  const dailyData = {}; // ds -> { due, done }
+
+  const start = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
+  for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
+    const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    if (ds > today) { dailyData[ds] = { due: 0, done: 0, future: true }; continue; }
+    let due = 0, done = 0;
+    active.forEach(h => {
+      if (isHabitDueOnDate(h, ds)) { due++; if (isCompletedOn(h.id, ds)) done++; }
+    });
+    dailyData[ds] = { due, done, future: false };
+    totalDue += due; totalDone += done;
+    const dow = (dt.getDay() + 6) % 7; // 0=Mon
+    dowTotals[dow] += due; dowCounts[dow] += done;
   }
-  // Day-of-week labels (Mon through Sun, showing Mon/Wed/Fri)
-  const dayLabelsHTML = ['Mon','','Wed','','Fri','',''].map(l => `<span>${l}</span>`).join('');
 
-  // Per-habit breakdown
-  let breakdownHTML = '<div class="section-label">📊 PER-HABIT BREAKDOWN</div>';
-  active.forEach(h => {
-    const score = computeScore(h);
-    const streak = computeStreak(h.id);
-    const total = completionsForHabit(h.id).length;
-    const sColor = scoreColor(score);
-    breakdownHTML += `<div class="habit-stat-row">
-      <span style="font-size:18px">${h.emoji}</span>
-      <div class="habit-stat-info">
-        <div class="habit-stat-name">${h.name}</div>
-        <div class="habit-stat-bar-wrap"><div class="habit-stat-bar" style="width:${score}%;background:${sColor}"></div></div>
-      </div>
-      <div class="habit-stat-nums">
-        <div class="habit-stat-num"><div class="v" style="color:${sColor}">${score}%</div><div class="l">Score</div></div>
-        <div class="habit-stat-num"><div class="v">${streak}</div><div class="l">Streak</div></div>
-        <div class="habit-stat-num"><div class="v">${total}</div><div class="l">Total</div></div>
-      </div>
-    </div>`;
+  const completionRate = totalDue > 0 ? Math.round((totalDone / totalDue) * 100) : 0;
+
+  // GitHub-style heatmap
+  const startDow = (new Date(startDate + 'T12:00:00').getDay() + 6) % 7;
+  let hmHtml = '';
+  const allDates = Object.keys(dailyData).sort();
+
+  if (isMonthly) {
+    // Monthly: calendar layout — 7 columns (Mon-Sun), rows = weeks
+    const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
+    // Pad start (empty cells before day 1)
+    for (let i = 0; i < startDow; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
+    // Day cells in row order (Mon-Sun per week)
+    allDates.forEach(ds => {
+      const d = dailyData[ds];
+      if (d.future) { hmHtml += '<div class="st-hm-cell"></div>'; return; }
+      const ratio = d.due > 0 ? d.done / d.due : 0;
+      let lvl = '';
+      if (ratio > 0) lvl = ' l1';
+      if (ratio >= 0.4) lvl = ' l2';
+      if (ratio >= 0.7) lvl = ' l3';
+      if (ratio >= 0.95) lvl = ' l4';
+      const dayNum = parseInt(ds.split('-')[2]);
+      hmHtml += `<div class="st-hm-cell${lvl}" title="${ds}: ${d.done}/${d.due}" style="position:relative"><span style="position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:8px;color:${lvl === ' l3' || lvl === ' l4' ? '#fff' : 'var(--muted)'};pointer-events:none;line-height:1">${dayNum}</span></div>`;
+    });
+    // Pad end
+    const totalCells = startDow + daysInMonth;
+    const remainder = totalCells % 7;
+    if (remainder > 0) for (let i = 0; i < 7 - remainder; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
+  } else {
+    for (let i = 0; i < startDow; i++) hmHtml += '<div class="st-hm-cell" style="visibility:hidden"></div>';
+    allDates.forEach(ds => {
+      const d = dailyData[ds];
+      if (d.future) { hmHtml += '<div class="st-hm-cell"></div>'; return; }
+      const ratio = d.due > 0 ? d.done / d.due : 0;
+      let lvl = '';
+      if (ratio > 0) lvl = ' l1';
+      if (ratio >= 0.4) lvl = ' l2';
+      if (ratio >= 0.7) lvl = ' l3';
+      if (ratio >= 0.95) lvl = ' l4';
+      hmHtml += `<div class="st-hm-cell${lvl}" title="${ds}: ${d.done}/${d.due}"></div>`;
+    });
+  }
+
+  // Month/week labels for heatmap
+  let hmMonthsHtml = '';
+  let hmDayLabelsHtml = '';
+  if (isMonthly) {
+    // Day-of-week labels across top (Mon-Sun)
+    hmMonthsHtml = `<div class="st-hm-day-labels-top">${DAYS.map(d => `<span>${d.charAt(0)}</span>`).join('')}</div>`;
+    hmDayLabelsHtml = ''; // No side labels needed for calendar layout
+  } else {
+    hmMonthsHtml = `<div class="st-hm-months">${MO_SHORT.map(m => `<span>${m}</span>`).join('')}</div>`;
+  }
+
+  // Second chart: DOW (monthly) or Week of Year (yearly)
+  let secondChartTitle = '';
+  let secondChartHtml = '';
+  if (isMonthly) {
+    // DOW chart for monthly
+    secondChartTitle = 'Day of Week Performance';
+    DAYS.forEach((d, i) => {
+      const pct = dowTotals[i] > 0 ? Math.round((dowCounts[i] / dowTotals[i]) * 100) : 0;
+      const h = (pct / 100) * 70;
+      const opacity = pct > 80 ? 1 : pct > 60 ? 0.7 : pct > 30 ? 0.5 : 0.25;
+      secondChartHtml += `<div class="st-dow-wrap"><div class="st-dow-pct">${pct}%</div><div class="st-dow-bar" style="height:${Math.max(h, 2)}px;opacity:${opacity}"></div><div class="st-dow-lbl">${d}</div></div>`;
+    });
+    secondChartHtml = `<div class="st-dow">${secondChartHtml}</div>`;
+  } else {
+    // Week of Year performance for yearly — compact heatmap grid, no scroll
+    secondChartTitle = 'Week of Year Performance';
+    const weekData = [];
+    // Calculate ISO week data
+    for (let w = 0; w < 53; w++) {
+      const wStart = new Date(dateRange.year, 0, 1 + w * 7);
+      // Adjust to Monday
+      const dayOfWeek = wStart.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      wStart.setDate(wStart.getDate() + diff);
+      if (wStart.getFullYear() > dateRange.year && w > 0) break;
+      let wDue = 0, wDone = 0;
+      for (let d = 0; d < 7; d++) {
+        const wd = new Date(wStart);
+        wd.setDate(wd.getDate() + d);
+        const ds = `${wd.getFullYear()}-${String(wd.getMonth() + 1).padStart(2, '0')}-${String(wd.getDate()).padStart(2, '0')}`;
+        if (wd.getFullYear() !== dateRange.year) continue;
+        const dd = dailyData[ds];
+        if (dd && !dd.future) { wDue += dd.due; wDone += dd.done; }
+      }
+      const pct = wDue > 0 ? Math.round((wDone / wDue) * 100) : 0;
+      weekData.push({ week: w + 1, pct, due: wDue });
+    }
+    let woyHtml = '';
+    weekData.forEach(w => {
+      let lvl = '';
+      if (w.due === 0) { lvl = ''; }
+      else if (w.pct > 0) lvl = ' l1';
+      if (w.pct >= 40) lvl = ' l2';
+      if (w.pct >= 70) lvl = ' l3';
+      if (w.pct >= 95) lvl = ' l4';
+      woyHtml += `<div class="st-woy-cell${lvl}" title="Week ${w.week}: ${w.pct}%"></div>`;
+    });
+    const woyLabels = `<div class="st-woy-labels"><span>W1</span><span>W13</span><span>W26</span><span>W39</span><span>W52</span></div>`;
+    secondChartHtml = `<div class="st-woy">${woyHtml}</div>${woyLabels}`;
+  }
+
+  // Weekly trend (monthly) or monthly trend (yearly)
+  let trendHtml = '';
+  if (isMonthly) {
+    // 4-5 week bars
+    const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
+    const weeks = [];
+    let weekDue = 0, weekDone = 0, weekNum = 1;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${dateRange.year}-${String(dateRange.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dd = dailyData[ds];
+      if (dd && !dd.future) { weekDue += dd.due; weekDone += dd.done; }
+      const dow = (new Date(ds + 'T12:00:00').getDay() + 6) % 7;
+      if (dow === 6 || d === daysInMonth) {
+        weeks.push({ label: `W${weekNum}`, pct: weekDue > 0 ? Math.round((weekDone / weekDue) * 100) : 0 });
+        weekDue = 0; weekDone = 0; weekNum++;
+      }
+    }
+    weeks.forEach(w => {
+      const h = w.pct > 0 ? (w.pct / 100) * 65 : 0;
+      const isCurrent = dateRange.year === new Date().getFullYear() && dateRange.month === new Date().getMonth();
+      const barColor = w.pct > 0 ? 'var(--navy)' : 'var(--surface2)';
+      trendHtml += `<div class="st-trend-wrap">${w.pct > 0 ? `<div class="st-trend-pct">${w.pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor}"></div><div class="st-trend-mo">${w.label}</div></div>`;
+    });
+  } else {
+    // 12-month bars
+    for (let mo = 0; mo < 12; mo++) {
+      const moStart = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-01`;
+      const moDays = new Date(dateRange.year, mo + 1, 0).getDate();
+      let mDue = 0, mDone = 0;
+      for (let d = 1; d <= moDays; d++) {
+        const ds = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dd = dailyData[ds];
+        if (dd && !dd.future) { mDue += dd.due; mDone += dd.done; }
+      }
+      const pct = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
+      const h = pct > 0 ? (pct / 100) * 65 : 0;
+      const isCurrent = dateRange.year === new Date().getFullYear() && mo === new Date().getMonth();
+      const isPast = moStart <= today;
+      const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? '#22c55e' : 'var(--surface2)';
+      const opacity = isPast ? 1 : 0.2;
+      trendHtml += `<div class="st-trend-wrap">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
+    }
+  }
+
+  // Habit ranking
+  const rankings = active.map(h => {
+    let dueDays = 0, doneCount = 0;
+    allDates.forEach(ds => {
+      const dd = dailyData[ds];
+      if (dd && !dd.future && isHabitDueOnDate(h, ds)) {
+        dueDays++;
+        if (isCompletedOn(h.id, ds)) doneCount++;
+      }
+    });
+    const pct = dueDays > 0 ? Math.round((doneCount / dueDays) * 100) : 0;
+    return { emoji: h.emoji, name: h.name, pct: Math.min(pct, 100) };
+  }).sort((a, b) => b.pct - a.pct);
+
+  let rankHtml = '';
+  rankings.forEach((h, i) => {
+    const color = h.pct >= 80 ? 'var(--check)' : h.pct >= 60 ? '#22c55e' : h.pct >= 40 ? '#f59e0b' : 'var(--danger)';
+    rankHtml += `<div class="st-rank"><span class="rn">${i + 1}</span><span class="re">${h.emoji}</span><span class="rname">${h.name}</span><div class="rbar"><div class="rbar-fill" style="width:${h.pct}%;background:${color}"></div></div><span class="rpct" style="color:${color}">${h.pct}%</span></div>`;
   });
 
+  // Insight
+  let insightText = '';
+  if (totalDue > 0) {
+    const strongest = rankings[0];
+    if (isMonthly) {
+      // Best week for monthly
+      const daysInMonth = new Date(dateRange.year, dateRange.month + 1, 0).getDate();
+      const weeks = [];
+      let weekDue2 = 0, weekDone2 = 0, weekNum2 = 1;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ds = `${dateRange.year}-${String(dateRange.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dd = dailyData[ds];
+        if (dd && !dd.future) { weekDue2 += dd.due; weekDone2 += dd.done; }
+        const dow = (new Date(ds + 'T12:00:00').getDay() + 6) % 7;
+        if (dow === 6 || d === daysInMonth) {
+          weeks.push({ label: `Week ${weekNum2}`, pct: weekDue2 > 0 ? Math.round((weekDone2 / weekDue2) * 100) : 0 });
+          weekDue2 = 0; weekDone2 = 0; weekNum2++;
+        }
+      }
+      const bestWeek = weeks.reduce((best, w) => w.pct > best.pct ? w : best, { label: 'Week 1', pct: 0 });
+      if (strongest && strongest.pct > 0) {
+        insightText = `<strong>Best week: ${bestWeek.label}</strong> at ${bestWeek.pct}%.`;
+        insightText += ` <strong>${strongest.name}</strong> leads at ${strongest.pct}%.`;
+      }
+    } else {
+      // Best month for yearly
+      let bestMoIdx = 0, bestMoRate = 0;
+      for (let mo = 0; mo < 12; mo++) {
+        const moDays = new Date(dateRange.year, mo + 1, 0).getDate();
+        let mDue2 = 0, mDone2 = 0;
+        for (let d = 1; d <= moDays; d++) {
+          const ds = `${dateRange.year}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const dd = dailyData[ds];
+          if (dd && !dd.future) { mDue2 += dd.due; mDone2 += dd.done; }
+        }
+        const rate = mDue2 > 0 ? Math.round((mDone2 / mDue2) * 100) : 0;
+        if (rate > bestMoRate) { bestMoRate = rate; bestMoIdx = mo; }
+      }
+      if (strongest && strongest.pct > 0) {
+        insightText = `<strong>Best month: ${MO_SHORT[bestMoIdx]}</strong> at ${bestMoRate}%.`;
+        insightText += ` <strong>${strongest.name}</strong> leads at ${strongest.pct}%.`;
+      }
+    }
+  }
+
+  const trendTitle = isMonthly ? 'Weekly Trend' : 'Monthly Trend';
+  const hmLegend = `<div class="st-hm-legend">Less <div class="st-hm-legend-cell" style="background:var(--surface2)"></div><div class="st-hm-legend-cell" style="background:#c7d9f0"></div><div class="st-hm-legend-cell" style="background:#7aacdf"></div><div class="st-hm-legend-cell" style="background:#3d7ec4"></div><div class="st-hm-legend-cell" style="background:var(--navy)"></div> More</div>`;
+  const hmClass = isMonthly ? ' monthly' : '';
+
+  return { completionRate, hmHtml, hmMonthsHtml, hmDayLabelsHtml, hmLegend, hmClass, secondChartTitle, secondChartHtml, trendHtml, trendTitle, rankHtml, insightText };
+}
+
+function renderStatsMonthly(active) {
+  const el = document.getElementById('statsMonthly');
+  if (!el) return;
+  const MO = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = statsMonthYear, m = statsMonth;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const startDate = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  const endDate = `${y}-${String(m + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  const prevM = m === 0 ? 11 : m - 1;
+  const prevY = m === 0 ? y - 1 : y;
+  const nextM = m === 11 ? 0 : m + 1;
+  const nextY = m === 11 ? y + 1 : y;
+  const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
+
+  const v = buildStatsView(active, { startDate, endDate, isMonthly: true, year: y, month: m });
+  const currentStreak = Math.max(...active.map(h => computeStreak(h.id)), 0);
+  const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
+
   el.innerHTML = `
-    <div class="stat-cards-grid">
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${overallScore}%</div><div class="sc-lbl">Overall Score</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${allComps.toLocaleString()}</div><div class="sc-lbl">All Completions</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${bestStreak}</div><div class="sc-lbl">Best Streak</div></div>
+    <div class="stat-cards-grid" style="margin-bottom:10px">
+      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${v.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
-    <div class="stat-cards-grid">
-      <div class="stat-card"><div class="sc-val">${active.length}</div><div class="sc-lbl">Active Habits</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${weekCount}</div><div class="sc-lbl">This Week</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${monthCount}</div><div class="sc-lbl">This Month</div></div>
-    </div>
-    <div class="heatmap-section">
-      <div class="heatmap-title">Activity — Last ${HEAT_WEEKS} Weeks</div>
-      <div class="heatmap-wrap">
-        <div class="heatmap-day-labels">${dayLabelsHTML}</div>
-        <div class="heatmap-inner">
-          <div class="heatmap-month-labels">${monthLabels}</div>
-          <div class="heatmap-grid">${heatmapHTML}</div>
-        </div>
+    <div class="st-card">
+      <div class="st-nav">
+        <button onclick="statsMonth=${prevM};statsMonthYear=${prevY};renderHabits()">← ${MO_SHORT[prevM]}</button>
+        <span class="st-nav-label">${MO[m]} ${y}</span>
+        <button onclick="statsMonth=${nextM};statsMonthYear=${nextY};renderHabits()" ${isCurrentMonth?'disabled style="opacity:0.3;cursor:default"':''}>${MO_SHORT[nextM]} →</button>
       </div>
-      <div class="heatmap-legend">Less <div class="heatmap-cell"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div> More</div>
+      ${v.hmMonthsHtml}
+      <div class="st-hm-wrap${v.hmClass}"><div class="st-hm${v.hmClass}">${v.hmHtml}</div></div>
+      ${v.hmLegend}
     </div>
-    ${breakdownHTML}
+    <div class="st-card">
+      <div class="st-card-title">${v.secondChartTitle}</div>
+      ${v.secondChartHtml}
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">${v.trendTitle}</div>
+      <div class="st-trend">${v.trendHtml}</div>
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">Habit Ranking</div>
+      ${v.rankHtml}
+    </div>
+    ${v.insightText ? `<div class="st-insight" style="margin-top:10px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div class="st-insight-text">${v.insightText}</div>
+    </div>` : ''}
   `;
+}
+
+function renderStatsYearly(active) {
+  const el = document.getElementById('statsYearly');
+  if (!el) return;
+  const MO_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const y = statsYear;
+  const isCurrentYear = y === new Date().getFullYear();
+  const startDate = `${y}-01-01`;
+  const totalDaysInYear = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
+  const endDate = `${y}-12-${totalDaysInYear === 366 ? 31 : 31}`;
+
+  const v = buildStatsView(active, { startDate, endDate, isMonthly: false, year: y });
+
+  // Best month
+  const today = todayStr();
+  let bestMonthIdx = 0, bestMonthRate = 0;
+  for (let mo = 0; mo < 12; mo++) {
+    const moStart = `${y}-${String(mo + 1).padStart(2, '0')}-01`;
+    if (moStart > today) continue;
+    const moDays = new Date(y, mo + 1, 0).getDate();
+    let mDue = 0, mDone = 0;
+    for (let d = 1; d <= moDays; d++) {
+      const ds = `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (ds > today) break;
+      active.forEach(h => {
+        if (isHabitDueOnDate(h, ds)) { mDue++; if (isCompletedOn(h.id, ds)) mDone++; }
+      });
+    }
+    const rate = mDue > 0 ? Math.round((mDone / mDue) * 100) : 0;
+    if (rate > bestMonthRate) { bestMonthRate = rate; bestMonthIdx = mo; }
+  }
+  const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
+
+  el.innerHTML = `
+    <div class="stat-cards-grid" style="margin-bottom:10px">
+      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${v.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
+    </div>
+    <div class="st-card">
+      <div class="st-nav">
+        <button onclick="statsYear=${y - 1};renderHabits()">← ${y - 1}</button>
+        <span class="st-nav-label">${y} Activity</span>
+        <button onclick="statsYear=${y + 1};renderHabits()" ${isCurrentYear?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
+      </div>
+      ${v.hmMonthsHtml}
+      <div class="st-hm-wrap"><div class="st-hm">${v.hmHtml}</div></div>
+      ${v.hmLegend}
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">${v.secondChartTitle}</div>
+      ${v.secondChartHtml}
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">${v.trendTitle}</div>
+      <div class="st-trend">${v.trendHtml}</div>
+    </div>
+    <div class="st-card">
+      <div class="st-card-title">Habit Ranking</div>
+      ${v.rankHtml}
+    </div>
+    ${v.insightText ? `<div class="st-insight" style="margin-top:10px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <div class="st-insight-text">${v.insightText}</div>
+    </div>` : ''}
+  `;
+}
+
+// Helper: check if a habit is due on a specific date
+function isHabitDueOnDate(habit, dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dow = d.getDay(); // 0=Sun
+  if (habit.frequency === 'daily') return true;
+  if (habit.frequency === 'weekdays') return dow >= 1 && dow <= 5;
+  if (habit.frequency === 'custom') {
+    const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
+    return (habit.customDays || []).includes(dayNames[dow]);
+  }
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') return true;
+  return true;
 }
 
 function updateHabitStatsBar(active) {
@@ -4586,16 +5025,26 @@ async function loadNotes() {
 
 /* ══════ NOTEBOOKS DATA ══════ */
 function rowToNotebook(r) {
-  return { id: r.client_id, name: r.name || '', color: r.color || '#2d5fa6', order: r.order || 0 };
+  return { id: r.client_id, name: r.name || '', color: r.color || '#2d5fa6', order: r.order || 0, icon: r.icon || '' };
 }
 function notebookToRow(nb) {
-  return { user_id: currentUser.id, client_id: nb.id, name: nb.name, color: nb.color, "order": nb.order, updated_at: new Date().toISOString() };
+  return { user_id: currentUser.id, client_id: nb.id, name: nb.name, color: nb.color, "order": nb.order, icon: nb.icon || '', updated_at: new Date().toISOString() };
 }
-async function saveNotebookToDB(nb) {
+async function saveNotebookToDB(nb, retries = 2) {
   setStatus('syncing');
+  const row = notebookToRow(nb);
   const { data, error } = await db.from('notebooks')
-    .upsert(notebookToRow(nb), { onConflict: 'user_id,client_id' })
+    .upsert(row, { onConflict: 'user_id,client_id' })
     .select('id, client_id');
+  if (error && error.message && error.message.includes('icon') && retries > 0) {
+    // icon column may not exist yet — retry without it
+    delete row.icon;
+    const r2 = await db.from('notebooks').upsert(row, { onConflict: 'user_id,client_id' }).select('id, client_id');
+    setStatus(r2.error ? 'error' : 'saved');
+    if (r2.error) { console.error('saveNotebook:', r2.error.message); return; }
+    if (r2.data?.[0]) notebookRowIdMap.set(r2.data[0].id, r2.data[0].client_id);
+    return;
+  }
   setStatus(error ? 'error' : 'saved');
   if (error) { console.error('saveNotebook:', error.message); return; }
   if (data?.[0]) notebookRowIdMap.set(data[0].id, data[0].client_id);
@@ -4695,8 +5144,9 @@ function renderNotesSidebar() {
   notebooksArr.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(nb => {
     const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
     const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
+    const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
     html += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
-      <div class="nb-dot" style="background:${nb.color}"></div>
+      ${nbIcon}
       <span>${escHTML(nb.name || 'Untitled')}</span><span class="cnt">${nbCount}</span>
       <button class="nb-edit-btn" onclick="event.stopPropagation();showNotebookMenu(event,${nb.id})" title="Edit notebook">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -4706,6 +5156,44 @@ function renderNotesSidebar() {
   html += `</div>`;
 
   el.innerHTML = html;
+
+  // Wire sidebar items as drop targets for drag-to-trash/notebook
+  el.querySelectorAll('.ns-item').forEach(item => {
+    item.addEventListener('dragover', e => {
+      if (!noteDragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('drop-target');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drop-target'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drop-target');
+      if (!noteDragId) return;
+      const note = notesArr.find(n => n.id === noteDragId);
+      if (!note) return;
+      // Determine target from onclick attr
+      const onclick = item.getAttribute('onclick') || '';
+      if (onclick.includes("'trash'")) {
+        note.trashed = true;
+        note.trashedAt = new Date().toISOString();
+        note.updatedAt = new Date().toISOString();
+        if (activeNoteId === note.id) activeNoteId = null;
+      } else if (onclick.includes("'starred'")) {
+        note.starred = true;
+        note.updatedAt = new Date().toISOString();
+      } else if (onclick.includes("'all'")) {
+        note.notebookId = null;
+        note.updatedAt = new Date().toISOString();
+      } else if (onclick.includes("'notebook-")) {
+        const m = onclick.match(/notebook-(\d+)/);
+        if (m) { note.notebookId = parseInt(m[1]); note.updatedAt = new Date().toISOString(); }
+      }
+      saveNoteToDB(note);
+      noteDragId = null;
+      renderNotes();
+    });
+  });
 
   // Populate mobile notebook toggle + drawer
   const mobileToggle = document.getElementById('mobileNbToggle');
@@ -4741,8 +5229,9 @@ function renderNotesSidebar() {
     notebooksArr.forEach(nb => {
       const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
       const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
+      const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
       drawerHtml += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}');document.getElementById('mobileNbDrawer').classList.remove('open')">
-        <div class="nb-dot" style="background:${nb.color}"></div>
+        ${nbIcon}
         ${escHTML(nb.name || 'Untitled')} <span class="cnt">${nbCount}</span>
       </div>`;
     });
@@ -4784,6 +5273,25 @@ function renderNoteList() {
   const list = getFilteredNotes();
   updateNlTitle();
 
+  // Render bulk bar
+  const bulkBar = document.getElementById('nlBulkBar');
+  if (bulkBar) {
+    if (noteSelectMode && notesSidebarView !== 'trash') {
+      const cnt = selectedNoteIds.size;
+      bulkBar.style.display = '';
+      bulkBar.innerHTML = `
+        <button onclick="toggleSelectAllNotes()">
+          ${cnt === list.length && list.length > 0 ? 'Deselect all' : 'Select all'}
+        </button>
+        <button class="danger" onclick="bulkTrashNotes()" ${cnt === 0 ? 'disabled' : ''}>Trash (${cnt})</button>
+        <button onclick="bulkMoveNotes(event)" ${cnt === 0 ? 'disabled' : ''}>Move (${cnt})</button>
+        <span class="bulk-count">${cnt} selected</span>
+        <button onclick="exitNoteSelectMode()" style="border:none;padding:4px;color:var(--muted)">✕</button>`;
+    } else {
+      bulkBar.style.display = 'none';
+    }
+  }
+
   if (!list.length && !noteSearchQuery) {
     el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;opacity:0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -4803,6 +5311,8 @@ function renderNoteList() {
   let html = '';
   list.forEach(n => {
     const active = n.id === activeNoteId ? ' active' : '';
+    const selClass = noteSelectMode ? ' select-mode' : '';
+    const checked = selectedNoteIds.has(n.id) ? ' checked' : '';
     const preview = stripHTML(n.content).slice(0, 120) || 'No content';
     const date = formatNoteDate(n.updatedAt);
     const nb = n.notebookId ? notebooksArr.find(nb => nb.id === n.notebookId) : null;
@@ -4813,7 +5323,7 @@ function renderNoteList() {
       tagHtml = `<span class="nl-tag ${tagClass}"${tagStyle}>${escHTML(nb.name)}</span><span class="dot-sep"></span>`;
     }
     if (notesSidebarView === 'trash') {
-      html += `<div class="nl-item${active}" data-note-id="${n.id}">
+      html += `<div class="nl-item${active}${selClass}" data-note-id="${n.id}" oncontextmenu="showNoteContextMenu(event,${n.id})">
         <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
         <div class="nl-item-preview">${escHTML(preview)}</div>
         <div class="nl-item-meta" style="gap:4px">
@@ -4823,16 +5333,19 @@ function renderNoteList() {
       </div>`;
     } else {
       const borderColor = nb ? nb.color : 'transparent';
-      html += `<div class="nl-item${active}" onclick="selectNote(${n.id})" data-note-id="${n.id}" draggable="true" style="border-left-color:${borderColor};animation-delay:${list.indexOf(n) * 0.03}s">
-        <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
-        <div class="nl-item-preview">${escHTML(preview)}</div>
-        <div class="nl-item-meta">${tagHtml}<span>${date}</span></div>
+      html += `<div class="nl-item${active}${selClass}" onclick="${noteSelectMode ? `toggleNoteSelect(${n.id})` : `selectNote(${n.id})`}" data-note-id="${n.id}" draggable="true" style="border-left-color:${borderColor};animation-delay:${list.indexOf(n) * 0.03}s" oncontextmenu="showNoteContextMenu(event,${n.id})">
+        <input type="checkbox" class="nl-checkbox" ${checked} onclick="event.stopPropagation();toggleNoteSelect(${n.id})">
+        <div style="flex:1;min-width:0">
+          <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
+          <div class="nl-item-preview">${escHTML(preview)}</div>
+          <div class="nl-item-meta">${tagHtml}<span>${date}</span></div>
+        </div>
       </div>`;
     }
   });
   el.innerHTML = html;
 
-  // Wire drag-to-reorder
+  // Wire drag events (for reorder + drag to sidebar)
   el.querySelectorAll('.nl-item[draggable]').forEach(item => {
     item.addEventListener('dragstart', onNoteDragStart);
     item.addEventListener('dragend', onNoteDragEnd);
@@ -4884,63 +5397,11 @@ function renderNoteEditor() {
         <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="showNoteMenu(event)" title="More">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:#d44">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
-      </div>
-    </div>
-    <div class="ne-toolbar">
-      <div class="tb-group tb-desktop-only">
-        <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
-        </button>
-      </div>
-      <div class="tb-group">
-        <select class="tb-select" onchange="noteHeading(this.value)">
-          <option value="p">Normal</option>
-          <option value="h1">Heading 1</option>
-          <option value="h2">Heading 2</option>
-        </select>
-      </div>
-      <div class="tb-group">
-        <button class="tb-btn" onmousedown="noteCmd(event,'bold')" title="Bold">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="noteCmd(event,'italic')" title="Italic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="noteCmd(event,'underline')" title="Underline">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
-        </button>
-      </div>
-      <div class="tb-group">
-        <button class="tb-btn" onmousedown="noteInsertChecklist(event)" title="Checklist">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M5 8l1.5 1.5L9 6"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="noteCmd(event,'insertUnorderedList')" title="Bullet list">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-        </button>
-        <button class="tb-btn tb-highlight" onmousedown="noteHighlight(event)" title="Highlight" style="background:#fef08a;border-radius:4px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-      </div>
-      <div class="tb-group">
-        <button class="tb-btn" onmousedown="noteCmd(event,'indent')" title="Indent">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="3 12 6 14 3 16"/></svg>
-        </button>
-        <button class="tb-btn" onmousedown="noteCmd(event,'outdent')" title="Outdent">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
-        </button>
-      </div>
-      <div class="tb-group tb-desktop-only" style="margin-left:auto;border-right:none">
-        <button class="tb-btn" onclick="showNoteMenu(event)" title="More options">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        <button class="mobile-note-action" onclick="toggleNoteStar()" title="Star">
+          <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2" style="color:var(--top3)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>
     </div>
@@ -4953,11 +5414,67 @@ function renderNoteEditor() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             ${formatNoteDate(note.updatedAt)}
           </div>
-          <div class="ne-meta-item" style="margin-left:auto">
+          <div class="ne-meta-item" style="margin-left:auto;gap:8px">
             <select onchange="handleNoteNbChange(this, ${note.id})" style="border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--text2);cursor:pointer">
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
+            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:#d44;padding:3px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            <button class="note-action-btn${note.starred ? ' starred' : ''}" id="noteStarBtn" onclick="toggleNoteStar()" title="Star" style="padding:3px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="ne-toolbar">
+          <div class="tb-group tb-desktop-only">
+            <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+            </button>
+          </div>
+          <div class="tb-group">
+            <select class="tb-select" onchange="noteHeading(this.value)">
+              <option value="p">Normal</option>
+              <option value="h1">Heading 1</option>
+              <option value="h2">Heading 2</option>
+            </select>
+          </div>
+          <div class="tb-group">
+            <button class="tb-btn" onmousedown="noteCmd(event,'bold')" title="Bold">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="noteCmd(event,'italic')" title="Italic">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="noteCmd(event,'underline')" title="Underline">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
+            </button>
+          </div>
+          <div class="tb-group">
+            <button class="tb-btn" onmousedown="noteInsertChecklist(event)" title="Checklist">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M5 8l1.5 1.5L9 6"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="noteCmd(event,'insertUnorderedList')" title="Bullet list">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </button>
+            <button class="tb-btn tb-highlight" onmousedown="noteHighlight(event)" title="Highlight" style="background:#fef08a;border-radius:4px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+          </div>
+          <div class="tb-group">
+            <button class="tb-btn" onmousedown="noteCmd(event,'indent')" title="Indent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="3 12 6 14 3 16"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="noteCmd(event,'outdent')" title="Outdent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
+            </button>
           </div>
         </div>
         <div class="ne-text" id="noteContentEditable" contenteditable="true" data-placeholder="Start writing..." oninput="onNoteContentChange()">${note.content}</div>
@@ -5086,15 +5603,23 @@ function toggleNoteStar() {
   if (!note) return;
   note.starred = !note.starred;
   note.updatedAt = new Date().toISOString();
-  // Update star buttons without re-rendering editor
+  // Update all star buttons without re-rendering editor
   const fill = note.starred ? 'currentColor' : 'none';
-  document.querySelectorAll('.mobile-note-action svg polygon, .tb-btn svg polygon').forEach(p => {
-    if (p.closest('[title="Star"]') || p.closest('button[onclick*="toggleNoteStar"]')) p.setAttribute('fill', fill);
-  });
+  document.querySelectorAll('button[onclick*="toggleNoteStar"] svg polygon').forEach(p => p.setAttribute('fill', fill));
+  const starBtn = document.getElementById('noteStarBtn');
+  if (starBtn) starBtn.classList.toggle('starred', note.starred);
   renderNotesSidebar(); renderNoteList();
   saveNoteToDB(note);
 }
 
+function confirmTrashNote() {
+  const note = notesArr.find(n => n.id === activeNoteId);
+  if (!note) return;
+  const title = note.title || 'Untitled';
+  showInlineConfirm(`Move "${title}" to Trash?`, 'You can restore it from Trash later.', () => {
+    trashNote();
+  });
+}
 function trashNote() {
   const note = notesArr.find(n => n.id === activeNoteId);
   if (!note) return;
@@ -5137,7 +5662,7 @@ function showNotebookMenu(e, id) {
   menu.innerHTML = `
     <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();renameNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--text)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Rename
+      Edit
     </button>
     <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:#d44">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -5187,12 +5712,12 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
 }
 
 function createNotebook() {
-  showInlinePrompt('New notebook', '', name => {
-    const colors = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c'];
+  showNotebookPrompt('New notebook', '', '', null, (name, icon, color) => {
     const nb = {
       id: Date.now(),
       name: name,
-      color: colors[notebooksArr.length % colors.length],
+      icon: icon || '',
+      color: color,
       order: notebooksArr.length,
     };
     notebooksArr.push(nb);
@@ -5205,11 +5730,68 @@ function createNotebook() {
 function renameNotebook(id) {
   const nb = notebooksArr.find(n => n.id === id);
   if (!nb) return;
-  showInlinePrompt('Rename notebook', nb.name, name => {
+  showNotebookPrompt('Edit notebook', nb.name, nb.icon || '', nb.color, (name, icon, color) => {
     nb.name = name;
+    nb.icon = icon || '';
+    nb.color = color;
     renderNotes();
     saveNotebookToDB(nb);
   });
+}
+
+function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onConfirm) {
+  const NB_COLORS = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#607d8b'];
+  const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻'];
+  const selectedColor = defaultColor || NB_COLORS[notebooksArr.length % NB_COLORS.length];
+  let overlay = document.getElementById('nbPromptOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'nbPromptOverlay';
+    Object.assign(overlay.style, {position:'fixed',inset:'0',background:'rgba(20,20,60,0.35)',backdropFilter:'blur(3px)',zIndex:'500',display:'flex',alignItems:'center',justifyContent:'center'});
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px 24px;width:90%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.15);max-height:80vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:700;margin-bottom:14px">${title}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="emoji-pick-btn" id="nbEmojiBtn" title="Tap to pick icon">${defaultIcon || '📓'}</button>
+      <div style="flex:1">
+        <input id="nbPromptInput" type="text" value="${escAttr(defaultName || '')}" placeholder="Notebook name..." style="width:100%;box-sizing:border-box;border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
+      </div>
+    </div>
+    <div class="emoji-grid" id="nbEmojiGrid" style="display:none">
+      ${NB_EMOJIS.map(e => `<button onclick="document.getElementById('nbEmojiBtn').textContent='${e}';document.getElementById('nbEmojiGrid').style.display='none'">${e}</button>`).join('')}
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:500">Color</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="nbColorPicker">
+        ${NB_COLORS.map(c => `<button onclick="document.querySelectorAll('#nbColorPicker button').forEach(b=>b.style.outline='none');this.style.outline='2px solid var(--text)';this.dataset.selected='true'" data-color="${c}" style="width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;background:${c}${c === selectedColor ? ';outline:2px solid var(--text)' : ''}" ${c === selectedColor ? 'data-selected="true"' : ''}></button>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button onclick="document.getElementById('nbPromptOverlay').style.display='none'" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
+      <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+    </div>
+  </div>`;
+  const emojiBtn = document.getElementById('nbEmojiBtn');
+  emojiBtn.onclick = () => {
+    const grid = document.getElementById('nbEmojiGrid');
+    grid.style.display = grid.style.display === 'grid' ? 'none' : 'grid';
+  };
+  const inp = document.getElementById('nbPromptInput');
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  const doConfirm = () => {
+    const name = inp.value.trim();
+    if (!name) return;
+    overlay.style.display = 'none';
+    const icon = emojiBtn.textContent.trim();
+    const selColorBtn = document.querySelector('#nbColorPicker button[data-selected="true"]');
+    const color = selColorBtn ? selColorBtn.dataset.color : selectedColor;
+    onConfirm(name, icon, color);
+  };
+  document.getElementById('nbPromptConfirm').onclick = doConfirm;
+  inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doConfirm(); } if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); overlay.style.display = 'none'; } };
+  overlay.onclick = e => { if (e.target === overlay) overlay.style.display = 'none'; };
 }
 
 function deleteNotebook(id) {
@@ -5270,6 +5852,135 @@ function moveNoteToNotebook(noteId, nbId) {
   saveNoteToDB(note);
 }
 
+/* ══════ BULK SELECT ══════ */
+function enterNoteSelectMode() {
+  noteSelectMode = true;
+  selectedNoteIds.clear();
+  renderNoteList();
+}
+function exitNoteSelectMode() {
+  noteSelectMode = false;
+  selectedNoteIds.clear();
+  renderNoteList();
+}
+function toggleNoteSelect(id) {
+  if (selectedNoteIds.has(id)) selectedNoteIds.delete(id);
+  else selectedNoteIds.add(id);
+  renderNoteList();
+}
+function toggleSelectAllNotes() {
+  const list = getFilteredNotes();
+  if (selectedNoteIds.size === list.length) {
+    selectedNoteIds.clear();
+  } else {
+    list.forEach(n => selectedNoteIds.add(n.id));
+  }
+  renderNoteList();
+}
+function bulkTrashNotes() {
+  if (selectedNoteIds.size === 0) return;
+  showInlineConfirm(`Trash ${selectedNoteIds.size} note${selectedNoteIds.size > 1 ? 's' : ''}?`, 'They can be restored from trash.', () => {
+    selectedNoteIds.forEach(id => {
+      const note = notesArr.find(n => n.id === id);
+      if (note) {
+        note.trashed = true;
+        note.trashedAt = new Date().toISOString();
+        note.updatedAt = new Date().toISOString();
+        saveNoteToDB(note);
+      }
+    });
+    activeNoteId = null;
+    exitNoteSelectMode();
+    renderNotes();
+  });
+}
+function bulkMoveNotes(e) {
+  e.stopPropagation();
+  if (selectedNoteIds.size === 0) return;
+  document.querySelectorAll('.note-ctx-menu').forEach(m => m.remove());
+  const menu = document.createElement('div');
+  menu.className = 'note-ctx-menu';
+  let html = `<button onclick="this.closest('.note-ctx-menu').remove();bulkMoveToNotebook(null)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    No notebook</button>`;
+  notebooksArr.forEach(nb => {
+    html += `<button onclick="this.closest('.note-ctx-menu').remove();bulkMoveToNotebook(${nb.id})">
+      <div class="nb-dot" style="background:${nb.color}"></div>${escHTML(nb.name)}</button>`;
+  });
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  const x = Math.min(e.clientX || 100, window.innerWidth - 180);
+  const y = Math.min(e.clientY || 100, window.innerHeight - 200);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  setTimeout(() => {
+    const close = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 10);
+}
+function bulkMoveToNotebook(nbId) {
+  selectedNoteIds.forEach(id => {
+    const note = notesArr.find(n => n.id === id);
+    if (note) { note.notebookId = nbId; note.updatedAt = new Date().toISOString(); saveNoteToDB(note); }
+  });
+  exitNoteSelectMode();
+  renderNotes();
+}
+
+/* ══════ NOTE CONTEXT MENU ══════ */
+function showNoteContextMenu(e, noteId) {
+  e.preventDefault(); e.stopPropagation();
+  document.querySelectorAll('.note-ctx-menu').forEach(m => m.remove());
+  const note = notesArr.find(n => n.id === noteId);
+  if (!note) return;
+  const menu = document.createElement('div');
+  menu.className = 'note-ctx-menu';
+  let html = '';
+  if (note.trashed) {
+    html = `
+      <button onclick="this.closest('.note-ctx-menu').remove();restoreNote(${noteId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        Restore</button>
+      <button class="danger" onclick="this.closest('.note-ctx-menu').remove();permanentDeleteNote(${noteId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete permanently</button>`;
+  } else {
+    const starLabel = note.starred ? 'Unstar' : 'Star';
+    const starFill = note.starred ? 'currentColor' : 'none';
+    html = `
+      <button onclick="this.closest('.note-ctx-menu').remove();activeNoteId=${noteId};toggleNoteStar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        ${starLabel}</button>
+      <div class="ctx-submenu">
+        <button style="justify-content:space-between">
+          <span style="display:flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Move to</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="ctx-sub-items">
+          <button onclick="this.closest('.note-ctx-menu').remove();moveNoteToNotebook(${noteId},null)">No notebook</button>`;
+    notebooksArr.forEach(nb => {
+      html += `<button onclick="this.closest('.note-ctx-menu').remove();moveNoteToNotebook(${noteId},${nb.id})">
+        <div class="nb-dot" style="background:${nb.color}"></div>${escHTML(nb.name)}</button>`;
+    });
+    html += `</div></div>
+      <button onclick="this.closest('.note-ctx-menu').remove();enterNoteSelectMode();toggleNoteSelect(${noteId})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+        Select</button>
+      <div class="ctx-divider"></div>
+      <button class="danger" onclick="this.closest('.note-ctx-menu').remove();activeNoteId=${noteId};trashNote()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Move to Trash</button>`;
+  }
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  const x = Math.min(e.clientX, window.innerWidth - 190);
+  const y = Math.min(e.clientY, window.innerHeight - 200);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px';
+  setTimeout(() => {
+    const close = ev => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 10);
+}
+
 function sortNotesToggle() {
   const orders = ['updated', 'created', 'alpha', 'manual'];
   const idx = orders.indexOf(noteSortOrder);
@@ -5279,6 +5990,8 @@ function sortNotesToggle() {
 
 // Note drag-to-reorder
 let noteDragId = null;
+let noteSelectMode = false;
+let selectedNoteIds = new Set();
 function onNoteDragStart(e) {
   noteDragId = parseInt(e.currentTarget.dataset.noteId);
   e.currentTarget.classList.add('dragging');
@@ -5287,6 +6000,7 @@ function onNoteDragStart(e) {
 function onNoteDragEnd(e) {
   e.currentTarget.classList.remove('dragging');
   document.querySelectorAll('.nl-item').forEach(el => el.classList.remove('drag-target'));
+  document.querySelectorAll('.ns-item').forEach(el => el.classList.remove('drop-target'));
   noteDragId = null;
 }
 function onNoteDragOver(e) {
