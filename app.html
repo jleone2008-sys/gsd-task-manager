@@ -2173,6 +2173,13 @@
         <span style="font-size:12px;color:var(--muted)" id="habitFreqCountLabel">days per week</span>
       </div>
     </div>
+    <div id="habitExtrasToggle" style="display:none;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
+        <input type="checkbox" id="habitAllowExtras" style="accent-color:var(--navy);width:15px;height:15px">
+        Allow extras beyond goal
+        <span style="font-size:10px;color:var(--muted)">(log more than the minimum)</span>
+      </label>
+    </div>
     <div class="habit-create-actions">
       <button class="btn-cancel" onclick="closeHabitCreatePanel()">Cancel</button>
       <button class="btn-save" onclick="addHabit()">Add Habit</button>
@@ -2234,6 +2241,12 @@
           <input type="number" id="habitEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
           <span style="font-size:12px;color:var(--muted)" id="habitEditFreqCountLabel">days per week</span>
         </div>
+      </div>
+      <div id="habitEditExtrasToggle" style="display:none;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
+          <input type="checkbox" id="habitEditAllowExtras" style="accent-color:var(--navy);width:15px;height:15px">
+          Allow extras beyond goal
+        </label>
       </div>
     </div>
     <div class="habit-edit-actions">
@@ -2331,6 +2344,12 @@
                 <input type="number" id="drillEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
                 <span style="font-size:12px;color:var(--muted)" id="drillEditFreqCountLabel">days per week</span>
               </div>
+            </div>
+            <div id="drillEditExtrasToggle" style="display:none;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2)">
+                <input type="checkbox" id="drillEditAllowExtras" style="accent-color:var(--navy);width:15px;height:15px">
+                Allow extras beyond goal
+              </label>
             </div>
           </div>
           <div class="drill-edit-actions">
@@ -2847,6 +2866,7 @@ function rowToHabit(r) {
     tags: r.tags || [],
     archived: r.archived || false,
     order: r.order || 0,
+    allowExtras: r.allow_extras || false,
   };
 }
 function habitToRow(h) {
@@ -2861,6 +2881,7 @@ function habitToRow(h) {
     tags: h.tags,
     archived: h.archived,
     "order": h.order,
+    allow_extras: h.allowExtras || false,
     updated_at: new Date().toISOString(),
   };
 }
@@ -2910,15 +2931,17 @@ async function deleteHabitFromDB(id) {
 
 async function toggleCompletion(habitClientId, dateStr) {
   // Find the habit's server-side id for the FK
-  let habitServerId = null;
+  let habitSid = null;
   for (const [sid, cid] of habitRowIdMap) {
-    if (cid === habitClientId) { habitServerId = sid; break; }
+    if (cid === habitClientId) { habitSid = sid; break; }
   }
-  if (!habitServerId) { console.error('toggleCompletion: no server id for', habitClientId); return; }
+  if (!habitSid) { console.error('toggleCompletion: no server id for', habitClientId); return; }
 
-  const existing = habitCompletions.find(c => c.habitId === habitServerId && c.completedDate === dateStr);
-  if (existing) {
-    // Remove completion
+  const habit = habitsArr.find(h => h.id === habitClientId);
+  const existing = habitCompletions.find(c => c.habitId === habitSid && c.completedDate === dateStr);
+
+  if (existing && !(habit && habit.allowExtras)) {
+    // Normal toggle: remove completion
     habitCompletions = habitCompletions.filter(c => c !== existing);
     renderHabits();
     setStatus('syncing');
@@ -2926,13 +2949,13 @@ async function toggleCompletion(habitClientId, dateStr) {
     setStatus(error ? 'error' : 'saved');
     if (error) console.error('deleteCompletion:', error.message);
   } else {
-    // Add completion
-    const temp = { id: -Date.now(), habitId: habitServerId, completedDate: dateStr };
+    // Add completion (first time, or extras mode adds another)
+    const temp = { id: -Date.now(), habitId: habitSid, completedDate: dateStr };
     habitCompletions.push(temp);
     renderHabits();
     setStatus('syncing');
     const { data, error } = await db.from('habit_completions')
-      .insert({ user_id: currentUser.id, habit_id: habitServerId, completed_date: dateStr })
+      .insert({ user_id: currentUser.id, habit_id: habitSid, completed_date: dateStr })
       .select();
     setStatus(error ? 'error' : 'saved');
     if (error) { console.error('addCompletion:', error.message); habitCompletions = habitCompletions.filter(c => c !== temp); renderHabits(); return; }
@@ -2942,6 +2965,31 @@ async function toggleCompletion(habitClientId, dateStr) {
       completionRowIdMap.set(data[0].id, data[0].id);
     }
   }
+}
+
+// Remove the most recent completion for a habit on a given date (for extras undo)
+async function removeLastCompletion(habitClientId, dateStr) {
+  let habitSid = null;
+  for (const [sid, cid] of habitRowIdMap) {
+    if (cid === habitClientId) { habitSid = sid; break; }
+  }
+  if (!habitSid) return;
+  const matches = habitCompletions.filter(c => c.habitId === habitSid && c.completedDate === dateStr);
+  if (!matches.length) return;
+  const last = matches[matches.length - 1];
+  habitCompletions = habitCompletions.filter(c => c !== last);
+  renderHabits();
+  setStatus('syncing');
+  const { error } = await db.from('habit_completions').delete().eq('id', last.id);
+  setStatus(error ? 'error' : 'saved');
+  if (error) console.error('deleteCompletion:', error.message);
+}
+
+// Count completions for a habit on a specific date
+function getCompletionCountForDate(habitClientId, dateStr) {
+  const sid = habitServerId(habitClientId);
+  if (!sid) return 0;
+  return habitCompletions.filter(c => c.habitId === sid && c.completedDate === dateStr).length;
 }
 
 // Debounced render for realtime — coalesces rapid events into one render
@@ -3366,17 +3414,43 @@ function renderHabitToday(active) {
   let doneHTML = '';
   done.forEach(h => {
     const streak = computeStreak(h.id);
-    doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="opacity:0.5">
-      <div class="swipe-complete-bg">✓</div>
-      <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
-      <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
-        <div class="habit-card-top">
-          <span class="habit-name" style="text-decoration:line-through">${h.name}</span>
+    const todayCount = getCompletionCountForDate(h.id, today);
+    const isExtras = h.allowExtras;
+    const periodCount = h.frequency === 'x_per_month' ? getMonthCompletions(h.id, today) : h.frequency === 'x_per_week' ? getWeekCompletions(h.id, today) : 0;
+    const periodGoal = h.frequencyCount || 1;
+    const periodLabel = h.frequency === 'x_per_month' ? 'this month' : h.frequency === 'x_per_week' ? 'this week' : '';
+
+    if (isExtras) {
+      // Extras-enabled: full opacity, +/- buttons, count badge
+      const countBadge = todayCount > 1 ? `<span style="font-size:10px;font-weight:700;color:var(--navy);background:rgba(45,95,166,0.12);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>` : '';
+      const progressMeta = periodLabel ? `<span style="color:var(--check);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}` : '';
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="opacity:0.85;border-color:var(--check)">
+        <div class="swipe-complete-bg">✓</div>
+        <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
+        <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
+          <div class="habit-card-top">
+            <span class="habit-name">${h.name}</span>${countBadge}
+          </div>
+          <div class="habit-card-meta">${progressMeta ? progressMeta + ' · ' : ''}<span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span></div>
         </div>
-        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
-      </div>
-      <div class="habit-check checked" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
-    </div>`;
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <button onclick="event.stopPropagation();removeLastCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" title="Remove one">−</button>
+          <button onclick="event.stopPropagation();toggleCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--check);background:var(--check);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700" title="Add another">+</button>
+        </div>
+      </div>`;
+    } else {
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="opacity:0.5">
+        <div class="swipe-complete-bg">✓</div>
+        <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${h.emoji}</span>
+        <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
+          <div class="habit-card-top">
+            <span class="habit-name" style="text-decoration:line-through">${h.name}</span>
+          </div>
+          <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
+        </div>
+        <div class="habit-check checked" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+      </div>`;
+    }
   });
 
   if (due.length === 0 && active.length === 0) {
@@ -4020,6 +4094,8 @@ function openHabitCreatePanel() {
   document.getElementById('habitCustomDays').style.display = 'none';
   document.getElementById('habitFreqCount').style.display = 'none';
   document.getElementById('habitFreqCountInput').value = 3;
+  document.getElementById('habitExtrasToggle').style.display = 'none';
+  document.getElementById('habitAllowExtras').checked = false;
   document.querySelectorAll('.custom-day').forEach(b => b.classList.remove('active'));
   setTimeout(() => document.getElementById('habitNameInput').focus(), 50);
 }
@@ -4045,7 +4121,9 @@ document.addEventListener('click', e => {
     fb.classList.add('active');
     const f = fb.dataset.freq;
     document.getElementById('habitCustomDays').style.display = f === 'custom' ? '' : 'none';
-    document.getElementById('habitFreqCount').style.display = (f === 'x_per_week' || f === 'x_per_month') ? '' : 'none';
+    const isQuota = f === 'x_per_week' || f === 'x_per_month';
+    document.getElementById('habitFreqCount').style.display = isQuota ? '' : 'none';
+    document.getElementById('habitExtrasToggle').style.display = isQuota ? '' : 'none';
     if (f === 'x_per_week') { document.getElementById('habitFreqCountLabel').textContent = 'days per week'; document.getElementById('habitFreqCountInput').max = 7; }
     if (f === 'x_per_month') { document.getElementById('habitFreqCountLabel').textContent = 'days per month'; document.getElementById('habitFreqCountInput').max = 31; }
     return;
@@ -4060,7 +4138,9 @@ document.addEventListener('click', e => {
     efb.classList.add('active');
     const ef = efb.dataset.freq;
     document.getElementById('habitEditCustomDays').style.display = ef === 'custom' ? '' : 'none';
-    document.getElementById('habitEditFreqCount').style.display = (ef === 'x_per_week' || ef === 'x_per_month') ? '' : 'none';
+    const isEditQuota = ef === 'x_per_week' || ef === 'x_per_month';
+    document.getElementById('habitEditFreqCount').style.display = isEditQuota ? '' : 'none';
+    document.getElementById('habitEditExtrasToggle').style.display = isEditQuota ? '' : 'none';
     if (ef === 'x_per_week') { document.getElementById('habitEditFreqCountLabel').textContent = 'days per week'; document.getElementById('habitEditFreqCountInput').max = 7; }
     if (ef === 'x_per_month') { document.getElementById('habitEditFreqCountLabel').textContent = 'days per month'; document.getElementById('habitEditFreqCountInput').max = 31; }
     return;
@@ -4075,7 +4155,9 @@ document.addEventListener('click', e => {
     dfb.classList.add('active');
     const df = dfb.dataset.freq;
     document.getElementById('drillEditCustomDays').style.display = df === 'custom' ? '' : 'none';
-    document.getElementById('drillEditFreqCount').style.display = (df === 'x_per_week' || df === 'x_per_month') ? '' : 'none';
+    const isDrillQuota = df === 'x_per_week' || df === 'x_per_month';
+    document.getElementById('drillEditFreqCount').style.display = isDrillQuota ? '' : 'none';
+    document.getElementById('drillEditExtrasToggle').style.display = isDrillQuota ? '' : 'none';
     if (df === 'x_per_week') { document.getElementById('drillEditFreqCountLabel').textContent = 'days per week'; document.getElementById('drillEditFreqCountInput').max = 7; }
     if (df === 'x_per_month') { document.getElementById('drillEditFreqCountLabel').textContent = 'days per month'; document.getElementById('drillEditFreqCountInput').max = 31; }
     return;
@@ -4099,12 +4181,14 @@ function addHabit() {
   if (frequency === 'x_per_week' || frequency === 'x_per_month') {
     frequencyCount = parseInt(document.getElementById('habitFreqCountInput').value) || 1;
   }
+  const allowExtras = (frequency === 'x_per_week' || frequency === 'x_per_month') && document.getElementById('habitAllowExtras').checked;
   const habit = {
     id: Date.now(),
     name, emoji, frequency, frequencyCount, customDays,
     tags: [...newHabitTags],
     archived: false,
     order: habitsArr.length,
+    allowExtras,
   };
   habitsArr.push(habit);
   closeHabitCreatePanel();
@@ -4130,6 +4214,9 @@ function openHabitEdit(habitId) {
     document.getElementById('habitEditFreqCountLabel').textContent = h.frequency === 'x_per_week' ? 'days per week' : 'days per month';
     document.getElementById('habitEditFreqCountInput').max = h.frequency === 'x_per_week' ? 7 : 31;
   }
+  const isEditQuotaFreq = h.frequency === 'x_per_week' || h.frequency === 'x_per_month';
+  document.getElementById('habitEditExtrasToggle').style.display = isEditQuotaFreq ? '' : 'none';
+  document.getElementById('habitEditAllowExtras').checked = h.allowExtras || false;
   editHabitTags = new Set(h.tags);
   document.getElementById('habitEditOverlay').classList.add('open');
 }
@@ -4158,6 +4245,9 @@ function saveHabitEdit() {
   }
   if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') {
     h.frequencyCount = parseInt(document.getElementById('habitEditFreqCountInput').value) || 1;
+    h.allowExtras = document.getElementById('habitEditAllowExtras').checked;
+  } else {
+    h.allowExtras = false;
   }
   h.tags = [...editHabitTags];
   closeHabitEdit();
@@ -4330,6 +4420,8 @@ function populateDrillEdit() {
   document.querySelectorAll('.custom-day-drill').forEach(b => b.classList.toggle('active', (h.customDays || []).includes(b.dataset.day)));
   const isXFreq = h.frequency === 'x_per_week' || h.frequency === 'x_per_month';
   document.getElementById('drillEditFreqCount').style.display = isXFreq ? '' : 'none';
+  document.getElementById('drillEditExtrasToggle').style.display = isXFreq ? '' : 'none';
+  document.getElementById('drillEditAllowExtras').checked = h.allowExtras || false;
   if (isXFreq) {
     document.getElementById('drillEditFreqCountInput').value = h.frequencyCount || 1;
     document.getElementById('drillEditFreqCountLabel').textContent = h.frequency === 'x_per_week' ? 'days per week' : 'days per month';
@@ -4360,6 +4452,9 @@ function saveHabitDrill() {
   }
   if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') {
     h.frequencyCount = parseInt(document.getElementById('drillEditFreqCountInput').value) || 1;
+    h.allowExtras = document.getElementById('drillEditAllowExtras').checked;
+  } else {
+    h.allowExtras = false;
   }
   h.tags = [...drillEditTags];
   closeDrillIn();
