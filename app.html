@@ -724,14 +724,12 @@
     /* Habits mobile */
     .habits-content { padding: 0; }
     /* .habit-sub-pills inherits .pill-bar mobile padding */
-    .progress-section { padding: 12px 12px; gap: 10px; }
-    .progress-ring-wrap { width: 86px; height: 86px; }
-    .progress-ring-wrap svg { width: 86px; height: 86px; }
-    .progress-ring-label { font-size: 20px; }
-    .progress-stats { gap: 6px; }
-    .progress-stat { padding: 8px 4px; }
+    .progress-section { padding: 10px 10px; }
+    .progress-ring-wrap { width: 48px; height: 48px; }
+    .progress-ring-wrap svg { width: 48px; height: 48px; }
+    .progress-ring-label { font-size: 12px; }
     .progress-stat .val { font-size: 17px; }
-    .progress-stat .lbl { font-size: 9.5px; }
+    .progress-stat .lbl { font-size: 9px; }
     .habit-week-dots { gap: 2px; }
     .habit-day-dot { width: 34px; height: 34px; font-size: 12px; }
     .habit-card-footer { padding-left: 0; }
@@ -1335,15 +1333,16 @@
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* Today — progress ring */
-  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 16px 20px; margin-bottom: 8px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .progress-ring-wrap { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
-  .progress-ring-wrap svg { transform: rotate(-90deg); width: 100px; height: 100px; }
-  .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; font-weight: 700; color: var(--navy); }
-  .progress-ring-sub { font-size: 10px; color: var(--muted); font-weight: 400; display: block; text-align: center; }
-  .progress-stats { display: flex; gap: 8px; width: 100%; }
-  .progress-stat { flex: 1; text-align: center; background: var(--surface2); border-radius: 8px; padding: 10px 6px; }
+  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 0; }
+  .progress-ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
+  .progress-ring-wrap svg { transform: rotate(-90deg); width: 56px; height: 56px; }
+  .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1; }
+  .progress-ring-sub { display: none; }
+  .progress-stats { display: flex; flex: 1; }
+  .progress-stat { flex: 1; text-align: center; position: relative; padding: 4px 0; }
+  .progress-stat + .progress-stat::before { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 1px; background: var(--border); }
   .progress-stat .val { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; }
-  .progress-stat .lbl { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+  .progress-stat .lbl { font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: 0.2px; }
 
   /* Habit cards */
   .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 11px; margin-bottom: 2px; cursor: pointer; transition: border-color 0.1s; }
@@ -3338,7 +3337,7 @@ function renderHabitToday(active) {
   const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
 
   // Progress ring
-  const circ = 2 * Math.PI * 42; // r=42
+  const circ = 2 * Math.PI * 23; // r=23
   const offset = circ * (1 - pct / 100);
 
   // Remaining cards
@@ -3413,12 +3412,12 @@ function renderHabitToday(active) {
   el.innerHTML = `
     <div class="progress-section">
       <div class="progress-ring-wrap">
-        <svg viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e4e8" stroke-width="7"/>
-          <circle cx="50" cy="50" r="42" fill="none" stroke="#2d5fa6" stroke-width="7"
+        <svg viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="23" fill="none" stroke="#e2e4e8" stroke-width="5"/>
+          <circle cx="28" cy="28" r="23" fill="none" stroke="#2d5fa6" stroke-width="5"
             stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
         </svg>
-        <div class="progress-ring-label">${pct}%<span class="progress-ring-sub">today</span></div>
+        <div class="progress-ring-label">${pct}%</div>
       </div>
       <div class="progress-stats">
         <div class="progress-stat"><div class="val" style="color:var(--check)">${done.length}</div><div class="lbl">Done</div></div>
