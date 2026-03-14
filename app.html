@@ -306,9 +306,9 @@
   .section-label .sort-btn:hover { color: var(--fg); }
   .section-label .sort-btn .sort-val { color: var(--fg); opacity: .7; }
   .sort-dropdown {
-    display: none; position: absolute; right: 0; top: 20px;
+    display: none; position: absolute; right: 0; bottom: 100%; margin-bottom: 4px;
     background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.1); z-index: 50; min-width: 140px; overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12); z-index: 200; min-width: 150px; overflow: hidden;
   }
   .sort-dropdown.open { display: block; }
   .sort-opt { padding: 8px 12px; font-size: 11px; cursor: pointer; color: var(--fg); letter-spacing: 0; text-transform: none; font-weight: 400; }
@@ -2531,7 +2531,7 @@
 
 <script>
 const KEY = 'gsd_v3';
-let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false, sortBy = 'recent';
+let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false, sortBy = 'default';
 let noteOpen = false, dueDateOpen = false;
 let dragId = null, dragOverId = null;
 let searchQuery = '';
@@ -4043,16 +4043,17 @@ function render() {
     done = applySearch(done);
   }
 
-  // Apply sort
-  if (sortBy === 'due') {
-    const dueSorter = (a,b) => {
+  // Apply sort (default = drag order already applied above)
+  if (sortBy === 'recent') {
+    view.sort((a,b) => b.id - a.id);
+  } else if (sortBy === 'due') {
+    view.sort((a,b) => {
       const da = a.due || '', db = b.due || '';
-      if (!da && !db) return 0;
-      if (!da) return 1;
-      if (!db) return -1;
-      return da.localeCompare(db);
-    };
-    view.sort(dueSorter);
+      if (da && db) return da.localeCompare(db);
+      if (da) return -1;
+      if (db) return 1;
+      return b.id - a.id; // no due date: newest first
+    });
   }
 
   let html = '';
@@ -4152,8 +4153,8 @@ function slabel(l,n,showSort) {
   const icons = {'Tasks':'📋','Work':'💼','Personal':'🏠','Later':'🌱'};
   const emoji = Object.entries(icons).find(([k])=>l.includes(k));
   const prefix = emoji ? `<span style="font-size:11px;margin-right:2px">${emoji[1]}</span>` : '';
-  const sortLabel = sortBy === 'due' ? 'Due Date' : 'Recent';
-  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabel}</span> <span style="font-size:7px">▼</span></button><div class="sort-dropdown" id="sortDropdown"><div class="sort-opt${sortBy==='recent'?' active':''}" onclick="setSort('recent')">Recently Created</div><div class="sort-opt${sortBy==='due'?' active':''}" onclick="setSort('due')">Due Date</div></div></div>` : '';
+  const sortLabels = {default:'Default',recent:'Recent',due:'Due Date'};
+  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button><div class="sort-dropdown" id="sortDropdown"><div class="sort-opt${sortBy==='default'?' active':''}" onclick="setSort('default')">Default</div><div class="sort-opt${sortBy==='recent'?' active':''}" onclick="setSort('recent')">Recently Created</div><div class="sort-opt${sortBy==='due'?' active':''}" onclick="setSort('due')">Due Date</div></div></div>` : '';
   return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 
