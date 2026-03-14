@@ -5650,7 +5650,7 @@ function renameNotebook(id) {
 
 function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onConfirm) {
   const NB_COLORS = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#607d8b'];
-  const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻'];
+  const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻','👤','👥','👨‍💻','👩‍💼','🤝','👪'];
   const selectedColor = defaultColor || NB_COLORS[notebooksArr.length % NB_COLORS.length];
   let overlay = document.getElementById('nbPromptOverlay');
   if (!overlay) {
