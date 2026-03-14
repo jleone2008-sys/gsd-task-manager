@@ -4154,7 +4154,7 @@ function slabel(l,n,showSort) {
   const emoji = Object.entries(icons).find(([k])=>l.includes(k));
   const prefix = emoji ? `<span style="font-size:11px;margin-right:2px">${emoji[1]}</span>` : '';
   const sortLabels = {default:'Default',recent:'Recent',due:'Due Date'};
-  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button><div class="sort-dropdown" id="sortDropdown"><div class="sort-opt${sortBy==='default'?' active':''}" onclick="setSort('default')">Default</div><div class="sort-opt${sortBy==='recent'?' active':''}" onclick="setSort('recent')">Recently Created</div><div class="sort-opt${sortBy==='due'?' active':''}" onclick="setSort('due')">Due Date</div></div></div>` : '';
+  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button></div>` : '';
   return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 
@@ -6230,6 +6230,11 @@ function toggleSortDropdown(e) {
 }
 function setSort(val) {
   sortBy = val;
+  const dd = document.getElementById('sortDropdown');
+  if (dd) {
+    dd.classList.remove('open');
+    dd.querySelectorAll('.sort-opt').forEach(o => o.classList.toggle('active', o.textContent === {default:'Default',recent:'Recently Created',due:'Due Date'}[val]));
+  }
   render();
 }
 document.addEventListener('click', () => {
@@ -7218,5 +7223,10 @@ function toggleFaq(btn) {
   if (!isOpen) item.classList.add('open');
 }
 </script>
+<div class="sort-dropdown" id="sortDropdown" onclick="event.stopPropagation()">
+  <div class="sort-opt active" onclick="setSort('default')">Default</div>
+  <div class="sort-opt" onclick="setSort('recent')">Recently Created</div>
+  <div class="sort-opt" onclick="setSort('due')">Due Date</div>
+</div>
 </body>
 </html>
