@@ -2129,11 +2129,7 @@
       <div class="mobile-nb-toggle" id="mobileNbToggle" onclick="document.getElementById('mobileNbDrawer').classList.toggle('open')" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <div class="nl-header">
-        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span>
-          <button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-          </button>
-        </div>
+        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span></div>
       </div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
@@ -4802,6 +4798,7 @@ function noteToRow(n) {
     trashed: n.trashed,
     trashed_at: n.trashedAt || null,
     "order": n.order,
+    created_at: n.createdAt || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 }
@@ -5020,7 +5017,7 @@ function renderNotesSidebar() {
     const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
     const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
     const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
-    html += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
+    html += `<div class="ns-item${active}" draggable="true" data-nb-id="${nb.id}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
       ${nbIcon}
       <span>${escHTML(nb.name || 'Untitled')}</span><span class="cnt">${nbCount}</span>
       <button class="nb-edit-btn" onclick="event.stopPropagation();showNotebookMenu(event,${nb.id})" title="Edit notebook">
@@ -5067,6 +5064,33 @@ function renderNotesSidebar() {
       saveNoteToDB(note);
       noteDragId = null;
       renderNotes();
+    });
+  });
+
+  // Wire notebook drag-to-reorder
+  let nbDragId = null;
+  el.querySelectorAll('.ns-item[data-nb-id]').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      nbDragId = parseInt(item.dataset.nbId);
+      e.dataTransfer.effectAllowed = 'move';
+      item.style.opacity = '0.4';
+    });
+    item.addEventListener('dragend', () => { item.style.opacity = ''; nbDragId = null; });
+    item.addEventListener('dragover', e => {
+      const targetNbId = parseInt(item.dataset.nbId);
+      if (!nbDragId || nbDragId === targetNbId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('drop-target');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drop-target'));
+    item.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      item.classList.remove('drop-target');
+      const targetNbId = parseInt(item.dataset.nbId);
+      if (!nbDragId || nbDragId === targetNbId) return;
+      reorderNotebooks(nbDragId, targetNbId);
+      nbDragId = null;
     });
   });
 
@@ -5133,7 +5157,15 @@ function updateNlTitle() {
     const nb = notebooksArr.find(n => n.id === nbId);
     label = nb ? escHTML(nb.name) : 'Notebook';
   }
-  titleEl.innerHTML = `${label} <span class="nl-count">${list.length}</span>`;
+  let extra = '';
+  if (notesSidebarView === 'trash' && list.length > 0) {
+    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:#d44;font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='#d4410a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#d44'">Empty Trash</button>`;
+  } else if (notesSidebarView !== 'trash') {
+    extra = `<button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+    </button>`;
+  }
+  titleEl.innerHTML = `${label} <span class="nl-count">${list.length}</span>${extra}`;
 }
 
 function setNotesSidebarView(view) {
@@ -5213,7 +5245,7 @@ function renderNoteList() {
         <div style="flex:1;min-width:0">
           <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
           <div class="nl-item-preview">${escHTML(preview)}</div>
-          <div class="nl-item-meta">${tagHtml}<span>${date}</span></div>
+          <div class="nl-item-meta">${tagHtml}<span>Edited ${date}</span></div>
         </div>
       </div>`;
     }
@@ -5286,8 +5318,10 @@ function renderNoteEditor() {
         <div class="ne-meta">
           <div class="ne-meta-item">
             ${noteNbTag}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ${formatNoteDate(note.updatedAt)}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Created ${formatNoteDate(note.createdAt)}
+            <span class="dot-sep"></span>
+            Edited ${formatNoteDate(note.updatedAt)}
           </div>
           <div class="ne-meta-item" style="margin-left:auto;gap:8px">
             <select onchange="handleNoteNbChange(this, ${note.id})" style="border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--text2);cursor:pointer">
@@ -5678,6 +5712,27 @@ function deleteNotebook(id) {
     if (notesSidebarView === 'notebook-' + id) notesSidebarView = 'all';
     renderNotes();
     deleteNotebookFromDB(id);
+  });
+}
+
+function reorderNotebooks(fromId, toId) {
+  const sorted = notebooksArr.sort((a, b) => (a.order || 0) - (b.order || 0));
+  const fromIdx = sorted.findIndex(n => n.id === fromId);
+  const toIdx = sorted.findIndex(n => n.id === toId);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = sorted.splice(fromIdx, 1);
+  sorted.splice(toIdx, 0, moved);
+  sorted.forEach((nb, i) => { nb.order = i; saveNotebookToDB(nb); });
+  renderNotesSidebar();
+}
+
+function emptyTrash() {
+  const trashed = notesArr.filter(n => n.trashed);
+  if (!trashed.length) return;
+  showInlineConfirm(`Delete all ${trashed.length} trashed note${trashed.length > 1 ? 's' : ''}?`, 'This cannot be undone.', () => {
+    trashed.forEach(n => { notesArr = notesArr.filter(x => x.id !== n.id); deleteNoteFromDB(n.id); });
+    activeNoteId = null;
+    renderNotes();
   });
 }
 
