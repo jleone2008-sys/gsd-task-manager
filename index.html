@@ -975,26 +975,6 @@ footer{background:#13161f;padding:30px 40px;display:flex;align-items:center;just
 const nav = document.getElementById('nav');
 window.addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), {passive:true});
 
-// ── Sort dropdown ──
-const sortBtn = document.getElementById('sortBtn');
-const sortDropdown = document.getElementById('sortDropdown');
-const sortLabel = document.getElementById('sortLabel');
-if (sortBtn) {
-  sortBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    sortDropdown.style.display = sortDropdown.style.display === 'none' ? 'block' : 'none';
-  });
-  sortDropdown.querySelectorAll('.app-sort-opt').forEach(opt => {
-    opt.addEventListener('click', () => {
-      sortDropdown.querySelectorAll('.app-sort-opt').forEach(o => o.classList.remove('active'));
-      opt.classList.add('active');
-      sortLabel.textContent = opt.dataset.sort === 'due' ? 'Due Date' : 'Recent';
-      sortDropdown.style.display = 'none';
-    });
-  });
-  document.addEventListener('click', () => sortDropdown.style.display = 'none');
-}
-
 // ── Hero mockup animation ──
 // Step 1: type a task into add bar
 // Step 2: task appears in list

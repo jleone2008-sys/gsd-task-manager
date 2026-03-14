@@ -297,6 +297,23 @@
     padding: 1px 6px;
     font-size: 10px;
   }
+  .section-label .sort-wrap { margin-left: auto; position: relative; }
+  .section-label .sort-btn {
+    font-size: 9px; font-weight: 500; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--muted); background: none; border: none; cursor: pointer; padding: 0;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .section-label .sort-btn:hover { color: var(--fg); }
+  .section-label .sort-btn .sort-val { color: var(--fg); opacity: .7; }
+  .sort-dropdown {
+    display: none; position: absolute; right: 0; top: 20px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1); z-index: 50; min-width: 140px; overflow: hidden;
+  }
+  .sort-dropdown.open { display: block; }
+  .sort-opt { padding: 8px 12px; font-size: 11px; cursor: pointer; color: var(--fg); letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .sort-opt:hover { background: var(--border); }
+  .sort-opt.active { color: #2563eb; font-weight: 600; }
 
   /* TASK LIST & DRAG */
   .task-list { display: flex; flex-direction: column; gap: 2px; min-height: 4px; }
@@ -2514,7 +2531,7 @@
 
 <script>
 const KEY = 'gsd_v3';
-let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false;
+let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false, sortBy = 'recent';
 let noteOpen = false, dueDateOpen = false;
 let dragId = null, dragOverId = null;
 let searchQuery = '';
@@ -4026,6 +4043,18 @@ function render() {
     done = applySearch(done);
   }
 
+  // Apply sort
+  if (sortBy === 'due') {
+    const dueSorter = (a,b) => {
+      const da = a.due || '', db = b.due || '';
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    };
+    view.sort(dueSorter);
+  }
+
   let html = '';
 
   if (isSearching) {
@@ -4041,7 +4070,7 @@ function render() {
       // Starred filter active — all items in view are already starred
       const lbl = filter==='biz'?'&#9733; Starred Work':filter==='personal'?'&#9733; Starred Personal':'&#9733; Starred';
       if (view.length) {
-        html += slabel(lbl, view.length);
+        html += slabel(lbl, view.length, true);
         html += `<div class="task-list" data-section="top3">${view.map(t=>tHTML(t)).join('')}</div>`;
       } else {
         html += emptyState('top3');
@@ -4051,12 +4080,12 @@ function render() {
       const regular = view.filter(t=>!t.top3&&!t.someday);
       const someday = view.filter(t=>t.someday);
       if (top3.length) {
-        html += slabel('&#9733; Starred', top3.length);
+        html += slabel('&#9733; Starred', top3.length, true);
         html += `<div class="task-list" data-section="top3">${top3.map(t=>tHTML(t)).join('')}</div>`;
       }
       const lbl = filter==='biz'?'Work':filter==='personal'?'Personal':'Tasks';
       if (regular.length) {
-        html += slabel(lbl, regular.length);
+        html += slabel(lbl, regular.length, !top3.length);
         html += `<div class="task-list" data-section="main">${regular.map(t=>tHTML(t)).join('')}</div>`;
       } else if (!top3.length) {
         html += emptyState(filter === 'all' ? 'all' : filter);
@@ -4068,7 +4097,7 @@ function render() {
     }
   } else {
     if (view.length) {
-      html += slabel('Later', view.length);
+      html += slabel('Later', view.length, true);
       html += `<div class="task-list" data-section="someday">${view.map(t=>tHTML(t)).join('')}</div>`;
     } else {
       html += emptyState('someday');
@@ -4119,11 +4148,13 @@ function render() {
   requestAnimationFrame(initNoteClamps);
 }
 
-function slabel(l,n) {
+function slabel(l,n,showSort) {
   const icons = {'Tasks':'📋','Work':'💼','Personal':'🏠','Later':'🌱'};
   const emoji = Object.entries(icons).find(([k])=>l.includes(k));
   const prefix = emoji ? `<span style="font-size:11px;margin-right:2px">${emoji[1]}</span>` : '';
-  return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span></div>`;
+  const sortLabel = sortBy === 'due' ? 'Due Date' : 'Recent';
+  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabel}</span> <span style="font-size:7px">▼</span></button><div class="sort-dropdown" id="sortDropdown"><div class="sort-opt${sortBy==='recent'?' active':''}" onclick="setSort('recent')">Recently Created</div><div class="sort-opt${sortBy==='due'?' active':''}" onclick="setSort('due')">Due Date</div></div></div>` : '';
+  return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 
 // Search variant — highlights matched text, disables drag
@@ -6184,6 +6215,20 @@ function delTask(id) {
   });
 }
 function toggleDone() { showDone=!showDone; render(); }
+
+function toggleSortDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('sortDropdown');
+  if (dd) dd.classList.toggle('open');
+}
+function setSort(val) {
+  sortBy = val;
+  render();
+}
+document.addEventListener('click', () => {
+  const dd = document.getElementById('sortDropdown');
+  if (dd) dd.classList.remove('open');
+});
 
 function openEdit(id) {
   const t = tasks.find(t=>t.id===id);
