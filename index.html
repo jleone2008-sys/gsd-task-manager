@@ -171,6 +171,8 @@ nav.scrolled{box-shadow:var(--sh-md);}
   color:var(--app-muted);display:flex;align-items:center;gap:6px;
   margin-bottom:2px;
 }
+.app-sort-opt:hover{background:#f3f4f6;}
+.app-sort-opt.active{color:#2563eb;font-weight:600;}
 .app-task-list{display:flex;flex-direction:column;gap:2px;margin-bottom:8px;}
 .app-task{
   display:flex;align-items:center;gap:10px;
@@ -516,7 +518,16 @@ footer{background:#13161f;padding:30px 40px;display:flex;align-items:center;just
         <!-- Content -->
     <div class="app-content">
       <!-- Starred section -->
-      <div class="app-section-label">★&nbsp;&nbsp;Starred</div>
+      <div class="app-section-label" style="justify-content:space-between;">
+        <span>★&nbsp;&nbsp;Starred</span>
+        <div class="app-sort-wrap" style="position:relative;">
+          <button class="app-sort-btn" id="sortBtn" style="font-size:9px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;color:#999;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px;">Sort by <span id="sortLabel" style="color:#666;">Recent</span> <span style="font-size:7px;">▼</span></button>
+          <div class="app-sort-dropdown" id="sortDropdown" style="display:none;position:absolute;right:0;top:18px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:50;min-width:130px;overflow:hidden;">
+            <div class="app-sort-opt active" data-sort="recent" style="padding:8px 12px;font-size:11px;cursor:pointer;color:#333;">Recently Created</div>
+            <div class="app-sort-opt" data-sort="due" style="padding:8px 12px;font-size:11px;cursor:pointer;color:#333;">Due Date</div>
+          </div>
+        </div>
+      </div>
       <div class="app-task-list" id="mockStarred">
         <div class="app-task top3" id="mt0">
           <div class="app-star-btn starred">★</div>
@@ -963,6 +974,26 @@ footer{background:#13161f;padding:30px 40px;display:flex;align-items:center;just
 // ── Nav scroll ──
 const nav = document.getElementById('nav');
 window.addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), {passive:true});
+
+// ── Sort dropdown ──
+const sortBtn = document.getElementById('sortBtn');
+const sortDropdown = document.getElementById('sortDropdown');
+const sortLabel = document.getElementById('sortLabel');
+if (sortBtn) {
+  sortBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sortDropdown.style.display = sortDropdown.style.display === 'none' ? 'block' : 'none';
+  });
+  sortDropdown.querySelectorAll('.app-sort-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      sortDropdown.querySelectorAll('.app-sort-opt').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      sortLabel.textContent = opt.dataset.sort === 'due' ? 'Due Date' : 'Recent';
+      sortDropdown.style.display = 'none';
+    });
+  });
+  document.addEventListener('click', () => sortDropdown.style.display = 'none');
+}
 
 // ── Hero mockup animation ──
 // Step 1: type a task into add bar
