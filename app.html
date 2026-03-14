@@ -306,9 +306,9 @@
   .section-label .sort-btn:hover { color: var(--fg); }
   .section-label .sort-btn .sort-val { color: var(--fg); opacity: .7; }
   .sort-dropdown {
-    display: none; position: absolute; right: 0; top: 22px;
+    display: none; position: fixed;
     background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 9999; min-width: 150px; overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 9999; min-width: 150px; overflow: hidden;
   }
   .sort-dropdown.open { display: block; }
   .sort-opt { padding: 8px 12px; font-size: 11px; cursor: pointer; color: var(--fg); letter-spacing: 0; text-transform: none; font-weight: 400; }
@@ -6220,7 +6220,13 @@ function toggleDone() { showDone=!showDone; render(); }
 function toggleSortDropdown(e) {
   e.stopPropagation();
   const dd = document.getElementById('sortDropdown');
-  if (dd) dd.classList.toggle('open');
+  if (!dd) return;
+  const isOpen = dd.classList.toggle('open');
+  if (isOpen) {
+    const r = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (r.bottom + 4) + 'px';
+    dd.style.right = (window.innerWidth - r.right) + 'px';
+  }
 }
 function setSort(val) {
   sortBy = val;
