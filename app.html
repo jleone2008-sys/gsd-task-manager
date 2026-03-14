@@ -709,7 +709,8 @@
     .pill { font-size: 11px; padding: 6px 5px; }
     .logo-main { font-size: 20px; }
     .user-menu { flex-shrink: 0; }
-    .task-search-bar { padding: 0 12px 6px; }
+    .floating-search { bottom: 96px; right: 66px; height: 44px; width: 44px; border-radius: 8px; padding: 0 11px; }
+    .floating-search.expanded { width: 220px; border-radius: 22px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -753,17 +754,39 @@
     .st-hm-months:not(.monthly) span { width: calc(10px * 4.33 + 2px * 3.33); }
   }
 
-  /* TASK SEARCH */
-  .task-search-bar { padding: 0 16px 8px; display: flex; justify-content: center; }
-  .task-search-bar .task-search { max-width: 560px; }
-  .task-search {
-    display: flex; align-items: center; background: var(--surface2); border-radius: 8px;
-    padding: 0 10px; height: 34px; gap: 6px; border: 1px solid transparent; width: 100%; box-sizing: border-box;
+  /* FLOATING SEARCH BAR */
+  .floating-search {
+    position: fixed; bottom: 56px; right: 78px;
+    height: 46px; border-radius: 23px;
+    background: var(--surface); border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 14px; z-index: 50;
+    transition: width 0.25s ease, opacity 0.15s, box-shadow 0.2s;
+    width: 46px; overflow: hidden; cursor: pointer;
   }
-  .task-search:focus-within { border-color: var(--navy-light); background: var(--surface); }
-  .task-search svg { flex-shrink: 0; color: var(--muted); width: 13px; height: 13px; }
-  .task-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 100%; }
-  .task-search input::placeholder { color: var(--muted); }
+  .floating-search.expanded {
+    width: 260px; cursor: default;
+    box-shadow: 0 4px 20px rgba(45,95,166,0.18);
+    border-color: var(--navy-light);
+  }
+  .floating-search svg { flex-shrink: 0; color: var(--muted); width: 16px; height: 16px; }
+  .floating-search.expanded svg { color: var(--navy); }
+  .floating-search input {
+    border: none; background: transparent; outline: none;
+    color: var(--text); font-family: inherit; font-size: 13px;
+    width: 100%; opacity: 0; transition: opacity 0.15s;
+  }
+  .floating-search.expanded input { opacity: 1; }
+  .floating-search input::placeholder { color: var(--muted); }
+  .floating-search .fs-clear {
+    flex-shrink: 0; border: none; background: none; cursor: pointer;
+    color: var(--muted); padding: 2px; display: none; align-items: center; justify-content: center;
+    border-radius: 50%; transition: color 0.15s;
+  }
+  .floating-search .fs-clear:hover { color: var(--text); }
+  .floating-search.has-query .fs-clear { display: flex; }
+  .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   /* highlight matched text in task */
   .search-hl { background: #fde68a; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
   /* no results state */
@@ -1646,14 +1669,6 @@
   .nl-header { padding: 12px 14px 8px; border-bottom: 1px solid var(--border); }
   .nl-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   .nl-count { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface2); padding: 1px 7px; border-radius: 8px; }
-  .nl-search {
-    display: flex; align-items: center; background: var(--surface2); border-radius: 8px;
-    padding: 0 8px; height: 30px; gap: 5px; border: 1px solid transparent;
-  }
-  .nl-search:focus-within { border-color: var(--navy-light); background: var(--surface); }
-  .nl-search svg { flex-shrink: 0; color: var(--muted); width: 13px; height: 13px; }
-  .nl-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 100%; }
-  .nl-search input::placeholder { color: var(--muted); }
   .nl-scroll { flex: 1; overflow-y: auto; padding: 4px 6px; }
   .nl-item { padding: 10px 10px 8px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2px; border: 1.5px solid transparent; border-left: 3px solid transparent; animation: fadeUp 0.2s ease both; }
   .nl-item:hover { background: var(--surface2); transform: translateX(2px); }
@@ -1760,7 +1775,6 @@
     .notes-editor { min-width: 0; }
     .nl-header { padding: 12px 16px 10px; background: var(--bg); border-bottom: none; }
     .nl-title { font-size: 16px; }
-    .nl-search { height: 34px; }
     .nl-scroll { padding: 4px 12px 120px; }
     .nl-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 10px; margin-bottom: 4px; }
     .nl-item.active { border-color: var(--navy); }
@@ -2085,12 +2099,6 @@
   </div>
 </div>
 
-<div class="task-search-bar" data-tool-view="tasks">
-  <div class="task-search" id="searchWrap">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="searchInput" placeholder="Search tasks..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
-  </div>
-</div>
 
 <div class="content" data-tool-view="tasks">
   <div id="taskContainer"></div>
@@ -2125,10 +2133,6 @@
           <button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
           </button>
-        </div>
-        <div class="nl-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="notesSearchInput" placeholder="Search notes...">
         </div>
       </div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
@@ -2179,6 +2183,15 @@
   <span><span class="sv-pers">0</span> personal</span>
   <span class="sep"></span>
   <span><span class="sv">0</span> done</span>
+</div>
+
+<!-- FLOATING SEARCH BAR -->
+<div class="floating-search" id="floatingSearch" onclick="expandFloatingSearch()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <input type="text" id="floatingSearchInput" placeholder="Search tasks..." oninput="handleFloatingSearch(this.value)" onkeydown="if(event.key==='Escape')collapseFloatingSearch()">
+  <button class="fs-clear" onclick="event.stopPropagation();clearFloatingSearch()">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
 </div>
 
 <!-- FLOATING NEW TASK BUTTON -->
@@ -2650,7 +2663,8 @@ let activeTool = 'tasks';
 let _navFromPop = false; // flag to prevent pushState during popstate handling
 function switchTool(tool) {
   if (tool === activeTool) return;
-  if (activeTool === 'tasks' && searchQuery) clearSearch();
+  if (activeTool === 'tasks' && searchQuery) { searchQuery = ''; }
+  if (activeTool === 'notes' && noteSearchQuery) { noteSearchQuery = ''; }
   activeTool = tool;
   if (!_navFromPop) history.pushState({tool, note: null, drill: false}, '');
   // Show/hide tool views
@@ -2665,6 +2679,8 @@ function switchTool(tool) {
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
   });
+  // Update floating search
+  updateFloatingSearch();
   // Update stats bar and render for the active tool
   if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
@@ -4150,10 +4166,65 @@ function handleSearch(val) {
 }
 function clearSearch() {
   searchQuery = '';
-  const si = document.getElementById('searchInput');
+  const si = document.getElementById('floatingSearchInput');
   if (si) si.value = '';
   render();
 }
+
+// ── Floating search bar ──
+function expandFloatingSearch() {
+  const el = document.getElementById('floatingSearch');
+  if (el.classList.contains('expanded')) return;
+  el.classList.add('expanded');
+  document.getElementById('floatingSearchInput').focus();
+}
+function collapseFloatingSearch() {
+  const el = document.getElementById('floatingSearch');
+  const input = document.getElementById('floatingSearchInput');
+  if (input.value.trim()) return; // don't collapse if has query
+  el.classList.remove('expanded');
+  input.blur();
+  // clear both search states
+  if (activeTool === 'tasks') { searchQuery = ''; render(); }
+  else if (activeTool === 'notes') { noteSearchQuery = ''; renderNoteList(); }
+}
+function handleFloatingSearch(val) {
+  const el = document.getElementById('floatingSearch');
+  el.classList.toggle('has-query', val.trim().length > 0);
+  if (activeTool === 'tasks') { searchQuery = val.trim(); render(); }
+  else if (activeTool === 'notes') { noteSearchQuery = val.trim(); renderNoteList(); }
+}
+function clearFloatingSearch() {
+  const input = document.getElementById('floatingSearchInput');
+  input.value = '';
+  const el = document.getElementById('floatingSearch');
+  el.classList.remove('has-query');
+  if (activeTool === 'tasks') { searchQuery = ''; render(); }
+  else if (activeTool === 'notes') { noteSearchQuery = ''; renderNoteList(); }
+  input.focus();
+}
+function updateFloatingSearch() {
+  const el = document.getElementById('floatingSearch');
+  const input = document.getElementById('floatingSearchInput');
+  if (!el) return;
+  // Show only for tasks and notes
+  if (activeTool === 'tasks' || activeTool === 'notes') {
+    el.classList.remove('hidden');
+    input.placeholder = activeTool === 'tasks' ? 'Search tasks...' : 'Search notes...';
+  } else {
+    el.classList.add('hidden');
+  }
+  // Reset on tool switch
+  input.value = '';
+  el.classList.remove('expanded', 'has-query');
+}
+// Collapse when clicking outside
+document.addEventListener('mousedown', e => {
+  const el = document.getElementById('floatingSearch');
+  if (el && el.classList.contains('expanded') && !el.contains(e.target)) {
+    collapseFloatingSearch();
+  }
+});
 
 function dueBadgeHTML(due) {
   if (!due || due === '') return '';
@@ -4265,11 +4336,13 @@ function openCreatePanel() {
   if (activeTool === 'habits') { openHabitCreatePanel(); return; }
   if (activeTool === 'notes') { createNote(); return; }
   document.getElementById('fabBtn').classList.add('hidden');
+  document.getElementById('floatingSearch').classList.add('hidden');
   document.getElementById('createPanel').classList.add('open');
   setTimeout(() => document.getElementById('newTaskInput').focus(), 50);
 }
 function closeCreatePanel() {
   document.getElementById('fabBtn').classList.remove('hidden');
+  updateFloatingSearch();
   document.getElementById('createPanel').classList.remove('open');
 }
 document.addEventListener('click', function(e) {
@@ -4287,6 +4360,7 @@ document.addEventListener('click', function(e) {
 /* ══════ HABITS CRUD ══════ */
 function openHabitCreatePanel() {
   document.getElementById('fabBtn').classList.add('hidden');
+  document.getElementById('floatingSearch').classList.add('hidden');
   document.getElementById('habitCreatePanel').classList.add('open');
   document.getElementById('habitNameInput').value = '';
   document.getElementById('habitEmojiBtn').textContent = '✅';
@@ -4304,6 +4378,7 @@ function openHabitCreatePanel() {
 }
 function closeHabitCreatePanel() {
   document.getElementById('fabBtn').classList.remove('hidden');
+  updateFloatingSearch();
   document.getElementById('habitCreatePanel').classList.remove('open');
 }
 function pickHabitEmoji(em) {
@@ -5977,11 +6052,6 @@ function formatNoteDateFull(iso) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-// Notes search handler
-document.getElementById('notesSearchInput')?.addEventListener('input', e => {
-  noteSearchQuery = e.target.value.trim();
-  renderNoteList();
-});
 
 function toggleNoteField() {
   noteOpen = !noteOpen;
@@ -6757,7 +6827,7 @@ const onboardSteps = [
     position: 'below',
   },
   {
-    target: '#searchWrap',
+    target: '#floatingSearch',
     arrow: 'top',
     title: 'Search as you type',
     desc: 'Start typing to instantly filter tasks by name, note, or tag. Hit <strong>Escape</strong> to clear.',
@@ -7010,11 +7080,10 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // / → focus task search (only when on tasks tab)
-  if (e.key === '/' && activeTool === 'tasks') {
+  // / → focus floating search (tasks & notes)
+  if (e.key === '/' && (activeTool === 'tasks' || activeTool === 'notes')) {
     e.preventDefault();
-    const si = document.getElementById('searchInput');
-    if (si) { si.focus(); si.select(); }
+    expandFloatingSearch();
     showKbdHint('<kbd>/</kbd> Search');
     return;
   }
