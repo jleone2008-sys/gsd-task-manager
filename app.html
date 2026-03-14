@@ -4153,7 +4153,7 @@ function slabel(l,n,showSort) {
   const icons = {'Tasks':'📋','Work':'💼','Personal':'🏠','Later':'🌱'};
   const emoji = Object.entries(icons).find(([k])=>l.includes(k));
   const prefix = emoji ? `<span style="font-size:11px;margin-right:2px">${emoji[1]}</span>` : '';
-  const sortLabels = {default:'Default',recent:'Recent',due:'Due Date'};
+  const sortLabels = {default:'User Sorted',recent:'Recent',due:'Due Date'};
   const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button></div>` : '';
   return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
@@ -6233,7 +6233,7 @@ function setSort(val) {
   const dd = document.getElementById('sortDropdown');
   if (dd) {
     dd.classList.remove('open');
-    dd.querySelectorAll('.sort-opt').forEach(o => o.classList.toggle('active', o.textContent === {default:'Default',recent:'Recently Created',due:'Due Date'}[val]));
+    dd.querySelectorAll('.sort-opt').forEach(o => o.classList.toggle('active', o.textContent === {default:'User Sorted',recent:'Recently Created',due:'Due Date'}[val]));
   }
   render();
 }
@@ -7224,7 +7224,7 @@ function toggleFaq(btn) {
 }
 </script>
 <div class="sort-dropdown" id="sortDropdown" onclick="event.stopPropagation()">
-  <div class="sort-opt active" onclick="setSort('default')">Default</div>
+  <div class="sort-opt active" onclick="setSort('default')">User Sorted</div>
   <div class="sort-opt" onclick="setSort('recent')">Recently Created</div>
   <div class="sort-opt" onclick="setSort('due')">Due Date</div>
 </div>
