@@ -709,7 +709,8 @@
     .pill { font-size: 11px; padding: 6px 5px; }
     .logo-main { font-size: 20px; }
     .user-menu { flex-shrink: 0; }
-    .task-search-bar { padding: 0 12px 6px; }
+    .floating-search { bottom: 96px; right: 68px; height: 44px; width: 44px; border-radius: 8px; padding: 0 11px; z-index: 250; }
+    .floating-search.expanded { width: calc(100vw - 82px); border-radius: 22px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -753,17 +754,39 @@
     .st-hm-months:not(.monthly) span { width: calc(10px * 4.33 + 2px * 3.33); }
   }
 
-  /* TASK SEARCH */
-  .task-search-bar { padding: 0 16px 8px; display: flex; justify-content: center; }
-  .task-search-bar .task-search { max-width: 560px; }
-  .task-search {
-    display: flex; align-items: center; background: var(--surface2); border-radius: 8px;
-    padding: 0 10px; height: 34px; gap: 6px; border: 1px solid transparent; width: 100%; box-sizing: border-box;
+  /* FLOATING SEARCH BAR */
+  .floating-search {
+    position: fixed; bottom: 56px; right: 78px;
+    height: 46px; border-radius: 23px;
+    background: var(--surface); border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 14px; z-index: 50;
+    transition: width 0.25s ease, opacity 0.15s, box-shadow 0.2s;
+    width: 46px; overflow: hidden; cursor: pointer;
   }
-  .task-search:focus-within { border-color: var(--navy-light); background: var(--surface); }
-  .task-search svg { flex-shrink: 0; color: var(--muted); width: 13px; height: 13px; }
-  .task-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 100%; }
-  .task-search input::placeholder { color: var(--muted); }
+  .floating-search.expanded {
+    width: 260px; cursor: default;
+    box-shadow: 0 4px 20px rgba(45,95,166,0.18);
+    border-color: var(--navy-light);
+  }
+  .floating-search svg { flex-shrink: 0; color: var(--muted); width: 16px; height: 16px; }
+  .floating-search.expanded svg { color: var(--navy); }
+  .floating-search input {
+    border: none; background: transparent; outline: none;
+    color: var(--text); font-family: inherit; font-size: 13px;
+    width: 100%; opacity: 0; transition: opacity 0.15s;
+  }
+  .floating-search.expanded input { opacity: 1; }
+  .floating-search input::placeholder { color: var(--muted); }
+  .floating-search .fs-clear {
+    flex-shrink: 0; border: none; background: none; cursor: pointer;
+    color: var(--muted); padding: 2px; display: none; align-items: center; justify-content: center;
+    border-radius: 50%; transition: color 0.15s;
+  }
+  .floating-search .fs-clear:hover { color: var(--text); }
+  .floating-search.has-query .fs-clear { display: flex; }
+  .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   /* highlight matched text in task */
   .search-hl { background: #fde68a; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
   /* no results state */
@@ -1646,14 +1669,6 @@
   .nl-header { padding: 12px 14px 8px; border-bottom: 1px solid var(--border); }
   .nl-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   .nl-count { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface2); padding: 1px 7px; border-radius: 8px; }
-  .nl-search {
-    display: flex; align-items: center; background: var(--surface2); border-radius: 8px;
-    padding: 0 8px; height: 30px; gap: 5px; border: 1px solid transparent;
-  }
-  .nl-search:focus-within { border-color: var(--navy-light); background: var(--surface); }
-  .nl-search svg { flex-shrink: 0; color: var(--muted); width: 13px; height: 13px; }
-  .nl-search input { border: none; background: transparent; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 100%; }
-  .nl-search input::placeholder { color: var(--muted); }
   .nl-scroll { flex: 1; overflow-y: auto; padding: 4px 6px; }
   .nl-item { padding: 10px 10px 8px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2px; border: 1.5px solid transparent; border-left: 3px solid transparent; animation: fadeUp 0.2s ease both; }
   .nl-item:hover { background: var(--surface2); transform: translateX(2px); }
@@ -1666,7 +1681,7 @@
   .tag-personal { background: #ece6f4; color: var(--personal); }
   .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); }
 
-  .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex 0.3s ease; min-width: 480px; }
+  .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex 0.3s ease; min-width: 480px; min-height: 0; position: relative; }
   .notes-editor > div { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
   .ne-toolbar {
     display: flex; align-items: center; gap: 4px; padding: 6px 0;
@@ -1719,7 +1734,7 @@
   .ne-text .note-checklist-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; border-radius: 3px; }
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
-  .notes-editor-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; height: 100%; }
+  .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; position: absolute; inset: 0; }
 
   .nl-item.dragging { opacity: 0.4; }
   .nl-item.drag-target { border-color: var(--navy); background: rgba(45,95,166,0.06); }
@@ -1760,7 +1775,6 @@
     .notes-editor { min-width: 0; }
     .nl-header { padding: 12px 16px 10px; background: var(--bg); border-bottom: none; }
     .nl-title { font-size: 16px; }
-    .nl-search { height: 34px; }
     .nl-scroll { padding: 4px 12px 120px; }
     .nl-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 10px; margin-bottom: 4px; }
     .nl-item.active { border-color: var(--navy); }
@@ -1806,6 +1820,7 @@
     .mobile-nb-drawer.open { display: block; }
     .mobile-nb-drawer .ns-item { padding: 8px 10px; font-size: 13px; }
     .tb-desktop-only { display: none !important; }
+    .note-action-btn { display: none !important; }
   }
   @media (min-width: 601px) {
     .mobile-note-header { display: none !important; }
@@ -2084,12 +2099,6 @@
   </div>
 </div>
 
-<div class="task-search-bar" data-tool-view="tasks">
-  <div class="task-search" id="searchWrap">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="searchInput" placeholder="Search tasks..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape'){clearSearch();this.blur()}">
-  </div>
-</div>
 
 <div class="content" data-tool-view="tasks">
   <div id="taskContainer"></div>
@@ -2120,15 +2129,7 @@
       <div class="mobile-nb-toggle" id="mobileNbToggle" onclick="document.getElementById('mobileNbDrawer').classList.toggle('open')" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <div class="nl-header">
-        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span>
-          <button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-          </button>
-        </div>
-        <div class="nl-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="notesSearchInput" placeholder="Search notes...">
-        </div>
+        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span></div>
       </div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
@@ -2178,6 +2179,15 @@
   <span><span class="sv-pers">0</span> personal</span>
   <span class="sep"></span>
   <span><span class="sv">0</span> done</span>
+</div>
+
+<!-- FLOATING SEARCH BAR -->
+<div class="floating-search" id="floatingSearch" onclick="expandFloatingSearch()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <input type="text" id="floatingSearchInput" placeholder="Search tasks..." oninput="handleFloatingSearch(this.value)" onkeydown="if(event.key==='Escape')collapseFloatingSearch()">
+  <button class="fs-clear" onclick="event.stopPropagation();clearFloatingSearch()">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
 </div>
 
 <!-- FLOATING NEW TASK BUTTON -->
@@ -2649,7 +2659,8 @@ let activeTool = 'tasks';
 let _navFromPop = false; // flag to prevent pushState during popstate handling
 function switchTool(tool) {
   if (tool === activeTool) return;
-  if (activeTool === 'tasks' && searchQuery) clearSearch();
+  if (activeTool === 'tasks' && searchQuery) { searchQuery = ''; }
+  if (activeTool === 'notes' && noteSearchQuery) { noteSearchQuery = ''; }
   activeTool = tool;
   if (!_navFromPop) history.pushState({tool, note: null, drill: false}, '');
   // Show/hide tool views
@@ -2664,6 +2675,8 @@ function switchTool(tool) {
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
   });
+  // Update floating search
+  updateFloatingSearch();
   // Update stats bar and render for the active tool
   if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
@@ -4149,10 +4162,65 @@ function handleSearch(val) {
 }
 function clearSearch() {
   searchQuery = '';
-  const si = document.getElementById('searchInput');
+  const si = document.getElementById('floatingSearchInput');
   if (si) si.value = '';
   render();
 }
+
+// ── Floating search bar ──
+function expandFloatingSearch() {
+  const el = document.getElementById('floatingSearch');
+  if (el.classList.contains('expanded')) return;
+  el.classList.add('expanded');
+  document.getElementById('floatingSearchInput').focus();
+}
+function collapseFloatingSearch() {
+  const el = document.getElementById('floatingSearch');
+  const input = document.getElementById('floatingSearchInput');
+  if (input.value.trim()) return; // don't collapse if has query
+  el.classList.remove('expanded');
+  input.blur();
+  // clear both search states
+  if (activeTool === 'tasks') { searchQuery = ''; render(); }
+  else if (activeTool === 'notes') { noteSearchQuery = ''; renderNoteList(); }
+}
+function handleFloatingSearch(val) {
+  const el = document.getElementById('floatingSearch');
+  el.classList.toggle('has-query', val.trim().length > 0);
+  if (activeTool === 'tasks') { searchQuery = val.trim(); render(); }
+  else if (activeTool === 'notes') { noteSearchQuery = val.trim(); renderNoteList(); }
+}
+function clearFloatingSearch() {
+  const input = document.getElementById('floatingSearchInput');
+  input.value = '';
+  const el = document.getElementById('floatingSearch');
+  el.classList.remove('has-query');
+  if (activeTool === 'tasks') { searchQuery = ''; render(); }
+  else if (activeTool === 'notes') { noteSearchQuery = ''; renderNoteList(); }
+  input.focus();
+}
+function updateFloatingSearch() {
+  const el = document.getElementById('floatingSearch');
+  const input = document.getElementById('floatingSearchInput');
+  if (!el) return;
+  // Show only for tasks and notes
+  if (activeTool === 'tasks' || activeTool === 'notes') {
+    el.classList.remove('hidden');
+    input.placeholder = activeTool === 'tasks' ? 'Search tasks...' : 'Search notes...';
+  } else {
+    el.classList.add('hidden');
+  }
+  // Reset on tool switch
+  input.value = '';
+  el.classList.remove('expanded', 'has-query');
+}
+// Collapse when clicking outside
+document.addEventListener('mousedown', e => {
+  const el = document.getElementById('floatingSearch');
+  if (el && el.classList.contains('expanded') && !el.contains(e.target)) {
+    collapseFloatingSearch();
+  }
+});
 
 function dueBadgeHTML(due) {
   if (!due || due === '') return '';
@@ -4264,11 +4332,13 @@ function openCreatePanel() {
   if (activeTool === 'habits') { openHabitCreatePanel(); return; }
   if (activeTool === 'notes') { createNote(); return; }
   document.getElementById('fabBtn').classList.add('hidden');
+  document.getElementById('floatingSearch').classList.add('hidden');
   document.getElementById('createPanel').classList.add('open');
   setTimeout(() => document.getElementById('newTaskInput').focus(), 50);
 }
 function closeCreatePanel() {
   document.getElementById('fabBtn').classList.remove('hidden');
+  updateFloatingSearch();
   document.getElementById('createPanel').classList.remove('open');
 }
 document.addEventListener('click', function(e) {
@@ -4286,6 +4356,7 @@ document.addEventListener('click', function(e) {
 /* ══════ HABITS CRUD ══════ */
 function openHabitCreatePanel() {
   document.getElementById('fabBtn').classList.add('hidden');
+  document.getElementById('floatingSearch').classList.add('hidden');
   document.getElementById('habitCreatePanel').classList.add('open');
   document.getElementById('habitNameInput').value = '';
   document.getElementById('habitEmojiBtn').textContent = '✅';
@@ -4303,6 +4374,7 @@ function openHabitCreatePanel() {
 }
 function closeHabitCreatePanel() {
   document.getElementById('fabBtn').classList.remove('hidden');
+  updateFloatingSearch();
   document.getElementById('habitCreatePanel').classList.remove('open');
 }
 function pickHabitEmoji(em) {
@@ -4726,6 +4798,7 @@ function noteToRow(n) {
     trashed: n.trashed,
     trashed_at: n.trashedAt || null,
     "order": n.order,
+    created_at: n.createdAt || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 }
@@ -4944,7 +5017,7 @@ function renderNotesSidebar() {
     const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
     const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
     const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
-    html += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
+    html += `<div class="ns-item${active}" draggable="true" data-nb-id="${nb.id}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
       ${nbIcon}
       <span>${escHTML(nb.name || 'Untitled')}</span><span class="cnt">${nbCount}</span>
       <button class="nb-edit-btn" onclick="event.stopPropagation();showNotebookMenu(event,${nb.id})" title="Edit notebook">
@@ -4991,6 +5064,33 @@ function renderNotesSidebar() {
       saveNoteToDB(note);
       noteDragId = null;
       renderNotes();
+    });
+  });
+
+  // Wire notebook drag-to-reorder
+  let nbDragId = null;
+  el.querySelectorAll('.ns-item[data-nb-id]').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      nbDragId = parseInt(item.dataset.nbId);
+      e.dataTransfer.effectAllowed = 'move';
+      item.style.opacity = '0.4';
+    });
+    item.addEventListener('dragend', () => { item.style.opacity = ''; nbDragId = null; });
+    item.addEventListener('dragover', e => {
+      const targetNbId = parseInt(item.dataset.nbId);
+      if (!nbDragId || nbDragId === targetNbId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('drop-target');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drop-target'));
+    item.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      item.classList.remove('drop-target');
+      const targetNbId = parseInt(item.dataset.nbId);
+      if (!nbDragId || nbDragId === targetNbId) return;
+      reorderNotebooks(nbDragId, targetNbId);
+      nbDragId = null;
     });
   });
 
@@ -5057,7 +5157,15 @@ function updateNlTitle() {
     const nb = notebooksArr.find(n => n.id === nbId);
     label = nb ? escHTML(nb.name) : 'Notebook';
   }
-  titleEl.innerHTML = `${label} <span class="nl-count">${list.length}</span>`;
+  let extra = '';
+  if (notesSidebarView === 'trash' && list.length > 0) {
+    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:#d44;font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='#d4410a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#d44'">Empty Trash</button>`;
+  } else if (notesSidebarView !== 'trash') {
+    extra = `<button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+    </button>`;
+  }
+  titleEl.innerHTML = `${label} <span class="nl-count">${list.length}</span>${extra}`;
 }
 
 function setNotesSidebarView(view) {
@@ -5137,7 +5245,7 @@ function renderNoteList() {
         <div style="flex:1;min-width:0">
           <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
           <div class="nl-item-preview">${escHTML(preview)}</div>
-          <div class="nl-item-meta">${tagHtml}<span>${date}</span></div>
+          <div class="nl-item-meta">${tagHtml}<span>Edited ${date}</span></div>
         </div>
       </div>`;
     }
@@ -5210,8 +5318,10 @@ function renderNoteEditor() {
         <div class="ne-meta">
           <div class="ne-meta-item">
             ${noteNbTag}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ${formatNoteDate(note.updatedAt)}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Created ${formatNoteDate(note.createdAt)}
+            <span class="dot-sep"></span>
+            Edited ${formatNoteDate(note.updatedAt)}
           </div>
           <div class="ne-meta-item" style="margin-left:auto;gap:8px">
             <select onchange="handleNoteNbChange(this, ${note.id})" style="border:1px solid var(--border);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--text2);cursor:pointer">
@@ -5259,6 +5369,9 @@ function renderNoteEditor() {
             </button>
             <button class="tb-btn" onmousedown="noteCmd(event,'insertUnorderedList')" title="Bullet list">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+            </button>
+            <button class="tb-btn" onmousedown="noteCmd(event,'insertOrderedList')" title="Numbered list">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="4" y="7.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">1</text><text x="4" y="13.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">2</text><text x="4" y="19.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">3</text></svg>
             </button>
             <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -5540,7 +5653,7 @@ function renameNotebook(id) {
 
 function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onConfirm) {
   const NB_COLORS = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#607d8b'];
-  const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻'];
+  const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻','👤','👥','👨‍💻','👩‍💼','🤝','👪','📞','☎️','📲'];
   const selectedColor = defaultColor || NB_COLORS[notebooksArr.length % NB_COLORS.length];
   let overlay = document.getElementById('nbPromptOverlay');
   if (!overlay) {
@@ -5602,6 +5715,27 @@ function deleteNotebook(id) {
     if (notesSidebarView === 'notebook-' + id) notesSidebarView = 'all';
     renderNotes();
     deleteNotebookFromDB(id);
+  });
+}
+
+function reorderNotebooks(fromId, toId) {
+  const sorted = notebooksArr.sort((a, b) => (a.order || 0) - (b.order || 0));
+  const fromIdx = sorted.findIndex(n => n.id === fromId);
+  const toIdx = sorted.findIndex(n => n.id === toId);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = sorted.splice(fromIdx, 1);
+  sorted.splice(toIdx, 0, moved);
+  sorted.forEach((nb, i) => { nb.order = i; saveNotebookToDB(nb); });
+  renderNotesSidebar();
+}
+
+function emptyTrash() {
+  const trashed = notesArr.filter(n => n.trashed);
+  if (!trashed.length) return;
+  showInlineConfirm(`Delete all ${trashed.length} trashed note${trashed.length > 1 ? 's' : ''}?`, 'This cannot be undone.', () => {
+    trashed.forEach(n => { notesArr = notesArr.filter(x => x.id !== n.id); deleteNoteFromDB(n.id); });
+    activeNoteId = null;
+    renderNotes();
   });
 }
 
@@ -5976,11 +6110,6 @@ function formatNoteDateFull(iso) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-// Notes search handler
-document.getElementById('notesSearchInput')?.addEventListener('input', e => {
-  noteSearchQuery = e.target.value.trim();
-  renderNoteList();
-});
 
 function toggleNoteField() {
   noteOpen = !noteOpen;
@@ -6756,7 +6885,7 @@ const onboardSteps = [
     position: 'below',
   },
   {
-    target: '#searchWrap',
+    target: '#floatingSearch',
     arrow: 'top',
     title: 'Search as you type',
     desc: 'Start typing to instantly filter tasks by name, note, or tag. Hit <strong>Escape</strong> to clear.',
@@ -7009,11 +7138,10 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // / → focus task search (only when on tasks tab)
-  if (e.key === '/' && activeTool === 'tasks') {
+  // / → focus floating search (tasks & notes)
+  if (e.key === '/' && (activeTool === 'tasks' || activeTool === 'notes')) {
     e.preventDefault();
-    const si = document.getElementById('searchInput');
-    if (si) { si.focus(); si.select(); }
+    expandFloatingSearch();
     showKbdHint('<kbd>/</kbd> Search');
     return;
   }
