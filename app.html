@@ -657,6 +657,7 @@
   .modal-footer { display: flex; gap: 7px; justify-content: flex-end; }
   .btn-sm { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
   .btn-sm:hover { border-color: #aaa; }
+  #editDeleteBtn:hover { background: #fde8e8; border-color: #c33; }
   .btn-sm-accent { padding: 6px 12px; border-radius: 6px; border: none; background: var(--navy); color: #fff; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
   .btn-sm-accent:hover { background: var(--navy-dark); }
 
@@ -2520,6 +2521,7 @@
     </div>
 
     <div class="modal-footer-row">
+      <button class="btn-sm" id="editDeleteBtn" onclick="delTask(editId);closeModal();" style="color:#d44;border-color:#d44;padding:6px 10px;" title="Delete task">🗑️ Delete</button>
       <div class="modal-tags" id="editTags"></div>
       <div class="modal-action-btns">
         <button class="btn-sm" onclick="closeModal()">Cancel</button>
