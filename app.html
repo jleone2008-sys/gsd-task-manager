@@ -727,8 +727,6 @@
     .pill { font-size: 11px; padding: 6px 5px; }
     .logo-main { font-size: 20px; }
     .user-menu { flex-shrink: 0; }
-    .floating-search { bottom: 96px; right: 66px; height: 44px; width: 44px; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; z-index: 250; }
-    .floating-search.expanded { width: calc(100vw - 82px); border-radius: 22px; }
     .add-section { padding: 12px 12px 0; }
     .add-row { gap: 5px; }
     .add-row input[type=text] { font-size: 13px; padding: 8px 11px; }
@@ -805,6 +803,10 @@
   .floating-search .fs-clear:hover { color: var(--text); }
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
+  @media (max-width: 600px) {
+    .floating-search { bottom: 96px; right: 66px; height: 44px; width: 44px; border-radius: 8px; padding: 0 13px; z-index: 250; }
+    .floating-search.expanded { width: calc(100vw - 82px); border-radius: 22px; }
+  }
   /* highlight matched text in task */
   .search-hl { background: #fde68a; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
   /* no results state */
