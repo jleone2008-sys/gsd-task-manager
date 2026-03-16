@@ -3295,7 +3295,10 @@ function isHabitDueOnDate(habit, dateStr) {
   return true;
 }
 function isHabitDueToday(habit) {
-  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') return true;
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') {
+    if (isQuotaMet(habit, todayStr()) && !habit.allowExtras) return false;
+    return true;
+  }
   return isHabitDueOnDate(habit, todayStr());
 }
 
