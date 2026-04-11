@@ -5503,7 +5503,13 @@ function renderNoteEditor() {
     ce.addEventListener('paste', e => {
       e.preventDefault();
       const html = e.clipboardData.getData('text/html');
-      const plain = e.clipboardData.getData('text/plain');
+      const plain = e.clipboardData.getData('text/plain').trim();
+      // Auto-link bare URLs
+      if (/^https?:\/\/\S+$/.test(plain)) {
+        document.execCommand('insertHTML', false, `<a href="${escAttr(plain)}" target="_blank" rel="noopener">${escHTML(plain)}</a>`);
+        onNoteContentChange();
+        return;
+      }
       if (html) {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
@@ -6140,7 +6146,13 @@ function renderScratch() {
     ce.addEventListener('paste', e => {
       e.preventDefault();
       const html = e.clipboardData.getData('text/html');
-      const plain = e.clipboardData.getData('text/plain');
+      const plain = e.clipboardData.getData('text/plain').trim();
+      // Auto-link bare URLs
+      if (/^https?:\/\/\S+$/.test(plain)) {
+        document.execCommand('insertHTML', false, `<a href="${escAttr(plain)}" target="_blank" rel="noopener">${escHTML(plain)}</a>`);
+        onScratchContentChange();
+        return;
+      }
       if (html) {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
@@ -6545,6 +6557,14 @@ function updateRichToolbarState() {
 function richAutoLink(el) {
   // Auto-linkify plain-typed URLs — only on space/enter
 }
+// Paste handler for task note editor — auto-links bare URLs
+document.getElementById('editNoteRich').addEventListener('paste', e => {
+  const plain = e.clipboardData.getData('text/plain').trim();
+  if (/^https?:\/\/\S+$/.test(plain)) {
+    e.preventDefault();
+    document.execCommand('insertHTML', false, `<a href="${escAttr(plain)}" target="_blank" rel="noopener">${escHTML(plain)}</a>`);
+  }
+});
 // Convert stored HTML to display-safe note (strips scripts etc)
 function richToDisplay(html) {
   if (!html) return '';
