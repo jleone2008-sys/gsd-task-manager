@@ -6071,6 +6071,8 @@ let _scratchSaveTimer = null;
 function renderScratch() {
   const el = document.getElementById('scratchEditorContent');
   if (!el) return;
+  // On mobile the notes-editor is hidden by default; scratch is always the full view
+  document.getElementById('scratchEditor')?.classList.add('mobile-open');
   const saved = scratchNote.content || localStorage.getItem('gsd-scratch') || '';
   el.innerHTML = `
     <div class="ne-body">
