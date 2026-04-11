@@ -7422,8 +7422,8 @@ document.addEventListener('keydown', function(e) {
 
   if (isTyping) return;
 
-  // N → new task/habit
-  if (e.key === 'n' || e.key === 'N') {
+  // N → new task/habit (lowercase only — Shift+N is reserved for switching to Notes tab)
+  if (e.key === 'n') {
     e.preventDefault();
     openCreatePanel();
     showKbdHint(activeTool === 'habits' ? '<kbd>N</kbd> New habit' : '<kbd>N</kbd> New task');
