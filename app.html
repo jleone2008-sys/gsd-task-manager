@@ -470,19 +470,36 @@
   .task-list.drag-over-zone { background: var(--drag-over); border-radius: var(--radius-sm); }
 
   .task-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-2-5);
-    padding: var(--space-2) var(--space-2-5) var(--space-2) var(--space-2-5);
-    border-radius: var(--radius-sm);
+    padding: var(--space-2-5) var(--space-3);
+    border-radius: var(--radius-lg);
     background: var(--surface);
     border: 1px solid var(--border);
-    transition: box-shadow var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast);
+    box-shadow: var(--shadow-xs);
+    transition: box-shadow var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast), transform var(--dur-fast);
     cursor: default;
     user-select: none;
+    overflow: hidden;
   }
-  .task-item:hover { border-color: var(--border2); }
-  .task-item.top3 { border-left: 3px solid var(--top3); background: var(--top3-bg); }
+  .task-item:hover {
+    border-color: var(--border2);
+    box-shadow: var(--shadow-sm);
+  }
+  /* Starred — left accent strip, no bg tint. Supports multi-star without monotony. */
+  .task-item.top3 {
+    padding-left: calc(var(--space-3) + 8px);
+  }
+  .task-item.top3::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 6px;
+    background: var(--navy);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  }
   .task-item.done { opacity: 0.4; }
   .task-item.done .task-text { text-decoration: line-through; color: var(--muted); }
   .task-item.dragging { opacity: 0.35; box-shadow: var(--shadow-md); }
@@ -758,8 +775,9 @@
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
-    background: rgba(20,20,60,0.35);
-    backdrop-filter: blur(3px);
+    background: rgba(20,30,80,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     align-items: center;
     justify-content: center;
     padding: var(--space-4);
@@ -771,8 +789,8 @@
     width: 100%;
     max-width: var(--max-create);
     background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-xl);
     padding: var(--space-4-5);
     animation: fadeUp var(--dur-mid) var(--ease-spring) both;
@@ -791,10 +809,10 @@
   .create-panel-actions { display: flex; gap: var(--space-1-5); align-items: center; flex-shrink: 0; }
 
   /* MODAL */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,30,80,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4); }
   #legalModal, #faqModal { z-index: var(--z-legal); }
   .modal-overlay.open { display: flex; animation: fadeIn var(--dur-quick) ease both; }
-  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-md); padding: var(--space-5); width: 100%; max-width: var(--max-modal); box-shadow: var(--shadow-lg); position: relative; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: var(--space-5); width: 100%; max-width: var(--max-modal); box-shadow: var(--shadow-xl); position: relative; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
   .modal-header { margin-bottom: var(--space-4); }
   .modal-title { font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--text); }
   .modal-close {
@@ -992,8 +1010,8 @@
 
   .auth-card {
     background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     padding: var(--touch-44) var(--space-8) var(--space-8);
     width: 100%; max-width: var(--max-auth);
