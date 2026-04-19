@@ -10,29 +10,148 @@
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
 <style>
 
+  /* ══════════════════════════════════════════════════════════════
+     DESIGN TOKENS — single source of truth for the entire app.
+     Mobile breakpoint: 600px. Notes secondary breakpoints: 800px, 1080px.
+     See DESIGN_SYSTEM.md for rationale and the mapping old → new.
+  ═══════════════════════════════════════════════════════════════ */
   :root {
-    --bg: #f4f5f7;
-    --surface: #ffffff;
-    --surface2: #f0f1f3;
-    --border: #e2e4e8;
-    --border2: #d0d3da;
-    --navy: #2d5fa6;
-    --navy-dark: #224a8a;
-    --navy-light: #3d70c0;
-    --navy-muted: rgba(255,255,255,0.6);
-    --navy-border: rgba(255,255,255,0.2);
-    --accent: #3d3d8f;
-    --text: #1d1c1d;
-    --text2: #454245;
-    --muted: #9a9a9a;
-    --biz: #1264a3;
-    --personal: #7c2d96;
-    --top3: #b85c00;
-    --top3-bg: #fffcf5;
-    --check: #007a5a;
-    --danger: #e01e5a;
-    --link: #1264a3;
-    --drag-over: #eef0fb;
+    /* ── Core surfaces + text (cool-tinted) ───────────────────── */
+    --bg:         #eef2fb;
+    --surface:    #ffffff;
+    --surface2:   #e6edf8;
+    --border:     #dce4f2;
+    --border2:    #c8d3e9;
+    --text:       #1a1e2e;
+    --text2:      #4a5168;
+    --muted:      #8690a8;
+
+    /* ── Brand primary (blue) ─────────────────────────────────
+       Named `--navy` for historical continuity — still blue,
+       just softer and cooler than the old #2d5fa6. */
+    --navy:        #5b82e0;
+    --navy-dark:   #4568c8;
+    --navy-light:  #8eaaee;
+    --navy-muted:  rgba(255,255,255,0.72);
+    --navy-border: rgba(255,255,255,0.22);
+    --accent:      #3d5fb3;
+
+    /* ── Semantic states ──────────────────────────────────────── */
+    --check:     #2fa97e;
+    --danger:    #e54a7a;
+    --danger-bg: #fdeef2;
+    --danger-border: #f5c5d2;
+    --top3:      #d97706;
+    --top3-bg:   #fff8eb;
+    --link:      #4568c8;
+    --drag-over: #e1ebfb;
+
+    /* ── Tag system (backwards-compat: --biz / --personal alias) ─ */
+    --biz-bg:        #d9e6ff;
+    --biz-text:      #2a5fd6;
+    --personal-bg:   #f3e6fd;
+    --personal-text: #8341c6;
+    --biz:       var(--biz-text);
+    --personal:  var(--personal-text);
+
+    /* ── Pastel accent family (stat cards, due-date chips, future categories) ─ */
+    --pastel-lavender-bg:  #dfd6e8;   --pastel-lavender-text:  #574a6d;
+    --pastel-sky-bg:       #d4e2ec;   --pastel-sky-text:       #2d5577;
+    --pastel-mint-bg:      #cfe8d6;   --pastel-mint-text:      #2d6848;
+    --pastel-yellow-bg:    #f5e6b8;   --pastel-yellow-text:    #7a5600;
+    --pastel-coral-bg:     #f9d5dc;   --pastel-coral-text:     #a03050;
+
+    /* ── Error toast ──────────────────────────────────────────── */
+    --toast-bg:        #1e2231;
+    --toast-err-red:   #f87171;
+    --toast-err-amber: #fbbf24;
+
+    /* ── Shadow scale (blue-tinted) ───────────────────────────── */
+    --shadow-xs:    0 1px 2px rgba(30,60,140,0.04);
+    --shadow-sm:    0 2px 6px rgba(30,60,140,0.06), 0 0 0 1px rgba(30,60,140,0.03);
+    --shadow-md:    0 6px 20px rgba(30,60,140,0.08), 0 2px 6px rgba(30,60,140,0.05);
+    --shadow-lg:    0 12px 40px rgba(30,60,140,0.12), 0 4px 12px rgba(30,60,140,0.06);
+    --shadow-xl:    0 20px 60px rgba(30,60,140,0.16), 0 6px 20px rgba(30,60,140,0.08);
+    --shadow-focus: 0 0 0 3px rgba(91,130,224,0.22);
+
+    /* ── Radius scale ─────────────────────────────────────────── */
+    --radius-sm:   8px;
+    --radius-md:   12px;
+    --radius-lg:   16px;
+    --radius-xl:   20px;
+    --radius-pill: 9999px;
+
+    /* ── Typography ───────────────────────────────────────────── */
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    --fs-label:         10px;    /* uppercase section labels, day-dot labels */
+    --fs-micro:         10.5px;  /* mobile slim stats */
+    --fs-meta:          11px;    /* timestamps, stats metadata */
+    --fs-pill:          12px;    /* pill labels, tool tabs, small buttons */
+    --fs-search:        13px;    /* search input */
+    --fs-task:          13.5px;  /* task text, habit names, note list titles */
+    --fs-body:          14px;    /* base body / editor content */
+    --fs-card:          16px;    /* dense-view card titles (new) */
+    --fs-section:       18px;    /* habit stats section headings */
+    --fs-title:         22px;    /* page titles, note editor desktop title */
+    --fs-title-mobile:  20px;    /* mobile logo, mobile note editor title */
+    --fs-display:       28px;    /* hero / greeting (new) */
+
+    --fw-regular:  400;
+    --fw-medium:   500;
+    --fw-semibold: 600;
+    --fw-bold:     700;
+    --fw-black:    800;
+
+    --tracking-label: 1.6px;
+    --tracking-tight: -0.5px;
+
+    /* ── Spacing scale (4-based) ──────────────────────────────── */
+    --space-0: 0;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+
+    /* ── Max-widths ───────────────────────────────────────────── */
+    --max-content:  720px;
+    --max-pill-bar: 560px;
+    --max-modal:    460px;
+    --max-auth:     380px;
+    --max-notes:    740px;
+
+    /* ── Z-index stack (named roles, no magic numbers) ────────── */
+    --z-pill-bar:      0;
+    --z-fab-desktop:   50;
+    --z-stats-bar:     90;
+    --z-toast:         100;
+    --z-editor-mobile: 150;
+    --z-modal:         200;
+    --z-fab-mobile:    250;
+    --z-slim-stats:    295;
+    --z-mobile-nav:    300;
+    --z-dropdown:      400;
+    --z-auth:          500;
+    --z-legal:         600;
+    --z-onboard-bg:    800;
+    --z-onboard-ring:  801;
+    --z-onboard-tip:   802;
+    --z-confirm:       900;
+
+    /* ── Transitions + easing ─────────────────────────────────── */
+    --dur-fast:    0.12s;
+    --dur-base:    0.18s;
+    --dur-mid:     0.22s;
+    --dur-slow:    0.25s;
+    --dur-slower:  0.3s;
+    --dur-slowest: 0.4s;
+
+    --ease-out:    ease;
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
