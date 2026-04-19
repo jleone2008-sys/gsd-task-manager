@@ -72,6 +72,9 @@
     --heatmap-l2: #7aacdf;
     --heatmap-l3: #3d7ec4;
 
+    /* ── Specialty ────────────────────────────────────────────── */
+    --highlight-yellow: #fef08a;   /* text-highlight marker in rich editor */
+
     /* ── Shadow scale (blue-tinted) ───────────────────────────── */
     --shadow-xs:    0 1px 2px rgba(30,60,140,0.04);
     --shadow-sm:    0 2px 6px rgba(30,60,140,0.06), 0 0 0 1px rgba(30,60,140,0.03);
@@ -1540,6 +1543,7 @@
   /* Habit cards */
   .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2-5) var(--space-2-5); margin-bottom: var(--space-0-5); cursor: pointer; transition: border-color var(--dur-instant); }
   .habit-card:hover { border-color: var(--border2); }
+  .habit-card.habit-done { background: var(--pastel-mint-bg); border-color: var(--pastel-mint-bg); }
   .habit-card-top { display: flex; align-items: center; gap: var(--space-2); }
   .habit-emoji { font-size: var(--fs-card); flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
   .habit-name { font-size: var(--fs-task); font-weight: var(--fw-semibold); flex: 1; }
@@ -3793,7 +3797,7 @@ function renderHabitToday(active) {
       // Extras-enabled: full opacity, +/- buttons, count badge
       const countBadge = todayCount > 1 ? `<span style="font-size:10px;font-weight:700;color:var(--navy);background:rgba(45,95,166,0.12);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>` : '';
       const progressMeta = periodLabel ? `<span style="color:var(--check);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}` : '';
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:var(--pastel-mint-bg);border-color:#d1fae5">
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}">
         <div class="swipe-complete-bg">✓</div>
         <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
         <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
@@ -3808,7 +3812,7 @@ function renderHabitToday(active) {
         </div>
       </div>`;
     } else {
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:var(--pastel-mint-bg);border-color:#d1fae5">
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}">
         <div class="swipe-complete-bg">✓</div>
         <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
         <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
@@ -3836,7 +3840,7 @@ function renderHabitToday(active) {
       <div class="progress-ring-wrap">
         <svg viewBox="0 0 56 56">
           <circle cx="28" cy="28" r="23" fill="none" stroke="var(--border)" stroke-width="5"/>
-          <circle cx="28" cy="28" r="23" fill="none" stroke="#2d5fa6" stroke-width="5"
+          <circle cx="28" cy="28" r="23" fill="none" style="stroke:var(--navy)" stroke-width="5"
             stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
         </svg>
         <div class="progress-ring-label">${pct}%</div>
@@ -5173,7 +5177,7 @@ async function loadNotes() {
 
 /* ══════ NOTEBOOKS DATA ══════ */
 function rowToNotebook(r) {
-  return { id: r.client_id, name: r.name || '', color: r.color || '#2d5fa6', order: r.order || 0, icon: r.icon || '' };
+  return { id: r.client_id, name: r.name || '', color: r.color || '#5b82e0', order: r.order || 0, icon: r.icon || '' };
 }
 function notebookToRow(nb) {
   return { user_id: currentUser.id, client_id: nb.id, name: nb.name, color: nb.color, "order": nb.order, icon: nb.icon || '', updated_at: new Date().toISOString() };
@@ -5652,7 +5656,7 @@ function renderNoteEditor() {
             <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             </button>
-            <button class="tb-btn tb-highlight" onmousedown="noteHighlight(event)" title="Highlight" style="background:#fef08a;border-radius:4px">
+            <button class="tb-btn tb-highlight" onmousedown="noteHighlight(event)" title="Highlight" style="background:var(--highlight-yellow);border-radius:var(--radius-xs)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </button>
           </div>
@@ -5934,7 +5938,7 @@ function renameNotebook(id) {
 }
 
 function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onConfirm) {
-  const NB_COLORS = ['#2d5fa6', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#607d8b'];
+  const NB_COLORS = ['#5b82e0', '#e74c3c', '#27ae60', '#f39c12', '#8e44ad', '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#607d8b'];
   const NB_EMOJIS = ['📓','📔','📒','📕','📗','📘','📙','📚','📖','✏️','🖊️','📝','💼','🎯','💡','🧠','🔬','🎨','🎵','🏋️','🍳','✈️','🏠','💰','📊','🌱','❤️','⭐','🔥','🚀','🎮','📸','🎬','🛠️','📱','💻','👤','👥','👨‍💻','👩‍💼','🤝','👪','📞','☎️','📲'];
   const selectedColor = defaultColor || NB_COLORS[notebooksArr.length % NB_COLORS.length];
   let overlay = document.getElementById('nbPromptOverlay');
@@ -6298,7 +6302,7 @@ function renderScratch() {
             <button class="tb-btn" onmousedown="scratchInsertLink(event)" title="Insert link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             </button>
-            <button class="tb-btn tb-highlight" onmousedown="scratchHighlight(event)" title="Highlight" style="background:#fef08a;border-radius:4px">
+            <button class="tb-btn tb-highlight" onmousedown="scratchHighlight(event)" title="Highlight" style="background:var(--highlight-yellow);border-radius:var(--radius-xs)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </button>
           </div>
