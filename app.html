@@ -1524,12 +1524,12 @@
   .rich-btn-sep { width: 1px; background: var(--border2); margin: var(--space-0-5) var(--space-0-5); }
   .rich-editor {
     min-height: 70px; max-height: 180px; overflow-y: auto;
-    border: 1px solid var(--border2); border-radius: 0 0 7px 7px;
+    border: 1px solid var(--border2); border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     padding: var(--space-2) var(--space-2-5); font-size: var(--fs-search); line-height: 1.6;
     color: var(--text); font-family: inherit; outline: none;
     background: var(--surface);
   }
-  .rich-editor:focus { border-color: var(--navy-light); }
+  .rich-editor:focus { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
   .rich-editor ul { margin: var(--space-1) 0; padding-left: var(--space-4-5); }
   .rich-editor li { margin: var(--space-0-5) 0; }
   .rich-editor a { color: var(--link); }
@@ -1856,7 +1856,7 @@
     font-size: var(--fs-search); color: var(--text2);
   }
   .ns-item:hover { background: var(--surface2); }
-  .ns-item.active { background: var(--surface2); color: var(--navy); font-weight: var(--fw-semibold); border-left: 3px solid var(--navy); }
+  .ns-item.active { background: var(--surface2); color: var(--navy); font-weight: var(--fw-semibold); box-shadow: inset 3px 0 0 var(--navy); }
   .ns-item svg { width: 15px; height: 15px; flex-shrink: 0; }
   .ns-item .cnt { font-size: var(--fs-meta); color: var(--muted); font-weight: var(--fw-medium); background: var(--surface2); padding: var(--space-0-5) var(--space-1-5); border-radius: var(--radius-sm); margin-left: auto; flex-shrink: 0; }
   .nb-edit-btn { display: none; border: none; background: none; cursor: pointer; padding: var(--space-0-5); border-radius: var(--radius-xs); color: var(--muted); flex-shrink: 0; }
@@ -1875,9 +1875,9 @@
   .nl-title { font-size: var(--fs-body); font-weight: var(--fw-bold); margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-1-5); }
   .nl-count { font-size: var(--fs-meta); font-weight: var(--fw-medium); color: var(--muted); background: var(--surface2); padding: var(--space-0-5) var(--space-2); border-radius: var(--radius-sm); }
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
-  .nl-item { padding: var(--space-2-5) var(--space-2-5) var(--space-2); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--dur-quick) ease; margin-bottom: var(--space-0-5); border: 1.5px solid transparent; border-left: 3px solid transparent; animation: fadeUp var(--dur-calm) ease both; }
+  .nl-item { padding: var(--space-2-5) var(--space-2-5) var(--space-2); border-radius: var(--radius-md); cursor: pointer; transition: background var(--dur-quick) ease, box-shadow var(--dur-quick) ease, transform var(--dur-quick) ease; margin-bottom: var(--space-0-5); border: 1px solid transparent; animation: fadeUp var(--dur-calm) ease both; }
   .nl-item:hover { background: var(--surface2); transform: translateX(2px); }
-  .nl-item.active { background: var(--surface2); border-color: rgba(45,95,166,0.18); border-left-color: var(--navy); }
+  .nl-item.active { background: var(--surface2); box-shadow: var(--shadow-focus); }
   .nl-item-title { font-size: var(--fs-search); font-weight: var(--fw-semibold); margin-bottom: var(--space-0-5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nl-item-preview { font-size: var(--fs-meta); color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: var(--space-1); }
   .nl-item-meta { display: flex; align-items: center; gap: var(--space-1); font-size: var(--fs-label); color: var(--muted); }
@@ -1983,8 +1983,8 @@
     .nl-header { padding: var(--space-3) var(--space-4) var(--space-2-5); background: var(--bg); border-bottom: none; }
     .nl-title { font-size: var(--fs-card); }
     .nl-scroll { padding: var(--space-1) var(--space-3) 120px; }
-    .nl-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-1); }
-    .nl-item.active { border-color: var(--navy); }
+    .nl-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-1-5); }
+    .nl-item.active { border-color: var(--navy); box-shadow: var(--shadow-sm); }
     .notes-editor { display: none; }
     .notes-editor.mobile-open {
       display: flex; position: fixed;
