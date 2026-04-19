@@ -66,6 +66,12 @@
     --toast-err-red:   #f87171;
     --toast-err-amber: #fbbf24;
 
+    /* ── Habit heatmap intensity scale (l0 empty → l3 max) ───── */
+    --heatmap-l0: var(--surface2);
+    --heatmap-l1: #c7d9f0;
+    --heatmap-l2: #7aacdf;
+    --heatmap-l3: #3d7ec4;
+
     /* ── Shadow scale (blue-tinted) ───────────────────────────── */
     --shadow-xs:    0 1px 2px rgba(30,60,140,0.04);
     --shadow-sm:    0 2px 6px rgba(30,60,140,0.06), 0 0 0 1px rgba(30,60,140,0.03);
@@ -257,7 +263,7 @@
     font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: #fff;
     display: flex; align-items: baseline; line-height: 1;
   }
-  .logo-dot { color: #60a5fa; font-style: normal; }
+  .logo-dot { color: var(--navy-light); font-style: normal; }
 
   /* FILTERS — inline with header on desktop */
   .filters {
@@ -273,9 +279,9 @@
     flex: 1;
     padding: 7px 8px;
     border-radius: 8px;
-    border: 1.5px solid #e2e4e8;
-    background: #f8f9fa;
-    color: #555;
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
     font-family: inherit;
     font-size: 12px;
     font-weight: 500;
@@ -284,17 +290,17 @@
     text-align: center;
     transition: all 0.12s;
   }
-  .pill:hover { background: #f0f1f3; color: #111; border-color: #ccc; }
+  .pill:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
   .pill.active { background: var(--navy); color: #fff; font-weight: 600; border-color: var(--navy); }
-  .pill.top3-pill { border-color: #f59e0b; color: #92400e; background: #fffbeb; }
-  .pill.top3-pill:hover { background: #fef3c7; border-color: #d97706; }
-  .pill.top3-pill.active { background: #d97706; color: #fff; border-color: #d97706; }
-  .pill.biz { border-color: #3b82f6; color: #1e40af; background: #eff6ff; }
-  .pill.biz:hover { background: #dbeafe; border-color: #2563eb; }
-  .pill.biz.active { background: #1a5fa8; color: #fff; border-color: #1a5fa8; }
-  .pill.personal { border-color: #a855f7; color: #6b21a8; background: #faf5ff; }
-  .pill.personal:hover { background: #f3e8ff; border-color: #9333ea; }
-  .pill.personal.active { background: #7c3aad; color: #fff; border-color: #7c3aad; }
+  .pill.top3-pill { border-color: var(--top3); color: var(--top3); background: var(--pastel-yellow-bg); }
+  .pill.top3-pill:hover { background: var(--pastel-yellow-bg); border-color: var(--top3); }
+  .pill.top3-pill.active { background: var(--top3); color: #fff; border-color: var(--top3); }
+  .pill.biz { border-color: var(--navy); color: var(--navy-dark); background: var(--pastel-sky-bg); }
+  .pill.biz:hover { background: var(--biz-bg); border-color: var(--link); }
+  .pill.biz.active { background: var(--navy-dark); color: #fff; border-color: var(--navy-dark); }
+  .pill.personal { border-color: var(--personal-text); color: var(--personal-text); background: var(--personal-bg); }
+  .pill.personal:hover { background: var(--personal-bg); border-color: var(--personal-text); }
+  .pill.personal.active { background: var(--personal-text); color: #fff; border-color: var(--personal-text); }
 
   /* ADD SECTION */
   .add-section { max-width: 720px; margin: 0 auto; padding: 14px 16px 0; }
@@ -331,7 +337,7 @@
     flex-shrink: 0;
   }
   .btn-note:hover { border-color: var(--navy-light); color: var(--navy); }
-  .btn-note.active { border-color: var(--navy); color: var(--navy); background: #eeeef8; }
+  .btn-note.active { border-color: var(--navy); color: var(--navy); background: var(--pastel-lavender-bg); }
 
   .btn-add {
     padding: 9px 16px;
@@ -387,12 +393,12 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .tag-btn.biz { border-color: #9fc4ea; color: var(--biz); }
-  .tag-btn.personal { border-color: #c0a4e0; color: var(--personal); }
-  .tag-btn.t3 { border-color: #e0bc80; color: var(--top3); padding: 3px 8px; font-size: 13px; }
+  .tag-btn.biz { border-color: var(--biz-text); color: var(--biz); }
+  .tag-btn.personal { border-color: var(--personal-text); color: var(--personal); }
+  .tag-btn.t3 { border-color: var(--top3); color: var(--top3); padding: 3px 8px; font-size: 13px; }
   .tag-btn.selected { font-weight: 600; }
-  .tag-btn.biz.selected { background: #e4eef8; }
-  .tag-btn.personal.selected { background: #ece6f4; }
+  .tag-btn.biz.selected { background: var(--biz-bg); }
+  .tag-btn.personal.selected { background: var(--personal-bg); }
   .tag-btn.t3.selected { background: var(--top3-bg); }
 
   /* CONTENT */
@@ -427,13 +433,13 @@
   .section-label .sort-btn .sort-val { color: var(--fg); opacity: .7; }
   .sort-dropdown {
     display: none; position: fixed;
-    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
     box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 9999; min-width: 150px; overflow: hidden;
   }
   .sort-dropdown.open { display: block; }
   .sort-opt { padding: 8px 12px; font-size: 11px; cursor: pointer; color: var(--fg); letter-spacing: 0; text-transform: none; font-weight: 400; }
   .sort-opt:hover { background: var(--border); }
-  .sort-opt.active { color: #2563eb; font-weight: 600; }
+  .sort-opt.active { color: var(--link); font-weight: 600; }
 
   /* TASK LIST & DRAG */
   .task-list { display: flex; flex-direction: column; gap: 2px; min-height: 4px; }
@@ -498,18 +504,18 @@
     background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
   }
   .due-badge.due-today {
-    background: #fff8e6; color: #b45309; border-color: #fcd34d;
+    background: var(--pastel-yellow-bg); color: var(--pastel-yellow-text); border-color: var(--pastel-yellow-text);
   }
   .due-badge.due-overdue {
-    background: #fef2f2; color: #dc2626; border-color: #fca5a5;
+    background: var(--pastel-coral-bg); color: var(--pastel-coral-text); border-color: var(--pastel-coral-text);
   }
   .due-badge.due-soon {
-    background: #eff6ff; color: #2563eb; border-color: #bfdbfe;
+    background: var(--pastel-sky-bg); color: var(--link); border-color: var(--pastel-sky-text);
   }
   .due-badge svg { flex-shrink: 0; }
-  .tag.biz { background: #e4eef8; color: var(--biz); }
-  .tag.personal { background: #ece6f4; color: var(--personal); }
-  .tag.top3 { background: #ffefc0; color: var(--top3); }
+  .tag.biz { background: var(--biz-bg); color: var(--biz); }
+  .tag.personal { background: var(--personal-bg); color: var(--personal); }
+  .tag.top3 { background: var(--pastel-yellow-bg); color: var(--top3); }
   .tag.someday { background: var(--surface2); color: var(--muted); }
 
   .task-actions-col {
@@ -534,11 +540,11 @@
 
   .drag-handle {
     display: flex; align-items: center; justify-content: center;
-    cursor: grab; color: #d0d0d0; padding: 2px 3px;
+    cursor: grab; color: var(--border2); padding: 2px 3px;
     opacity: 0; transition: opacity 0.12s, color 0.12s;
   }
   .drag-handle:active { cursor: grabbing; }
-  .task-item:hover .drag-handle { opacity: 1; color: #bbb; }
+  .task-item:hover .drag-handle { opacity: 1; color: var(--muted); }
 
   /* touch drag */
   .task-item.touch-dragging {
@@ -614,7 +620,7 @@
   /* Error / offline toast */
   .error-toast {
     position: fixed; bottom: 52px; left: 16px;
-    background: #1e2231; color: #fff;
+    background: var(--toast-bg); color: #fff;
     padding: 8px 14px; border-radius: 8px;
     font-size: 12px; display: flex; align-items: center; gap: 8px;
     box-shadow: 0 6px 24px rgba(0,0,0,0.4);
@@ -626,8 +632,8 @@
   }
   .error-toast.visible { opacity: 1; pointer-events: all; transform: translateY(0); }
   .error-toast .err-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .error-toast .err-dot.red { background: #f87171; }
-  .error-toast .err-dot.amber { background: #fbbf24; animation: blink 1.5s infinite; }
+  .error-toast .err-dot.red { background: var(--toast-err-red); }
+  .error-toast .err-dot.amber { background: var(--toast-err-amber); animation: blink 1.5s infinite; }
   .error-toast .err-msg { white-space: nowrap; }
   .error-toast .err-dismiss {
     color: rgba(255,255,255,0.35); font-size: 16px; cursor: pointer;
@@ -635,7 +641,7 @@
   }
   .error-toast .err-dismiss:hover { color: rgba(255,255,255,0.7); }
   .error-toast .err-retry {
-    color: #93c5fd; font-size: 11px; font-weight: 600; cursor: pointer;
+    color: var(--pastel-sky-text); font-size: 11px; font-weight: 600; cursor: pointer;
     margin-left: 4px; text-decoration: underline; text-underline-offset: 2px;
     background: none; border: none; font-family: inherit;
   }
@@ -697,10 +703,10 @@
     padding: 0 12px; z-index: 295;
   }
   .mobile-slim-stats .sv { color: rgba(255,255,255,0.85); font-weight: 600; }
-  .mobile-slim-stats .sv-work { color: #93c5fd; font-weight: 600; }
-  .mobile-slim-stats .sv-pers { color: #d4a8f0; font-weight: 600; }
-  .mobile-slim-stats .sv-green { color: #86efac; font-weight: 600; }
-  .mobile-slim-stats .sv-amber { color: #fcd34d; font-weight: 600; }
+  .mobile-slim-stats .sv-work { color: var(--pastel-sky-text); font-weight: 600; }
+  .mobile-slim-stats .sv-pers { color: var(--pastel-lavender-text); font-weight: 600; }
+  .mobile-slim-stats .sv-green { color: var(--pastel-mint-text); font-weight: 600; }
+  .mobile-slim-stats .sv-amber { color: var(--pastel-yellow-text); font-weight: 600; }
   .mobile-slim-stats .sep { width: 1px; height: 8px; background: rgba(255,255,255,0.12); }
   @media (max-width: 600px) {
     .mobile-slim-stats { display: flex; }
@@ -776,8 +782,8 @@
   .modal-action-btns { display: flex; gap: 7px; flex-shrink: 0; margin-left: auto; padding-right: 2px; }
   .modal-footer { display: flex; gap: 7px; justify-content: flex-end; }
   .btn-sm { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
-  .btn-sm:hover { border-color: #aaa; }
-  #editDeleteBtn:hover { background: #fde8e8; border-color: #c33; }
+  .btn-sm:hover { border-color: var(--muted); }
+  #editDeleteBtn:hover { background: var(--danger-bg); border-color: var(--danger); }
   .btn-sm-accent { padding: 6px 12px; border-radius: 6px; border: none; background: var(--navy); color: #fff; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
   .btn-sm-accent:hover { background: var(--navy-dark); }
 
@@ -855,7 +861,7 @@
     .content { padding: 6px 12px 130px; overflow-x: hidden; }
     .task-actions { opacity: 1; }
     .task-text { font-size: 13px; }
-    .drag-handle { opacity: 0.35; display: flex; color: #c0c0c0; }
+    .drag-handle { opacity: 0.35; display: flex; color: var(--muted); }
     .stats { display: none; }
     .fab { bottom: 96px; right: 14px; width: 44px; height: 44px; border-radius: 8px; z-index: 250; }
     /* Habits mobile */
@@ -928,7 +934,7 @@
     .floating-search.expanded { width: calc(100vw - 82px); border-radius: 22px; }
   }
   /* highlight matched text in task */
-  .search-hl { background: #fde68a; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
+  .search-hl { background: var(--pastel-yellow-bg); color: var(--text); border-radius: 2px; padding: 0 1px; }
   /* no results state */
   .search-empty {
     text-align: center; padding: 48px 24px;
@@ -964,12 +970,12 @@
     box-shadow: 0 4px 18px rgba(45,95,166,0.25);
   }
   .auth-logo-name {
-    font-size: 22px; font-weight: 800; color: #0f1117;
+    font-size: 22px; font-weight: 800; color: var(--text);
     letter-spacing: -0.4px; text-transform: none;
     white-space: nowrap; display: flex; align-items: baseline; gap: 0;
   }
-  .auth-logo-name .auth-dot { color: #2563eb; font-style: normal; }
-  .auth-logo-name .auth-tm { font-weight: 400; font-size: 17px; color: #6b7280; letter-spacing: 0; margin-left: 7px; }
+  .auth-logo-name .auth-dot { color: var(--link); font-style: normal; }
+  .auth-logo-name .auth-tm { font-weight: 400; font-size: 17px; color: var(--muted); letter-spacing: 0; margin-left: 7px; }
   .auth-tagline {
     font-size: 12.5px; color: var(--muted); margin-bottom: 32px;
     text-align: center; line-height: 1.6;
@@ -1025,7 +1031,7 @@
 
   .auth-error {
     width: 100%; padding: 9px 13px; border-radius: 7px;
-    background: #fdf0ee; border: 1px solid #f0c8c0;
+    background: var(--danger-bg); border: 1px solid var(--danger-border);
     color: var(--danger); font-size: 12px; display: none; margin-bottom: 4px;
   }
   .auth-error.show { display: block; }
@@ -1145,12 +1151,12 @@
     border-top: 3px solid var(--danger);
   }
   .danger-zone {
-    background: #fdf8f8; border: 1px solid #f0d0d0;
+    background: var(--danger-bg); border: 1px solid var(--danger-border);
     border-radius: 8px; padding: 14px 16px;
     margin-bottom: 16px;
   }
   .danger-zone p {
-    font-size: 13px; color: #c0392b; line-height: 1.6;
+    font-size: 13px; color: var(--danger); line-height: 1.6;
   }
   .confirm-input-wrap { margin-bottom: 14px; }
   .confirm-input-wrap label {
@@ -1282,7 +1288,7 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 19px; margin-bottom: 14px;
   }
-  .confirm-card-icon.danger { background: #fef2f2; }
+  .confirm-card-icon.danger { background: var(--pastel-coral-bg); }
   .confirm-card-title {
     font-size: 15px; font-weight: 700; color: var(--text);
     margin-bottom: 7px;
@@ -1307,9 +1313,9 @@
     border: none; transition: all 0.15s;
   }
   .confirm-btn-confirm.danger {
-    background: #e53e3e; color: #fff;
+    background: var(--danger); color: #fff;
   }
-  .confirm-btn-confirm.danger:hover { background: #c53030; }
+  .confirm-btn-confirm.danger:hover { background: var(--danger); }
   .confirm-btn-confirm.primary {
     background: var(--navy); color: #fff;
   }
@@ -1379,7 +1385,7 @@
   .swipe-delete-bg {
     position: absolute; right: 0; top: 0; bottom: 0;
     width: 120px;
-    background: #e53e3e;
+    background: var(--danger);
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 18px;
     pointer-events: none;
@@ -1391,7 +1397,7 @@
   .swipe-complete-bg {
     position: absolute; left: 0; top: 0; bottom: 0;
     width: 120px;
-    background: #38a169;
+    background: var(--check);
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 18px;
     pointer-events: none;
@@ -1413,7 +1419,7 @@
   ════════════════════════════ */
   #undoToast {
     position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
-    background: #1a1a2e; color: #fff;
+    background: var(--text); color: #fff;
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 10px; padding: 11px 18px;
     display: flex; align-items: center; gap: 14px;
@@ -1493,9 +1499,9 @@
   .habit-sub-pills { /* inherits .pill-bar layout */ }
   .habit-sub-content { display: none; }
   .habit-sub-content.active { display: block; }
-  .pill.habit-pill { border-color: var(--check); color: #065f46; background: #ecfdf5; }
+  .pill.habit-pill { border-color: var(--check); color: var(--pastel-mint-text); background: var(--pastel-mint-bg); }
   .pill.habit-pill.active { background: var(--check); color: #fff; border-color: var(--check); }
-  .pill.stat-pill { border-color: var(--accent); color: var(--accent); background: #f0f0fa; }
+  .pill.stat-pill { border-color: var(--accent); color: var(--accent); background: var(--pastel-lavender-bg); }
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* Today — progress ring */
@@ -1563,9 +1569,9 @@
   .heatmap-grid { display: flex; justify-content: space-between; }
   .heatmap-col { display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: center; }
   .heatmap-cell { width: 100%; aspect-ratio: 1; max-width: 18px; border-radius: 50%; background: var(--surface2); }
-  .heatmap-cell.l1 { background: #c7d9f0; }
-  .heatmap-cell.l2 { background: #7aacdf; }
-  .heatmap-cell.l3 { background: #3d7ec4; }
+  .heatmap-cell.l1 { background: var(--heatmap-l1); }
+  .heatmap-cell.l2 { background: var(--heatmap-l2); }
+  .heatmap-cell.l3 { background: var(--heatmap-l3); }
   .heatmap-cell.l4 { background: var(--navy); }
   .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 10px; color: var(--muted); }
   .heatmap-legend .heatmap-cell { width: 10px; height: 10px; aspect-ratio: auto; max-width: none; flex: none; }
@@ -1590,8 +1596,8 @@
   .st-cal-day:hover { transform: scale(1.08); }
   .st-cal-day.empty { background: none; }
   .st-cal-day.missed { background: var(--surface2); color: var(--muted); }
-  .st-cal-day.partial { background: #dcfce7; color: #15803d; }
-  .st-cal-day.done { background: #22c55e; color: #fff; }
+  .st-cal-day.partial { background: var(--pastel-mint-bg); color: var(--pastel-mint-text); }
+  .st-cal-day.done { background: var(--check); color: #fff; }
   .st-cal-day.today { box-shadow: inset 0 0 0 2px var(--navy); }
   .st-cal-day.future { background: none; color: var(--border2); }
 
@@ -1623,9 +1629,9 @@
   .st-hm-cell { width: 13px; height: 13px; border-radius: 2px; background: var(--surface2); transition: transform 0.1s; cursor: default; }
   .st-hm.monthly .st-hm-cell { width: auto; height: auto; aspect-ratio: 1; border-radius: 3px; }
   .st-hm-cell:hover { transform: scale(1.3); z-index: 2; }
-  .st-hm-cell.l1 { background: #c7d9f0; }
-  .st-hm-cell.l2 { background: #7aacdf; }
-  .st-hm-cell.l3 { background: #3d7ec4; }
+  .st-hm-cell.l1 { background: var(--heatmap-l1); }
+  .st-hm-cell.l2 { background: var(--heatmap-l2); }
+  .st-hm-cell.l3 { background: var(--heatmap-l3); }
   .st-hm-cell.l4 { background: var(--navy); }
   .st-hm-months { display: flex; font-size: 9px; color: var(--muted); margin-bottom: 4px; }
   .st-hm-months span { width: calc(13px * 4.33 + 2px * 3.33); text-align: left; }
@@ -1636,9 +1642,9 @@
   .st-woy { display: grid; grid-template-columns: repeat(auto-fill, minmax(8px, 1fr)); gap: 2px; }
   .st-woy-cell { aspect-ratio: 1; border-radius: 2px; background: var(--surface2); cursor: default; transition: transform 0.1s; }
   .st-woy-cell:hover { transform: scale(1.4); z-index: 2; }
-  .st-woy-cell.l1 { background: #c7d9f0; }
-  .st-woy-cell.l2 { background: #7aacdf; }
-  .st-woy-cell.l3 { background: #3d7ec4; }
+  .st-woy-cell.l1 { background: var(--heatmap-l1); }
+  .st-woy-cell.l2 { background: var(--heatmap-l2); }
+  .st-woy-cell.l3 { background: var(--heatmap-l3); }
   .st-woy-cell.l4 { background: var(--navy); }
   .st-woy-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 4px; }
 
@@ -1732,7 +1738,7 @@
   .habit-cal-cell { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 2px auto; font-size: 12px; font-weight: 500; color: var(--text); cursor: pointer; transition: all 0.12s; border: 2px solid transparent; }
   .habit-cal-cell:hover { background: var(--hover); }
   .habit-cal-cell.completed { background: var(--check); color: #fff; border-color: var(--check); }
-  .habit-cal-cell.completed:hover { background: #006048; }
+  .habit-cal-cell.completed:hover { background: var(--check); }
   .habit-cal-cell.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
   .habit-cal-cell.today.completed { border-color: var(--check); box-shadow: none; }
   .habit-cal-cell.empty { cursor: default; color: transparent; }
@@ -1791,7 +1797,7 @@
     font-size: 13px; color: var(--text2);
   }
   .ns-item:hover { background: var(--surface2); }
-  .ns-item.active { background: #e8edf5; color: var(--navy); font-weight: 600; border-left: 3px solid var(--navy); }
+  .ns-item.active { background: var(--surface2); color: var(--navy); font-weight: 600; border-left: 3px solid var(--navy); }
   .ns-item svg { width: 15px; height: 15px; flex-shrink: 0; }
   .ns-item .cnt { font-size: 11px; color: var(--muted); font-weight: 500; background: var(--surface2); padding: 1px 6px; border-radius: 8px; margin-left: auto; flex-shrink: 0; }
   .nb-edit-btn { display: none; border: none; background: none; cursor: pointer; padding: 2px; border-radius: 4px; color: var(--muted); flex-shrink: 0; }
@@ -1812,13 +1818,13 @@
   .nl-scroll { flex: 1; overflow-y: auto; padding: 4px 6px; }
   .nl-item { padding: 10px 10px 8px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; margin-bottom: 2px; border: 1.5px solid transparent; border-left: 3px solid transparent; animation: fadeUp 0.2s ease both; }
   .nl-item:hover { background: var(--surface2); transform: translateX(2px); }
-  .nl-item.active { background: #eef1f8; border-color: rgba(45,95,166,0.18); border-left-color: var(--navy); }
+  .nl-item.active { background: var(--surface2); border-color: rgba(45,95,166,0.18); border-left-color: var(--navy); }
   .nl-item-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nl-item-preview { font-size: 11.5px; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 5px; }
   .nl-item-meta { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); }
   .nl-tag { padding: 1px 6px; border-radius: 8px; font-size: 9.5px; font-weight: 500; }
-  .tag-biz { background: #e4eef8; color: var(--biz); }
-  .tag-personal { background: #ece6f4; color: var(--personal); }
+  .tag-biz { background: var(--biz-bg); color: var(--biz); }
+  .tag-personal { background: var(--personal-bg); color: var(--personal); }
   .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); }
 
   .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex 0.3s ease; min-width: 480px; min-height: 0; position: relative; }
@@ -1888,8 +1894,8 @@
   .nl-bulk-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
   .nl-bulk-bar button { border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-family: inherit; cursor: pointer; background: var(--surface); color: var(--text2); }
   .nl-bulk-bar button:hover { background: var(--surface2); }
-  .nl-bulk-bar button.danger { color: #d44; border-color: #d4444433; }
-  .nl-bulk-bar button.danger:hover { background: #d4441a; color: #fff; }
+  .nl-bulk-bar button.danger { color: var(--danger); border-color: var(--danger)44433; }
+  .nl-bulk-bar button.danger:hover { background: var(--danger)41a; color: #fff; }
   .nl-bulk-bar .bulk-count { font-size: 11px; color: var(--muted); margin-left: auto; }
   .nl-item.select-mode { display: flex; align-items: flex-start; gap: 8px; }
   .nl-item .nl-checkbox { display: none; width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; margin-top: 2px; }
@@ -1899,7 +1905,7 @@
   .note-ctx-menu { position: fixed; z-index: 500; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 170px; animation: fadeUp 0.12s ease both; }
   .note-ctx-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: none; font-family: inherit; font-size: 12px; cursor: pointer; border-radius: 7px; color: var(--text); }
   .note-ctx-menu button:hover { background: var(--surface2); }
-  .note-ctx-menu button.danger { color: #d44; }
+  .note-ctx-menu button.danger { color: var(--danger); }
   .note-ctx-menu .ctx-divider { height: 1px; background: var(--border); margin: 3px 6px; }
   .note-ctx-menu .ctx-submenu { position: relative; }
   .note-ctx-menu .ctx-sub-items { display: none; position: absolute; left: 100%; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); min-width: 140px; }
@@ -2090,7 +2096,7 @@
     <div class="modal-actions">
       <button class="btn-sm" onclick="closeDeleteAccountModal()">Cancel</button>
       <button class="btn-sm" id="deleteConfirmBtn"
-        style="background:#e53e3e;color:#fff;border-color:#e53e3e;opacity:0.4;cursor:not-allowed"
+        style="background:var(--danger);color:#fff;border-color:var(--danger);opacity:0.4;cursor:not-allowed"
         onclick="confirmDeleteAccount()" disabled>Delete Everything</button>
     </div>
   </div>
@@ -2663,7 +2669,7 @@
     <div class="modal-footer-row">
       <div class="modal-tags" id="editTags"></div>
       <div class="modal-action-btns">
-        <button class="btn-sm" id="editDeleteBtn" onclick="delTask(editId);closeModal();" title="Delete task" style="color:#d44;border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        <button class="btn-sm" id="editDeleteBtn" onclick="delTask(editId);closeModal();" title="Delete task" style="color:var(--danger);border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
         <button class="btn-sm" onclick="closeModal()">Cancel</button>
         <button class="btn-sm-accent" onclick="saveEdit()">Save</button>
       </div>
@@ -3766,7 +3772,7 @@ function renderHabitToday(active) {
       // Extras-enabled: full opacity, +/- buttons, count badge
       const countBadge = todayCount > 1 ? `<span style="font-size:10px;font-weight:700;color:var(--navy);background:rgba(45,95,166,0.12);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>` : '';
       const progressMeta = periodLabel ? `<span style="color:var(--check);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}` : '';
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:#ecfdf5;border-color:#d1fae5">
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:var(--pastel-mint-bg);border-color:#d1fae5">
         <div class="swipe-complete-bg">✓</div>
         <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
         <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
@@ -3781,7 +3787,7 @@ function renderHabitToday(active) {
         </div>
       </div>`;
     } else {
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:#ecfdf5;border-color:#d1fae5">
+      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}" style="background:var(--pastel-mint-bg);border-color:#d1fae5">
         <div class="swipe-complete-bg">✓</div>
         <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
         <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
@@ -3808,7 +3814,7 @@ function renderHabitToday(active) {
     <div class="progress-section">
       <div class="progress-ring-wrap">
         <svg viewBox="0 0 56 56">
-          <circle cx="28" cy="28" r="23" fill="none" stroke="#e2e4e8" stroke-width="5"/>
+          <circle cx="28" cy="28" r="23" fill="none" stroke="var(--border)" stroke-width="5"/>
           <circle cx="28" cy="28" r="23" fill="none" stroke="#2d5fa6" stroke-width="5"
             stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
         </svg>
@@ -3970,7 +3976,7 @@ function computeStatsData(active, startDate, endDate) {
 
   let rankHtml = '';
   rankings.forEach((h, i) => {
-    const color = h.pct >= 80 ? 'var(--check)' : h.pct >= 60 ? '#22c55e' : h.pct >= 40 ? '#f59e0b' : 'var(--danger)';
+    const color = h.pct >= 80 ? 'var(--check)' : h.pct >= 60 ? 'var(--check)' : h.pct >= 40 ? 'var(--top3)' : 'var(--danger)';
     rankHtml += `<div class="st-rank"><span class="rn">${i + 1}</span><span class="re">${escHTML(h.emoji || '')}</span><span class="rname">${escHTML(h.name || '')}</span><div class="rbar"><div class="rbar-fill" style="width:${h.pct}%;background:${color}"></div></div><span class="rpct" style="color:${color}">${h.pct}%</span></div>`;
   });
 
@@ -4006,7 +4012,7 @@ function renderStatsYearly(active) {
     const h = pct > 0 ? (pct / 100) * 65 : 0;
     const isCurrent = y === new Date().getFullYear() && mo === new Date().getMonth();
     const isPast = moStart <= today;
-    const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? '#22c55e' : 'var(--surface2)';
+    const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? 'var(--check)' : 'var(--surface2)';
     const opacity = isPast ? 1 : 0.2;
     trendHtml += `<div class="st-trend-wrap" style="cursor:pointer" onclick="statsMonth=${mo};statsMonthYear=${y};statsView='monthly';renderHabits()" title="View ${MO_SHORT[mo]} ${y}">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
   }
@@ -4135,20 +4141,20 @@ function updateHabitStatsBar(active) {
 
   const statsBar = document.getElementById('statsBar');
   if (statsBar) statsBar.innerHTML = `<div class="stats-center">
-    <div class="stat"><strong style="color:#86efac">${done.length}/${due.length}</strong> today</div>
+    <div class="stat"><strong style="color:var(--pastel-mint-text)">${done.length}/${due.length}</strong> today</div>
     <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:#fcd34d">${bestStreak}</strong> best streak</div>
+    <div class="stat"><strong style="color:var(--pastel-yellow-text)">${bestStreak}</strong> best streak</div>
     <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:#86efac">${weekPct}%</strong> this week</div>
+    <div class="stat"><strong style="color:var(--pastel-mint-text)">${weekPct}%</strong> this week</div>
     <div class="stat-sep"></div>
     <div class="stat"><strong>${active.length}</strong> active habits</div>
   </div>`;
 
   const slimEl = document.getElementById('mobileSlimStats');
   if (slimEl) slimEl.innerHTML = `
-    <span><span class="sv" style="color:#86efac">${done.length}/${due.length}</span> today</span>
+    <span><span class="sv" style="color:var(--pastel-mint-text)">${done.length}/${due.length}</span> today</span>
     <span class="sep"></span>
-    <span><span class="sv" style="color:#fcd34d">${bestStreak}</span> streak</span>
+    <span><span class="sv" style="color:var(--pastel-yellow-text)">${bestStreak}</span> streak</span>
     <span class="sep"></span>
     <span><span class="sv">${active.length}</span> habits</span>`;
 }
@@ -4163,18 +4169,18 @@ function updateNotesStatsBar() {
   if (statsBar) statsBar.innerHTML = `<div class="stats-center">
     <div class="stat"><strong>${active.length}</strong> notes</div>
     <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:#93c5fd">${nbCount}</strong> notebooks</div>
+    <div class="stat"><strong style="color:var(--pastel-sky-text)">${nbCount}</strong> notebooks</div>
     <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:#fcd34d">${starred}</strong> starred</div>
+    <div class="stat"><strong style="color:var(--pastel-yellow-text)">${starred}</strong> starred</div>
   </div>`;
 
   const slimEl = document.getElementById('mobileSlimStats');
   if (slimEl) slimEl.innerHTML = `
     <span><span class="sv">${active.length}</span> notes</span>
     <span class="sep"></span>
-    <span><span class="sv" style="color:#93c5fd">${nbCount}</span> notebooks</span>
+    <span><span class="sv" style="color:var(--pastel-sky-text)">${nbCount}</span> notebooks</span>
     <span class="sep"></span>
-    <span><span class="sv" style="color:#fcd34d">${starred}</span> starred</span>`;
+    <span><span class="sv" style="color:var(--pastel-yellow-text)">${starred}</span> starred</span>`;
 }
 
 function highlight(text, query) {
@@ -4316,8 +4322,8 @@ function render() {
       <div class="stats-center">
         <div class="stat"><strong>${actN}</strong> active</div>
         <div class="stat-sep"></div>
-        <div class="stat"><strong style="color:#93c5fd">${bizN}</strong> work</div>
-        <div class="stat"><strong style="color:#d4a8f0">${perN}</strong> personal</div>
+        <div class="stat"><strong style="color:var(--pastel-sky-text)">${bizN}</strong> work</div>
+        <div class="stat"><strong style="color:var(--pastel-lavender-text)">${perN}</strong> personal</div>
         <div class="stat-sep"></div>
         <div class="stat"><strong>${doneN}</strong> done</div>
       </div>`;
@@ -4887,7 +4893,7 @@ function renderDrillStats() {
 
   document.getElementById('drillStatRing').innerHTML = `
     <svg width="120" height="120" viewBox="0 0 120 120">
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e2e4e8" stroke-width="10"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="10"/>
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${sColor}" stroke-width="10"
         stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
     </svg>
@@ -5408,7 +5414,7 @@ function updateNlTitle() {
   }
   let extra = '';
   if (notesSidebarView === 'trash' && list.length > 0) {
-    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:#d44;font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='#d4410a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#d44'">Empty Trash</button>`;
+    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:var(--danger);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='var(--danger)10a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--danger)'">Empty Trash</button>`;
   } else if (notesSidebarView !== 'trash') {
     extra = `<button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
@@ -5553,7 +5559,7 @@ function renderNoteEditor() {
         <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:#d44">
+        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:var(--danger)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
         <button class="mobile-note-action" onclick="toggleNoteStar()" title="Star">
@@ -5577,7 +5583,7 @@ function renderNoteEditor() {
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
-            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:#d44;padding:3px">
+            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:var(--danger);padding:3px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
             <button class="note-action-btn${note.starred ? ' starred' : ''}" id="noteStarBtn" onclick="toggleNoteStar()" title="Star" style="padding:3px">
@@ -5831,7 +5837,7 @@ function showNotebookMenu(e, id) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Edit
     </button>
-    <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:#d44">
+    <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--danger)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Delete
     </button>`;
@@ -6003,7 +6009,7 @@ function showInlineConfirm(title, message, onConfirm) {
     <div style="font-size:13px;color:var(--text2);margin-bottom:20px">${message}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="icCancel" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer;color:var(--text2)">Cancel</button>
-      <button id="icConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:#d44;color:#fff;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600">Delete</button>
+      <button id="icConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--danger);color:#fff;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600">Delete</button>
     </div>`;
   overlay.appendChild(card);
   document.body.appendChild(overlay);
@@ -6454,7 +6460,7 @@ function showNoteMenu(e) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="${note?.starred?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       ${starLabel}
     </button>
-    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();trashNote()" style="color:#d44">
+    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();trashNote()" style="color:var(--danger)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Move to Trash
     </button>`;
