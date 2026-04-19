@@ -1563,7 +1563,7 @@
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* Today — progress ring */
-  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2); display: flex; align-items: center; gap: 0; }
+  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); display: flex; align-items: center; gap: 0; }
   .progress-ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
   .progress-ring-wrap svg { transform: rotate(-90deg); width: 56px; height: 56px; }
   .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--navy); line-height: 1; }
@@ -1575,8 +1575,8 @@
   .progress-stat .lbl { font-size: var(--fs-label); color: var(--muted); margin-top: var(--space-0-5); letter-spacing: 0.2px; }
 
   /* Habit cards */
-  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2-5) var(--space-2-5); margin-bottom: var(--space-0-5); cursor: pointer; transition: border-color var(--dur-instant); }
-  .habit-card:hover { border-color: var(--border2); }
+  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-2-5) var(--space-3); margin-bottom: var(--space-1); box-shadow: var(--shadow-xs); cursor: pointer; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+  .habit-card:hover { border-color: var(--border2); box-shadow: var(--shadow-sm); }
   .habit-card.habit-done { background: var(--pastel-mint-bg); border-color: var(--pastel-mint-bg); }
   .habit-card-top { display: flex; align-items: center; gap: var(--space-2); }
   .habit-emoji { font-size: var(--fs-card); flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
@@ -1603,7 +1603,7 @@
   .habit-day-label { font-size: var(--fs-label); color: var(--muted); font-weight: var(--fw-medium); text-transform: uppercase; }
   .habit-day-dot { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; transition: all var(--dur-quick); cursor: pointer; font-size: var(--fs-search); font-weight: var(--fw-semibold); color: var(--text2); }
   .habit-day-dot.done { background: var(--check); border-color: var(--check); color: #fff; }
-  .habit-day-dot.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.18); }
+  .habit-day-dot.today { border-color: var(--navy); box-shadow: var(--shadow-focus); }
   .habit-day-dot.disabled { opacity: 0.25; pointer-events: none; border-style: dashed; }
   .habit-card-meta { display: flex; align-items: center; gap: var(--space-1-5); font-size: var(--fs-meta); color: var(--muted); }
   .habit-card-meta .tag { font-size: var(--fs-label); padding: var(--space-0-5) var(--space-1-5); border-radius: var(--radius-sm); font-weight: var(--fw-medium); }
@@ -1614,10 +1614,10 @@
 
   /* Habit stats view */
   .stat-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: var(--space-1); }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2-5) var(--space-3); text-align: center; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-xs); padding: var(--space-2-5) var(--space-3); text-align: center; }
   .stat-card .sc-val { font-size: var(--fs-display); font-weight: var(--fw-bold); line-height: 1; margin-bottom: var(--space-0-5); }
   .stat-card .sc-lbl { font-size: var(--fs-micro); color: var(--muted); font-weight: var(--fw-medium); }
-  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2); overflow-x: auto; }
+  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); overflow-x: auto; }
   .heatmap-title { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: var(--space-2-5); }
   .heatmap-wrap { display: flex; gap: 0; }
   .heatmap-day-labels { display: flex; flex-direction: column; gap: var(--space-0-5); padding-right: var(--space-1-5); padding-top: var(--space-4-5); }
@@ -1771,7 +1771,7 @@
   .habit-edit-save { display: flex; gap: var(--space-2); }
 
   /* ══════ HABIT DRILL-IN ══════ */
-  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: var(--z-dropdown); background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); align-items: center; justify-content: center; }
+  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: var(--z-dropdown); background: rgba(20,30,80,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center; }
   .habit-drill-overlay.open { display: flex; }
   .habit-drill-panel { width: 90%; max-width: var(--max-modal-lg); max-height: 85vh; background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-slow) var(--ease-spring) both; }
   .habit-drill-header { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3-5) var(--space-4); border-bottom: 1px solid var(--border); }
