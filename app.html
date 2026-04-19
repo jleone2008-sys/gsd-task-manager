@@ -704,7 +704,10 @@
   .fab svg { width: 24px; height: 24px; }
   .fab.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
 
-  /* Mobile bottom nav — hidden on desktop; floating pill on mobile */
+  /* Mobile bottom nav — hidden on desktop; floating pill with a notched
+     top-center where the raised FAB nests (the inspiration's signature move).
+     The mask cuts a circular bite out of the pill at 50% top; the FAB is
+     positioned absolutely to sit in that bite. */
   .mobile-bottom-nav {
     display: none;
     position: fixed; left: 50%; bottom: 12px;
@@ -715,8 +718,12 @@
     border-radius: var(--radius-pill);
     box-shadow: var(--shadow-xl);
     align-items: center; gap: var(--space-1);
-    padding: var(--space-1-5) var(--space-2);
+    /* Extra top padding reserves room above the tabs so the notch bite
+       doesn't clip into them. */
+    padding: var(--space-6) var(--space-2) var(--space-1-5);
     z-index: var(--z-mobile-nav);
+    -webkit-mask-image: radial-gradient(circle 28px at 50% 0, transparent 27px, #000 28px);
+            mask-image: radial-gradient(circle 28px at 50% 0, transparent 27px, #000 28px);
   }
   .mobile-nav-btn {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -745,7 +752,8 @@
     .mobile-bottom-nav { display: inline-flex; }
   }
 
-  /* Mobile slim stats — floating pill above the bottom nav */
+  /* Mobile slim stats — retired on mobile (nav tab badges carry the counts).
+     Rules retained for desktop rendering only; no mobile display. */
   .mobile-slim-stats {
     display: none;
     position: fixed; left: 50%; bottom: 82px;
@@ -765,9 +773,6 @@
   .mobile-slim-stats .sv-green { color: var(--pastel-mint-text); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sv-amber { color: var(--pastel-yellow-text); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sep { width: 1px; height: 8px; background: rgba(255,255,255,0.12); }
-  @media (max-width: 600px) {
-    .mobile-slim-stats { display: inline-flex; }
-  }
 
   /* FLOATING CREATE PANEL */
   .create-panel {
@@ -921,7 +926,21 @@
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--muted); }
     .stats { display: none; }
-    .fab { bottom: 120px; right: 16px; width: 48px; height: 48px; border-radius: var(--radius-pill); z-index: var(--z-fab-mobile); }
+    /* FAB nests in the notched top-center of the mobile nav pill.
+       Center aligns roughly with the pill's top edge. Safe-area inset
+       follows the nav so FAB stays anchored relative to the pill on iOS.
+       z-index must clear the nav so taps land on the FAB, not the mask edge. */
+    .fab {
+      left: 50%; right: auto;
+      bottom: calc(58px + env(safe-area-inset-bottom, 0));
+      transform: translateX(-50%);
+      width: 52px; height: 52px;
+      border-radius: var(--radius-pill);
+      box-shadow: var(--shadow-lg);
+      z-index: calc(var(--z-mobile-nav) + 1);
+    }
+    .fab:hover { transform: translateX(-50%) scale(1.06); }
+    .fab:active { transform: translateX(-50%) scale(0.94); }
     /* Habits mobile */
     .habits-content { padding: 0; }
     /* .habit-sub-pills inherits .pill-bar mobile padding */
@@ -988,7 +1007,9 @@
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   @media (max-width: 600px) {
-    .floating-search { bottom: 120px; right: 72px; height: 48px; width: 48px; border-radius: var(--radius-pill); padding: 0 var(--space-3); z-index: var(--z-fab-mobile); }
+    /* With the FAB now center-docked in the nav notch, the right edge is
+       free for the floating search to live at the screen edge. */
+    .floating-search { bottom: 120px; right: 16px; height: 48px; width: 48px; border-radius: var(--radius-pill); padding: 0 var(--space-3); z-index: var(--z-fab-mobile); }
     .floating-search.expanded { width: calc(100vw - 88px); border-radius: var(--radius-pill); }
   }
   /* highlight matched text in task */
