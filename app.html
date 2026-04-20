@@ -83,13 +83,13 @@
     --shadow-xl:    0 20px 60px rgba(30,60,140,0.16), 0 6px 20px rgba(30,60,140,0.08);
     --shadow-focus: 0 0 0 3px rgba(91,130,224,0.22);
 
-    /* ── Radius scale ─────────────────────────────────────────── */
-    --radius-xs:   4px;
-    --radius-sm:   8px;
-    --radius-md:   12px;
-    --radius-lg:   16px;
-    --radius-xl:   20px;
-    --radius-pill: 9999px;
+    /* ── Radius scale (square theme — crisp edges with 2–8px softening) ─ */
+    --radius-xs:   2px;    /* hairline rounding on micro elements */
+    --radius-sm:   4px;    /* buttons, chips, inputs, tabs, FAB */
+    --radius-md:   4px;    /* small cards / secondary surfaces */
+    --radius-lg:   6px;    /* task cards, habit cards, note cards */
+    --radius-xl:   8px;    /* modals, pill bar, primary containers */
+    --radius-pill: 9999px; /* avatar circle, day dots, error toast dots */
 
     /* ── Typography ───────────────────────────────────────────── */
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -691,10 +691,10 @@
     .error-toast { bottom: 120px; left: 12px; right: 12px; font-size: var(--fs-meta); }
   }
 
-  /* FLOATING CREATE BUTTON */
+  /* FLOATING CREATE BUTTON (square theme — slightly-rounded square) */
   .fab {
     position: fixed; bottom: 60px; right: 20px;
-    width: 52px; height: 52px; border-radius: var(--radius-pill);
+    width: 52px; height: 52px; border-radius: var(--radius-sm);
     background: var(--navy); color: #fff; border: none;
     box-shadow: var(--shadow-lg);
     cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -724,7 +724,7 @@
     min-width: 64px;
     position: relative;
     background: none; border: none; font-family: inherit; cursor: pointer;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-sm);
     transition: color var(--dur-fast), background var(--dur-fast);
   }
   .mobile-nav-btn.active {
@@ -736,7 +736,7 @@
   .mobile-nav-badge {
     position: absolute; top: 2px; right: 8px;
     font-size: var(--fs-nano); font-weight: var(--fw-bold); color: #fff;
-    background: var(--danger); padding: 0 var(--space-1); border-radius: var(--radius-pill);
+    background: var(--danger); padding: 0 var(--space-1); border-radius: var(--radius-sm);
     min-width: 14px; text-align: center; line-height: 1.4;
   }
   .mobile-nav-btn.active .mobile-nav-badge { background: rgba(255,255,255,0.25); }
@@ -745,9 +745,9 @@
   }
 
   /* Mobile slim stats — flush above the full-width nav, same dark surface.
-     A radial-gradient mask at top-center cuts a notch where the raised FAB
-     nestles. Content splits into left/right groups via .mss-group so no
-     text falls into the notch void. */
+     Solid full-width strip (no notch) so content behind never shows
+     through. Stats content splits into left/right groups via .mss-group
+     so the center area stays clear for the raised FAB to sit over. */
   .mobile-slim-stats {
     display: none;
     position: fixed; left: 0; right: 0;
@@ -759,8 +759,6 @@
     padding: 0 var(--space-5);
     z-index: var(--z-slim-stats);
     white-space: nowrap;
-    -webkit-mask-image: radial-gradient(circle 30px at 50% 0, transparent 29px, #000 30px);
-            mask-image: radial-gradient(circle 30px at 50% 0, transparent 29px, #000 30px);
   }
   .mobile-slim-stats .mss-group {
     display: inline-flex; align-items: center; gap: var(--space-2);
@@ -927,15 +925,14 @@
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--muted); }
     .stats { display: none; }
-    /* FAB nests in the notched top-center of the slim-stats row, rising
-       above the dark dock. Center aligns with the top edge of the stats
-       (which is ~88px + safe-area from the screen bottom: 60 nav + 28 stats). */
+    /* FAB sits raised above the dark dock, centered over the empty gap
+       between the left and right stat groups. Square theme: --radius-sm. */
     .fab {
       left: 50%; right: auto;
       bottom: calc(62px + env(safe-area-inset-bottom, 0));
       transform: translateX(-50%);
       width: 52px; height: 52px;
-      border-radius: var(--radius-pill);
+      border-radius: var(--radius-sm);
       box-shadow: var(--shadow-lg);
       z-index: calc(var(--z-mobile-nav) + 1);
     }
@@ -973,10 +970,10 @@
     .st-hm-months:not(.monthly) span { width: calc(10px * 4.33 + 2px * 3.33); }
   }
 
-  /* FLOATING SEARCH BAR */
+  /* FLOATING SEARCH BAR (square theme) */
   .floating-search {
     position: fixed; bottom: 60px; right: 84px;
-    height: 52px; border-radius: var(--radius-pill);
+    height: 52px; border-radius: var(--radius-sm);
     background: var(--surface); border: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
     display: flex; align-items: center; gap: var(--space-2);
@@ -1007,10 +1004,10 @@
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   @media (max-width: 600px) {
-    /* With the FAB now center-docked in the nav notch, the right edge is
+    /* With the FAB now center-docked over the dock, the right edge is
        free for the floating search to live at the screen edge. */
-    .floating-search { bottom: 120px; right: 16px; height: 48px; width: 48px; border-radius: var(--radius-pill); padding: 0 var(--space-3); z-index: var(--z-fab-mobile); }
-    .floating-search.expanded { width: calc(100vw - 88px); border-radius: var(--radius-pill); }
+    .floating-search { bottom: 120px; right: 16px; height: 48px; width: 48px; border-radius: var(--radius-sm); padding: 0 var(--space-3); z-index: var(--z-fab-mobile); }
+    .floating-search.expanded { width: calc(100vw - 88px); border-radius: var(--radius-sm); }
   }
   /* highlight matched text in task */
   .search-hl { background: var(--pastel-yellow-bg); color: var(--text); border-radius: var(--radius-xs); padding: 0 var(--space-0-5); }
