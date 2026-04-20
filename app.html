@@ -704,26 +704,18 @@
   .fab svg { width: 24px; height: 24px; }
   .fab.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
 
-  /* Mobile bottom nav — hidden on desktop; floating pill with a notched
-     top-center where the raised FAB nests (the inspiration's signature move).
-     The mask cuts a circular bite out of the pill at 50% top; the FAB is
-     positioned absolutely to sit in that bite. */
+  /* Mobile bottom nav — full-width bar attached to the screen bottom.
+     Sits under the slim-stats row; together they form a two-row dark dock.
+     No mask here — the FAB nests in the stats row above; the nav stays
+     solid so content below the notch (tabs) never clips. */
   .mobile-bottom-nav {
     display: none;
-    position: fixed; left: 50%; bottom: 12px;
-    transform: translateX(-50%);
-    /* Sits above safe-area-inset so iOS home indicator doesn't clip it. */
-    margin-bottom: env(safe-area-inset-bottom, 0);
+    position: fixed; left: 0; right: 0; bottom: 0;
     background: #1f2847;
-    border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-xl);
-    align-items: center; gap: var(--space-1);
-    /* Extra top padding reserves room above the tabs so the notch bite
-       doesn't clip into them. */
-    padding: var(--space-6) var(--space-2) var(--space-1-5);
+    box-shadow: 0 -6px 20px rgba(30,60,140,0.12);
+    align-items: center; justify-content: space-around; gap: var(--space-1);
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom, 0));
     z-index: var(--z-mobile-nav);
-    -webkit-mask-image: radial-gradient(circle 28px at 50% 0, transparent 27px, #000 28px);
-            mask-image: radial-gradient(circle 28px at 50% 0, transparent 27px, #000 28px);
   }
   .mobile-nav-btn {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -752,27 +744,36 @@
     .mobile-bottom-nav { display: inline-flex; }
   }
 
-  /* Mobile slim stats — retired on mobile (nav tab badges carry the counts).
-     Rules retained for desktop rendering only; no mobile display. */
+  /* Mobile slim stats — flush above the full-width nav, same dark surface.
+     A radial-gradient mask at top-center cuts a notch where the raised FAB
+     nestles. Content splits into left/right groups via .mss-group so no
+     text falls into the notch void. */
   .mobile-slim-stats {
     display: none;
-    position: fixed; left: 50%; bottom: 82px;
-    transform: translateX(-50%);
-    margin-bottom: env(safe-area-inset-bottom, 0);
-    height: 26px; background: var(--navy);
-    align-items: center; justify-content: center;
-    gap: var(--space-2); font-size: var(--fs-micro); color: rgba(255,255,255,0.6);
-    padding: 0 var(--space-3-5); border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-md);
+    position: fixed; left: 0; right: 0;
+    /* Sits flush on top of the nav (nav inner height + its top/bottom padding + safe-area). */
+    bottom: calc(60px + env(safe-area-inset-bottom, 0));
+    height: 28px; background: #1f2847;
+    align-items: center; justify-content: space-between;
+    gap: var(--space-2); font-size: var(--fs-micro); color: rgba(255,255,255,0.65);
+    padding: 0 var(--space-5);
     z-index: var(--z-slim-stats);
     white-space: nowrap;
+    -webkit-mask-image: radial-gradient(circle 30px at 50% 0, transparent 29px, #000 30px);
+            mask-image: radial-gradient(circle 30px at 50% 0, transparent 29px, #000 30px);
   }
-  .mobile-slim-stats .sv { color: rgba(255,255,255,0.85); font-weight: var(--fw-semibold); }
+  .mobile-slim-stats .mss-group {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+  }
+  .mobile-slim-stats .sv { color: rgba(255,255,255,0.9); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sv-work { color: var(--pastel-sky-text); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sv-pers { color: var(--pastel-lavender-text); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sv-green { color: var(--pastel-mint-text); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sv-amber { color: var(--pastel-yellow-text); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sep { width: 1px; height: 8px; background: rgba(255,255,255,0.12); }
+  .mobile-slim-stats .sep { width: 1px; height: 8px; background: rgba(255,255,255,0.2); }
+  @media (max-width: 600px) {
+    .mobile-slim-stats { display: flex; }
+  }
 
   /* FLOATING CREATE PANEL */
   .create-panel {
@@ -926,13 +927,12 @@
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--muted); }
     .stats { display: none; }
-    /* FAB nests in the notched top-center of the mobile nav pill.
-       Center aligns roughly with the pill's top edge. Safe-area inset
-       follows the nav so FAB stays anchored relative to the pill on iOS.
-       z-index must clear the nav so taps land on the FAB, not the mask edge. */
+    /* FAB nests in the notched top-center of the slim-stats row, rising
+       above the dark dock. Center aligns with the top edge of the stats
+       (which is ~88px + safe-area from the screen bottom: 60 nav + 28 stats). */
     .fab {
       left: 50%; right: auto;
-      bottom: calc(58px + env(safe-area-inset-bottom, 0));
+      bottom: calc(62px + env(safe-area-inset-bottom, 0));
       transform: translateX(-50%);
       width: 52px; height: 52px;
       border-radius: var(--radius-pill);
@@ -4232,11 +4232,14 @@ function updateHabitStatsBar(active) {
 
   const slimEl = document.getElementById('mobileSlimStats');
   if (slimEl) slimEl.innerHTML = `
-    <span><span class="sv" style="color:var(--pastel-mint-text)">${done.length}/${due.length}</span> today</span>
-    <span class="sep"></span>
-    <span><span class="sv" style="color:var(--pastel-yellow-text)">${bestStreak}</span> streak</span>
-    <span class="sep"></span>
-    <span><span class="sv">${active.length}</span> habits</span>`;
+    <span class="mss-group">
+      <span><span class="sv" style="color:var(--pastel-mint-text)">${done.length}/${due.length}</span> today</span>
+      <span class="sep"></span>
+      <span><span class="sv" style="color:var(--pastel-yellow-text)">${bestStreak}</span> streak</span>
+    </span>
+    <span class="mss-group">
+      <span><span class="sv">${active.length}</span> habits</span>
+    </span>`;
 }
 
 function updateNotesStatsBar() {
@@ -4256,11 +4259,14 @@ function updateNotesStatsBar() {
 
   const slimEl = document.getElementById('mobileSlimStats');
   if (slimEl) slimEl.innerHTML = `
-    <span><span class="sv">${active.length}</span> notes</span>
-    <span class="sep"></span>
-    <span><span class="sv" style="color:var(--pastel-sky-text)">${nbCount}</span> notebooks</span>
-    <span class="sep"></span>
-    <span><span class="sv" style="color:var(--pastel-yellow-text)">${starred}</span> starred</span>`;
+    <span class="mss-group">
+      <span><span class="sv">${active.length}</span> notes</span>
+      <span class="sep"></span>
+      <span><span class="sv" style="color:var(--pastel-sky-text)">${nbCount}</span> notebooks</span>
+    </span>
+    <span class="mss-group">
+      <span><span class="sv" style="color:var(--pastel-yellow-text)">${starred}</span> starred</span>
+    </span>`;
 }
 
 function highlight(text, query) {
@@ -4409,13 +4415,16 @@ function render() {
       </div>`;
     const slimEl=document.getElementById('mobileSlimStats');
     if(slimEl) slimEl.innerHTML=`
-      <span><span class="sv">${actN}</span> active</span>
-      <span class="sep"></span>
-      <span><span class="sv-work">${bizN}</span> work</span>
-      <span class="sep"></span>
-      <span><span class="sv-pers">${perN}</span> personal</span>
-      <span class="sep"></span>
-      <span><span class="sv">${doneN}</span> done</span>`;
+      <span class="mss-group">
+        <span><span class="sv">${actN}</span> active</span>
+        <span class="sep"></span>
+        <span><span class="sv-work">${bizN}</span> work</span>
+      </span>
+      <span class="mss-group">
+        <span><span class="sv-pers">${perN}</span> personal</span>
+        <span class="sep"></span>
+        <span><span class="sv">${doneN}</span> done</span>
+      </span>`;
   }
   // Update tool switcher badges (always)
   const tb=document.getElementById('tasksBadge');if(tb)tb.textContent=actN;
