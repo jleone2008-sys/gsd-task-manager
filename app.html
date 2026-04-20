@@ -254,6 +254,9 @@
   .tool-tab.active .tool-badge { background: rgba(255,255,255,0.25); }
   @media (max-width: 600px) {
     .tool-switcher { display: none; }
+    /* With the tool switcher hidden, tool-switcher's margin-right: auto no
+       longer exists to push the avatar to the right edge — restore it here. */
+    .header-inner .user-menu { margin-left: auto; }
   }
 
   /* Floating pill bar */
