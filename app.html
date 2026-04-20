@@ -272,8 +272,9 @@
     align-items: center;
     gap: var(--space-1);
     background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     padding: var(--space-1-5) var(--space-2);
     pointer-events: all;
   }
@@ -469,7 +470,7 @@
   .sort-opt.active { color: var(--link); font-weight: var(--fw-semibold); }
 
   /* TASK LIST & DRAG */
-  .task-list { display: flex; flex-direction: column; gap: var(--space-0-5); min-height: 4px; }
+  .task-list { display: flex; flex-direction: column; gap: var(--space-2); min-height: 4px; }
   .task-list.drag-over-zone { background: var(--drag-over); border-radius: var(--radius-sm); }
 
   .task-item {
@@ -477,14 +478,11 @@
     display: flex;
     align-items: center;
     gap: var(--space-2-5);
-    /* Right padding reserves space for the top-right notched corner where
-       the checkbox nests. Top padding slightly extra to account for the
-       notch depth so text stays vertically balanced. */
-    padding: var(--space-3) 48px var(--space-2-5) var(--space-3);
+    padding: var(--space-3) var(--space-3-5);
     border-radius: var(--radius-lg);
     background: var(--surface);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-xs);
+    box-shadow: var(--shadow-sm);
     transition: box-shadow var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast), transform var(--dur-fast);
     cursor: default;
     user-select: none;
@@ -492,7 +490,7 @@
   }
   .task-item:hover {
     border-color: var(--border2);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
   }
   /* Starred — left accent strip, no bg tint. Supports multi-star without monotony. */
   .task-item.top3 {
@@ -565,29 +563,10 @@
   .tag.top3 { background: var(--pastel-yellow-bg); color: var(--top3); }
   .tag.someday { background: var(--surface2); color: var(--muted); }
 
-  /* Task-actions-col is now a notch-shaped cutout in the top-right corner
-     of the task card: it sits absolutely, painted with the page background
-     so it visually subtracts the corner from the white card. The checkbox
-     lives inside it, nesting in the apparent void. Slightly offset negative
-     to cover the card's top+right borders, giving a clean "cut" edge. */
   .task-actions-col {
-    position: absolute;
-    top: -1px; right: -1px;
-    width: 41px; height: 41px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: var(--bg);
-    /* Square inner corner for the square theme — no curve on the cut edge. */
-    border-bottom-left-radius: 0;
-    z-index: 2;
-    transition: opacity var(--dur-fast);
-  }
-  /* Hide the cutout while swipe is in progress so it doesn't block the
-     red/green swipe backgrounds on either side. Reappears on release. */
-  .task-item.swiping .task-actions-col,
-  .task-item.swiping-right .task-actions-col {
-    opacity: 0;
+    flex-shrink: 0;
   }
   .star-btn, .del-btn {
     width: 24px; height: 24px;
@@ -997,21 +976,22 @@
     .st-hm-months:not(.monthly) span { width: calc(10px * 4.33 + 2px * 3.33); }
   }
 
-  /* FLOATING SEARCH BAR (square theme) */
+  /* FLOATING SEARCH BAR (square theme, matches card-style soft shadow) */
   .floating-search {
     position: fixed; bottom: 60px; right: 84px;
     height: 52px; border-radius: var(--radius-sm);
     background: var(--surface); border: 1px solid var(--border);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-sm);
     display: flex; align-items: center; justify-content: center; gap: var(--space-2);
     padding: 0 var(--space-3-5); z-index: var(--z-fab-desktop);
     transition: width var(--dur-slow) ease, opacity var(--dur-quick), box-shadow var(--dur-calm);
     width: 52px; overflow: hidden; cursor: pointer;
   }
+  .floating-search:hover { box-shadow: var(--shadow-md); }
   .floating-search.expanded {
     width: 260px; cursor: default;
     justify-content: flex-start;
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadow-md);
     border-color: var(--navy-light);
   }
   .floating-search svg { flex-shrink: 0; color: var(--muted); width: 16px; height: 16px; }
