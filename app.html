@@ -763,11 +763,13 @@
   .mobile-slim-stats .mss-group {
     display: inline-flex; align-items: center; gap: var(--space-2);
   }
-  .mobile-slim-stats .sv { color: rgba(255,255,255,0.9); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-work { color: var(--pastel-sky-text); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-pers { color: var(--pastel-lavender-text); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-green { color: var(--pastel-mint-text); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-amber { color: var(--pastel-yellow-text); font-weight: var(--fw-semibold); }
+  /* Stat-value colors — use the pastel LIGHT tokens because the bar surface
+     is dark. The darker "-text" tokens are reserved for light-bg pastels. */
+  .mobile-slim-stats .sv { color: #fff; font-weight: var(--fw-semibold); }
+  .mobile-slim-stats .sv-work { color: var(--pastel-sky-bg); font-weight: var(--fw-semibold); }
+  .mobile-slim-stats .sv-pers { color: var(--pastel-lavender-bg); font-weight: var(--fw-semibold); }
+  .mobile-slim-stats .sv-green { color: var(--pastel-mint-bg); font-weight: var(--fw-semibold); }
+  .mobile-slim-stats .sv-amber { color: var(--pastel-yellow-bg); font-weight: var(--fw-semibold); }
   .mobile-slim-stats .sep { width: 1px; height: 8px; background: rgba(255,255,255,0.2); }
   @media (max-width: 600px) {
     .mobile-slim-stats { display: flex; }
@@ -976,13 +978,14 @@
     height: 52px; border-radius: var(--radius-sm);
     background: var(--surface); border: 1px solid var(--border);
     box-shadow: var(--shadow-lg);
-    display: flex; align-items: center; gap: var(--space-2);
+    display: flex; align-items: center; justify-content: center; gap: var(--space-2);
     padding: 0 var(--space-3-5); z-index: var(--z-fab-desktop);
     transition: width var(--dur-slow) ease, opacity var(--dur-quick), box-shadow var(--dur-calm);
     width: 52px; overflow: hidden; cursor: pointer;
   }
   .floating-search.expanded {
     width: 260px; cursor: default;
+    justify-content: flex-start;
     box-shadow: var(--shadow-xl);
     border-color: var(--navy-light);
   }
@@ -1004,10 +1007,18 @@
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   @media (max-width: 600px) {
-    /* With the FAB now center-docked over the dock, the right edge is
-       free for the floating search to live at the screen edge. */
-    .floating-search { bottom: 120px; right: 16px; height: 48px; width: 48px; border-radius: var(--radius-sm); padding: 0 var(--space-3); z-index: var(--z-fab-mobile); }
-    .floating-search.expanded { width: calc(100vw - 88px); border-radius: var(--radius-sm); }
+    /* Sits 16px above the dock top and 16px from the right edge — visually
+       equal padding from the nearest chrome / screen edge. Dock effective
+       height is 88px (60 nav + 28 stats) + safe-area. */
+    .floating-search {
+      bottom: calc(104px + env(safe-area-inset-bottom, 0));
+      right: 16px;
+      height: 48px; width: 48px;
+      border-radius: var(--radius-sm);
+      padding: 0;
+      z-index: var(--z-fab-mobile);
+    }
+    .floating-search.expanded { width: calc(100vw - 32px); border-radius: var(--radius-sm); padding: 0 var(--space-3); }
   }
   /* highlight matched text in task */
   .search-hl { background: var(--pastel-yellow-bg); color: var(--text); border-radius: var(--radius-xs); padding: 0 var(--space-0-5); }
@@ -4230,9 +4241,9 @@ function updateHabitStatsBar(active) {
   const slimEl = document.getElementById('mobileSlimStats');
   if (slimEl) slimEl.innerHTML = `
     <span class="mss-group">
-      <span><span class="sv" style="color:var(--pastel-mint-text)">${done.length}/${due.length}</span> today</span>
+      <span><span class="sv sv-green">${done.length}/${due.length}</span> today</span>
       <span class="sep"></span>
-      <span><span class="sv" style="color:var(--pastel-yellow-text)">${bestStreak}</span> streak</span>
+      <span><span class="sv sv-amber">${bestStreak}</span> streak</span>
     </span>
     <span class="mss-group">
       <span><span class="sv">${active.length}</span> habits</span>
@@ -4259,10 +4270,10 @@ function updateNotesStatsBar() {
     <span class="mss-group">
       <span><span class="sv">${active.length}</span> notes</span>
       <span class="sep"></span>
-      <span><span class="sv" style="color:var(--pastel-sky-text)">${nbCount}</span> notebooks</span>
+      <span><span class="sv sv-work">${nbCount}</span> notebooks</span>
     </span>
     <span class="mss-group">
-      <span><span class="sv" style="color:var(--pastel-yellow-text)">${starred}</span> starred</span>
+      <span><span class="sv sv-amber">${starred}</span> starred</span>
     </span>`;
 }
 
@@ -4415,12 +4426,12 @@ function render() {
       <span class="mss-group">
         <span><span class="sv">${actN}</span> active</span>
         <span class="sep"></span>
-        <span><span class="sv-work">${bizN}</span> work</span>
+        <span><span class="sv">${doneN}</span> done</span>
       </span>
       <span class="mss-group">
-        <span><span class="sv-pers">${perN}</span> personal</span>
+        <span><span class="sv-work">${bizN}</span> work</span>
         <span class="sep"></span>
-        <span><span class="sv">${doneN}</span> done</span>
+        <span><span class="sv-pers">${perN}</span> personal</span>
       </span>`;
   }
   // Update tool switcher badges (always)
