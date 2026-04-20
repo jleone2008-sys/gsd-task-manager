@@ -6,93 +6,153 @@
 <title>GSD Task Manager</title>
   <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
 <style>
 
   /* ══════════════════════════════════════════════════════════════
-     DESIGN TOKENS — single source of truth for the entire app.
-     Mobile breakpoint: 600px. Notes secondary breakpoints: 800px, 1080px.
-     See DESIGN_SYSTEM.md for rationale and the mapping old → new.
+     DESIGN TOKENS — Lifestyle v2.2
+     Canonical tokens come from gsd-handoff/tokens-lifestyle.css.
+     Legacy token names (--text, --navy, --top3, etc.) are mapped
+     to the lifestyle system as aliases so existing components keep
+     working while the UI is ported screen-by-screen.
+     Breakpoint: 900px. See gsd-handoff/DESIGN_HANDOFF.md.
   ═══════════════════════════════════════════════════════════════ */
   :root {
-    /* ── Core surfaces + text (cool-tinted) ───────────────────── */
-    --bg:         #eef2fb;
-    --surface:    #ffffff;
-    --surface2:   #e6edf8;
-    --border:     #dce4f2;
-    --border2:    #c8d3e9;
-    --text:       #1a1e2e;
-    --text2:      #4a5168;
-    --muted:      #8690a8;
+    /* ── Ground (warm near-white) ────────────────────────────── */
+    --bg:           #fbfaf7;
+    --surface:      #ffffff;
+    --surface-2:    #f6f4ef;
+    --edge:         #ece8dd;
+    --edge-strong:  #ddd6c7;
 
-    /* ── Brand primary (blue) ─────────────────────────────────
-       Named `--navy` for historical continuity — still blue,
-       just softer and cooler than the old #2d5fa6. */
-    --navy:        #5b82e0;
-    --navy-dark:   #4568c8;
-    --navy-light:  #8eaaee;
+    /* ── Ink scale ──────────────────────────────────────────── */
+    --ink:   #1a1714;
+    --ink-2: #3d362d;
+    --ink-3: #7c7367;
+    --ink-4: #a8a094;
+    --ink-5: #cac3b6;
+
+    /* ── Guava (core) + ramp ────────────────────────────────── */
+    --guava-900: #6b1320;
+    --guava-800: #8a1d2a;
+    --guava-700: #b82d3b;
+    --guava-500: #d94a55;
+    --guava-300: #f3a8ae;
+    --guava-200: #fad4d7;
+    --guava-100: #fde8ea;
+    --guava-50:  #fef5f6;
+
+    /* ── Earth chips (tags) ─────────────────────────────────── */
+    --sage-fg:  #5d7048;  --sage-bg:  #e7ecdb;
+    --sky-fg:   #3d5a7a;  --sky-bg:   #dce7f2;
+    --clay-fg:  #a86247;  --clay-bg:  #f1dfd4;
+    --moss-fg:  #5e6d3f;  --moss-bg:  #e2e6d3;
+    --slate-fg: #5a6673;  --slate-bg: #dee2e7;
+    --ochre-fg: #a37826;  --ochre-bg: #f0e4c9;
+    --plum-fg:  #6b4862;  --plum-bg:  #e5dae2;
+
+    /* ── Status semantic ────────────────────────────────────── */
+    --status-overdue-fg: var(--guava-700);  --status-overdue-bg: var(--guava-100);
+    --status-today-fg:   var(--clay-fg);    --status-today-bg:   var(--clay-bg);
+    --status-later-fg:   var(--slate-fg);   --status-later-bg:   var(--slate-bg);
+    --status-done-fg:    var(--moss-fg);    --status-done-bg:    var(--moss-bg);
+
+    /* ── Radii (tight — three steps only) ───────────────────── */
+    --r-sm: 3px;
+    --r-md: 4px;
+    --r-lg: 10px;
+
+    /* ── Shadows ────────────────────────────────────────────── */
+    --shadow-card:       0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
+    --shadow-card-hover: 0 1px 0 rgba(20,15,10,0.04), 0 2px 4px rgba(20,15,10,0.08);
+    --shadow-raised:     0 2px 4px rgba(20,15,10,0.06), 0 8px 20px rgba(20,15,10,0.08);
+    --shadow-fab:        0 4px 10px rgba(184,45,59,0.28), 0 2px 4px rgba(184,45,59,0.16);
+
+    /* ── Type families ──────────────────────────────────────── */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* ── Type scale (7 steps) ───────────────────────────────── */
+    --t-xs:  11px;
+    --t-sm:  13px;
+    --t-md:  15px;
+    --t-lg:  18px;
+    --t-xl:  22px;
+    --t-2xl: 30px;
+    --t-3xl: 44px;
+
+    /* ── Motion ─────────────────────────────────────────────── */
+    --ease:      cubic-bezier(0.2, 0.8, 0.2, 1);
+    --dur-fast:  120ms;
+    --dur:       180ms;
+
+    /* ══════════════════════════════════════════════════════════
+       LEGACY ALIASES — map old token names to the lifestyle set.
+       Kept so component CSS that hasn't been ported yet still
+       renders. These will be removed as each screen is rebuilt.
+    ══════════════════════════════════════════════════════════ */
+    --surface2:   var(--surface-2);
+    --border:     var(--edge);
+    --border2:    var(--edge-strong);
+    --text:       var(--ink);
+    --text2:      var(--ink-2);
+    --muted:      var(--ink-3);
+
+    --navy:        var(--guava-700);
+    --navy-dark:   var(--guava-800);
+    --navy-light:  var(--guava-500);
     --navy-muted:  rgba(255,255,255,0.72);
     --navy-border: rgba(255,255,255,0.22);
-    --accent:      #3d5fb3;
+    --accent:      var(--guava-800);
 
-    /* ── Semantic states ──────────────────────────────────────── */
-    --check:     #2fa97e;
-    --danger:    #e54a7a;
-    --danger-bg: #fdeef2;
-    --danger-border: #f5c5d2;
-    --top3:      #d97706;
-    --top3-bg:   #fff8eb;
-    --link:      #4568c8;
-    --drag-over: #e1ebfb;
+    --check:           var(--guava-700);
+    --danger:          var(--guava-700);
+    --danger-bg:       var(--guava-100);
+    --danger-border:   var(--guava-200);
+    --top3:            var(--guava-700);
+    --top3-bg:         var(--guava-100);
+    --link:            var(--guava-700);
+    --drag-over:       var(--guava-100);
 
-    /* ── Tag system (backwards-compat: --biz / --personal alias) ─ */
-    --biz-bg:        #d9e6ff;
-    --biz-text:      #2a5fd6;
-    --personal-bg:   #f3e6fd;
-    --personal-text: #8341c6;
+    --biz-bg:        var(--slate-bg);
+    --biz-text:      var(--slate-fg);
+    --personal-bg:   var(--ochre-bg);
+    --personal-text: var(--ochre-fg);
     --biz:       var(--biz-text);
     --personal:  var(--personal-text);
 
-    /* ── Pastel accent family (stat cards, due-date chips, future categories) ─ */
-    --pastel-lavender-bg:  #dfd6e8;   --pastel-lavender-text:  #574a6d;
-    --pastel-sky-bg:       #d4e2ec;   --pastel-sky-text:       #2d5577;
-    --pastel-mint-bg:      #cfe8d6;   --pastel-mint-text:      #2d6848;
-    --pastel-yellow-bg:    #f5e6b8;   --pastel-yellow-text:    #7a5600;
-    --pastel-coral-bg:     #f9d5dc;   --pastel-coral-text:     #a03050;
+    --pastel-lavender-bg:  var(--plum-bg);   --pastel-lavender-text:  var(--plum-fg);
+    --pastel-sky-bg:       var(--sky-bg);    --pastel-sky-text:       var(--sky-fg);
+    --pastel-mint-bg:      var(--moss-bg);   --pastel-mint-text:      var(--moss-fg);
+    --pastel-yellow-bg:    var(--ochre-bg);  --pastel-yellow-text:    var(--ochre-fg);
+    --pastel-coral-bg:     var(--guava-100); --pastel-coral-text:     var(--guava-700);
 
-    /* ── Error toast ──────────────────────────────────────────── */
-    --toast-bg:        #1e2231;
-    --toast-err-red:   #f87171;
-    --toast-err-amber: #fbbf24;
+    --toast-bg:        var(--ink);
+    --toast-err-red:   var(--guava-500);
+    --toast-err-amber: var(--ochre-fg);
 
-    /* ── Habit heatmap intensity scale (l0 empty → l3 max) ───── */
-    --heatmap-l0: var(--surface2);
-    --heatmap-l1: #c7d9f0;
-    --heatmap-l2: #7aacdf;
-    --heatmap-l3: #3d7ec4;
+    --heatmap-l0: var(--surface-2);
+    --heatmap-l1: var(--guava-100);
+    --heatmap-l2: var(--guava-300);
+    --heatmap-l3: var(--guava-700);
 
-    /* ── Specialty ────────────────────────────────────────────── */
-    --highlight-yellow: #fef08a;   /* text-highlight marker in rich editor */
+    --highlight-yellow: #fef08a;
 
-    /* ── Shadow scale (neutral, tight 2px card lift) ──────────── */
-    --shadow-xs:    0 1px 1px rgba(0,0,0,0.06);
-    --shadow-sm:    0 2px 2px rgba(0,0,0,0.1);
-    --shadow-md:    0 3px 3px rgba(0,0,0,0.12);
-    --shadow-lg:    0 6px 10px rgba(0,0,0,0.14);
-    --shadow-xl:    0 12px 24px rgba(0,0,0,0.18);
-    --shadow-focus: 0 0 0 3px rgba(91,130,224,0.22);
+    --shadow-xs:    var(--shadow-card);
+    --shadow-sm:    var(--shadow-card);
+    --shadow-md:    var(--shadow-card-hover);
+    --shadow-lg:    var(--shadow-raised);
+    --shadow-xl:    var(--shadow-raised);
+    --shadow-focus: 0 0 0 3px rgba(184,45,59,0.22);
 
-    /* ── Radius scale (square theme — crisp edges with 2–8px softening) ─ */
-    --radius-xs:   2px;    /* hairline rounding on micro elements */
-    --radius-sm:   4px;    /* buttons, chips, inputs, tabs, FAB */
-    --radius-md:   4px;    /* small cards / secondary surfaces */
-    --radius-lg:   6px;    /* task cards, habit cards, note cards */
-    --radius-xl:   8px;    /* modals, pill bar, primary containers */
-    --radius-pill: 9999px; /* avatar circle, day dots, error toast dots */
-
-    /* ── Typography ───────────────────────────────────────────── */
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --radius-xs:   var(--r-sm);
+    --radius-sm:   var(--r-md);
+    --radius-md:   var(--r-md);
+    --radius-lg:   var(--r-md);
+    --radius-xl:   var(--r-lg);
+    --radius-pill: 9999px;
 
     --fs-nano:          9px;     /* tiny indicators (8–9px range rounds up) */
     --fs-label:         10px;    /* uppercase section labels, day-dot labels */
@@ -193,113 +253,227 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* HEADER */
+  /* ──────────────────────────────────────────────────────────────
+     APP SHELL — sidebar (desktop) + main column
+     Desktop ≥900px: sidebar left, main right.
+     Mobile <900px: single column, mobile header top, tabbar bottom.
+  ────────────────────────────────────────────────────────────── */
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  @media (min-width: 900px) {
+    .app-shell { flex-direction: row; }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     SIDEBAR (desktop ≥900px)
+  ────────────────────────────────────────────────────────────── */
+  .sidebar {
+    display: none;
+    width: 220px; flex-shrink: 0;
+    background: var(--surface-2);
+    border-right: 1px solid var(--edge);
+    flex-direction: column;
+    padding: 22px 14px;
+    position: sticky; top: 0; height: 100vh;
+    z-index: var(--z-toast);
+  }
+  @media (min-width: 900px) { .sidebar { display: flex; } }
+  .sidebar .wordmark { margin: 0 6px 24px; font-size: 22px; }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    font-size: var(--t-sm); font-weight: 500;
+    color: var(--ink-3);
+    background: transparent; border: none; border-radius: var(--r-sm);
+    cursor: pointer; font-family: inherit; text-align: left;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+    width: 100%;
+  }
+  .sidebar-btn:hover { background: var(--surface); color: var(--ink); }
+  .sidebar-btn svg {
+    width: 18px; height: 18px;
+    stroke: currentColor; fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex-shrink: 0;
+  }
+  .sidebar-btn.is-active {
+    background: var(--guava-100);
+    color: var(--guava-700);
+    font-weight: 600;
+  }
+  .sidebar-btn.is-active svg { fill: var(--guava-200); stroke: var(--guava-700); }
+  .sidebar-btn .count {
+    margin-left: auto;
+    font-size: 11px; font-weight: 600;
+    color: var(--ink-5);
+  }
+  .sidebar-btn.is-active .count { color: var(--guava-700); opacity: 0.7; }
+  .sidebar-sep {
+    height: 1px; background: var(--edge);
+    margin: 16px 8px;
+  }
+  .sidebar-foot {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 8px;
+    font-size: 12px; color: var(--ink-3);
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    transition: background var(--dur) var(--ease);
+  }
+  .sidebar-foot:hover { background: var(--surface); }
+  .sidebar-foot .avatar {
+    width: 26px; height: 26px;
+    background: var(--guava-200); color: var(--guava-700);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     MAIN COLUMN — holds header, pills, content
+  ────────────────────────────────────────────────────────────── */
+  .app-main {
+    flex: 1;
+    display: flex; flex-direction: column;
+    min-width: 0;
+    position: relative;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     WORDMARK — lowercase gsd + guava dot
+  ────────────────────────────────────────────────────────────── */
+  .wordmark {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    text-decoration: none;
+    user-select: none;
+  }
+  .wordmark .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--guava-700);
+    border-radius: 50%;
+    margin-bottom: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     HEADER — light surface, mobile (wordmark + title + avatar)
+     or desktop (page title + actions). No navy bar.
+  ────────────────────────────────────────────────────────────── */
   header {
     display: flex;
     flex-direction: column;
-    gap: 0;
-    padding: 0;
-    background: var(--navy);
-    box-shadow: var(--shadow-sm);
-    position: sticky;
-    top: 0;
+    background: var(--bg);
+    position: sticky; top: 0;
     z-index: var(--z-toast);
   }
   .header-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     width: 100%;
-    background: var(--navy);
+    background: transparent;
   }
-  .header-top {
-    padding: 0;
-    justify-content: center;
-  }
-  /* Inner wrapper constrains header content to task width */
+  .header-top { padding: 0; }
   .header-inner {
-    max-width: var(--max-content);
-    margin: 0 auto;
     width: 100%;
-    display: flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-4);
-    gap: var(--space-1-5);
-    height: 50px;
+    display: flex; align-items: flex-start;
+    padding: 16px 20px 8px;
+    gap: var(--space-2);
     box-sizing: border-box;
   }
-  .header-inner .logo { flex-shrink: 0; }
+  @media (min-width: 900px) {
+    .header-inner { padding: 20px 40px 10px; }
+  }
+  .header-inner .logo { flex-shrink: 0; flex: 1; min-width: 0; }
   .header-inner .user-menu { flex-shrink: 0; }
-
-  /* Tool Switcher (desktop only) — centered between the logo and the avatar
-     via symmetric auto margins; the margin-right: auto pushes the user-menu
-     to the far right without needing its own auto margin. */
-  .tool-switcher {
-    display: flex; align-items: center; gap: var(--space-0-5);
-    margin: 0 auto;
-    background: rgba(255,255,255,0.08);
-    border-radius: var(--radius-sm); padding: var(--space-0-5); border: 1px solid rgba(255,255,255,0.08);
+  .logo {
+    display: flex; flex-direction: column; gap: 6px;
+    color: var(--ink);
+    text-decoration: none;
+    user-select: none;
   }
-  .tool-tab {
-    padding: var(--space-1) var(--space-3-5); border-radius: var(--radius-sm); border: none;
-    background: transparent; color: rgba(255,255,255,0.55);
-    font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-medium);
-    cursor: pointer; transition: all var(--dur-quick); white-space: nowrap;
-    display: flex; align-items: center; gap: var(--space-1-5); line-height: 1;
+  .logo-main {
+    /* Legacy wrapper — mobile wordmark lives here */
+    display: inline-flex; align-items: baseline; gap: 3px;
+    font-size: 18px; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--ink); line-height: 1;
+    text-transform: lowercase;
   }
-  .tool-tab:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
-  .tool-tab.active { background: rgba(255,255,255,0.18); color: #fff; font-weight: var(--fw-semibold); box-shadow: var(--shadow-xs); }
-  .tool-tab svg { width: 14px; height: 14px; opacity: 0.7; }
-  .tool-tab.active svg { opacity: 1; }
-  .tool-badge { font-size: var(--fs-nano); background: rgba(255,255,255,0.15); padding: var(--space-0-5) var(--space-1); border-radius: var(--radius-sm); font-weight: var(--fw-semibold); }
-  .tool-tab.active .tool-badge { background: rgba(255,255,255,0.25); }
-  @media (max-width: 600px) {
-    .tool-switcher { display: none; }
-    /* With the tool switcher hidden, tool-switcher's margin-right: auto no
-       longer exists to push the avatar to the right edge — restore it here. */
-    .header-inner .user-menu { margin-left: auto; }
+  .logo-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    background: var(--guava-700);
+    border-radius: 50%;
+    font-size: 0; line-height: 0;
+    margin-bottom: 2px;
+    font-style: normal;
+    color: transparent;
   }
 
-  /* Floating pill bar */
+  /* Page title in header (mobile: beneath wordmark; desktop: large) */
+  .page-title-mobile {
+    font-size: 20px; font-weight: 600;
+    letter-spacing: -0.01em; color: var(--ink);
+    line-height: 1.2;
+  }
+  @media (min-width: 900px) {
+    .logo-main { display: none; }  /* wordmark lives in sidebar on desktop */
+    .page-title-mobile { font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.02em; }
+  }
+
+  /* Desktop-only header actions (search, new, etc.) */
+  .header-actions {
+    display: none;
+    align-items: center; gap: var(--space-2);
+    flex-shrink: 0;
+  }
+  @media (min-width: 900px) { .header-actions { display: flex; } }
+
+  /* Legacy tool switcher inside header — hidden; nav lives in sidebar now */
+  .tool-switcher { display: none; }
+
+  /* ──────────────────────────────────────────────────────────────
+     FILTER PILLS — flat, guava active
+  ────────────────────────────────────────────────────────────── */
   .pill-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: var(--space-2-5) var(--space-4) var(--space-3-5);
+    padding: 0 20px 10px;
     background: var(--bg);
-    pointer-events: none;
+  }
+  @media (min-width: 900px) {
+    .pill-bar { padding: 0 40px 14px; }
   }
   .pill-bar-inner {
-    max-width: var(--max-pill-bar);
     width: 100%;
     display: flex;
     align-items: center;
-    gap: var(--space-1);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
-    padding: var(--space-1-5) var(--space-2);
-    pointer-events: all;
+    gap: 4px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .logo {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2-5);
-    color: #fff;
-    text-decoration: none;
-    user-select: none;
-    flex-shrink: 0;
-  }
-  .logo-main {
-    font-size: var(--fs-title); font-weight: var(--fw-bold); letter-spacing: var(--tracking-tight); color: #fff;
-    display: flex; align-items: baseline; line-height: 1;
-  }
-  .logo-dot { color: var(--navy-light); font-style: normal; }
-
-  /* FILTERS — inline with header on desktop */
+  .pill-bar-inner::-webkit-scrollbar { display: none; }
   .filters {
     display: flex;
-    gap: var(--space-1);
+    gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
     flex-wrap: nowrap;
@@ -307,31 +481,51 @@
   }
   .filters::-webkit-scrollbar { display: none; }
   .pill {
-    flex: 1;
-    padding: var(--space-2) var(--space-2);
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--border);
-    background: var(--surface2);
-    color: var(--text2);
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    border-radius: var(--r-sm);
+    border: none;
+    background: transparent;
+    color: var(--ink-3);
     font-family: inherit;
-    font-size: var(--fs-pill);
-    font-weight: var(--fw-medium);
+    font-size: var(--t-sm);
+    font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
     text-align: center;
-    transition: all var(--dur-fast);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
-  .pill:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-  .pill.active { background: var(--navy); color: #fff; font-weight: var(--fw-semibold); border-color: var(--navy); }
-  .pill.top3-pill { border-color: var(--top3); color: var(--top3); background: var(--pastel-yellow-bg); }
-  .pill.top3-pill:hover { background: var(--pastel-yellow-bg); border-color: var(--top3); }
-  .pill.top3-pill.active { background: var(--top3); color: #fff; border-color: var(--top3); }
-  .pill.biz { border-color: var(--navy); color: var(--navy-dark); background: var(--pastel-sky-bg); }
-  .pill.biz:hover { background: var(--biz-bg); border-color: var(--link); }
-  .pill.biz.active { background: var(--navy-dark); color: #fff; border-color: var(--navy-dark); }
-  .pill.personal { border-color: var(--personal-text); color: var(--personal-text); background: var(--personal-bg); }
-  .pill.personal:hover { background: var(--personal-bg); border-color: var(--personal-text); }
-  .pill.personal.active { background: var(--personal-text); color: #fff; border-color: var(--personal-text); }
+  .pill:hover { color: var(--ink); background: var(--surface-2); }
+  .pill.active,
+  .pill.biz.active,
+  .pill.personal.active,
+  .pill.top3-pill.active {
+    background: var(--guava-100);
+    color: var(--guava-700);
+    border-color: transparent;
+    font-weight: 500;
+  }
+  /* Inactive tag-coloured variants collapse to flat — spec says one style only */
+  .pill.biz,
+  .pill.personal,
+  .pill.top3-pill {
+    background: transparent;
+    color: var(--ink-3);
+    border: none;
+  }
+  .pill.biz:hover,
+  .pill.personal:hover,
+  .pill.top3-pill:hover {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .pill-count {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink-5);
+    margin-left: 5px;
+  }
+  .pill.active .pill-count { color: var(--guava-700); opacity: 0.7; }
 
   /* ADD SECTION */
   .add-section { max-width: var(--max-content); margin: 0 auto; padding: var(--space-3-5) var(--space-4) 0; }
@@ -432,27 +626,39 @@
   .tag-btn.personal.selected { background: var(--personal-bg); }
   .tag-btn.t3.selected { background: var(--top3-bg); }
 
-  /* CONTENT */
-  .content { max-width: var(--max-content); margin: 0 auto; padding: var(--space-2) var(--space-4) var(--nav-clear-desktop); }
+  /* CONTENT — main column scrollable area
+     Mobile: 100px bottom padding clears the tabbar.
+     Desktop: generous bottom padding, centered at 720px max. */
+  .content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2px 20px 100px;
+  }
+  @media (min-width: 900px) {
+    .content { padding: 2px 40px 40px; }
+  }
   .content[data-tool-view="notes"] { max-width: none; padding: 0; }
 
+  /* Section label — matches spec .section-hed (uppercase, --ink-4) */
   .section-label {
-    padding: var(--space-3-5) 0 var(--space-1);
-    font-size: var(--fs-label);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-label);
+    padding: 22px 2px 10px;
+    font-size: var(--t-xs);
+    font-weight: 600;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--ink-4);
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 8px;
     user-select: none;
   }
   .section-label .cnt {
-    background: var(--border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-0-5) var(--space-1-5);
-    font-size: var(--fs-label);
+    background: transparent;
+    border-radius: var(--r-sm);
+    padding: 0 4px;
+    font-size: var(--t-xs);
+    color: var(--ink-5);
+    font-weight: 600;
   }
   .section-label .sort-wrap { margin-left: auto; position: relative; }
   .section-label .sort-btn {
@@ -472,121 +678,348 @@
   .sort-opt:hover { background: var(--border); }
   .sort-opt.active { color: var(--link); font-weight: var(--fw-semibold); }
 
-  /* TASK LIST & DRAG */
-  .task-list { display: flex; flex-direction: column; gap: var(--space-2); min-height: 4px; }
-  .task-list.drag-over-zone { background: var(--drag-over); border-radius: var(--radius-sm); }
+  /* ──────────────────────────────────────────────────────────────
+     TASK LIST — Lifestyle card per gsd-handoff/screens-lifestyle.jsx
+     Class layering: JS contracts on .task-item / .top3 / .done; the
+     visual treatment uses the spec class names (.card, .strip, .check,
+     .card__title, .card__meta, .chip).
+  ────────────────────────────────────────────────────────────── */
+  .task-list { display: grid; gap: 6px; min-height: 4px; }
+  .task-list.drag-over-zone { background: var(--guava-50); border-radius: var(--r-md); }
 
+  /* Card shell — used by tasks, habits, notes */
+  .card,
   .task-item {
     position: relative;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2-5);
-    padding: var(--space-3) var(--space-3-5);
-    border-radius: var(--radius-lg);
     background: var(--surface);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast), transform var(--dur-fast);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    padding: 13px 14px 13px 22px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     cursor: default;
     user-select: none;
-    overflow: hidden;
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
+  .card:hover,
   .task-item:hover {
-    border-color: var(--border2);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--edge-strong);
   }
-  /* Starred — left accent strip, no bg tint. Supports multi-star without monotony. */
-  .task-item.top3 {
-    padding-left: calc(var(--space-3) + 8px);
+  /* Priority strip (4px left edge) — guava when on, transparent off.
+     Inflated tap area extends 16px into the card via ::after. */
+  .strip {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: transparent;
+    border-top-left-radius: var(--r-md);
+    border-bottom-left-radius: var(--r-md);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease);
   }
-  .task-item.top3::before {
+  .strip::after {
+    content: ''; position: absolute;
+    inset: 0 -16px 0 0;  /* extend 16px to the right for tap */
+  }
+  .card.is-priority > .strip,
+  .task-item.top3 > .strip { background: var(--guava-700); }
+
+  /* Card content slot */
+  .card-body { flex: 1; min-width: 0; cursor: pointer; }
+
+  .card__title,
+  .task-text {
+    font-size: var(--t-md);
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .card__title a,
+  .task-text a {
+    color: var(--guava-700);
+    text-decoration: none;
+    border-bottom: 1px solid var(--guava-200);
+  }
+  .card__title a:hover,
+  .task-text a:hover { border-color: var(--guava-700); }
+
+  .card__meta,
+  .task-meta {
+    margin-top: 6px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Done state */
+  .card.is-done .card__title,
+  .task-item.done .task-text,
+  .task-item.done .card__title {
+    color: var(--ink-4);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-5);
+  }
+
+  /* Drag states */
+  .task-item.dragging { opacity: 0.35; }
+  .task-item.drag-target { border-color: var(--guava-300); box-shadow: var(--shadow-focus); }
+
+  /* Check circle — 20px, right-aligned. Tap area inflated to 44×44. */
+  .check {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--edge-strong);
+    background: transparent;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+    margin-top: 1px;
+    padding: 0;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .check::before {
+    content: ''; position: absolute;
+    inset: -12px;  /* 44×44 tap target */
+  }
+  .check:hover { border-color: var(--ink-3); }
+  .card.is-done .check,
+  .task-item.done .check {
+    background: var(--guava-700);
+    border-color: var(--guava-700);
+  }
+  .card.is-done .check::after,
+  .task-item.done .check::after {
     content: '';
     position: absolute;
-    top: 0; bottom: 0; left: 0;
-    width: 6px;
-    background: var(--navy);
-    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    left: 4px; top: 7px;
+    width: 8px; height: 4px;
+    border-left: 1.5px solid #fff;
+    border-bottom: 1.5px solid #fff;
+    transform: rotate(-45deg);
   }
-  .task-item.done { opacity: 0.4; }
-  .task-item.done .task-text { text-decoration: line-through; color: var(--muted); }
-  .task-item.dragging { opacity: 0.35; box-shadow: var(--shadow-md); }
-  .task-item.drag-target { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
 
+  /* Legacy .checkbox — task-item still references it; map to .check visuals */
   .checkbox {
-    width: 22px; height: 22px;
+    width: 20px; height: 20px;
     border-radius: 50%;
-    border: 1.5px solid var(--border2);
+    border: 1.5px solid var(--edge-strong);
+    background: transparent;
     cursor: pointer;
     flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    transition: all var(--dur-fast);
-    background: var(--surface);
-    align-self: center;
+    position: relative;
+    margin-top: 1px;
+    padding: 0;
+    align-self: flex-start;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
-  .checkbox:hover { border-color: var(--check); }
-  .task-item.done .checkbox { background: var(--check); border-color: var(--check); }
+  .checkbox::before {
+    content: ''; position: absolute; inset: -12px;
+  }
+  .checkbox:hover { border-color: var(--ink-3); }
+  .task-item.done .checkbox {
+    background: var(--guava-700);
+    border-color: var(--guava-700);
+  }
+  .task-item.done .checkbox::after {
+    content: '';
+    position: absolute;
+    left: 4px; top: 7px;
+    width: 8px; height: 4px;
+    border-left: 1.5px solid #fff;
+    border-bottom: 1.5px solid #fff;
+    transform: rotate(-45deg);
+  }
   .checkbox svg { display: none; }
-  .task-item.done .checkbox svg { display: block; }
 
-  .task-content { flex: 1; min-width: 0; cursor: pointer; }
-  .task-text { font-size: var(--fs-task); line-height: 1.5; color: var(--text); word-break: break-word; }
-  .task-text a { color: var(--link); text-decoration: none; border-bottom: 1px solid rgba(26,107,181,0.25); }
-  .task-text a:hover { border-color: var(--link); }
-  .task-note { font-size: var(--fs-pill); color: var(--muted); margin-top: var(--space-0-5); line-height: 1.5; font-style: italic; }
-  .task-note a { color: var(--link); font-style: normal; text-decoration: none; border-bottom: 1px solid rgba(26,107,181,0.25); }
-  .task-note.clamped { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .note-read-more {
-    font-size: var(--fs-meta); color: var(--accent); background: none; border: none;
-    cursor: pointer; padding: var(--space-0-5) 0; font-family: inherit; font-style: italic;
-    display: block; margin-top: var(--space-0-5);
+  /* ──────────────────────────────────────────────────────────────
+     CHIPS — 6 earth tones + guava (overdue only) + ghost
+  ────────────────────────────────────────────────────────────── */
+  .chip,
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: var(--r-sm);
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    border: none;
   }
-  .note-read-more:hover { text-decoration: underline; }
-  .task-meta { display: flex; gap: var(--space-1); margin-top: var(--space-1); flex-wrap: wrap; align-items: center; }
+  .chip--sage,  .tag.someday        { background: var(--sage-bg);  color: var(--sage-fg); }
+  .chip--sky                        { background: var(--sky-bg);   color: var(--sky-fg); }
+  .chip--clay                       { background: var(--clay-bg);  color: var(--clay-fg); }
+  .chip--moss                       { background: var(--moss-bg);  color: var(--moss-fg); }
+  .chip--slate, .tag.biz            { background: var(--slate-bg); color: var(--slate-fg); }
+  .chip--ochre, .tag.personal       { background: var(--ochre-bg); color: var(--ochre-fg); }
+  .chip--plum                       { background: var(--plum-bg);  color: var(--plum-fg); }
+  .chip--guava                      { background: var(--guava-100); color: var(--guava-700); }
+  .chip--ghost, .tag.has-note       { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
+  .tag.has-note svg                 { flex-shrink: 0; }
+  /* Legacy .tag.top3 — no longer rendered; priority is the strip */
+  .tag.top3                         { display: none; }
 
-  .tag { font-size: var(--fs-label); padding: var(--space-0-5) var(--space-2); border-radius: var(--radius-sm); font-weight: var(--fw-medium); }
-
-  /* Due date badge */
+  /* ──────────────────────────────────────────────────────────────
+     DUE DATE BADGE — clay (today), guava (overdue), slate (later)
+  ────────────────────────────────────────────────────────────── */
   .due-badge {
-    display: inline-flex; align-items: center; gap: var(--space-0-5);
-    font-size: var(--fs-label); padding: var(--space-0-5) var(--space-2); border-radius: var(--radius-sm); font-weight: var(--fw-medium);
-    background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+    display: inline-flex; align-items: center; gap: 3px;
+    height: 20px; padding: 0 7px;
+    border-radius: var(--r-sm);
+    font-size: var(--t-xs); font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    background: var(--slate-bg); color: var(--slate-fg);
+    border: none;
   }
-  .due-badge.due-today {
-    background: var(--pastel-yellow-bg); color: var(--pastel-yellow-text); border-color: var(--pastel-yellow-text);
+  .due-badge.due-today    { background: var(--clay-bg);  color: var(--clay-fg); }
+  .due-badge.due-overdue  { background: var(--guava-100); color: var(--guava-700); }
+  .due-badge.due-soon     { background: var(--slate-bg); color: var(--slate-fg); }
+  .due-badge svg          { flex-shrink: 0; }
+
+  /* ──────────────────────────────────────────────────────────────
+     INLINE EXPANSION BODY — note + subtasks + actions
+  ────────────────────────────────────────────────────────────── */
+  .card__expand,
+  .task-expand {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--edge);
+    animation: expandIn var(--dur) var(--ease);
   }
-  .due-badge.due-overdue {
-    background: var(--pastel-coral-bg); color: var(--pastel-coral-text); border-color: var(--pastel-coral-text);
+  @keyframes expandIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  .due-badge.due-soon {
-    background: var(--pastel-sky-bg); color: var(--link); border-color: var(--pastel-sky-text);
+  .card__note,
+  .task-expand__note {
+    font-size: 13px; line-height: 1.55;
+    color: var(--ink-2);
+    margin-bottom: 10px;
+    word-break: break-word;
   }
-  .due-badge svg { flex-shrink: 0; }
-  .tag.biz { background: var(--biz-bg); color: var(--biz); }
-  .tag.personal { background: var(--personal-bg); color: var(--personal); }
-  .tag.top3 { background: var(--pastel-yellow-bg); color: var(--top3); }
-  .tag.someday { background: var(--surface2); color: var(--muted); }
-  .tag.has-note { background: var(--surface2); color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
-  .tag.has-note svg { flex-shrink: 0; }
+  .card__note a,
+  .task-expand__note a {
+    color: var(--guava-700);
+    border-bottom: 1px solid var(--guava-200);
+    text-decoration: none;
+  }
+  .card__subtasks,
+  .task-expand__subs { display: flex; flex-direction: column; }
+  .card__subtask,
+  .subtask-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+    color: var(--ink-2);
+    cursor: pointer;
+    position: relative;
+  }
+  .card__subtask::before,
+  .subtask-row::before {
+    content: ''; position: absolute;
+    left: -8px; right: -8px; top: 0; bottom: 0;
+  }
+  .subtask-radio {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid var(--edge-strong);
+    background: transparent;
+    flex-shrink: 0;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .subtask-row.done .subtask-radio {
+    background: var(--guava-700);
+    border-color: var(--guava-700);
+  }
+  .subtask-row.done .subtask-text {
+    text-decoration: line-through;
+    color: var(--ink-4);
+  }
+  .subtask-text { flex: 1; min-width: 0; }
+  .subtask-input {
+    flex: 1; min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink-2);
+    padding: 0;
+  }
+  .subtask-del {
+    background: none; border: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: var(--r-sm);
+  }
+  .subtask-del:hover { color: var(--guava-700); background: var(--guava-50); }
+  .card__actions,
+  .task-expand__actions {
+    display: flex; gap: 6px; margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .expand-action {
+    font-family: inherit;
+    font-size: 11px; font-weight: 500;
+    padding: 4px 8px;
+    background: transparent;
+    color: var(--ink-3);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .expand-action:hover { background: var(--surface-2); color: var(--ink); }
+  .expand-action.is-on { color: var(--guava-700); border-color: var(--guava-300); background: var(--guava-50); }
+
+  /* Section heading per spec */
+  .section-hed {
+    font-size: var(--t-xs);
+    font-weight: 600;
+    color: var(--ink-4);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 22px 2px 10px;
+  }
+
+  /* Legacy task-content / task-note kept for compat (not rendered post-port) */
+  .task-content { flex: 1; min-width: 0; cursor: pointer; }
+  .task-note    { display: none; }
+  .note-read-more { display: none; }
 
   .task-actions-col {
     display: flex;
     align-items: center;
     flex-shrink: 0;
   }
-  .star-btn, .del-btn {
+  /* Star button — priority is now signaled (and toggled) by .strip on the
+     card. Hidden, but kept in markup so toggleTop3() and other handlers
+     keep their event-target assumptions. */
+  .star-btn { display: none; }
+  .del-btn {
     width: 24px; height: 24px;
-    border-radius: var(--radius-xs);
+    border-radius: var(--r-sm);
     border: 1px solid transparent;
     background: transparent;
-    color: var(--muted);
+    color: var(--ink-3);
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: all var(--dur-fast);
+    transition: all var(--dur) var(--ease);
     flex-shrink: 0;
     padding: 0;
   }
-  .star-btn { flex-shrink: 0; }
-  .star-btn:hover { background: var(--surface2); border-color: var(--border); }
+  .del-btn:hover { background: var(--surface-2); color: var(--guava-700); }
 
   .drag-handle {
     display: flex; align-items: center; justify-content: center;
@@ -633,8 +1066,11 @@
   }
   .done-toggle:hover { color: var(--text2); }
 
-  /* STATS BAR — blue to match header */
-  .stats {
+  /* Legacy desktop bottom stats bar — spec removes it; per-screen
+     stats live inline above the list. Hidden but element kept so
+     updateTaskStatsBar / updateHabitStatsBar calls don't error. */
+  .stats { display: none !important; }
+  .stats-legacy {
     position: fixed;
     bottom: 0; left: 0; right: 0;
     display: flex;
@@ -696,93 +1132,109 @@
     background: none; border: none; font-family: inherit;
   }
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-  @media (max-width: 600px) {
+  @media (max-width: 899.98px) {
     .error-toast { bottom: 120px; left: 12px; right: 12px; font-size: var(--fs-meta); }
   }
 
-  /* FLOATING CREATE BUTTON (square theme — slightly-rounded square) */
+  /* ──────────────────────────────────────────────────────────────
+     FAB — guava-700, 52×52, --r-lg, shadow-fab
+     Mobile: bottom 82px (above tabbar) · right 20px
+     Desktop: bottom 24px · right 24px
+  ────────────────────────────────────────────────────────────── */
   .fab {
-    position: fixed; bottom: 60px; right: 20px;
-    width: 52px; height: 52px; border-radius: var(--radius-sm);
-    background: var(--navy); color: #fff; border: none;
-    box-shadow: var(--shadow-lg);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: all var(--dur-quick); z-index: var(--z-fab-desktop);
+    position: fixed;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    right: 20px;
+    width: 52px; height: 52px;
+    border-radius: var(--r-lg);
+    background: var(--guava-700);
+    color: #fff;
+    border: none;
+    box-shadow: var(--shadow-fab);
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
+    z-index: var(--z-fab-mobile);
   }
-  .fab:hover { background: var(--navy-dark); transform: scale(1.06); box-shadow: var(--shadow-xl); }
-  .fab svg { width: 24px; height: 24px; }
+  .fab:hover { background: var(--guava-500); transform: translateY(-1px); }
+  .fab:active { transform: translateY(0) scale(0.96); }
+  .fab svg { width: 20px; height: 20px; }
   .fab.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
+  @media (min-width: 900px) {
+    .fab { bottom: 24px; right: 24px; z-index: var(--z-fab-desktop); }
+  }
 
-  /* Mobile bottom nav — full-width bar attached to the screen bottom.
-     Sits under the slim-stats row; together they form a two-row dark dock.
-     No mask here — the FAB nests in the stats row above; the nav stays
-     solid so content below the notch (tabs) never clips. */
+  /* ──────────────────────────────────────────────────────────────
+     MOBILE BOTTOM TABBAR — light surface, guava active
+     Applied to the existing .mobile-bottom-nav element so JS contracts
+     (data-tool on .mobile-nav-btn) stay intact.
+  ────────────────────────────────────────────────────────────── */
   .mobile-bottom-nav {
-    display: none;
-    position: fixed; left: 0; right: 0; bottom: 0;
-    background: #1f2847;
-    box-shadow: 0 -6px 20px rgba(30,60,140,0.12);
-    align-items: center; justify-content: space-around; gap: var(--space-1);
-    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom, 0));
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--edge);
+    box-shadow: none;
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
     z-index: var(--z-mobile-nav);
   }
+  @media (min-width: 900px) { .mobile-bottom-nav { display: none; } }
   .mobile-nav-btn {
+    flex: 1;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-    color: rgba(255,255,255,0.6);
-    padding: var(--space-1-5) var(--space-3);
-    min-width: 64px;
+    font-size: 10px; font-weight: 500;
+    color: var(--ink-4);
+    background: none; border: none;
+    cursor: pointer;
+    padding: 6px 4px 4px;
+    font-family: inherit;
+    min-width: 0;
     position: relative;
-    background: none; border: none; font-family: inherit; cursor: pointer;
-    border-radius: var(--radius-sm);
-    transition: color var(--dur-fast), background var(--dur-fast);
+    border-radius: 0;
+    transition: color var(--dur) var(--ease);
+  }
+  .mobile-nav-btn svg {
+    width: 22px; height: 22px;
+    stroke: currentColor; fill: none;
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    transition: fill var(--dur) var(--ease), stroke var(--dur) var(--ease);
   }
   .mobile-nav-btn.active {
-    color: #fff;
-    background: var(--navy);
+    color: var(--guava-700);
+    font-weight: 600;
+    background: transparent;
   }
-  .mobile-nav-btn svg { width: 20px; height: 20px; }
-  .mobile-nav-btn span { font-size: var(--fs-nano); font-weight: var(--fw-semibold); letter-spacing: 0.2px; }
+  .mobile-nav-btn.active svg {
+    fill: var(--guava-200);
+    stroke: var(--guava-700);
+  }
+  /* 4px guava dot beneath active tab label */
+  .mobile-nav-btn::after {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: transparent;
+    margin-top: 1px;
+    transition: background var(--dur) var(--ease);
+  }
+  .mobile-nav-btn.active::after { background: var(--guava-700); }
+  /* Badge kept for compat, styled subtle */
   .mobile-nav-badge {
-    position: absolute; top: 2px; right: 8px;
-    font-size: var(--fs-nano); font-weight: var(--fw-bold); color: #fff;
-    background: var(--danger); padding: 0 var(--space-1); border-radius: var(--radius-sm);
+    position: absolute; top: 2px; right: 10%;
+    font-size: var(--fs-nano); font-weight: 600;
+    color: #fff;
+    background: var(--guava-700);
+    padding: 0 4px; border-radius: var(--r-sm);
     min-width: 14px; text-align: center; line-height: 1.4;
   }
-  .mobile-nav-btn.active .mobile-nav-badge { background: rgba(255,255,255,0.25); }
-  @media (max-width: 600px) {
-    .mobile-bottom-nav { display: inline-flex; }
-  }
+  .mobile-nav-btn.active .mobile-nav-badge { background: var(--guava-800); }
 
-  /* Mobile slim stats — flush above the full-width nav, same dark surface.
-     Solid full-width strip (no notch) so content behind never shows
-     through. Stats content splits into left/right groups via .mss-group
-     so the center area stays clear for the raised FAB to sit over. */
-  .mobile-slim-stats {
-    display: none;
-    position: fixed; left: 0; right: 0;
-    /* Sits flush on top of the nav (nav inner height + its top/bottom padding + safe-area). */
-    bottom: calc(60px + env(safe-area-inset-bottom, 0));
-    height: 28px; background: #1f2847;
-    align-items: center; justify-content: space-between;
-    gap: var(--space-2); font-size: var(--fs-micro); color: rgba(255,255,255,0.65);
-    padding: 0 var(--space-5);
-    z-index: var(--z-slim-stats);
-    white-space: nowrap;
-  }
-  .mobile-slim-stats .mss-group {
-    display: inline-flex; align-items: center; gap: var(--space-2);
-  }
-  /* Stat-value colors — use the pastel LIGHT tokens because the bar surface
-     is dark. The darker "-text" tokens are reserved for light-bg pastels. */
-  .mobile-slim-stats .sv { color: #fff; font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-work { color: var(--pastel-sky-bg); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-pers { color: var(--pastel-lavender-bg); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-green { color: var(--pastel-mint-bg); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sv-amber { color: var(--pastel-yellow-bg); font-weight: var(--fw-semibold); }
-  .mobile-slim-stats .sep { width: 1px; height: 8px; background: rgba(255,255,255,0.2); }
-  @media (max-width: 600px) {
-    .mobile-slim-stats { display: flex; }
-  }
+  /* Legacy mobile-slim-stats — spec removes the stat strip in the chrome.
+     Per-screen stats live inline above the list now. */
+  .mobile-slim-stats { display: none !important; }
 
   /* FLOATING CREATE PANEL */
   .create-panel {
@@ -919,7 +1371,7 @@
   .fab:active { transform: scale(0.9); }
 
   /* MOBILE */
-  @media (max-width: 600px) {
+  @media (max-width: 899.98px) {
     .header-inner { padding: var(--space-1-5) var(--space-3); height: 48px; gap: var(--space-1); }
     .pill-bar { padding: var(--space-2) var(--space-3) var(--space-3); }
     .pill-bar-inner { max-width: 100%; gap: var(--space-1); padding: var(--space-1) var(--space-1); }
@@ -1019,7 +1471,7 @@
   .floating-search .fs-clear:hover { color: var(--text); }
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
-  @media (max-width: 600px) {
+  @media (max-width: 899.98px) {
     /* Sits 16px above the dock top and 16px from the right edge — visually
        equal padding from the nearest chrome / screen edge. Dock effective
        height is 88px (60 nav + 28 stats) + safe-area. */
@@ -1196,18 +1648,30 @@
      USER MENU (header)
   ════════════════════════════ */
   .user-menu { position: relative; flex-shrink: 0; }
+  /* Desktop: header avatar hidden — avatar lives in sidebar footer. */
+  @media (min-width: 900px) {
+    .user-menu { display: none !important; }
+    /* Dropdown opened from sidebar footer — position bottom-left, above sidebar bottom. */
+    .user-dropdown {
+      position: fixed !important;
+      top: auto !important; right: auto !important;
+      bottom: 60px !important; left: 12px !important;
+      width: 196px;
+    }
+  }
 
   .user-avatar {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    border: 1.5px solid rgba(255,255,255,0.4);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: var(--fs-pill); font-weight: var(--fw-bold);
-    color: #fff; overflow: hidden;
-    transition: border-color var(--dur-quick), transform var(--dur-quick);
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--guava-200);
+    border: none;
+    display: grid; place-items: center;
+    cursor: pointer; font-size: 12px; font-weight: 700;
+    color: var(--guava-700); overflow: hidden;
+    transition: transform var(--dur) var(--ease);
     user-select: none;
+    flex-shrink: 0;
   }
-  .user-avatar:hover { border-color: rgba(255,255,255,0.8); transform: scale(1.05); }
+  .user-avatar:hover { transform: scale(1.05); }
   .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
   .user-dropdown {
@@ -1604,55 +2068,209 @@
   .pill.stat-pill { border-color: var(--accent); color: var(--accent); background: var(--pastel-lavender-bg); }
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  /* Today — progress ring */
-  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); display: flex; align-items: center; gap: 0; }
-  .progress-ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
-  .progress-ring-wrap svg { transform: rotate(-90deg); width: 56px; height: 56px; }
-  .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--navy); line-height: 1; }
-  .progress-ring-sub { display: none; }
-  .progress-stats { display: flex; flex: 1; }
-  .progress-stat { flex: 1; text-align: center; position: relative; padding: var(--space-1) 0; }
-  .progress-stat + .progress-stat::before { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 1px; background: var(--border); }
-  .progress-stat .val { font-size: var(--fs-title-mobile); font-weight: var(--fw-bold); color: var(--text); line-height: 1; }
-  .progress-stat .lbl { font-size: var(--fs-label); color: var(--muted); margin-top: var(--space-0-5); letter-spacing: 0.2px; }
+  /* ──────────────────────────────────────────────────────────────
+     HABITS — stats strip + cards per gsd-handoff/screens-lifestyle.jsx
+  ────────────────────────────────────────────────────────────── */
 
-  /* Habit cards */
-  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-2-5) var(--space-3); margin-bottom: var(--space-2); box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
-  .habit-card:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
-  .habit-card.habit-done { background: var(--pastel-mint-bg); border-color: var(--pastel-mint-bg); }
-  .habit-card-top { display: flex; align-items: center; gap: var(--space-2); }
-  .habit-emoji { font-size: var(--fs-card); flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
-  .habit-name { font-size: var(--fs-task); font-weight: var(--fw-semibold); flex: 1; }
+  /* Stats strip — replaces the legacy progress-ring section */
+  .progress-section,
+  .stats-strip {
+    display: flex; gap: 24px; align-items: baseline;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-card);
+    margin-top: 4px; margin-bottom: 12px;
+  }
+  .stat-block { display: flex; flex-direction: column; gap: 2px; }
+  .stat-block + .stat-block { border-left: 1px solid var(--edge); padding-left: 24px; }
+  .stat-block .v {
+    font-size: 24px; font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink); line-height: 1;
+  }
+  .stat-block .v em {
+    font-style: normal; font-size: 12px;
+    color: var(--ink-4); font-weight: 500;
+    margin-left: 2px;
+  }
+  .stat-block .l {
+    font-size: 9px; color: var(--ink-4);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+  .stat-block.is-guava .v { color: var(--guava-700); }
 
-  /* Circle checkbox for Today view */
-  .habit-check { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--dur-fast); background: #fff; align-self: center; position: relative; z-index: 1; }
-  .habit-check:hover { border-color: var(--check); }
+  /* Hide legacy progress ring elements (replaced by stats strip) */
+  .progress-ring-wrap, .progress-stats { display: none; }
+
+  /* Habit card — same shell as task card */
+  .habit-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    padding: 12px 14px 12px 22px;
+    margin-bottom: 6px;
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+    overflow: hidden;
+    touch-action: pan-y;
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .habit-card:hover { border-color: var(--edge-strong); box-shadow: var(--shadow-card-hover); }
+  /* Strip — guava when active/streak; subtle when not. Reuse .strip from task card. */
+  .habit-card > .strip { background: transparent; }
+  .habit-card.has-streak > .strip { background: var(--guava-700); }
+  .habit-card.habit-done {
+    background: var(--surface);
+    border-color: var(--edge);
+  }
+  .habit-card-top {
+    display: flex; align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .habit-emoji { font-size: 16px; flex-shrink: 0; line-height: 1; width: auto; text-align: left; }
+  .habit-name {
+    font-size: var(--t-md); font-weight: 500;
+    color: var(--ink); flex: 1; min-width: 0;
+    line-height: 1.35;
+  }
+  .habit-pct {
+    font-size: 15px; color: var(--guava-700);
+    font-weight: 700; font-family: var(--font-mono);
+  }
+  .habit-pct em {
+    font-size: 10px; color: var(--ink-4);
+    margin-left: 2px; font-weight: 500; font-style: normal;
+  }
+
+  /* Inline check (today view) — matches .check from task card */
+  .habit-check {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--edge-strong);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    align-self: center;
+    position: relative;
+    z-index: 1;
+    margin-top: 1px;
+    padding: 0;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .habit-check::before { content: ''; position: absolute; inset: -12px; }
+  .habit-check:hover { border-color: var(--ink-3); }
   .habit-check svg { display: none; }
-  .habit-check.checked { background: var(--check); border-color: var(--check); }
+  .habit-check.checked {
+    background: var(--guava-700);
+    border-color: var(--guava-700);
+  }
   .habit-check.checked svg { display: block; }
-  .habit-today-card { cursor: default; display: flex; align-items: center; gap: var(--space-2-5); overflow: hidden; }
-  .habit-today-card:hover { border-color: var(--border); }
-  .habit-today-card .habit-card-footer { padding-left: 0; margin-top: var(--space-0-5); }
+
+  .habit-today-card {
+    cursor: default;
+    display: flex; align-items: flex-start; gap: 12px;
+    overflow: hidden;
+  }
+  .habit-today-card:hover { border-color: var(--edge-strong); }
+  .habit-today-card .habit-card-footer { padding-left: 0; margin-top: 4px; }
   .habit-today-content { flex: 1; min-width: 0; overflow: hidden; position: relative; z-index: 1; }
-  .habit-emoji-lg { font-size: var(--fs-display); flex-shrink: 0; line-height: 1; align-self: center; position: relative; z-index: 1; }
-  .habit-streak { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--top3); }
-  .habit-streak.dead { color: var(--muted); }
+  .habit-emoji-lg {
+    font-size: 24px; flex-shrink: 0; line-height: 1;
+    align-self: flex-start; padding-top: 2px;
+    position: relative; z-index: 1;
+  }
+
+  .habit-streak {
+    font-size: 11px; font-weight: 500;
+    color: var(--ink-3);
+  }
+  .habit-streak.dead { color: var(--ink-4); }
+
+  /* Score ring (drill-in) — keep but recolor */
   .habit-score-ring { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
   .habit-score-ring svg { transform: rotate(-90deg); }
   .habit-score-ring .score-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--fs-nano); font-weight: var(--fw-bold); }
-  .habit-week-dots { display: flex; gap: var(--space-1); margin-top: var(--space-2); justify-content: center; }
-  .habit-day { display: flex; flex-direction: column; align-items: center; gap: var(--space-0-5); flex: 1; }
-  .habit-day-label { font-size: var(--fs-label); color: var(--muted); font-weight: var(--fw-medium); text-transform: uppercase; }
-  .habit-day-dot { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; transition: all var(--dur-quick); cursor: pointer; font-size: var(--fs-search); font-weight: var(--fw-semibold); color: var(--text2); }
-  .habit-day-dot.done { background: var(--check); border-color: var(--check); color: #fff; }
-  .habit-day-dot.today { border-color: var(--navy); box-shadow: var(--shadow-focus); }
-  .habit-day-dot.disabled { opacity: 0.25; pointer-events: none; border-style: dashed; }
-  .habit-card-meta { display: flex; align-items: center; gap: var(--space-1-5); font-size: var(--fs-meta); color: var(--muted); }
-  .habit-card-meta .tag { font-size: var(--fs-label); padding: var(--space-0-5) var(--space-1-5); border-radius: var(--radius-sm); font-weight: var(--fw-medium); }
-  .habit-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-1); padding-left: var(--space-6); }
-  .habit-card-actions { display: flex; gap: var(--space-0-5); }
-  .habit-action-btn { background: none; border: none; cursor: pointer; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); color: var(--muted); transition: all var(--dur-fast); line-height: 1; }
-  .habit-action-btn:hover { background: var(--hover); color: var(--navy); }
+
+  /* 7-day strip — M T W T F S S labels + circled day numbers */
+  .habit-week-dots {
+    display: flex;
+    margin-top: 10px;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .habit-day {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+  }
+  .habit-day-label {
+    font-size: 9px;
+    color: var(--ink-4);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .habit-day-dot {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--edge-strong);
+    background: transparent;
+    display: grid; place-items: center;
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    cursor: pointer;
+    font-size: 10px; font-weight: 600;
+    color: var(--ink-3);
+  }
+  .habit-day-dot.done {
+    background: var(--guava-700);
+    border-color: var(--guava-700);
+    color: #fff;
+  }
+  .habit-day-dot.today {
+    border-color: var(--guava-700);
+    border-width: 1.5px;
+    background: transparent;
+    box-shadow: none;
+  }
+  /* Skip = day not due by cadence */
+  .habit-day-dot.disabled {
+    background: var(--surface-2);
+    border-color: var(--surface-2);
+    color: var(--ink-5);
+    pointer-events: none;
+  }
+
+  .habit-card-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px;
+    font-size: 11px; color: var(--ink-3);
+  }
+  .habit-card-meta .tag {
+    font-size: var(--t-xs); padding: 0 7px; height: 20px;
+    border-radius: var(--r-sm); font-weight: 500;
+    display: inline-flex; align-items: center;
+  }
+  .habit-card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 10px;
+    padding-left: 0;
+  }
+  .habit-card-actions { display: flex; gap: 2px; }
+  .habit-action-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--r-sm);
+    color: var(--ink-4);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+    line-height: 1;
+  }
+  .habit-action-btn:hover { background: var(--surface-2); color: var(--guava-700); }
 
   /* Habit stats view */
   .stat-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: var(--space-1); }
@@ -1867,7 +2485,7 @@
   .drill-edit-section { padding-top: var(--space-1); }
   .drill-edit-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
 
-  @media (max-width: 600px) {
+  @media (max-width: 899.98px) {
     .habit-drill-overlay { background: var(--surface); }
     .habit-drill-panel { width: 100%; max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; box-shadow: none; }
     .habit-cal-cell { width: 32px; height: 32px; font-size: var(--fs-meta); }
@@ -2016,7 +2634,7 @@
   .ns-item.drop-target { background: rgba(45,95,166,0.12); border: 1px dashed var(--navy); }
 
   /* ──── MOBILE NOTES ──── */
-  @media (max-width: 600px) {
+  @media (max-width: 899.98px) {
     .notes-layout { flex-direction: column; flex-wrap: nowrap; height: auto; min-height: calc(100vh - 160px); }
     .notes-left-col { display: contents; }
     .notes-sidebar { display: none; }
@@ -2071,20 +2689,20 @@
     .tb-desktop-only { display: none !important; }
     .note-action-btn { display: none !important; }
   }
-  @media (min-width: 601px) {
+  @media (min-width: 900px) {
     .mobile-note-header { display: none !important; }
     .mobile-nb-toggle { display: none !important; }
     .mobile-nb-drawer { display: none !important; }
   }
   /* Medium: sidebar + list stack into one column, editor beside it */
-  @media (max-width: 1080px) and (min-width: 601px) {
+  @media (max-width: 1080px) and (min-width: 900px) {
     .notes-left-col { display: flex; flex-direction: column; width: 280px; flex-shrink: 0; height: calc(100vh - 86px); border-right: 1px solid var(--border); transition: width var(--dur-slower) ease; }
     .notes-sidebar { width: 100%; border-right: none; max-height: 45%; overflow-y: auto; border-bottom: 1px solid var(--border); }
     .notes-list { width: 100%; border-right: none; flex: 1; min-height: 0; }
     .notes-editor { flex: 1; min-width: 0; }
     .ne-page { padding: var(--space-6) var(--space-6) var(--space-8); }
   }
-  @media (max-width: 800px) and (min-width: 601px) {
+  @media (max-width: 800px) and (min-width: 900px) {
     .notes-left-col { width: 240px; }
     .ne-page { padding: var(--space-6) var(--space-5) var(--space-8); }
   }
@@ -2276,14 +2894,57 @@
   </div>
 </div>
 
+<!-- ═══════════ APP SHELL (sidebar + main) ═══════════ -->
+<div class="app-shell">
+
+<!-- DESKTOP SIDEBAR — hidden <900px -->
+<aside class="sidebar" id="desktopSidebar">
+  <a class="wordmark" href="#" aria-label="GSD"><span>gsd</span><span class="dot"></span></a>
+  <nav class="sidebar-nav">
+    <button class="sidebar-btn is-active" data-tool="tasks">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg>
+      <span>Tasks</span>
+      <span class="count" id="sidebarTasksCount">0</span>
+    </button>
+    <button class="sidebar-btn" data-tool="habits">
+      <svg viewBox="0 0 24 24"><path d="M4 7l3-3 6 6-3 3z"/><path d="M14 14l6 6"/><circle cx="16" cy="8" r="3"/></svg>
+      <span>Habits</span>
+      <span class="count" id="sidebarHabitsCount">0</span>
+    </button>
+    <button class="sidebar-btn" data-tool="notes">
+      <svg viewBox="0 0 24 24"><path d="M6 4h10l4 4v12H6z"/><path d="M16 4v4h4"/><path d="M9 12h6M9 15h4"/></svg>
+      <span>Notes</span>
+      <span class="count" id="sidebarNotesCount">0</span>
+    </button>
+    <button class="sidebar-btn" data-tool="scratch">
+      <svg viewBox="0 0 24 24"><path d="M4 18l4-12 3 8 3-6 6 10"/></svg>
+      <span>Scratch</span>
+    </button>
+  </nav>
+  <div class="sidebar-sep"></div>
+  <div class="sidebar-foot" id="sidebarFooter" onclick="toggleUserDropdown()">
+    <div class="avatar" id="sidebarAvatar">S</div>
+    <div style="line-height:1.3;min-width:0;flex:1;overflow:hidden;">
+      <div id="sidebarUserName" style="font-weight:600;color:var(--ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Signed in</div>
+      <div id="sidebarUserEmail" style="font-size:10px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN COLUMN -->
+<div class="app-main">
+
 <header>
-  <!-- Row 1: logo + user avatar -->
+  <!-- Row 1: wordmark (mobile only) + page title + avatar (mobile only) -->
   <div class="header-row header-top">
     <div class="header-inner">
-    <a class="logo" href="#">
-      <span class="logo-main">GSD<em class="logo-dot">.</em></span>
+    <a class="logo" href="#" id="headerLogo">
+      <span class="logo-main"><span>gsd</span><em class="logo-dot">.</em></span>
+      <span class="page-title-mobile" id="pageTitle">Tasks</span>
     </a>
-    <!-- Tool Switcher (desktop) -->
+    <!-- Desktop-only header actions (new-task button, search, etc.) -->
+    <div class="header-actions" id="headerActions"></div>
+    <!-- Tool Switcher (legacy — hidden; nav lives in sidebar on desktop, tabbar on mobile) -->
     <div class="tool-switcher">
       <button class="tool-tab active" data-tool="tasks">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -2402,6 +3063,9 @@
   </div>
 </div>
 <div class="stats" id="statsBar"></div>
+
+</div><!-- /app-main -->
+</div><!-- /app-shell -->
 
 <!-- Error / offline toast -->
 <div class="error-toast" id="errorToast">
@@ -2783,6 +3447,121 @@ let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), edit
 let noteOpen = false, dueDateOpen = false;
 let dragId = null, dragOverId = null;
 let searchQuery = '';
+/* ── Task inline expansion + subtasks (lifestyle redesign) ── */
+const expandedTaskIds = new Set();   // task.id (numeric) — which cards are expanded
+let subtasks = [];                    // [{id, client_id, task_client_id, text, done, position, ...}]
+const subtasksByTask = new Map();     // task_client_id -> sorted array of subtasks
+
+function escapeHTML(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function toggleTaskExpand(id) {
+  if (expandedTaskIds.has(id)) expandedTaskIds.delete(id);
+  else expandedTaskIds.add(id);
+  render();
+}
+
+function rebuildSubtasksIndex() {
+  subtasksByTask.clear();
+  for (const s of subtasks) {
+    if (!subtasksByTask.has(s.task_client_id)) subtasksByTask.set(s.task_client_id, []);
+    subtasksByTask.get(s.task_client_id).push(s);
+  }
+  for (const arr of subtasksByTask.values()) {
+    arr.sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
+  }
+}
+
+/* ── Subtask UI handlers (Supabase-backed via pushSubtask / dbDeleteSubtask) ── */
+function startNewSubtask(taskClientId) {
+  taskClientId = String(taskClientId);
+  // If already a tmp draft for this task, just refocus it
+  const existingTmp = subtasks.find(s => s.task_client_id === taskClientId && s.isNew);
+  if (existingTmp) {
+    focusSubtaskInput(existingTmp.client_id);
+    return;
+  }
+  const tmpId = 'tmp-' + Date.now() + '-' + Math.random().toString(36).slice(2,7);
+  subtasks.push({
+    id: tmpId,
+    client_id: tmpId,
+    task_client_id: taskClientId,
+    text: '',
+    done: false,
+    position: nextSubtaskPosition(taskClientId),
+    isNew: true,
+  });
+  rebuildSubtasksIndex();
+  // Ensure card is expanded so the new input is visible
+  const numId = Number(taskClientId);
+  if (!isNaN(numId)) expandedTaskIds.add(numId);
+  render();
+  focusSubtaskInput(tmpId);
+}
+function focusSubtaskInput(clientId) {
+  setTimeout(() => {
+    const row = document.querySelector(`[data-sub-id="${clientId}"]`);
+    if (!row) return;
+    const input = row.querySelector('.subtask-input');
+    if (input) { input.focus(); input.select(); }
+  }, 30);
+}
+function commitNewSubtask(taskClientId, tmpId, text) {
+  const trimmed = (text || '').trim();
+  const idx = subtasks.findIndex(s => s.client_id === tmpId);
+  if (idx < 0) return;
+  if (!trimmed) {
+    // Cancel — drop the tmp row
+    subtasks.splice(idx, 1);
+    rebuildSubtasksIndex();
+    render();
+    return;
+  }
+  // Promote tmp → real
+  const realId = String(Date.now()) + '-' + Math.random().toString(36).slice(2,8);
+  const promoted = {
+    id: realId,
+    client_id: realId,
+    task_client_id: taskClientId,
+    text: trimmed,
+    done: false,
+    position: subtasks[idx].position,
+  };
+  subtasks[idx] = promoted;
+  rebuildSubtasksIndex();
+  render();
+  pushSubtask(promoted);
+}
+function handleSubtaskInputKey(e, taskClientId, tmpId) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    commitNewSubtask(taskClientId, tmpId, e.target.value);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    commitNewSubtask(taskClientId, tmpId, '');
+  }
+}
+async function toggleSubtask(taskClientId, subClientId) {
+  const s = subtasks.find(x => x.client_id === subClientId);
+  if (!s || s.isNew) return;
+  s.done = !s.done;
+  rebuildSubtasksIndex();
+  render();
+  pushSubtask(s);
+}
+async function deleteSubtask(taskClientId, subClientId) {
+  const idx = subtasks.findIndex(s => s.client_id === subClientId);
+  if (idx < 0) return;
+  const wasNew = subtasks[idx].isNew;
+  subtasks.splice(idx, 1);
+  rebuildSubtasksIndex();
+  render();
+  if (!wasNew) dbDeleteSubtask(subClientId);
+}
 
 /* ════════════════════════════════════════
    SUPABASE CONFIG + REAL AUTH
@@ -2868,6 +3647,7 @@ function signInUser(user) {
   load();
   loadHabits();
   loadNotes();
+  loadSubtasks();
 }
 
 async function signOut() {
@@ -2876,6 +3656,7 @@ async function signOut() {
   await db.auth.signOut();
   currentUser = null;
   tasks = [];
+  subtasks = []; subtasksByTask.clear(); subtaskRowIdMap.clear(); expandedTaskIds.clear();
   habitsArr = []; habitCompletions = [];
   notesArr = []; notebooksArr = []; activeNoteId = null; notesSidebarView = 'all';
   toggleUserDropdown(false);
@@ -2906,6 +3687,23 @@ function setUserUI(user) {
   document.getElementById('userMenu').style.display = 'flex';
   document.getElementById('dropdownName').textContent = name;
   document.getElementById('dropdownEmail').textContent = user.email;
+  // Sidebar footer (desktop ≥900px)
+  const sbName = document.getElementById('sidebarUserName');
+  const sbEmail = document.getElementById('sidebarUserEmail');
+  const sbAv = document.getElementById('sidebarAvatar');
+  if (sbName) sbName.textContent = name;
+  if (sbEmail) sbEmail.textContent = user.email;
+  if (sbAv) {
+    sbAv.replaceChildren();
+    if (pic && /^https?:\/\//i.test(pic)) {
+      const img = document.createElement('img');
+      img.src = pic; img.alt = name;
+      img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+      sbAv.appendChild(img);
+    } else {
+      sbAv.textContent = name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    }
+  }
 }
 
 function toggleUserDropdown(force) {
@@ -2946,7 +3744,7 @@ function switchTool(tool) {
   document.querySelectorAll('[data-tool-view]').forEach(el => {
     el.style.display = el.dataset.toolView === tool ? '' : 'none';
   });
-  // Sync desktop tool tabs
+  // Sync desktop tool tabs (legacy — kept for compat, hidden via CSS)
   document.querySelectorAll('.tool-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
   });
@@ -2954,6 +3752,14 @@ function switchTool(tool) {
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
   });
+  // Sync desktop sidebar
+  document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.tool === tool);
+  });
+  // Update page title (mobile header + desktop header)
+  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch' };
+  const pt = document.getElementById('pageTitle');
+  if (pt) pt.textContent = titles[tool] || '';
   // Update floating search
   updateFloatingSearch();
   // Update stats bar and render for the active tool
@@ -2964,9 +3770,9 @@ function switchTool(tool) {
   else if (tool === 'notes') { renderNotes(); }
   else if (tool === 'scratch') { renderScratch(); }
 }
-// Wire click handlers for tool tabs and mobile nav
+// Wire click handlers for tool tabs, mobile nav, and sidebar
 document.addEventListener('click', e => {
-  const tab = e.target.closest('.tool-tab, .mobile-nav-btn');
+  const tab = e.target.closest('.tool-tab, .mobile-nav-btn, .sidebar-btn');
   if (tab && tab.dataset.tool) switchTool(tab.dataset.tool);
 });
 // Tool keyboard shortcuts — Shift+T/H/N/S, only when not in a typeable context
@@ -3292,6 +4098,91 @@ async function load() {
   subscribeToChanges();
   // autoBackup runs after tasks are loaded so it snapshots real data, not seed
   autoBackup();
+}
+
+/* ══════ SUBTASKS DATA LAYER ══════ */
+const subtaskRowIdMap = new Map();   // DB row id → client_id
+
+function rowToSubtask(r) {
+  return {
+    id:              r.client_id,
+    client_id:       r.client_id,
+    task_client_id:  r.task_client_id,
+    text:            r.text || '',
+    done:            !!r.done,
+    position:        r.position ?? 0,
+  };
+}
+function subtaskToRow(s) {
+  return {
+    user_id:         currentUser.id,
+    client_id:       s.client_id,
+    task_client_id:  s.task_client_id,
+    text:            s.text || '',
+    done:            !!s.done,
+    position:        s.position ?? 0,
+  };
+}
+
+async function loadSubtasks() {
+  const { data, error } = await db.from('task_subtasks')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('position', { ascending: true });
+  if (error) { console.error('loadSubtasks:', error.message); return; }
+  subtasks = data.map(rowToSubtask);
+  data.forEach(r => subtaskRowIdMap.set(r.id, r.client_id));
+  rebuildSubtasksIndex();
+  if (activeTool === 'tasks') render();
+  subscribeToSubtaskChanges();
+}
+
+function subscribeToSubtaskChanges() {
+  db.channel('task_subtasks-changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'task_subtasks',
+      filter: `user_id=eq.${currentUser.id}`
+    }, payload => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const incoming = rowToSubtask(payload.new);
+        subtaskRowIdMap.set(payload.new.id, payload.new.client_id);
+        const idx = subtasks.findIndex(s => s.client_id === incoming.client_id);
+        if (idx >= 0) subtasks[idx] = incoming; else subtasks.push(incoming);
+      } else if (payload.eventType === 'DELETE') {
+        const cid = subtaskRowIdMap.get(payload.old.id);
+        if (cid !== undefined) {
+          subtasks = subtasks.filter(s => s.client_id !== cid);
+          subtaskRowIdMap.delete(payload.old.id);
+        }
+      }
+      rebuildSubtasksIndex();
+      if (activeTool === 'tasks') render();
+    })
+    .subscribe();
+}
+
+async function pushSubtask(s) {
+  if (!currentUser || s.isNew || s.client_id.startsWith('tmp-')) return;
+  const { error } = await db.from('task_subtasks')
+    .upsert(subtaskToRow(s), { onConflict: 'user_id,client_id' });
+  if (error) { setStatus('error'); console.error('pushSubtask:', error.message); }
+}
+
+async function dbDeleteSubtask(clientId) {
+  if (!currentUser) return;
+  const { error } = await db.from('task_subtasks')
+    .delete()
+    .eq('user_id', currentUser.id)
+    .eq('client_id', clientId);
+  if (error) { setStatus('error'); console.error('dbDeleteSubtask:', error.message); }
+}
+
+function nextSubtaskPosition(taskClientId) {
+  const arr = subtasksByTask.get(taskClientId) || [];
+  if (!arr.length) return 0;
+  return Math.max(...arr.map(s => s.position ?? 0)) + 10;
 }
 
 /* ══════ HABITS DATA LAYER ══════ */
@@ -3767,44 +4658,55 @@ function computeBestStreak(habitClientId) {
   return best;
 }
 
+/**
+ * Cadence-aware score per gsd-handoff/DESIGN_HANDOFF.md §4.
+ *   pct(habit) = clamp(actual / expected, 0, 1) × 100
+ * "actual"   = completions in the current period.
+ * "expected" = how many were scheduled in the period so far, per cadence.
+ *
+ * The period is the current calendar month for daily/weekday/specific-DoW
+ * cadences, and the natural cadence period (week/month) for x_per_week and
+ * x_per_month. Always clamped 0–100 — a 1×/month habit completed once
+ * shows 100% (not 5%, the old bug).
+ */
 function computeScore(habit) {
-  const today = new Date(todayStr() + 'T12:00:00');
+  const today = todayStr();                                  // YYYY-MM-DD
+  const todayD = new Date(today + 'T12:00:00');
   const comps = completionsForHabit(habit.id);
 
-  // Quota-based: what % of recent periods met the quota
+  // x_per_week — period = current week (Mon–today). Expected = quota for the week.
   if (habit.frequency === 'x_per_week') {
-    const dow = today.getDay();
-    const thisMon = new Date(today); thisMon.setDate(today.getDate() - ((dow + 6) % 7));
-    let met = 0;
-    for (let i = 0; i < 4; i++) {
-      const checkDate = new Date(thisMon); checkDate.setDate(thisMon.getDate() - i * 7);
-      if (isQuotaMet(habit, checkDate.toISOString().slice(0, 10))) met++;
-    }
-    return Math.round((met / 4) * 100);
-  }
-  if (habit.frequency === 'x_per_month') {
-    let y = today.getFullYear(), m = today.getMonth();
-    let met = 0;
-    for (let i = 0; i < 3; i++) {
-      const ds = `${y}-${String(m + 1).padStart(2, '0')}-15`;
-      if (isQuotaMet(habit, ds)) met++;
-      m--; if (m < 0) { m = 11; y--; }
-    }
-    return Math.round((met / 3) * 100);
+    const dow = todayD.getDay();
+    const monday = new Date(todayD); monday.setDate(todayD.getDate() - ((dow + 6) % 7));
+    const monStr = monday.toISOString().slice(0, 10);
+    const actual = comps.filter(c => c.completedDate >= monStr && c.completedDate <= today).length;
+    const expected = habit.frequencyCount || habit.quota || 1;
+    return Math.min(100, Math.round((actual / expected) * 100));
   }
 
-  // Day-based score (last 30 days)
-  const thirtyAgo = new Date(today); thirtyAgo.setDate(today.getDate() - 30);
+  // x_per_month — period = current month. Expected = quota for the month.
+  if (habit.frequency === 'x_per_month') {
+    const y = todayD.getFullYear(), m = todayD.getMonth();
+    const monStart = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    const actual = comps.filter(c => c.completedDate >= monStart && c.completedDate <= today).length;
+    const expected = habit.frequencyCount || habit.quota || 1;
+    return Math.min(100, Math.round((actual / expected) * 100));
+  }
+
+  // Day-based (every day, weekdays, specific DoW) — period = current month so far.
+  // Expected = count of due days from day 1 → today (inclusive) per the cadence.
+  const y = todayD.getFullYear(), m = todayD.getMonth();
   let actual = 0, expected = 0;
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(thirtyAgo); d.setDate(thirtyAgo.getDate() + i + 1);
+  for (let day = 1; day <= todayD.getDate(); day++) {
+    const d = new Date(y, m, day, 12, 0, 0);
     const ds = d.toISOString().slice(0, 10);
     if (isHabitDueOnDate(habit, ds)) {
       expected++;
       if (comps.some(c => c.completedDate === ds)) actual++;
     }
   }
-  return expected === 0 ? 100 : Math.round((actual / expected) * 100);
+  if (expected === 0) return 0;
+  return Math.min(100, Math.round((actual / expected) * 100));
 }
 
 function scoreColor(score) {
@@ -3910,25 +4812,29 @@ function renderHabitToday(active) {
     return;
   }
 
+  // Cadence-aware Month % across all active habits (spec §4)
+  const monthPct = active.length
+    ? Math.round(active.reduce((s, h) => s + computeScore(h), 0) / active.length)
+    : 0;
+
   el.innerHTML = `
-    <div class="progress-section">
-      <div class="progress-ring-wrap">
-        <svg viewBox="0 0 56 56">
-          <circle cx="28" cy="28" r="23" fill="none" stroke="var(--border)" stroke-width="5"/>
-          <circle cx="28" cy="28" r="23" fill="none" style="stroke:var(--navy)" stroke-width="5"
-            stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="round"/>
-        </svg>
-        <div class="progress-ring-label">${pct}%</div>
+    <div class="stats-strip">
+      <div class="stat-block is-guava">
+        <span class="v">${monthPct}<em>%</em></span>
+        <span class="l">Month · cadence-adj.</span>
       </div>
-      <div class="progress-stats">
-        <div class="progress-stat"><div class="val" style="color:var(--check)">${done.length}</div><div class="lbl">Done</div></div>
-        <div class="progress-stat"><div class="val" style="color:var(--muted)">${remaining.length}</div><div class="lbl">Left</div></div>
-        <div class="progress-stat"><div class="val" style="color:var(--top3)">${bestStreak}</div><div class="lbl">Best streak</div></div>
+      <div class="stat-block">
+        <span class="v">${bestStreak}</span>
+        <span class="l">Best streak</span>
+      </div>
+      <div class="stat-block">
+        <span class="v">${remaining.length}<em>/${due.length}</em></span>
+        <span class="l">Due today</span>
       </div>
     </div>
-    ${remaining.length ? `<div class="section-label">⏳ REMAINING TODAY</div>${remHTML}` : ''}
-    ${done.length ? `<div class="section-label">✅ COMPLETED TODAY</div>${doneHTML}` : ''}
-    ${due.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No habits due today</div>' : ''}
+    ${remaining.length ? `<div class="section-label">Due today</div>${remHTML}` : ''}
+    ${done.length ? `<div class="section-label">Completed</div>${doneHTML}` : ''}
+    ${due.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:13px">No habits due today</div>' : ''}
   `;
 }
 
@@ -4453,40 +5359,35 @@ function render() {
 }
 
 function slabel(l,n,showSort) {
-  const icons = {'Tasks':'📋','Work':'💼','Personal':'🏠','Later':'🌱'};
-  const emoji = Object.entries(icons).find(([k])=>l.includes(k));
-  const prefix = emoji ? `<span style="font-size:11px;margin-right:2px">${emoji[1]}</span>` : '';
+  // Strip legacy "&#9733; " (☆) prefix used for Starred sections — strip is the only signal now
+  const cleaned = l.replace(/^&#9733;\s*/,'').replace(/^Starred\s*/,'Priority ').trim();
   const sortLabels = {default:'User Sorted',recent:'Recent',due:'Due Date'};
   const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button></div>` : '';
-  return `<div class="section-label">${prefix}${l}<span class="cnt">${n}</span>${sortHtml}</div>`;
+  return `<div class="section-label">${cleaned}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 
-// Search variant — highlights matched text, disables drag
+// Search variant — highlights matched text, disables drag, opens edit on body tap
 function tHTMLsearch(t, query) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
-  const top3tag = '';  /* Starred is already signaled by the blue left strip on the card. */
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.top3||t.someday||t.due||t.note;
-  const doneStyle = t.done ? ' done' : '';
-  const sf = t.top3?'var(--top3)':'none';
-  const ss = t.top3?'var(--top3)':'currentColor';
-  return `<div class="task-item${t.top3?' top3':''}${doneStyle}" id="ti-${t.id}" data-id="${t.id}">
+  const hasMeta = t.tags.length||t.someday||t.due||t.note;
+  const cardCls = ['card','task-item'];
+  if (t.top3) cardCls.push('top3','is-priority');
+  if (t.done) cardCls.push('done','is-done');
+  return `<div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
-    <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
+    <button class="star-btn" onclick="toggleTop3(${t.id})" tabindex="-1" aria-hidden="true"></button>
+    <div class="card-body task-content" onclick="openEdit(${t.id})">
+      <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
+      ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+    </div>
+    <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
+      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <div class="task-content" onclick="openEdit(${t.id})">
-      <div class="task-text">${highlight(linkify(t.text), query)}</div>
-      ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${noteTag}${dueHtml}</div>` : ''}
-    </div>
-    <div class="task-actions-col">
-      <div class="checkbox" onclick="toggleDone_t(${t.id})">
-        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-      </div>
-    </div>
   </div>`;
 }
 
@@ -4573,28 +5474,65 @@ function dueBadgeHTML(due) {
 
 function tHTML(t) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
-  const top3tag = '';  /* Starred is already signaled by the blue left strip on the card. */
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.top3||t.someday||t.due||t.note;
-  const sf = t.top3?'var(--top3)':'none';
-  const ss = t.top3?'var(--top3)':'currentColor';
-  return `<div class="task-item${t.top3?' top3':''}${t.done?' done':''}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
+  const hasMeta = t.tags.length||t.someday||t.due||t.note;
+  const isExpanded = expandedTaskIds.has(t.id);
+  const expandHtml = isExpanded ? expansionBodyHTML(t) : '';
+  const cardCls = ['card','task-item'];
+  if (t.top3)  cardCls.push('top3','is-priority');
+  if (t.done)  cardCls.push('done','is-done');
+  if (isExpanded) cardCls.push('is-expanded');
+  return `<div class="${cardCls.join(' ')}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
-    <button class="star-btn" onclick="toggleTop3(${t.id})" title="Star task">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="${sf}" stroke="${ss}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
+    <button class="star-btn" onclick="toggleTop3(${t.id})" tabindex="-1" aria-hidden="true"></button>
+    <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
+      <div class="card__title task-text">${linkify(t.text)}</div>
+      ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+      ${expandHtml}
+    </div>
+    <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
+      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <div class="task-content" onclick="openEdit(${t.id})">
-      <div class="task-text">${linkify(t.text)}</div>
-      ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+  </div>`;
+}
+
+function expansionBodyHTML(t) {
+  const tcid = String(t.id);
+  const noteHtml = t.note ? `<div class="card__note task-expand__note">${linkify(t.note)}</div>` : '';
+  const subs = subtasksByTask.get(tcid) || [];
+  const subsHtml = `<div class="card__subtasks task-expand__subs" id="subs-${tcid}">${subs.map(s=>subtaskRowHTML(tcid, s)).join('')}</div>`;
+  const priorityOn = t.top3 ? ' is-on' : '';
+  return `<div class="card__expand task-expand">
+    ${noteHtml}
+    ${subsHtml}
+    <div class="card__actions task-expand__actions">
+      <button class="expand-action" onclick="event.stopPropagation();startNewSubtask('${tcid}')">+ subtask</button>
+      <button class="expand-action" onclick="event.stopPropagation();openEdit(${t.id})">edit</button>
+      <button class="expand-action${priorityOn}" onclick="event.stopPropagation();toggleTop3(${t.id})">priority</button>
     </div>
-    <div class="task-actions-col">
-      <div class="checkbox" onclick="toggleDone_t(${t.id})">
-        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-      </div>
-    </div>
+  </div>`;
+}
+
+function subtaskRowHTML(taskClientId, s) {
+  const inner = s.isNew
+    ? `<input class="subtask-input"
+         placeholder="New subtask…"
+         onclick="event.stopPropagation()"
+         onkeydown="handleSubtaskInputKey(event,'${taskClientId}','${s.client_id}')"
+         onblur="commitNewSubtask('${taskClientId}','${s.client_id}',this.value)" />`
+    : `<span class="subtask-text">${escapeHTML(s.text)}</span>`;
+  // New rows: clicking radio shouldn't toggle (no real row yet)
+  const rowClick = s.isNew
+    ? `event.stopPropagation()`
+    : `event.stopPropagation();toggleSubtask('${taskClientId}','${s.client_id}')`;
+  return `<div class="subtask-row${s.done?' done':''}" data-sub-id="${s.client_id}" onclick="${rowClick}">
+    <span class="subtask-radio"></span>
+    ${inner}
+    <button class="subtask-del" onclick="event.stopPropagation();deleteSubtask('${taskClientId}','${s.client_id}')" aria-label="Delete subtask">×</button>
   </div>`;
 }
 
@@ -6722,8 +7660,15 @@ function delTask(id) {
     confirmClass: 'danger',
     onConfirm: () => {
       tasks = tasks.filter(t=>t.id!==id);
+      // Cascade: drop subtasks for this task (local + DB)
+      const tcid = String(id);
+      const orphaned = subtasks.filter(s => s.task_client_id === tcid && !s.isNew);
+      subtasks = subtasks.filter(s => s.task_client_id !== tcid);
+      rebuildSubtasksIndex();
+      expandedTaskIds.delete(id);
       render();
       deleteTask(id);
+      orphaned.forEach(s => dbDeleteSubtask(s.client_id));
     }
   });
 }
@@ -7631,7 +8576,9 @@ async function finishOnboarding() {
   // Clear seed tasks — delete from Supabase and wipe local state
   if (currentUser && tasks.length) {
     await db.from('tasks').delete().eq('user_id', currentUser.id);
+    await db.from('task_subtasks').delete().eq('user_id', currentUser.id);
     tasks = [];
+    subtasks = []; subtasksByTask.clear(); subtaskRowIdMap.clear();
     render();
   }
 }
