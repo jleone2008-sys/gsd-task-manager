@@ -75,12 +75,12 @@
     /* ── Specialty ────────────────────────────────────────────── */
     --highlight-yellow: #fef08a;   /* text-highlight marker in rich editor */
 
-    /* ── Shadow scale (blue-tinted) ───────────────────────────── */
-    --shadow-xs:    0 1px 2px rgba(30,60,140,0.04);
-    --shadow-sm:    0 2px 6px rgba(30,60,140,0.06), 0 0 0 1px rgba(30,60,140,0.03);
-    --shadow-md:    0 6px 20px rgba(30,60,140,0.08), 0 2px 6px rgba(30,60,140,0.05);
-    --shadow-lg:    0 12px 40px rgba(30,60,140,0.12), 0 4px 12px rgba(30,60,140,0.06);
-    --shadow-xl:    0 20px 60px rgba(30,60,140,0.16), 0 6px 20px rgba(30,60,140,0.08);
+    /* ── Shadow scale (neutral, Facebook-style card lift) ─────── */
+    --shadow-xs:    0 1px 2px rgba(0,0,0,0.05);
+    --shadow-sm:    0 2px 4px rgba(0,0,0,0.08);
+    --shadow-md:    0 4px 8px rgba(0,0,0,0.1);
+    --shadow-lg:    0 8px 20px rgba(0,0,0,0.12);
+    --shadow-xl:    0 16px 40px rgba(0,0,0,0.16);
     --shadow-focus: 0 0 0 3px rgba(91,130,224,0.22);
 
     /* ── Radius scale (square theme — crisp edges with 2–8px softening) ─ */
@@ -1603,7 +1603,7 @@
   .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* Today — progress ring */
-  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); display: flex; align-items: center; gap: 0; }
+  .progress-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); display: flex; align-items: center; gap: 0; }
   .progress-ring-wrap { position: relative; width: 56px; height: 56px; flex-shrink: 0; }
   .progress-ring-wrap svg { transform: rotate(-90deg); width: 56px; height: 56px; }
   .progress-ring-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--navy); line-height: 1; }
@@ -1615,8 +1615,8 @@
   .progress-stat .lbl { font-size: var(--fs-label); color: var(--muted); margin-top: var(--space-0-5); letter-spacing: 0.2px; }
 
   /* Habit cards */
-  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-2-5) var(--space-3); margin-bottom: var(--space-1); box-shadow: var(--shadow-xs); cursor: pointer; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
-  .habit-card:hover { border-color: var(--border2); box-shadow: var(--shadow-sm); }
+  .habit-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-2-5) var(--space-3); margin-bottom: var(--space-2); box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+  .habit-card:hover { border-color: var(--border2); box-shadow: var(--shadow-md); }
   .habit-card.habit-done { background: var(--pastel-mint-bg); border-color: var(--pastel-mint-bg); }
   .habit-card-top { display: flex; align-items: center; gap: var(--space-2); }
   .habit-emoji { font-size: var(--fs-card); flex-shrink: 0; line-height: 1; width: 20px; text-align: center; }
@@ -1654,10 +1654,10 @@
 
   /* Habit stats view */
   .stat-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); margin-bottom: var(--space-1); }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-xs); padding: var(--space-2-5) var(--space-3); text-align: center; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-2-5) var(--space-3); text-align: center; }
   .stat-card .sc-val { font-size: var(--fs-display); font-weight: var(--fw-bold); line-height: 1; margin-bottom: var(--space-0-5); }
   .stat-card .sc-lbl { font-size: var(--fs-micro); color: var(--muted); font-weight: var(--fw-medium); }
-  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); overflow-x: auto; }
+  .heatmap-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); overflow-x: auto; }
   .heatmap-title { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: var(--space-2-5); }
   .heatmap-wrap { display: flex; gap: 0; }
   .heatmap-day-labels { display: flex; flex-direction: column; gap: var(--space-0-5); padding-right: var(--space-1-5); padding-top: var(--space-4-5); }
@@ -2023,8 +2023,8 @@
     .nl-header { padding: var(--space-3) var(--space-4) var(--space-2-5); background: var(--bg); border-bottom: none; }
     .nl-title { font-size: var(--fs-card); }
     .nl-scroll { padding: var(--space-1) var(--space-3) 120px; }
-    .nl-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-1-5); }
-    .nl-item.active { border-color: var(--navy); box-shadow: var(--shadow-sm); }
+    .nl-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-2); }
+    .nl-item.active { border-color: var(--navy); box-shadow: var(--shadow-md); }
     .notes-editor { display: none; }
     .notes-editor.mobile-open {
       display: flex; position: fixed;
