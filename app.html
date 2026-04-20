@@ -565,6 +565,8 @@
   .tag.personal { background: var(--personal-bg); color: var(--personal); }
   .tag.top3 { background: var(--pastel-yellow-bg); color: var(--top3); }
   .tag.someday { background: var(--surface2); color: var(--muted); }
+  .tag.has-note { background: var(--surface2); color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
+  .tag.has-note svg { flex-shrink: 0; }
 
   .task-actions-col {
     display: flex;
@@ -4464,9 +4466,9 @@ function tHTMLsearch(t, query) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const top3tag = '';  /* Starred is already signaled by the blue left strip on the card. */
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
+  const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.top3||t.someday||t.due;
-  const noteHtml = t.note?`<div class="task-note clamped" id="note-${t.id}">${highlight(richToDisplay(t.note), query)}</div><button class="note-read-more" id="nmr-${t.id}" onclick="toggleNote(event,${t.id})">Read more</button>`:'';
+  const hasMeta = t.tags.length||t.top3||t.someday||t.due||t.note;
   const doneStyle = t.done ? ' done' : '';
   const sf = t.top3?'var(--top3)':'none';
   const ss = t.top3?'var(--top3)':'currentColor';
@@ -4478,8 +4480,7 @@ function tHTMLsearch(t, query) {
     </button>
     <div class="task-content" onclick="openEdit(${t.id})">
       <div class="task-text">${highlight(linkify(t.text), query)}</div>
-      ${noteHtml}
-      ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${dueHtml}</div>` : ''}
+      ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${noteTag}${dueHtml}</div>` : ''}
     </div>
     <div class="task-actions-col">
       <div class="checkbox" onclick="toggleDone_t(${t.id})">
@@ -4574,9 +4575,9 @@ function tHTML(t) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const top3tag = '';  /* Starred is already signaled by the blue left strip on the card. */
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
+  const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.top3||t.someday||t.due;
-  const noteHtml = t.note ? `<div class="task-note clamped" id="note-${t.id}">${richToDisplay(t.note)}</div><button class="note-read-more" id="nmr-${t.id}" onclick="toggleNote(event,${t.id})">Read more</button>` : '';
+  const hasMeta = t.tags.length||t.top3||t.someday||t.due||t.note;
   const sf = t.top3?'var(--top3)':'none';
   const ss = t.top3?'var(--top3)':'currentColor';
   return `<div class="task-item${t.top3?' top3':''}${t.done?' done':''}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
@@ -4587,8 +4588,7 @@ function tHTML(t) {
     </button>
     <div class="task-content" onclick="openEdit(${t.id})">
       <div class="task-text">${linkify(t.text)}</div>
-      ${noteHtml}
-      ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${dueHtml}</div>` : ''}
+      ${hasMeta ? `<div class="task-meta">${tagHtml}${top3tag}${sdTag}${noteTag}${dueHtml}</div>` : ''}
     </div>
     <div class="task-actions-col">
       <div class="checkbox" onclick="toggleDone_t(${t.id})">
