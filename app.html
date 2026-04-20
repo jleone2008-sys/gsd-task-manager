@@ -228,12 +228,15 @@
     box-sizing: border-box;
   }
   .header-inner .logo { flex-shrink: 0; }
-  .header-inner .user-menu { flex-shrink: 0; margin-left: auto; }
+  .header-inner .user-menu { flex-shrink: 0; }
 
-  /* Tool Switcher (desktop only) */
+  /* Tool Switcher (desktop only) — centered between the logo and the avatar
+     via symmetric auto margins; the margin-right: auto pushes the user-menu
+     to the far right without needing its own auto margin. */
   .tool-switcher {
     display: flex; align-items: center; gap: var(--space-0-5);
-    margin-left: var(--space-4); background: rgba(255,255,255,0.08);
+    margin: 0 auto;
+    background: rgba(255,255,255,0.08);
     border-radius: var(--radius-sm); padding: var(--space-0-5); border: 1px solid rgba(255,255,255,0.08);
   }
   .tool-tab {
@@ -269,7 +272,7 @@
     align-items: center;
     gap: var(--space-1);
     background: var(--surface);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-sm);
     box-shadow: var(--shadow-md);
     padding: var(--space-1-5) var(--space-2);
     pointer-events: all;
@@ -474,7 +477,10 @@
     display: flex;
     align-items: center;
     gap: var(--space-2-5);
-    padding: var(--space-2-5) var(--space-3);
+    /* Right padding reserves space for the top-right notched corner where
+       the checkbox nests. Top padding slightly extra to account for the
+       notch depth so text stays vertically balanced. */
+    padding: var(--space-3) 48px var(--space-2-5) var(--space-3);
     border-radius: var(--radius-lg);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -506,14 +512,14 @@
   .task-item.drag-target { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
 
   .checkbox {
-    width: 17px; height: 17px;
+    width: 22px; height: 22px;
     border-radius: 50%;
     border: 1.5px solid var(--border2);
     cursor: pointer;
     flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     transition: all var(--dur-fast);
-    background: #fff;
+    background: var(--surface);
     align-self: center;
   }
   .checkbox:hover { border-color: var(--check); }
@@ -559,10 +565,29 @@
   .tag.top3 { background: var(--pastel-yellow-bg); color: var(--top3); }
   .tag.someday { background: var(--surface2); color: var(--muted); }
 
+  /* Task-actions-col is now a notch-shaped cutout in the top-right corner
+     of the task card: it sits absolutely, painted with the page background
+     so it visually subtracts the corner from the white card. The checkbox
+     lives inside it, nesting in the apparent void. Slightly offset negative
+     to cover the card's top+right borders, giving a clean "cut" edge. */
   .task-actions-col {
+    position: absolute;
+    top: -1px; right: -1px;
+    width: 41px; height: 41px;
     display: flex;
     align-items: center;
-    flex-shrink: 0;
+    justify-content: center;
+    background: var(--bg);
+    /* Square inner corner for the square theme — no curve on the cut edge. */
+    border-bottom-left-radius: 0;
+    z-index: 2;
+    transition: opacity var(--dur-fast);
+  }
+  /* Hide the cutout while swipe is in progress so it doesn't block the
+     red/green swipe backgrounds on either side. Reappears on release. */
+  .task-item.swiping .task-actions-col,
+  .task-item.swiping-right .task-actions-col {
+    opacity: 0;
   }
   .star-btn, .del-btn {
     width: 24px; height: 24px;
@@ -994,9 +1019,12 @@
   .floating-search input {
     border: none; background: transparent; outline: none;
     color: var(--text); font-family: inherit; font-size: var(--fs-search);
-    width: 100%; opacity: 0; transition: opacity var(--dur-quick);
+    width: 100%;
+    /* Hidden from flex layout when collapsed — otherwise it pushes the icon
+       off-center in a small square button. */
+    display: none;
   }
-  .floating-search.expanded input { opacity: 1; }
+  .floating-search.expanded input { display: block; }
   .floating-search input::placeholder { color: var(--muted); }
   .floating-search .fs-clear {
     flex-shrink: 0; border: none; background: none; cursor: pointer;
@@ -2331,7 +2359,6 @@
 
 <div class="pill-bar" data-tool-view="tasks">
   <div class="pill-bar-inner">
-    <button class="pill top3-pill" onclick="toggleStarredFilter(this)">&#9733; Starred</button>
     <button class="pill active" onclick="setCatFilter('all',this)">All</button>
     <button class="pill biz" onclick="setCatFilter('biz',this)">Work</button>
     <button class="pill personal" onclick="setCatFilter('personal',this)">Personal</button>
@@ -4452,7 +4479,7 @@ function slabel(l,n,showSort) {
 // Search variant — highlights matched text, disables drag
 function tHTMLsearch(t, query) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
-  const top3tag = t.top3?`<span class="tag top3">&#9733; Starred</span>`:'';
+  const top3tag = '';  /* Starred is already signaled by the blue left strip on the card. */
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
   const hasMeta = t.tags.length||t.top3||t.someday||t.due;
@@ -4562,7 +4589,7 @@ function dueBadgeHTML(due) {
 
 function tHTML(t) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
-  const top3tag = t.top3?`<span class="tag top3">&#9733; Starred</span>`:'';
+  const top3tag = '';  /* Starred is already signaled by the blue left strip on the card. */
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const dueHtml = dueBadgeHTML(t.due);
   const hasMeta = t.tags.length||t.top3||t.someday||t.due;
