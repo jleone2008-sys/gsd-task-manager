@@ -3774,6 +3774,42 @@ async function toggleSubtask(taskClientId, subClientId) {
   render();
   pushSubtask(s);
 }
+function startEditSubtask(taskClientId, subClientId) {
+  const s = subtasks.find(x => x.client_id === subClientId);
+  if (!s || s.isNew) return;
+  const row = document.querySelector(`[data-sub-id="${subClientId}"]`);
+  if (!row) return;
+  const span = row.querySelector('.subtask-text');
+  if (!span) return;
+  const input = document.createElement('input');
+  input.className = 'subtask-input';
+  input.value = s.text;
+  let cancelled = false;
+  input.addEventListener('click', e => e.stopPropagation());
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')      { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape'){ e.preventDefault(); cancelled = true; input.blur(); }
+  });
+  input.addEventListener('blur', () => {
+    if (cancelled) { render(); return; }
+    commitEditSubtask(taskClientId, subClientId, input.value);
+  });
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+}
+function commitEditSubtask(taskClientId, subClientId, text) {
+  const s = subtasks.find(x => x.client_id === subClientId);
+  if (!s || s.isNew) return;
+  const trimmed = (text || '').trim();
+  // Blank edit or unchanged text: just re-render to restore the span view.
+  // Deletion is reserved for the × button so a stray blur can't drop a row.
+  if (!trimmed || trimmed === s.text) { render(); return; }
+  s.text = trimmed;
+  rebuildSubtasksIndex();
+  render();
+  pushSubtask(s);
+}
 async function deleteSubtask(taskClientId, subClientId) {
   const idx = subtasks.findIndex(s => s.client_id === subClientId);
   if (idx < 0) return;
@@ -5850,13 +5886,12 @@ function subtaskRowHTML(taskClientId, s) {
          onclick="event.stopPropagation()"
          onkeydown="handleSubtaskInputKey(event,'${taskClientId}','${s.client_id}')"
          onblur="commitNewSubtask('${taskClientId}','${s.client_id}',this.value)" />`
-    : `<span class="subtask-text">${escapeHTML(s.text)}</span>`;
-  // New rows: clicking radio shouldn't toggle (no real row yet)
-  const rowClick = s.isNew
-    ? `event.stopPropagation()`
-    : `event.stopPropagation();toggleSubtask('${taskClientId}','${s.client_id}')`;
-  return `<div class="subtask-row${s.done?' done':''}" data-sub-id="${s.client_id}" onclick="${rowClick}">
-    <span class="subtask-radio"></span>
+    : `<span class="subtask-text" onclick="event.stopPropagation();startEditSubtask('${taskClientId}','${s.client_id}')">${escapeHTML(s.text)}</span>`;
+  const radioClick = s.isNew
+    ? ''
+    : ` onclick="event.stopPropagation();toggleSubtask('${taskClientId}','${s.client_id}')"`;
+  return `<div class="subtask-row${s.done?' done':''}" data-sub-id="${s.client_id}">
+    <span class="subtask-radio"${radioClick}></span>
     ${inner}
     <button class="subtask-del" onclick="event.stopPropagation();deleteSubtask('${taskClientId}','${s.client_id}')" aria-label="Delete subtask">×</button>
   </div>`;
