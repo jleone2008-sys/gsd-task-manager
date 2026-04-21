@@ -399,8 +399,12 @@ function setCatFilter(f, el) {
   filterStarred = false;
   const bar = document.querySelector('[data-tool-view="tasks"].pill-bar');
   if (bar) bar.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  if (!el && bar) el = bar.querySelector(`.pill[data-filter="${f}"]`);
   if (el) el.classList.add('active');
   render();
+  if (typeof routerSyncUrl === 'function' && activeTool === 'tasks') {
+    routerSyncUrl({ tool: 'tasks', filter: f === 'all' ? null : f }, { replace: true });
+  }
 }
 function toggleStarredFilter(el) {
   filterStarred = !filterStarred;

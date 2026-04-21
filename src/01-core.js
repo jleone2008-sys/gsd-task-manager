@@ -257,6 +257,8 @@ function signInUser(user) {
   loadHabits();
   loadNotes();
   loadSubtasks();
+  // Apply URL-driven routing now that the app shell is visible.
+  if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
 }
 
 async function signOut() {
@@ -353,7 +355,12 @@ function switchTool(tool) {
   if (activeTool === 'tasks' && searchQuery) { searchQuery = ''; }
   if (activeTool === 'notes' && noteSearchQuery) { noteSearchQuery = ''; }
   activeTool = tool;
-  if (!_navFromPop) history.pushState({tool, note: null, drill: false}, '');
+  if (!_navFromPop) {
+    const route = { tool };
+    if (tool === 'habits' && typeof activeHabitView === 'string' && activeHabitView !== 'today') route.view = activeHabitView;
+    if (typeof routerSyncUrl === 'function') routerSyncUrl(route);
+    else history.pushState({tool, note: null, drill: false}, '');
+  }
   // Show/hide tool views
   document.querySelectorAll('[data-tool-view]').forEach(el => {
     el.style.display = el.dataset.toolView === tool ? '' : 'none';
@@ -395,9 +402,8 @@ document.addEventListener('keydown', e => {
   const tool = map[e.key.toUpperCase()];
   if (tool) { e.preventDefault(); switchTool(tool); }
 });
-// Set initial history state
-history.replaceState({tool: 'tasks', note: null, drill: false}, '');
-// Handle browser back/forward (swipe gestures on mobile)
+// Handle browser back/forward (swipe gestures on mobile). Re-parse the URL so
+// path-based state (tool + habit view + task filter) is restored on every nav.
 window.addEventListener('popstate', e => {
   _navFromPop = true;
   // Close any open overlay first
@@ -405,11 +411,15 @@ window.addEventListener('popstate', e => {
   if (drillOverlay && drillOverlay.classList.contains('open')) { closeDrillIn(); _navFromPop = false; return; }
   // Close open note on mobile
   if (activeNoteId && activeTool === 'notes') { deselectNote(); _navFromPop = false; return; }
-  // Restore tool from state
-  const state = e.state || {tool: 'tasks', note: null, drill: false};
-  if (state.tool && state.tool !== activeTool) switchTool(state.tool);
-  if (state.tool === 'notes' && state.note) { activeNoteId = state.note; renderNotes(); }
-  _navFromPop = false;
+  try {
+    if (typeof routerApplyRoute === 'function' && typeof parseAppRoute === 'function') {
+      const r = parseAppRoute();
+      if (r) routerApplyRoute(r);
+    } else {
+      const state = e.state || { tool: 'tasks' };
+      if (state.tool && state.tool !== activeTool) switchTool(state.tool);
+    }
+  } finally { _navFromPop = false; }
 });
 // Habit sub-pill switching
 document.addEventListener('click', e => {
@@ -421,6 +431,7 @@ document.addEventListener('click', e => {
   document.querySelectorAll('.habit-sub-content').forEach(c => c.classList.remove('active'));
   const target = document.getElementById('habit-' + activeHabitView);
   if (target) target.classList.add('active');
+  if (typeof routerSyncUrl === 'function') routerSyncUrl({ tool: 'habits', view: activeHabitView });
 });
 
 // Notes pill-bar (All / Pinned) — routes to the existing notes sidebar-view state
