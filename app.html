@@ -361,6 +361,13 @@
      `overflow: clip` is the modern, sticky-safe equivalent of hidden. */
   body { overflow-x: clip; }
 
+  /* Reserve space for the vertical scrollbar even when the page is short
+     enough not to need one. Without this, switching from Tasks (long list,
+     scrollbar present) to Habits/Scratch (short, no scrollbar) causes the
+     centered .app-shell to shift horizontally by ~15px — every time the
+     scrollbar appears/disappears, the viewport width changes. */
+  html { scrollbar-gutter: stable; }
+
   /* ──────────────────────────────────────────────────────────────
      WORDMARK — lowercase gsd + guava dot
   ────────────────────────────────────────────────────────────── */
@@ -1779,27 +1786,25 @@
   }
   .user-avatar:hover { transform: scale(1.05); }
   .user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-  /* Settings gear badge — signals the profile icon opens the user menu.
-     Rendered via a pseudo-element so it lives on the exact same node that
-     owns the click handler (no extra DOM, no new tap target). */
+  /* Settings gear badge — guava fill + white gear for high visibility.
+     Lives on the same node that owns the click handler (no extra DOM). */
   .user-avatar::after,
   .sidebar-foot .avatar::after {
     content: '';
     position: absolute;
     bottom: -3px;
     right: -3px;
-    width: 14px; height: 14px;
+    width: 16px; height: 16px;
     border-radius: 50%;
-    background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c7367' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M22 12h-2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E") center / 9px no-repeat;
-    box-shadow: 0 0 0 1.5px var(--bg);
+    background: var(--guava-700) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M22 12h-2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E") center / 13px no-repeat;
+    box-shadow: 0 0 0 2px var(--bg);
     pointer-events: none;
   }
-  /* Scale down for the smaller sidebar-footer avatar (26px). */
   .sidebar-foot .avatar { position: relative; overflow: visible; }
   .sidebar-foot .avatar::after {
     bottom: -2px; right: -2px;
-    width: 11px; height: 11px;
-    background-size: 7px;
+    width: 13px; height: 13px;
+    background-size: 10px;
     box-shadow: 0 0 0 1.5px var(--surface-2);
   }
 
@@ -2802,16 +2807,25 @@
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
-  /* Scratch: same card shell as a task card (white box, 4px radius,
-     --shadow-card, --edge border) wrapped around the editor. Must also
-     align LEFT to the sidebar with the same gutter as tasks — so the
-     inner .ne-body padding and .ne-page auto-centering are removed. */
+  /* Scratch: same card shell as a task card. The rules use !important
+     because the notes-editor mobile override (display: none) fires after
+     these and would otherwise hide scratch entirely on phones — scratch
+     reuses .notes-editor for markup but is ALWAYS in-flow, never an
+     overlay. */
   .scratch-view .notes-layout { height: auto; min-height: auto; display: block; }
-  .scratch-view .notes-editor { min-width: 0; min-height: 60vh; background: transparent; }
+  .scratch-view .notes-editor {
+    display: flex !important;
+    position: static !important;
+    min-width: 0;
+    min-height: 60vh;
+    background: transparent;
+    top: auto; left: auto; right: auto; bottom: auto;
+    z-index: auto;
+  }
   .scratch-view .ne-body { padding: 0; }
   .scratch-view .ne-page {
-    margin: 8px 0 0;               /* left-align, no centering */
-    max-width: none;               /* fill the content column */
+    margin: 8px 0 0;
+    max-width: none;
     background: var(--surface);
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
