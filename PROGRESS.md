@@ -63,65 +63,55 @@ Canonical (from `tokens-lifestyle.css`):
 - Motion: `--ease` `--dur-fast` (120ms) `--dur` (180ms)
 - Fonts: `--font-sans` (Inter), `--font-mono` (JetBrains Mono)
 
-## Known dead code (delete when touched)
+## Legacy audit — completed 2026-04-21
 
-These are LEGACY rules still in `app.html` that were aliased rather
-than removed. Rule: if you edit anything nearby, delete the dead rule
-in the same commit.
+Every item below was closed out in a single session. `app.html` now
+has:
 
-- Old pill color variants (`.pill.biz`, `.pill.personal`, `.pill.top3-pill`)
-  — currently neutralized by later overrides. Delete originals.
-- `.star-btn` styles (button is `display: none`). Delete all rules.
-- `.mobile-slim-stats` styles (element is `display: none !important`).
-  Delete the 30+ lines of rules.
-- Desktop `.stats` bar styles (element is `display: none !important`).
-- Empty-state `.empty-state-icon` and `-desc` (both `display: none`).
-- `--max-notes` token (no longer used after ne-page card shell removal).
-- Legacy token aliases: `--navy`, `--navy-dark`, `--navy-light`,
-  `--navy-muted`, `--navy-border`, `--accent`, `--top3`, `--top3-bg`,
-  `--check`, `--danger`, `--danger-bg`, `--danger-border`, `--link`,
-  `--drag-over`, `--biz`, `--biz-bg`, `--biz-text`, `--personal`,
-  `--personal-bg`, `--personal-text`, `--pastel-*`, `--heatmap-l*`,
-  `--radius-xs/sm/md/lg/xl/pill`, `--shadow-xs/sm/md/lg/xl/focus`.
-  Each one: grep, find every call site, migrate to the canonical
-  token, delete the alias. See "Token migration plan" below.
+- **Zero** legacy token aliases in `:root`. Every component rule
+  speaks canonical lifestyle vocabulary directly (`--guava-*`,
+  `--ink*`, `--edge*`, `--surface*`, `--r-*`, `--shadow-card/-hover/
+  -raised/-fab/-focus`).
+- **Zero** `!important` declarations outside documentation comments.
+- **Zero** rules targeting permanently-hidden elements.
+- **Zero** JS writing to never-rendered DOM elements.
 
-## Token migration plan
+The work, in order:
 
-When touching a file in the same area as a legacy call site:
+1. Phase 0 inventory (no edits; produced the dead-list + migration map).
+2. Phase 1 dead CSS rules — `.stats-legacy`, `.empty-state-icon/-desc`,
+   `.scratch-header`, `.del-btn`, plus `.pill.biz/.personal/.top3-pill`
+   fragment prune, plus eight zero-use tokens.
+3. Phase 5 dead JS/DOM — `.star-btn` markup and swipe refs;
+   `.tool-switcher`/`.tool-tab` nav with its three desktop tool-badge
+   paintBadge calls; the `#statsBar`/`#mobileSlimStats` pipeline
+   including `updateNotesStatsBar()`, the inline tasks stats block,
+   and the post-return body of `updateHabitStatsBar()`.
+4. Phase 2 token alias migration in ten family-scoped commits: toast,
+   pastel, shadow, radius, priority/danger/check/link/accent,
+   biz/personal, heatmap, ink, edge/surface, navy. Every alias's
+   call sites moved to the canonical token, then the alias deleted.
+5. Phase 3 override consolidation — `.pill` fragment prune happened
+   in Phase 1; the one remaining structural issue was an unreachable
+   `@media (max-width: 800px) and (min-width: 900px)` block whose
+   conditions could never both hold, deleted.
+6. Phase 4 `!important` audit — specificity bump on the one rule
+   that actually needed cascade help (`.user-menu .user-dropdown` on
+   mobile); the other eight were either beating nothing or winning
+   by source order anyway.
 
-| Legacy | Canonical | Notes |
-|---|---|---|
-| `--navy` | `--guava-700` | primary accent |
-| `--navy-dark` | `--guava-800` | |
-| `--navy-light` | `--guava-500` | |
-| `--text` | `--ink` | |
-| `--text2` | `--ink-2` | |
-| `--muted` | `--ink-3` | |
-| `--border` | `--edge` | |
-| `--border2` | `--edge-strong` | |
-| `--surface2` | `--surface-2` | |
-| `--top3` | `--guava-700` | priority |
-| `--top3-bg` | `--guava-100` | |
-| `--check` | `--guava-700` | check fill |
-| `--danger` / `--danger-bg` | `--guava-700` / `--guava-100` | |
-| `--biz-bg` / `--biz-text` | `--slate-bg` / `--slate-fg` | |
-| `--personal-bg` / `--personal-text` | `--ochre-bg` / `--ochre-fg` | |
-| `--pastel-mint-*` | `--moss-*` | |
-| `--pastel-sky-*` | `--sky-*` | |
-| `--pastel-lavender-*` / `--pastel-coral-*` | `--plum-*` / `--guava-*` | |
-| `--pastel-yellow-*` | `--ochre-*` | |
-| `--radius-xs/sm/md/lg` | `--r-sm` / `--r-md` | cards = 4px, chips = 3px |
-| `--radius-xl` | `--r-lg` | FAB only |
-| `--radius-pill` | `9999px` | only avatar / day dots |
-| `--shadow-sm` / `--shadow-xs` | `--shadow-card` | |
-| `--shadow-md` | `--shadow-card-hover` | |
-| `--shadow-lg` / `--shadow-xl` | `--shadow-raised` | |
+Deferred (intentionally out of scope, user-acknowledged):
 
-Phase-out strategy: every PR deletes at least one alias and migrates
-its call sites. Track remaining count here.
+- Internal `top3` rename — requires a Supabase column migration
+  (`tasks.top3` → `tasks.priority`) plus 20+ JS call-site updates.
+  User-facing text already says "Priority" everywhere.
+- `.mobile-note-header` / `.mobile-note-back` naming — still uses
+  "mobile" prefix but the elements now render at every width. Rename
+  to `.note-editor-header` / `.note-editor-back` when next touched.
+- Full touch-target pass beyond `.pill` and `.check`.
+- Loading skeletons (originally scoped to Phase 9 of the redesign).
 
-## Phase completion
+## Phase completion (redesign)
 
 ### Shipped (verified by user)
 - Phase 1: Tokens
@@ -134,15 +124,6 @@ its call sites. Track remaining count here.
 - Phase 8: "Starred" → "Priority" text pass
 - Phase 9: Empty state rewrite (spec §9.3)
 - Phase 10: Tap target inflation (pill + check)
-
-### Not done
-- Loading skeletons (Phase 9 also had this — deferred)
-- Full touch-target pass beyond .pill and .check
-- Legacy code cleanup (see "Known dead code")
-- Token alias migration (see "Token migration plan")
-- `.mobile-note-header` / `.mobile-note-back` naming — still uses
-  "mobile" prefix but the element is now desktop + mobile. Rename to
-  `.note-editor-header` / `.note-editor-back` when convenient.
 
 ## Layout rules (enforce when editing layout)
 
