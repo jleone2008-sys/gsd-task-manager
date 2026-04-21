@@ -779,11 +779,13 @@
     background: var(--surface);
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
-    padding: 13px 14px 13px 22px;
+    /* Right padding is 46 (not 14) to reserve room for the absolute-positioned
+       .check at top-right so body text never runs under the check. */
+    padding: 13px 46px 13px 22px;
     box-shadow: var(--shadow-card);
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 0;
     cursor: default;
     user-select: none;
     transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
@@ -854,10 +856,11 @@
   .task-item.dragging { opacity: 0.35; }
   .task-item.drag-target { border-color: var(--guava-300); box-shadow: var(--shadow-focus); }
 
-  /* Check circle — 20px, right-aligned, VERTICALLY CENTERED in the card.
-     The card itself uses align-items: flex-start so the title/meta stay
-     top-aligned; the check overrides with align-self: center so it lines
-     up with the middle of the card regardless of meta row height. */
+  /* Check circle — pinned absolute to the top-right of the card so it stays
+     aligned with the title row whether the card is collapsed or expanded.
+     top: 13px matches the card's padding-top; right: 14px matches the
+     padding-right; the card reserves space for the check via its padding,
+     so body content never runs under the check. */
   .check {
     width: 20px; height: 20px;
     border-radius: 50%;
@@ -865,9 +868,9 @@
     background: transparent;
     flex-shrink: 0;
     cursor: pointer;
-    position: relative;
-    align-self: center;
-    margin-top: 0;
+    position: absolute;
+    top: 13px;
+    right: 14px;
     padding: 0;
     transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
@@ -892,7 +895,8 @@
     transform: rotate(-45deg);
   }
 
-  /* Legacy .checkbox — task-item still references it; match .check above. */
+  /* Legacy .checkbox — task-item still references it; matches .check above
+     (absolute top-right, aligned to the title row regardless of expansion). */
   .checkbox {
     width: 20px; height: 20px;
     border-radius: 50%;
@@ -900,10 +904,10 @@
     background: transparent;
     cursor: pointer;
     flex-shrink: 0;
-    position: relative;
-    margin-top: 0;
+    position: absolute;
+    top: 13px;
+    right: 14px;
     padding: 0;
-    align-self: center;
     transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
   .checkbox::before {
@@ -3889,7 +3893,16 @@ function commitNewSubtask(taskClientId, tmpId, text) {
 function handleSubtaskInputKey(e, taskClientId, tmpId) {
   if (e.key === 'Enter') {
     e.preventDefault();
-    commitNewSubtask(taskClientId, tmpId, e.target.value);
+    const value = e.target.value;
+    if (value.trim()) {
+      // Save this subtask, then immediately start a new one so the user
+      // can keep typing a list in a single uninterrupted flow.
+      commitNewSubtask(taskClientId, tmpId, value);
+      startNewSubtask(taskClientId);
+    } else {
+      // Empty Enter exits the flow (cancel the blank draft).
+      commitNewSubtask(taskClientId, tmpId, '');
+    }
   } else if (e.key === 'Escape') {
     e.preventDefault();
     commitNewSubtask(taskClientId, tmpId, '');
