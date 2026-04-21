@@ -545,28 +545,11 @@
     inset: -6px 0;     /* extends the tap region vertically to 44h */
   }
   .pill:hover { color: var(--ink); background: var(--surface-2); }
-  .pill.active,
-  .pill.biz.active,
-  .pill.personal.active,
-  .pill.top3-pill.active {
+  .pill.active {
     background: var(--guava-100);
     color: var(--guava-700);
     border-color: transparent;
     font-weight: 500;
-  }
-  /* Inactive tag-coloured variants collapse to flat — spec says one style only */
-  .pill.biz,
-  .pill.personal,
-  .pill.top3-pill {
-    background: transparent;
-    color: var(--ink-3);
-    border: none;
-  }
-  .pill.biz:hover,
-  .pill.personal:hover,
-  .pill.top3-pill:hover {
-    background: var(--surface-2);
-    color: var(--ink);
   }
   .pill-count {
     font-size: 10px;
