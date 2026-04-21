@@ -675,28 +675,31 @@
     width: 100%;
   }
   @media (min-width: 900px) {
-    /* Shared content column. EVERY tab (Tasks / Habits / Scratch) uses the
-       same --content-max so the title, pill-bar, and cards all sit at the
-       same x regardless of which tab is active — no shift when switching.
-       --content-max reduced from 960 → 810 to trim ~75px of whitespace
-       from each side of the cards per user direction. */
-    .content { padding: 2px 40px 40px; max-width: var(--content-max, 810px); }
+    /* All tabs LEFT-aligned to the sidebar edge with 25px padding between
+       sidebar and the content column. Every tab shares --content-max so the
+       header title, pill-bar, and cards sit at the same x regardless of
+       which tab is active. No margin: auto — nothing is centered inside the
+       main column. */
+    .content {
+      padding: 2px 25px 40px;
+      max-width: var(--content-max, 810px);
+      margin: 0;
+    }
     .header-inner,
     .pill-bar {
       max-width: var(--content-max, 810px);
-      margin-left: auto;
-      margin-right: auto;
+      margin-left: 0;
+      margin-right: 0;
+      padding-left: 25px;
+      padding-right: 25px;
     }
     .pill-bar-inner { max-width: none; margin: 0; }
-    /* Scratch: use the shared width so layout doesn't jump between tabs.
-       Text stays readable inside the 810 column with the narrow padding. */
     .content.scratch-view { max-width: var(--content-max, 810px); }
     /* Notes is the sole exception: full main-column width so the 3-pane
-       (notebooks | list | editor) layout spans edge-to-edge. Header/pills
-       still use the shared column, so the page title aligns across tabs. */
+       (notebooks | list | editor) layout spans edge-to-edge. */
     .content[data-tool-view="notes"] {
       max-width: none;
-      padding: 0 20px 20px;
+      padding: 0 25px 20px;
       margin: 0;
     }
   }
@@ -2774,18 +2777,17 @@
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
-  /* Scratch: auto-height, document feel. No card chrome around the editor —
-     it's text on the ground. Header already shows "Scratch"; the old inline
-     scratch-header label is removed from renderScratch. */
+  /* Scratch: same card shell as a task card (white box, 4px radius,
+     --shadow-card, --edge border) wrapped around the editor. */
   .scratch-view .notes-layout { height: auto; min-height: auto; display: block; }
   .scratch-view .notes-editor { min-width: 0; min-height: 60vh; background: transparent; }
   .scratch-view .ne-page {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 8px 0 40px;
-    min-height: auto;
-    border-radius: 0;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-card);
+    padding: 20px 24px 40px;
+    min-height: 60vh;
   }
   .scratch-view .scratch-header { display: none; }  /* redundant with app header */
   .scratch-view .ne-toolbar {
