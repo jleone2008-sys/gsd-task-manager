@@ -1769,11 +1769,15 @@
   @media (min-width: 900px) {
     .user-menu .user-avatar { display: none; }
     .user-menu { width: 0; height: 0; padding: 0; margin: 0; }
-    /* Dropdown opened from sidebar footer — pinned bottom-left above footer. */
+    /* Dropdown pinned above the sidebar footer. The app-shell is capped at
+       --app-max and centered; the sidebar starts at the shell's LEFT edge,
+       which is (100vw - --app-max)/2 from the viewport edge (or 0 on
+       narrower screens). Same anchoring trick as the FAB. */
     .user-dropdown {
       position: fixed !important;
       top: auto !important; right: auto !important;
-      bottom: 60px !important; left: 12px !important;
+      bottom: 60px !important;
+      left: calc(max(0px, (100vw - var(--app-max, 1250px)) / 2) + 12px) !important;
       width: 196px;
     }
   }
@@ -5380,18 +5384,57 @@ function computeStatsData(active, startDate, endDate) {
   const completionRate = totalDue > 0 ? Math.round((totalDone / totalDue) * 100) : 0;
   const allDates = Object.keys(dailyData).sort();
 
-  // Habit ranking
+  // Habit ranking — cadence-aware so a 1x/month habit done once in the
+  // month shows 100%, not (1 / days-in-month). Counts PERIODS for quota
+  // habits (months or weeks fully within the date range, capped at today)
+  // and DUE DAYS for strict cadences.
+  const todayD = new Date(today + 'T12:00:00');
+  const rangeEnd = end > todayD ? todayD : end;
   const rankings = active.map(h => {
-    let dueDays = 0, doneCount = 0;
-    allDates.forEach(ds => {
-      const dd = dailyData[ds];
-      if (dd && !dd.future && isHabitDueOnDate(h, ds)) {
-        dueDays++;
-        if (isCompletedOn(h.id, ds)) doneCount++;
+    const comps = completionsForHabit(h.id);
+    let expected = 0, actual = 0;
+
+    if (h.frequency === 'x_per_month') {
+      // Count each calendar month that has any day in [start..rangeEnd].
+      const iter = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (iter <= rangeEnd) {
+        expected += h.frequencyCount || 1;
+        const y = iter.getFullYear(), m = iter.getMonth();
+        const monStart = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+        const monEnd   = `${y}-${String(m + 1).padStart(2, '0')}-${String(new Date(y, m + 1, 0).getDate()).padStart(2, '0')}`;
+        // Clamp monthly actuals to the quota so extras don't inflate %.
+        const inMonth = comps.filter(c => c.completedDate >= monStart && c.completedDate <= monEnd && c.completedDate <= today).length;
+        actual += Math.min(inMonth, h.frequencyCount || 1);
+        iter.setMonth(iter.getMonth() + 1);
       }
-    });
-    const pct = dueDays > 0 ? Math.round((doneCount / dueDays) * 100) : 0;
-    return { emoji: h.emoji, name: h.name, pct: Math.min(pct, 100) };
+    } else if (h.frequency === 'x_per_week') {
+      // Iterate by week starting at the Monday on/before `start`.
+      const anchor = new Date(start);
+      const dow = anchor.getDay();
+      anchor.setDate(anchor.getDate() - ((dow + 6) % 7));
+      const iter = new Date(anchor);
+      while (iter <= rangeEnd) {
+        expected += h.frequencyCount || 1;
+        const monStr = iter.toISOString().slice(0, 10);
+        const sun = new Date(iter); sun.setDate(iter.getDate() + 6);
+        const sunStr = sun.toISOString().slice(0, 10);
+        const inWeek = comps.filter(c => c.completedDate >= monStr && c.completedDate <= sunStr && c.completedDate <= today).length;
+        actual += Math.min(inWeek, h.frequencyCount || 1);
+        iter.setDate(iter.getDate() + 7);
+      }
+    } else {
+      // Strict cadence — daily / weekdays / custom. Count due days.
+      allDates.forEach(ds => {
+        const dd = dailyData[ds];
+        if (dd && !dd.future && isHabitDueOnDate(h, ds)) {
+          expected++;
+          if (isCompletedOn(h.id, ds)) actual++;
+        }
+      });
+    }
+
+    const pct = expected > 0 ? Math.min(100, Math.round((actual / expected) * 100)) : 0;
+    return { emoji: h.emoji, name: h.name, pct };
   }).sort((a, b) => b.pct - a.pct);
 
   let rankHtml = '';
