@@ -5,17 +5,17 @@
    ============================================================ */
 
 :root {
-  /* ---- Ground (warmer cream folder tone) ---- */
-  --bg:           #efe9dd;    /* app ground — warmer cream */
-  --surface:      #ffffff;    /* cards, sheets — pure white lifts off cream */
-  --surface-2:    #e4ddce;    /* recessed areas (stats strip, sidebar) */
-  --edge:         #d6cfbf;    /* hairline */
-  --edge-strong:  #c3baa7;    /* stronger divider, input border */
+  /* ---- Ground (paper weight — subtle warm shift) ---- */
+  --bg:           #f6f2ea;    /* app ground — soft paper cream */
+  --surface:      #ffffff;    /* cards, sheets — pure white lifts off ground */
+  --surface-2:    #ede8dc;    /* recessed areas (stats strip, sidebar) */
+  --edge:         #ddd6c7;    /* hairline */
+  --edge-strong:  #c9c1ad;    /* stronger divider, input border */
 
   /* ---- Ink ---- */
   --ink:   #1a1714;           /* primary text */
   --ink-2: #3d362d;           /* body */
-  --ink-3: #6e6559;           /* secondary — darkened for AA over cream --bg */
+  --ink-3: #6e6559;           /* secondary — AA over --bg (≈5.1:1) */
   --ink-4: #a8a094;           /* metadata, tertiary */
   --ink-5: #cac3b6;           /* hint, disabled */
 
