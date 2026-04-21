@@ -487,14 +487,17 @@
   /* ──────────────────────────────────────────────────────────────
      FILTER PILLS — flat, guava active
   ────────────────────────────────────────────────────────────── */
+  /* Pill-bar vertical padding: top = 0 so the gap between header title and
+     pills matches the gap between header title and content (for tabs with
+     no pills). Bottom padding provides the gap between pills and the list. */
   .pill-bar {
     display: flex;
     align-items: center;
-    padding: 2px 20px 12px;
+    padding: 0 20px 12px;
     background: var(--bg);
   }
   @media (min-width: 900px) {
-    .pill-bar { padding: 2px 40px 14px; }
+    .pill-bar { padding: 0 40px 14px; }
   }
   .pill-bar-inner {
     width: 100%;
@@ -672,13 +675,15 @@
   .tag-btn.personal.selected { background: var(--personal-bg); }
   .tag-btn.t3.selected { background: var(--top3-bg); }
 
-  /* CONTENT — main column scrollable area
-     Mobile: 100px bottom padding clears the tabbar.
-     Desktop: generous bottom padding, centered at 720px max. */
+  /* CONTENT — main column scrollable area.
+     padding-top is 0 so the gap from header title → first card is driven
+     entirely by the header's own bottom padding. That keeps the feel
+     consistent across tabs (Tasks/Habits use the pill-bar in between,
+     Notes/Scratch go straight to content — same title→next-element gap). */
   .content {
     max-width: 720px;
     margin: 0 auto;
-    padding: 2px 20px 100px;
+    padding: 0 20px 100px;
     width: 100%;
   }
   @media (min-width: 900px) {
@@ -688,7 +693,7 @@
        which tab is active. No margin: auto — nothing is centered inside the
        main column. */
     .content {
-      padding: 2px 25px 40px;
+      padding: 0 25px 40px;
       max-width: var(--content-max, 810px);
       margin: 0;
     }
@@ -2654,14 +2659,15 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
-    height: calc(100vh - 140px);
+    /* Leave ~24px below the layout so the bottom of --shadow-card has room
+       to render inside the viewport (was calc(100vh - 140px) which pinned
+       the box flush to the viewport bottom and clipped the shadow). */
+    height: calc(100vh - 164px);
     max-width: 100%;
     width: 100%;
     margin: 0;
     background: var(--surface);
-    /* Same --r-md radius + --shadow-card shadow as .card / .task-item.
-       Verified no other rule targets border/radius/shadow on this
-       selector, so no !important needed. */
+    /* Same --r-md radius + --shadow-card shadow as .card / .task-item. */
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
     box-shadow: var(--shadow-card);
@@ -2808,14 +2814,21 @@
   .tb-btn.tb-active { background: var(--navy); color: #fff; }
   .tb-btn svg { width: 15px; height: 15px; }
   .tb-select { padding: var(--space-1) var(--space-1-5); border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-family: inherit; font-size: var(--fs-meta); cursor: pointer; outline: none; }
-  .ne-body { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-5) 60px; }
+  .ne-body { flex: 1; overflow-y: auto; padding: 20px 28px 40px; }
+  /* .ne-page is a pure content container — the card shell lives on
+     .notes-layout so we don't render a card-inside-a-card. No bg, no
+     border, no radius, no shadow. */
   .ne-page {
-    max-width: var(--max-notes); margin: 0 auto; background: var(--surface);
-    border-radius: var(--radius-md); border: 1px solid var(--border);
-    padding: 36px var(--touch-44) 50px; min-height: 500px; min-width: 0;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+    max-width: none;
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
+    box-shadow: none;
     animation: fadeUp var(--dur-slow) ease both;
-    transition: max-width var(--dur-slower) ease, padding var(--dur-slower) ease;
   }
   .ne-title {
     font-size: var(--fs-title-lg); font-weight: var(--fw-bold); border: none; outline: none; width: 100%;
@@ -2845,42 +2858,26 @@
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
-  /* Scratch: same card shell as a task card, sized to match Notes on desktop.
-     !important beats the notes-editor mobile override (display: none) —
-     scratch reuses .notes-editor for markup but is always in-flow. */
-  .scratch-view .notes-layout { height: auto; min-height: auto; display: block; }
+  /* Scratch overrides — the card shell lives on .notes-layout now, so
+     .ne-page doesn't need one and .scratch-view doesn't need to add one. */
+  .scratch-view .notes-layout { display: block; }
+  /* Base .notes-editor has display:none on mobile (for the notes-editor
+     overlay pattern). Scratch is always in-flow, so override. */
   .scratch-view .notes-editor {
-    display: flex !important;
-    position: static !important;
+    display: flex;
+    position: static;
     min-width: 0;
     background: transparent;
-    top: auto; left: auto; right: auto; bottom: auto;
-    z-index: auto;
-  }
-  .scratch-view .ne-body { padding: 0; }
-  .scratch-view .ne-page {
-    margin: 8px 0 0;
-    max-width: none;
-    background: var(--surface);
-    border: 1px solid var(--edge);
-    border-radius: var(--r-md);
-    box-shadow: var(--shadow-card);
-    padding: 20px 24px 40px;
-    min-height: 60vh;
-  }
-  @media (min-width: 900px) {
-    /* Match the Notes card footprint: same viewport-based height. */
-    .scratch-view .notes-editor { min-height: calc(100vh - 140px); }
-    .scratch-view .ne-page      { min-height: calc(100vh - 140px); }
   }
   .scratch-view .scratch-header { display: none; }  /* redundant with app header */
+  /* Base .ne-toolbar is sticky with a surface fill + border-bottom. On
+     scratch we want it flush inside the notes-layout card, no sticky. */
   .scratch-view .ne-toolbar {
-    background: transparent !important;     /* beat the base .ne-toolbar surface fill */
-    border: none !important;                /* beat the base border-bottom line */
-    border-bottom: none !important;
+    background: transparent;
+    border: none;
     padding: 0 0 12px;
     margin: 0 0 16px;
-    position: static;                       /* not sticky — avoids a visible banded layer */
+    position: static;
     box-shadow: none;
   }
   .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
@@ -2948,25 +2945,8 @@
     .ne-body { padding: 0 0 var(--space-8); }
     .ne-title { font-size: var(--fs-title-mobile); }
     .ne-meta { gap: var(--space-2); font-size: var(--fs-meta); }
-    .mobile-note-header {
-      display: flex; align-items: center; gap: var(--space-2);
-      padding: var(--space-2) var(--space-3); background: var(--surface);
-      border-bottom: 1px solid var(--border); flex-shrink: 0;
-    }
-    .mobile-note-back {
-      display: flex; align-items: center; gap: var(--space-1);
-      border: none; background: none; cursor: pointer;
-      font-size: var(--fs-search); color: var(--navy); font-weight: var(--fw-semibold); font-family: inherit; padding: var(--space-1) 0;
-    }
-    .mobile-note-back svg { width: 16px; height: 16px; }
-    .mobile-note-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-1); }
-    .mobile-note-action {
-      width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
-      background: transparent; color: var(--text2); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .mobile-note-action:hover { background: var(--surface2); }
-    .mobile-note-action svg { width: 18px; height: 18px; }
+    /* Mobile-only tweak: tighten padding vs the shared desktop rule. */
+    .mobile-note-header { padding: var(--space-2) var(--space-3); }
     .mobile-nb-toggle {
       display: flex; align-items: center; gap: var(--space-1-5);
       padding: var(--space-2-5) var(--space-3-5); background: var(--surface);
@@ -2981,16 +2961,56 @@
     .tb-desktop-only { display: none !important; }
     .note-action-btn { display: none !important; }
   }
+  /* Note-editor header + back button + inline actions.
+     Defined unscoped so they render correctly at every width (desktop AND
+     mobile). A mobile @media tweak above just tightens the padding. */
+  .mobile-note-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--edge);
+    flex-shrink: 0;
+  }
+  .mobile-note-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .mobile-note-back:hover { background: var(--surface-2); color: var(--ink); }
+  .mobile-note-back svg { width: 16px; height: 16px; }
+  .mobile-note-back::before { content: 'Back'; order: 2; }
+  .mobile-note-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .mobile-note-action {
+    width: 32px; height: 32px;
+    border-radius: var(--r-sm);
+    border: none;
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .mobile-note-action:hover { background: var(--surface-2); color: var(--ink); }
+  .mobile-note-action svg { width: 18px; height: 18px; }
+
   @media (min-width: 900px) {
-    /* Show the note-editor header on desktop too so the "← back" button is
-       available when a note takes over the list space. Renaming to a neutral
-       class would be ideal — for now we just stop hiding it. */
-    .mobile-note-header {
-      display: flex !important;
-      padding: 12px 20px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--edge);
-    }
     .mobile-nb-toggle { display: none !important; }
     .mobile-nb-drawer { display: none !important; }
   }
