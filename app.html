@@ -152,7 +152,7 @@
 
     --fs-nano:          9px;     /* tiny indicators (8–9px range rounds up) */
     --fs-label:         10px;    /* uppercase section labels, day-dot labels */
-    --fs-micro:         10.5px;  /* mobile slim stats */
+    --fs-micro:         10.5px;  /* habit meta, stat-card labels, st-year-card */
     --fs-meta:          11px;    /* timestamps, stats metadata */
     --fs-pill:          12px;    /* pill labels, tool tabs, small buttons */
     --fs-search:        13px;    /* search input, small-card copy */
@@ -193,8 +193,7 @@
     --space-8:   40px;
     --space-9:   48px;
     --touch-44:  44px;    /* iOS/a11y minimum tap target */
-    --nav-clear-desktop: 100px;   /* content bottom padding clearing the stats bar */
-    --nav-clear-mobile:  130px;   /* content bottom padding clearing mobile nav + slim stats */
+    --nav-clear-desktop: 100px;   /* notes-list bottom padding clearing the mobile bottom nav */
 
     /* ── Max-widths ───────────────────────────────────────────── */
     --max-content:   720px;
@@ -206,12 +205,10 @@
     /* ── Z-index stack (named roles, no magic numbers) ────────── */
     --z-pill-bar:      0;
     --z-fab-desktop:   50;
-    --z-stats-bar:     90;
     --z-toast:         100;
     --z-editor-mobile: 150;
     --z-modal:         200;
     --z-fab-mobile:    250;
-    --z-slim-stats:    295;
     --z-mobile-nav:    300;
     --z-dropdown:      400;
     --z-auth:          500;
@@ -1127,29 +1124,6 @@
   }
   .done-toggle:hover { color: var(--text2); }
 
-  /* Legacy desktop bottom stats bar — spec removes it; per-screen
-     stats live inline above the list. Hidden but element kept so
-     updateTaskStatsBar / updateHabitStatsBar calls don't error. */
-  .stats { display: none !important; }
-  .stats-center {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    justify-content: center;
-  }
-  .stat {
-    display: flex;
-    gap: var(--space-1);
-    align-items: center;
-  }
-  .stat strong { color: #fff; font-weight: var(--fw-semibold); }
-  .stat-sep {
-    width: 1px;
-    height: 12px;
-    background: rgba(255,255,255,0.15);
-    flex-shrink: 0;
-  }
-
   /* Error / offline toast */
   .error-toast {
     position: fixed; bottom: 52px; left: 16px;
@@ -1309,10 +1283,6 @@
   /* Hide the badge when the count is 0 so idle tabs stay clean. */
   .mobile-nav-badge[data-empty="true"] { display: none; }
 
-  /* Legacy mobile-slim-stats — spec removes the stat strip in the chrome.
-     Per-screen stats live inline above the list now. */
-  .mobile-slim-stats { display: none !important; }
-
   /* FLOATING CREATE PANEL */
   .create-panel {
     display: none;
@@ -1462,7 +1432,6 @@
     .task-actions { opacity: 1; }
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--muted); }
-    .stats { display: none; }
     /* Mobile FAB position now comes from the :root --fab-* vars + the
        lifestyle .fab rule at the top of the file. No override here. */
     /* Habits mobile */
@@ -3239,8 +3208,6 @@
     </div>
   </div>
 </div>
-<div class="stats" id="statsBar"></div>
-
 </div><!-- /app-main -->
 </div><!-- /app-shell -->
 
@@ -3276,17 +3243,6 @@
     <span>Scratch</span>
   </button>
 </nav>
-
-<!-- Mobile slim stats row — above bottom nav, shown ≤600px -->
-<div class="mobile-slim-stats" id="mobileSlimStats">
-  <span><span class="sv">0</span> active</span>
-  <span class="sep"></span>
-  <span><span class="sv-work">0</span> work</span>
-  <span class="sep"></span>
-  <span><span class="sv-pers">0</span> personal</span>
-  <span class="sep"></span>
-  <span><span class="sv">0</span> done</span>
-</div>
 
 <!-- FLOATING SEARCH BAR -->
 <div class="floating-search" id="floatingSearch" onclick="expandFloatingSearch()">
@@ -5443,65 +5399,6 @@ function updateHabitStatsBar(active) {
   const tPct = tDen > 0 ? Math.round((tNum / tDen) * 100) : 100;
   const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = tPct + '%';
   const pcHA = document.getElementById('pc-habit-all');   if (pcHA) pcHA.textContent = active.length;
-
-  if (activeTool !== 'habits') return;
-  const today = todayStr();
-  const due = active.filter(h => isHabitDueToday(h));
-  const done = due.filter(h => isCompletedOn(h.id, today));
-  const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
-  const weekDates = getWeekDates();
-  let weekDue = 0, weekDone = 0;
-  weekDates.forEach(ds => { active.forEach(h => { if (isHabitDueOnDate(h, ds)) { weekDue++; if (isCompletedOn(h.id, ds)) weekDone++; } }); });
-  const weekPct = weekDue ? Math.round((weekDone / weekDue) * 100) : 0;
-
-  const statsBar = document.getElementById('statsBar');
-  if (statsBar) statsBar.innerHTML = `<div class="stats-center">
-    <div class="stat"><strong style="color:var(--pastel-mint-text)">${done.length}/${due.length}</strong> today</div>
-    <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:var(--pastel-yellow-text)">${bestStreak}</strong> best streak</div>
-    <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:var(--pastel-mint-text)">${weekPct}%</strong> this week</div>
-    <div class="stat-sep"></div>
-    <div class="stat"><strong>${active.length}</strong> active habits</div>
-  </div>`;
-
-  const slimEl = document.getElementById('mobileSlimStats');
-  if (slimEl) slimEl.innerHTML = `
-    <span class="mss-group">
-      <span><span class="sv sv-green">${done.length}/${due.length}</span> today</span>
-      <span class="sep"></span>
-      <span><span class="sv sv-amber">${bestStreak}</span> streak</span>
-    </span>
-    <span class="mss-group">
-      <span><span class="sv">${active.length}</span> habits</span>
-    </span>`;
-}
-
-function updateNotesStatsBar() {
-  const active = notesArr.filter(n => !n.trashed);
-  const starred = active.filter(n => n.starred).length;
-  const nbCount = notebooksArr.length;
-
-  if (activeTool !== 'notes') return;
-  const statsBar = document.getElementById('statsBar');
-  if (statsBar) statsBar.innerHTML = `<div class="stats-center">
-    <div class="stat"><strong>${active.length}</strong> notes</div>
-    <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:var(--pastel-sky-text)">${nbCount}</strong> notebooks</div>
-    <div class="stat-sep"></div>
-    <div class="stat"><strong style="color:var(--pastel-yellow-text)">${starred}</strong> starred</div>
-  </div>`;
-
-  const slimEl = document.getElementById('mobileSlimStats');
-  if (slimEl) slimEl.innerHTML = `
-    <span class="mss-group">
-      <span><span class="sv">${active.length}</span> notes</span>
-      <span class="sep"></span>
-      <span><span class="sv sv-work">${nbCount}</span> notebooks</span>
-    </span>
-    <span class="mss-group">
-      <span><span class="sv sv-amber">${starred}</span> starred</span>
-    </span>`;
 }
 
 function highlight(text, query) {
@@ -5647,33 +5544,7 @@ function render() {
     el.addEventListener('dragleave', onDragLeave);
   });
 
-  const bizN=tasks.filter(t=>!t.done&&t.tags.includes('biz')).length;
-  const perN=tasks.filter(t=>!t.done&&t.tags.includes('personal')).length;
-  const doneN=tasks.filter(t=>t.done).length;
-  const actN=tasks.filter(t=>!t.done).length;
-  if (activeTool === 'tasks') {
-    document.getElementById('statsBar').innerHTML=`
-      <div class="stats-center">
-        <div class="stat"><strong>${actN}</strong> active</div>
-        <div class="stat-sep"></div>
-        <div class="stat"><strong style="color:var(--pastel-sky-text)">${bizN}</strong> work</div>
-        <div class="stat"><strong style="color:var(--pastel-lavender-text)">${perN}</strong> personal</div>
-        <div class="stat-sep"></div>
-        <div class="stat"><strong>${doneN}</strong> done</div>
-      </div>`;
-    const slimEl=document.getElementById('mobileSlimStats');
-    if(slimEl) slimEl.innerHTML=`
-      <span class="mss-group">
-        <span><span class="sv">${actN}</span> active</span>
-        <span class="sep"></span>
-        <span><span class="sv">${doneN}</span> done</span>
-      </span>
-      <span class="mss-group">
-        <span><span class="sv-work">${bizN}</span> work</span>
-        <span class="sep"></span>
-        <span><span class="sv-pers">${perN}</span> personal</span>
-      </span>`;
-  }
+  const actN = tasks.filter(t => !t.done).length;
   // Mobile bottom-nav badge + desktop sidebar count
   paintBadge('tasksBadgeMobile', actN);
   const sbc=document.getElementById('sidebarTasksCount');if(sbc)sbc.textContent=actN;
@@ -6482,7 +6353,7 @@ function debouncedRenderNotes() {
     // If user is actively editing, only update sidebar/list, not the editor
     const ce = document.getElementById('noteContentEditable');
     if (ce && document.activeElement === ce) {
-      renderNotesSidebar(); renderNoteList(); updateNotesBadge(); updateNotesStatsBar();
+      renderNotesSidebar(); renderNoteList(); updateNotesBadge();
     } else {
       renderNotes();
     }
@@ -6634,7 +6505,6 @@ function renderNotes() {
   renderNoteList();
   renderNoteEditor();
   updateNotesBadge();
-  updateNotesStatsBar();
   // Toggle the list / editor swap on desktop via a class. CSS uses this to
   // hide the notes-list and expand the editor to fill the same space.
   const layout = document.querySelector('[data-tool-view="notes"] .notes-layout');
