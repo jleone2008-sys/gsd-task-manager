@@ -2314,16 +2314,23 @@
 
   .habit-today-card {
     cursor: default;
-    display: flex; align-items: flex-start; gap: 12px;
+    display: flex;
+    align-items: center;           /* emoji + text block + check share the vertical middle */
+    gap: 14px;
     overflow: hidden;
+    padding: 14px 16px 14px 22px;  /* slightly roomier than the default habit-card */
   }
   .habit-today-card:hover { border-color: var(--edge-strong); }
   .habit-today-card .habit-card-footer { padding-left: 0; margin-top: 4px; }
   .habit-today-content { flex: 1; min-width: 0; overflow: hidden; position: relative; z-index: 1; }
   .habit-emoji-lg {
-    font-size: 24px; flex-shrink: 0; line-height: 1;
-    align-self: flex-start; padding-top: 2px;
-    position: relative; z-index: 1;
+    font-size: 28px;
+    flex-shrink: 0;
+    line-height: 1;
+    align-self: center;            /* vertically centered with title + meta */
+    padding-top: 0;
+    position: relative;
+    z-index: 1;
   }
 
   .habit-streak {
@@ -2388,8 +2395,8 @@
 
   .habit-card-meta {
     display: flex; align-items: center; gap: 8px;
-    margin-top: 10px;
-    font-size: 11px; color: var(--ink-3);
+    margin-top: 4px;
+    font-size: 12px; color: var(--ink-3);
   }
   .habit-card-meta .tag {
     font-size: var(--t-xs); padding: 0 7px; height: 20px;
