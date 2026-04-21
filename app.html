@@ -343,6 +343,7 @@
     display: flex; flex-direction: column;
     min-width: 0;
     position: relative;
+    overflow-x: hidden;   /* prevent horizontal page scroll from any inner overflow */
   }
 
   /* ──────────────────────────────────────────────────────────────
@@ -373,29 +374,37 @@
      HEADER — light surface, mobile (wordmark + title + avatar)
      or desktop (page title + actions). No navy bar.
   ────────────────────────────────────────────────────────────── */
+  /* Sticky topbar wrapper — header + pill-bar scroll as one unit. */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-toast);
+    background: var(--bg);
+  }
   header {
     display: flex;
     flex-direction: column;
     background: var(--bg);
-    position: sticky; top: 0;
-    z-index: var(--z-toast);
   }
   .header-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;       /* align logo + avatar on same horizontal axis */
     width: 100%;
     background: transparent;
   }
   .header-top { padding: 0; }
+  /* Mobile: equal padding on all four sides (logo and avatar mirror across) */
   .header-inner {
     width: 100%;
-    display: flex; align-items: flex-start;
-    padding: 16px 20px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 16px;
     gap: var(--space-2);
     box-sizing: border-box;
   }
   @media (min-width: 900px) {
-    .header-inner { padding: 20px 40px 10px; }
+    .header-inner { padding: 24px 40px 14px; }
   }
   .header-inner .logo { flex-shrink: 0; flex: 1; min-width: 0; }
   .header-inner .user-menu { flex-shrink: 0; }
@@ -404,17 +413,18 @@
     color: var(--ink);
     text-decoration: none;
     user-select: none;
+    flex: 1; min-width: 0;
   }
   .logo-main {
-    /* Legacy wrapper — mobile wordmark lives here */
+    /* Mobile wordmark — bolder per mockup */
     display: inline-flex; align-items: baseline; gap: 3px;
-    font-size: 18px; font-weight: 800; letter-spacing: -0.02em;
+    font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
     color: var(--ink); line-height: 1;
     text-transform: lowercase;
   }
   .logo-dot {
     display: inline-block;
-    width: 5px; height: 5px;
+    width: 6px; height: 6px;
     background: var(--guava-700);
     border-radius: 50%;
     font-size: 0; line-height: 0;
@@ -423,15 +433,15 @@
     color: transparent;
   }
 
-  /* Page title in header (mobile: beneath wordmark; desktop: large) */
+  /* Page title in header — bolder and larger per mockup */
   .page-title-mobile {
-    font-size: 20px; font-weight: 600;
-    letter-spacing: -0.01em; color: var(--ink);
-    line-height: 1.2;
+    font-size: 28px; font-weight: 800;
+    letter-spacing: -0.02em; color: var(--ink);
+    line-height: 1.1;
   }
   @media (min-width: 900px) {
-    .logo-main { display: none; }  /* wordmark lives in sidebar on desktop */
-    .page-title-mobile { font-size: var(--t-xl); font-weight: 700; letter-spacing: -0.02em; }
+    .logo-main { display: none; }   /* wordmark lives in sidebar on desktop */
+    .page-title-mobile { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
   }
 
   /* Desktop-only header actions (search, new, etc.) */
@@ -451,11 +461,11 @@
   .pill-bar {
     display: flex;
     align-items: center;
-    padding: 0 20px 10px;
+    padding: 2px 20px 12px;
     background: var(--bg);
   }
   @media (min-width: 900px) {
-    .pill-bar { padding: 0 40px 14px; }
+    .pill-bar { padding: 2px 40px 14px; }
   }
   .pill-bar-inner {
     width: 100%;
@@ -633,11 +643,20 @@
     max-width: 720px;
     margin: 0 auto;
     padding: 2px 20px 100px;
+    width: 100%;
   }
   @media (min-width: 900px) {
-    .content { padding: 2px 40px 40px; }
+    .content { padding: 2px 40px 40px; max-width: 720px; }
+    /* Habits gets a wider column — charts/stats benefit from the extra room. */
+    .content[data-tool-view="habits"] { max-width: 880px; }
+    /* Notes uses a larger reading column, card list is single-column per spec. */
+    .content[data-tool-view="notes"] { max-width: 820px; padding: 2px 40px 40px; }
   }
-  .content[data-tool-view="notes"] { max-width: none; padding: 0; }
+  /* Notes mobile: full width, no internal padding; the notes-list paints its own bg and padding. */
+  @media (max-width: 899.98px) {
+    .content[data-tool-view="notes"] { max-width: none; padding: 0 0 100px; }
+    .content.scratch-view { max-width: none; padding: 0 0 100px; }
+  }
 
   /* Section label — matches spec .section-hed (uppercase, --ink-4) */
   .section-label {
@@ -1137,15 +1156,28 @@
   }
 
   /* ──────────────────────────────────────────────────────────────
-     FAB — guava-700, 52×52, --r-lg, shadow-fab
-     Mobile: bottom 82px (above tabbar) · right 20px
-     Desktop: bottom 24px · right 24px
+     FAB + SEARCH — fixed bottom-right cluster.
+     FAB: 52×52 guava-700, --r-lg, equal right + bottom padding.
+     Search: 40×40 surface button to the LEFT of FAB, vertically
+     centered with the FAB. Expands inline (max ~240px) — no full-width.
+     Mobile padding measured to clear the tabbar; desktop uses the
+     viewport corner.
   ────────────────────────────────────────────────────────────── */
+  :root {
+    /* Single source of truth for FAB bottom offset (mobile = above tabbar). */
+    --fab-bottom-mobile: calc(84px + env(safe-area-inset-bottom, 0px));
+    --fab-bottom-desktop: 24px;
+    --fab-right-mobile: 20px;
+    --fab-right-desktop: 24px;
+    --fab-size: 52px;
+    --search-size: 40px;
+    --fab-search-gap: 12px;
+  }
   .fab {
     position: fixed;
-    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-    right: 20px;
-    width: 52px; height: 52px;
+    bottom: var(--fab-bottom-mobile);
+    right: var(--fab-right-mobile);
+    width: var(--fab-size); height: var(--fab-size);
     border-radius: var(--r-lg);
     background: var(--guava-700);
     color: #fff;
@@ -1161,7 +1193,7 @@
   .fab svg { width: 20px; height: 20px; }
   .fab.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   @media (min-width: 900px) {
-    .fab { bottom: 24px; right: 24px; z-index: var(--z-fab-desktop); }
+    .fab { bottom: var(--fab-bottom-desktop); right: var(--fab-right-desktop); z-index: var(--z-fab-desktop); }
   }
 
   /* ──────────────────────────────────────────────────────────────
@@ -1433,57 +1465,64 @@
     .st-hm-months:not(.monthly) span { width: calc(10px * 4.33 + 2px * 3.33); }
   }
 
-  /* FLOATING SEARCH BAR (square theme, matches card-style soft shadow) */
+  /* Floating search — 40×40 surface button, to the LEFT of FAB, vertically
+     centered. Collapsed = circle with icon only; expanded = pill (200px)
+     that grows leftward so it never crosses the FAB. */
   .floating-search {
-    position: fixed; bottom: 60px; right: 84px;
-    height: 52px; border-radius: var(--radius-sm);
-    background: var(--surface); border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-    display: flex; align-items: center; justify-content: center; gap: var(--space-2);
-    padding: 0 var(--space-3-5); z-index: var(--z-fab-desktop);
-    transition: width var(--dur-slow) ease, opacity var(--dur-quick), box-shadow var(--dur-calm);
-    width: 52px; overflow: hidden; cursor: pointer;
+    position: fixed;
+    /* Vertically centered with the FAB (FAB 52, search 40 → +6 bottom offset) */
+    bottom: calc(var(--fab-bottom-mobile) + (var(--fab-size) - var(--search-size)) / 2);
+    right: calc(var(--fab-right-mobile) + var(--fab-size) + var(--fab-search-gap));
+    height: var(--search-size);
+    width: var(--search-size);
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow-card);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 0;
+    z-index: var(--z-fab-mobile);
+    overflow: hidden;
+    cursor: pointer;
+    transition: width var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease), border-radius var(--dur) var(--ease);
   }
-  .floating-search:hover { box-shadow: var(--shadow-md); }
+  .floating-search:hover { box-shadow: var(--shadow-card-hover); }
   .floating-search.expanded {
-    width: 260px; cursor: default;
+    width: 200px;
+    border-radius: 20px;
     justify-content: flex-start;
-    box-shadow: var(--shadow-md);
-    border-color: var(--navy-light);
+    padding: 0 12px;
+    border-color: var(--edge-strong);
+    box-shadow: var(--shadow-raised);
+    cursor: default;
   }
-  .floating-search svg { flex-shrink: 0; color: var(--muted); width: 16px; height: 16px; }
-  .floating-search.expanded svg { color: var(--navy); }
+  .floating-search svg { flex-shrink: 0; color: var(--ink-3); width: 16px; height: 16px; }
+  .floating-search.expanded svg { color: var(--ink); }
   .floating-search input {
     border: none; background: transparent; outline: none;
-    color: var(--text); font-family: inherit; font-size: var(--fs-search);
+    color: var(--ink); font-family: inherit; font-size: 13px;
     width: 100%;
-    /* Hidden from flex layout when collapsed — otherwise it pushes the icon
-       off-center in a small square button. */
     display: none;
   }
   .floating-search.expanded input { display: block; }
-  .floating-search input::placeholder { color: var(--muted); }
+  .floating-search input::placeholder { color: var(--ink-4); }
   .floating-search .fs-clear {
     flex-shrink: 0; border: none; background: none; cursor: pointer;
-    color: var(--muted); padding: var(--space-0-5); display: none; align-items: center; justify-content: center;
-    border-radius: 50%; transition: color var(--dur-quick);
+    color: var(--ink-4); padding: 2px;
+    display: none; align-items: center; justify-content: center;
+    border-radius: 50%; transition: color var(--dur) var(--ease);
   }
-  .floating-search .fs-clear:hover { color: var(--text); }
+  .floating-search .fs-clear:hover { color: var(--ink); }
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
-  @media (max-width: 899.98px) {
-    /* Sits 16px above the dock top and 16px from the right edge — visually
-       equal padding from the nearest chrome / screen edge. Dock effective
-       height is 88px (60 nav + 28 stats) + safe-area. */
+  @media (min-width: 900px) {
     .floating-search {
-      bottom: calc(104px + env(safe-area-inset-bottom, 0));
-      right: 16px;
-      height: 48px; width: 48px;
-      border-radius: var(--radius-sm);
-      padding: 0;
-      z-index: var(--z-fab-mobile);
+      bottom: calc(var(--fab-bottom-desktop) + (var(--fab-size) - var(--search-size)) / 2);
+      right: calc(var(--fab-right-desktop) + var(--fab-size) + var(--fab-search-gap));
+      z-index: var(--z-fab-desktop);
     }
-    .floating-search.expanded { width: calc(100vw - 32px); border-radius: var(--radius-sm); padding: 0 var(--space-3); }
+    .floating-search.expanded { width: 240px; }
   }
   /* highlight matched text in task */
   .search-hl { background: var(--pastel-yellow-bg); color: var(--text); border-radius: var(--radius-xs); padding: 0 var(--space-0-5); }
@@ -1648,10 +1687,14 @@
      USER MENU (header)
   ════════════════════════════ */
   .user-menu { position: relative; flex-shrink: 0; }
-  /* Desktop: header avatar hidden — avatar lives in sidebar footer. */
+  /* Desktop: avatar lives in sidebar footer — hide the header avatar but keep
+     the .user-menu wrapper in the DOM so its child .user-dropdown can still
+     render when triggered (either from the hidden user-menu or from the
+     sidebar footer — both call toggleUserDropdown). */
   @media (min-width: 900px) {
-    .user-menu { display: none !important; }
-    /* Dropdown opened from sidebar footer — position bottom-left, above sidebar bottom. */
+    .user-menu .user-avatar { display: none; }
+    .user-menu { width: 0; height: 0; padding: 0; margin: 0; }
+    /* Dropdown opened from sidebar footer — pinned bottom-left above footer. */
     .user-dropdown {
       position: fixed !important;
       top: auto !important; right: auto !important;
@@ -2495,7 +2538,8 @@
   }
 
   /* ══════ NOTES ══════ */
-  .notes-layout { display: flex; flex-wrap: wrap; height: calc(100vh - 86px); max-width: 1400px; margin: 0 auto; transition: all var(--dur-slower) ease; }
+  /* Desktop notes layout fills the main column below sticky topbar (~140px on desktop). */
+  .notes-layout { display: flex; flex-wrap: wrap; height: calc(100vh - 140px); max-width: 100%; margin: 0 auto; transition: all var(--dur-slower) ease; }
   .notes-left-col { display: contents; }
   .notes-sidebar {
     width: 240px; background: var(--surface); border-right: 1px solid var(--border);
@@ -2600,7 +2644,10 @@
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
-  .scratch-view .notes-layout { height: calc(100vh - 86px); }
+  /* Scratch: auto-height so it sits below the sticky header instead of overlapping it.
+     On mobile the content padding-bottom already clears the tabbar. */
+  .scratch-view .notes-layout { height: auto; min-height: auto; }
+  .scratch-view .notes-editor { min-width: 0; min-height: 60vh; }
   .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
 
   .nl-item.dragging { opacity: 0.4; }
@@ -2648,8 +2695,10 @@
     .notes-editor { display: none; }
     .notes-editor.mobile-open {
       display: flex; position: fixed;
-      top: 50px; left: 0; right: 0; bottom: 84px;
+      top: 0; left: 0; right: 0;
+      bottom: calc(68px + env(safe-area-inset-bottom, 0px));   /* clear the tabbar */
       z-index: var(--z-editor-mobile); flex-direction: column;
+      background: var(--surface);
     }
     .ne-page { padding: var(--space-5) var(--space-4) 80px; border-radius: 0; border-left: none; border-right: none; box-shadow: none; min-height: auto; }
     .ne-toolbar { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
@@ -2934,6 +2983,8 @@
 <!-- MAIN COLUMN -->
 <div class="app-main">
 
+<!-- Sticky topbar: header + per-tool pill-bar, scrolls as one unit -->
+<div class="topbar">
 <header>
   <!-- Row 1: wordmark (mobile only) + page title + avatar (mobile only) -->
   <div class="header-row header-top">
@@ -3003,27 +3054,39 @@
   </div>
 </header>
 
+<!-- Per-tool filter pills — exactly one visible at a time (switchTool toggles via [data-tool-view]) -->
+<!-- All per-tool pill-bars live inside the sticky topbar. switchTool toggles
+     visibility via the [data-tool-view] selector so exactly one shows at a time. -->
 <div class="pill-bar" data-tool-view="tasks">
   <div class="pill-bar-inner">
-    <button class="pill active" onclick="setCatFilter('all',this)">All</button>
-    <button class="pill biz" onclick="setCatFilter('biz',this)">Work</button>
-    <button class="pill personal" onclick="setCatFilter('personal',this)">Personal</button>
-    <button class="pill" onclick="setCatFilter('someday',this)">Later</button>
+    <button class="pill active" data-filter="all" onclick="setCatFilter('all',this)">All<span class="pill-count" id="pc-all">0</span></button>
+    <button class="pill" data-filter="today" onclick="setCatFilter('today',this)">Today<span class="pill-count" id="pc-today">0</span></button>
+    <button class="pill" data-filter="overdue" onclick="setCatFilter('overdue',this)">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
+    <button class="pill" data-filter="priority" onclick="setCatFilter('priority',this)">Priority<span class="pill-count" id="pc-priority">0</span></button>
+    <button class="pill" data-filter="later" onclick="setCatFilter('later',this)">Later<span class="pill-count" id="pc-later">0</span></button>
+  </div>
+</div>
+<div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
+  <div class="pill-bar-inner">
+    <button class="pill habit-pill active" data-habit-view="today">Today<span class="pill-count" id="pc-habit-today">0</span></button>
+    <button class="pill" data-habit-view="all">All<span class="pill-count" id="pc-habit-all">0</span></button>
+    <button class="pill stat-pill" data-habit-view="stats">Statistics</button>
+  </div>
+</div>
+<div class="pill-bar" data-tool-view="notes" style="display:none">
+  <div class="pill-bar-inner" id="notesPillsInner">
+    <button class="pill active" data-notes-filter="all">All<span class="pill-count" id="pc-notes-all">0</span></button>
+    <button class="pill" data-notes-filter="pinned">Pinned<span class="pill-count" id="pc-notes-pinned">0</span></button>
+    <!-- Tag pills injected dynamically by renderNotesPills() -->
   </div>
 </div>
 
+</div><!-- /topbar -->
 
 <div class="content" data-tool-view="tasks">
   <div id="taskContainer"></div>
 </div>
 
-<div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
-  <div class="pill-bar-inner">
-    <button class="pill habit-pill active" data-habit-view="today">Today</button>
-    <button class="pill" data-habit-view="all">All Habits</button>
-    <button class="pill stat-pill" data-habit-view="stats">Statistics</button>
-  </div>
-</div>
 <div class="content" data-tool-view="habits" style="display:none">
   <div class="habits-content">
     <div class="habit-sub-content active" id="habit-today"></div>
@@ -3811,6 +3874,17 @@ document.addEventListener('click', e => {
   document.querySelectorAll('.habit-sub-content').forEach(c => c.classList.remove('active'));
   const target = document.getElementById('habit-' + activeHabitView);
   if (target) target.classList.add('active');
+});
+
+// Notes pill-bar (All / Pinned) — routes to the existing notes sidebar-view state
+document.addEventListener('click', e => {
+  const pill = e.target.closest('[data-tool-view="notes"].pill-bar .pill[data-notes-filter]');
+  if (!pill) return;
+  const f = pill.dataset.notesFilter;
+  const map = { all: 'all', pinned: 'starred' };
+  if (typeof setNotesSidebarView === 'function') setNotesSidebarView(map[f] || 'all');
+  document.querySelectorAll('[data-tool-view="notes"].pill-bar .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
 });
 
 document.getElementById('deleteAccountModal').addEventListener('click', function(e) {
@@ -5134,6 +5208,12 @@ function updateHabitStatsBar(active) {
   // Badge always updates regardless of active tool
   const hb = document.getElementById('habitsBadge'); if (hb) hb.textContent = active.length;
   const hbm = document.getElementById('habitsBadgeMobile'); if (hbm) hbm.textContent = active.length;
+  const sbc = document.getElementById('sidebarHabitsCount'); if (sbc) sbc.textContent = active.length;
+  // Dynamic habit pill counts (Today / All)
+  const todayStr_ = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
+  const dueToday = active.filter(h => isHabitDueToday(h)).length;
+  const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = dueToday;
+  const pcHA = document.getElementById('pc-habit-all');   if (pcHA) pcHA.textContent = active.length;
 
   if (activeTool !== 'habits') return;
   const today = todayStr();
@@ -5234,13 +5314,21 @@ function emptyState(type) {
 
 function render() {
   const c = document.getElementById('taskContainer');
+  const today = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
   let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
   let done = tasks.filter(t=>t.done);
   let view = [...active];
-  if (filter==='biz') { view = view.filter(t=>t.tags.includes('biz')); done = done.filter(t=>t.tags.includes('biz')); }
+  // New lifestyle filter set: all · today · overdue · priority · later
+  if (filter==='today')    { view = view.filter(t => t.due === today); done = done.filter(t => t.due === today); }
+  if (filter==='overdue')  { view = view.filter(t => t.due && t.due < today); done = done.filter(t => t.due && t.due < today); }
+  if (filter==='later')    { view = view.filter(t => t.someday || (t.due && t.due > today)); done = done.filter(t => t.someday || (t.due && t.due > today)); }
+  if (filter==='priority') { view = view.filter(t => t.top3); done = done.filter(t => t.top3); }
+  // Legacy filters (still accepted from older call sites)
+  if (filter==='biz')      { view = view.filter(t=>t.tags.includes('biz')); done = done.filter(t=>t.tags.includes('biz')); }
   if (filter==='personal') { view = view.filter(t=>t.tags.includes('personal')); done = done.filter(t=>t.tags.includes('personal')); }
-  if (filter==='someday') view = view.filter(t=>t.someday);
-  if (filterStarred) { view = view.filter(t=>t.top3); done = done.filter(t=>t.top3); }
+  if (filter==='someday')  view = view.filter(t=>t.someday);
+  // filterStarred still drives the "Priority" filter — kept for back-compat.
+  if (filterStarred && filter !== 'priority') { view = view.filter(t=>t.top3); done = done.filter(t=>t.top3); }
 
   // Apply search across active + done
   const isSearching = !!searchQuery;
@@ -5355,6 +5443,10 @@ function render() {
   // Update tool switcher badges (always)
   const tb=document.getElementById('tasksBadge');if(tb)tb.textContent=actN;
   const tbm=document.getElementById('tasksBadgeMobile');if(tbm)tbm.textContent=actN;
+  // Sidebar count (desktop)
+  const sbc=document.getElementById('sidebarTasksCount');if(sbc)sbc.textContent=actN;
+  // Dynamic pill counts
+  updateTaskPillCounts();
   requestAnimationFrame(initNoteClamps);
 }
 
@@ -5583,20 +5675,49 @@ function reorder(fromId, toId) {
   save();
 }
 
+/**
+ * New task-pill filter set per lifestyle spec: All · Today · Overdue · Priority · Later.
+ * `filter` drives the render predicate in render(). Synonyms kept for DB/legacy:
+ *   biz → 'work' tag; personal → 'personal' tag (still supported if called internally).
+ */
 function setCatFilter(f, el) {
   filter = f;
-  document.querySelectorAll('.pill:not(.top3-pill)').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
+  filterStarred = (f === 'priority');   // route Priority pill through the existing top3 logic
+  // Clear all pill active states in the Tasks pill-bar, then mark the clicked one.
+  const bar = document.querySelector('[data-tool-view="tasks"].pill-bar');
+  if (bar) bar.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
   render();
 }
 function toggleStarredFilter(el) {
   filterStarred = !filterStarred;
-  el.classList.toggle('active', filterStarred);
+  if (el) el.classList.toggle('active', filterStarred);
   render();
 }
 function setFilter(f, el) {
-  if (f === 'top3') { toggleStarredFilter(el); return; }
+  if (f === 'top3' || f === 'priority') { filter = 'priority'; toggleStarredFilter(el); return; }
   setCatFilter(f, el);
+}
+
+/**
+ * Recompute and paint the Task pill counts — dynamic per render.
+ * Counts reflect incomplete tasks (done tasks are excluded from the pill numbers,
+ * matching what the list actually shows by default).
+ */
+function updateTaskPillCounts() {
+  const today = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
+  const active = tasks.filter(t => !t.done);
+  const counts = {
+    all:      active.length,
+    today:    active.filter(t => t.due === today).length,
+    overdue:  active.filter(t => t.due && t.due < today).length,
+    priority: active.filter(t => t.top3).length,
+    later:    active.filter(t => t.someday || (t.due && t.due > today)).length,
+  };
+  for (const [k, v] of Object.entries(counts)) {
+    const el = document.getElementById('pc-' + k);
+    if (el) el.textContent = v;
+  }
 }
 
 function openCreatePanel() {
@@ -6753,6 +6874,10 @@ function updateNotesBadge() {
   const count = notesArr.filter(n => !n.trashed).length;
   const nb = document.getElementById('notesBadge'); if (nb) nb.textContent = count;
   const nbm = document.getElementById('notesBadgeMobile'); if (nbm) nbm.textContent = count;
+  const sbc = document.getElementById('sidebarNotesCount'); if (sbc) sbc.textContent = count;
+  const pcAll = document.getElementById('pc-notes-all'); if (pcAll) pcAll.textContent = count;
+  const pinned = notesArr.filter(n => !n.trashed && n.pinned).length;
+  const pcPin = document.getElementById('pc-notes-pinned'); if (pcPin) pcPin.textContent = pinned;
 }
 
 /* ══════ NOTES ACTIONS ══════ */
