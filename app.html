@@ -4845,12 +4845,39 @@ function isHabitDueOnDate(habit, dateStr) {
   if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') return true;
   return true;
 }
+/**
+ * Pace-aware "due today" for quota habits.
+ * A 3x/month habit with 1 completed and 20 days left in the month is NOT
+ * "due today" — you have time. It only becomes "due today" when you'd
+ * miss the quota if you don't do it today (days_remaining <= quota_remaining).
+ * Daily / weekdays / custom / specific DoW cadences use their strict rule.
+ */
 function isHabitDueToday(habit) {
-  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') {
-    if (isQuotaMet(habit, todayStr()) && !habit.allowExtras) return false;
-    return true;
+  const today = todayStr();
+  if (habit.frequency === 'x_per_week') {
+    if (isQuotaMet(habit, today) && !habit.allowExtras) return false;
+    const quota = habit.frequencyCount || 1;
+    const doneThisWeek = getWeekCompletions(habit.id, today);
+    const remaining = quota - doneThisWeek;
+    if (remaining <= 0) return false;
+    const d = new Date(today + 'T12:00:00');
+    const dow = d.getDay();                       // 0=Sun, 1=Mon, ...
+    const daysLeftIncludingToday = 7 - ((dow + 6) % 7);  // Mon=7, Sun=1
+    return daysLeftIncludingToday <= remaining;
   }
-  return isHabitDueOnDate(habit, todayStr());
+  if (habit.frequency === 'x_per_month') {
+    if (isQuotaMet(habit, today) && !habit.allowExtras) return false;
+    const quota = habit.frequencyCount || 1;
+    const doneThisMonth = getMonthCompletions(habit.id, today);
+    const remaining = quota - doneThisMonth;
+    if (remaining <= 0) return false;
+    const d = new Date(today + 'T12:00:00');
+    const y = d.getFullYear(), m = d.getMonth();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const daysLeftIncludingToday = lastDay - d.getDate() + 1;
+    return daysLeftIncludingToday <= remaining;
+  }
+  return isHabitDueOnDate(habit, today);
 }
 
 // For x_per_week: count completions in the same Mon-Sun week as dateStr
@@ -5171,24 +5198,25 @@ function renderHabitToday(active) {
     return;
   }
 
-  // Cadence-aware Month % across all active habits (spec §4)
-  const monthPct = active.length
-    ? Math.round(active.reduce((s, h) => s + computeScore(h), 0) / active.length)
-    : 0;
+  // "Today %" = completed today / due today. isHabitDueToday already accounts
+  // for quota habits that have already met their goal for the period AND for
+  // quota habits that don't need to be done today (pace-aware). So a 1x/month
+  // habit done on day 1 doesn't count against today's stat on day 2.
+  const todayPct = due.length ? Math.round((done.length / due.length) * 100) : 100;
 
   el.innerHTML = `
     <div class="stats-strip">
       <div class="stat-block is-guava">
-        <span class="v">${monthPct}<em>%</em></span>
-        <span class="l">Month · cadence-adj.</span>
+        <span class="v">${todayPct}<em>%</em></span>
+        <span class="l">Today</span>
       </div>
       <div class="stat-block">
         <span class="v">${bestStreak}</span>
         <span class="l">Best streak</span>
       </div>
       <div class="stat-block">
-        <span class="v">${remaining.length}<em>/${due.length}</em></span>
-        <span class="l">Due today</span>
+        <span class="v">${done.length}<em>/${due.length}</em></span>
+        <span class="l">Done today</span>
       </div>
     </div>
     ${remaining.length ? `<div class="section-label">Due today</div>${remHTML}` : ''}
@@ -5232,10 +5260,14 @@ function renderHabitAll(active) {
       }
     });
 
-    // 7-day completion %
-    let w7due = 0, w7done = 0;
-    weekDates.forEach(ds => { if (isHabitDueOnDate(h, ds)) { w7due++; if (isCompletedOn(h.id, ds)) w7done++; } });
-    const w7pct = w7due ? Math.round((w7done / w7due) * 100) : 0;
+    // Cadence-aware score — 1x/month done once is 100% for the month.
+    // Daily/weekdays use the current-month running total; x_per_week uses
+    // the current week; x_per_month uses the current month.
+    const pct = computeScore(h);
+    const periodLabel =
+      h.frequency === 'x_per_week'  ? 'this week'  :
+      h.frequency === 'x_per_month' ? 'this month' :
+                                      'this month';
 
     html += `<div class="habit-card" onclick="openHabitDrillIn(${h.id})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -5247,7 +5279,7 @@ function renderHabitAll(active) {
       </div>
       <div class="habit-week-dots">${dots}</div>
       <div class="habit-card-footer" style="padding-left:0;margin-top:14px;padding-bottom:0">
-        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--check)">✓</span> ${w7pct}%</div>
+        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--check)">✓</span> ${pct}% ${periodLabel}</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'stats')" title="Statistics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
@@ -6485,6 +6517,13 @@ function rowToNote(r) {
   };
 }
 function noteToRow(n) {
+  // IMPORTANT: pass n.updatedAt through instead of blindly writing new Date().
+  // Edit handlers (onNoteTitleChange, onNoteContentChange, toggleNoteStar, etc.)
+  // set n.updatedAt = now() BEFORE calling saveNoteToDB, so we already have the
+  // correct time on the object. Overwriting here meant every bulk save (e.g.,
+  // retrySyncAll after an offline blip) would mass-reset every note to the
+  // same 'now', which is why all notes previously showed identical relative
+  // times like '58m ago'.
   return {
     user_id: currentUser.id,
     client_id: n.id,
@@ -6497,7 +6536,7 @@ function noteToRow(n) {
     trashed_at: n.trashedAt || null,
     "order": n.order,
     created_at: n.createdAt || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    updated_at: n.updatedAt || n.createdAt || new Date().toISOString(),
   };
 }
 
