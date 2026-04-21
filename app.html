@@ -2251,13 +2251,15 @@
   /* Hide legacy progress ring elements (replaced by stats strip) */
   .progress-ring-wrap, .progress-stats { display: none; }
 
-  /* Habit card — same shell as task card */
+  /* Habit card — same shell as task card.
+     Left padding is slightly smaller than the right (12 vs 14) so the
+     emoji hugs the card edge, matching the user-approved 'All Habits' tile. */
   .habit-card {
     position: relative;
     background: var(--surface);
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
-    padding: 12px 14px 12px 22px;
+    padding: 12px 14px 12px 12px;
     margin-bottom: 6px;
     box-shadow: var(--shadow-card);
     cursor: pointer;
@@ -2324,7 +2326,9 @@
     align-items: center;           /* emoji + text block + check share the vertical middle */
     gap: 14px;
     overflow: hidden;
-    padding: 14px 16px 14px 22px;  /* slightly roomier than the default habit-card */
+    /* Tight left padding so the emoji hugs the card edge; right padding is
+       normal so the check button has breathing room. */
+    padding: 14px 16px 14px 12px;
   }
   .habit-today-card:hover { border-color: var(--edge-strong); }
   .habit-today-card .habit-card-footer { padding-left: 0; margin-top: 4px; }
@@ -4051,12 +4055,17 @@ function toggleUserDropdown(force) {
   dd.classList.toggle('open', open);
 }
 
-// Close dropdown on outside click
+// Close dropdown on outside click. "Outside" must also exclude the sidebar
+// footer — it is a dropdown trigger on desktop (the mobile header avatar is
+// the trigger on small screens). Without this check the click that opens
+// the dropdown bubbles to document and is then treated as outside, closing
+// the dropdown again on the same tick.
 document.addEventListener('click', e => {
   const menu = document.getElementById('userMenu');
-  if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) {
-    toggleUserDropdown(false);
-  }
+  if (!menu || menu.style.display === 'none') return;
+  const sbFoot = document.getElementById('sidebarFooter');
+  const inside = menu.contains(e.target) || (sbFoot && sbFoot.contains(e.target));
+  if (!inside) toggleUserDropdown(false);
 });
 
 /* ── DELETE ACCOUNT ── */
@@ -6457,6 +6466,10 @@ let scratchNote = {
 };
 
 function rowToNote(r) {
+  // IMPORTANT: do NOT default missing timestamps to new Date(). That makes
+  // every freshly-loaded row share the exact same "now" — which is why every
+  // note in the list was rendering "47m ago" at once. Fall back to the other
+  // timestamp if available, else leave null so formatNoteDate can show nothing.
   return {
     id: r.client_id,
     title: r.title || '',
@@ -6467,8 +6480,8 @@ function rowToNote(r) {
     trashed: r.trashed || false,
     trashedAt: r.trashed_at || null,
     order: r.order || 0,
-    createdAt: r.created_at || new Date().toISOString(),
-    updatedAt: r.updated_at || new Date().toISOString(),
+    createdAt: r.created_at || r.updated_at || null,
+    updatedAt: r.updated_at || r.created_at || null,
   };
 }
 function noteToRow(n) {
@@ -8001,7 +8014,9 @@ function escAttr(s) {
   return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 function formatNoteDate(iso) {
+  if (!iso) return '';
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
   const now = new Date();
   const diff = now - d;
   if (diff < 60000) return 'Just now';
