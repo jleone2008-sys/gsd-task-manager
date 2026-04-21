@@ -472,8 +472,6 @@
   }
   @media (min-width: 900px) { .header-actions { display: flex; } }
 
-  /* Legacy tool switcher inside header — hidden; nav lives in sidebar now */
-  .tool-switcher { display: none; }
 
   /* ──────────────────────────────────────────────────────────────
      FILTER PILLS — flat, guava active
@@ -3135,25 +3133,6 @@
     </a>
     <!-- Desktop-only header actions (new-task button, search, etc.) -->
     <div class="header-actions" id="headerActions"></div>
-    <!-- Tool Switcher (legacy — hidden; nav lives in sidebar on desktop, tabbar on mobile) -->
-    <div class="tool-switcher">
-      <button class="tool-tab active" data-tool="tasks">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        Tasks <span class="tool-badge" id="tasksBadge">0</span>
-      </button>
-      <button class="tool-tab" data-tool="habits">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-        Habits <span class="tool-badge" id="habitsBadge">0</span>
-      </button>
-      <button class="tool-tab" data-tool="notes">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Notes <span class="tool-badge" id="notesBadge">0</span>
-      </button>
-      <button class="tool-tab" data-tool="scratch">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Scratch
-      </button>
-    </div>
     <div class="user-menu" id="userMenu" style="display:none">
       <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()" title="Account"></div>
       <div class="user-dropdown" id="userDropdown">
@@ -4002,10 +3981,6 @@ function switchTool(tool) {
   document.querySelectorAll('[data-tool-view]').forEach(el => {
     el.style.display = el.dataset.toolView === tool ? '' : 'none';
   });
-  // Sync desktop tool tabs (legacy — kept for compat, hidden via CSS)
-  document.querySelectorAll('.tool-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tool === tool);
-  });
   // Sync mobile bottom nav
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
@@ -4030,7 +4005,7 @@ function switchTool(tool) {
 }
 // Wire click handlers for tool tabs, mobile nav, and sidebar
 document.addEventListener('click', e => {
-  const tab = e.target.closest('.tool-tab, .mobile-nav-btn, .sidebar-btn');
+  const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
   if (tab && tab.dataset.tool) switchTool(tab.dataset.tool);
 });
 // Tool keyboard shortcuts — Shift+T/H/N/S, only when not in a typeable context
@@ -5458,7 +5433,6 @@ function renderStatsMonthly(active) {
 
 function updateHabitStatsBar(active) {
   // Badge always updates regardless of active tool
-  paintBadge('habitsBadge', active.length);
   paintBadge('habitsBadgeMobile', active.length);
   const sbc = document.getElementById('sidebarHabitsCount'); if (sbc) sbc.textContent = active.length;
   // Today pill shows the contribution-weighted % done today (matches the
@@ -5700,8 +5674,7 @@ function render() {
         <span><span class="sv-pers">${perN}</span> personal</span>
       </span>`;
   }
-  // Update tool switcher badges (always) + sidebar count (desktop)
-  paintBadge('tasksBadge', actN);
+  // Mobile bottom-nav badge + desktop sidebar count
   paintBadge('tasksBadgeMobile', actN);
   const sbc=document.getElementById('sidebarTasksCount');if(sbc)sbc.textContent=actN;
   // Dynamic pill counts
@@ -7165,7 +7138,6 @@ function noteHeading(tag) {
 
 function updateNotesBadge() {
   const count = notesArr.filter(n => !n.trashed).length;
-  paintBadge('notesBadge', count);
   paintBadge('notesBadgeMobile', count);
   const sbc = document.getElementById('sidebarNotesCount'); if (sbc) sbc.textContent = count;
   const pcAll = document.getElementById('pc-notes-all'); if (pcAll) pcAll.textContent = count;
