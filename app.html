@@ -2659,12 +2659,12 @@
     width: 100%;
     margin: 0;
     background: var(--surface);
-    /* Card shell identical to .card / .task-item — same --r-md radius and
-       --shadow-card shadow. !important guards against any legacy rule
-       further down the cascade overriding. */
-    border: 1px solid var(--edge) !important;
-    border-radius: var(--r-md) !important;
-    box-shadow: var(--shadow-card) !important;
+    /* Same --r-md radius + --shadow-card shadow as .card / .task-item.
+       Verified no other rule targets border/radius/shadow on this
+       selector, so no !important needed. */
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
     transition: none;
   }
