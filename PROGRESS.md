@@ -1,7 +1,8 @@
 # GSD — Lifestyle Redesign, Session Log
 
-Single source of truth for the `ui-redesign` branch. If you're starting
-a fresh Claude session, **read this first** before editing anything.
+Single source of truth for the lifestyle redesign, now on `dev`. If
+you're starting a fresh Claude session, **read this first** before
+editing anything.
 
 ## Working rules (hard requirements)
 
@@ -32,7 +33,10 @@ a fresh Claude session, **read this first** before editing anything.
 - No emojis in code, commits, or UI unless explicitly requested.
 - Surgical edits, one change at a time. Read before write.
 - Marketing lives in `index.html`, app features in `app.html`.
-- Deploy URLs: `gsdtasks.com` (prod), Netlify preview for `ui-redesign`.
+- Deploy URLs: `gsdtasks.com` (prod, deploys from `main`),
+  `https://dev--gsd-task-manager.netlify.app/app` (dev, deploys from
+  `dev`). The redesign lives on `dev` and only reaches production
+  when `dev` is merged to `main`.
 
 ## Design source of truth
 

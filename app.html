@@ -104,7 +104,6 @@
     --navy-dark:   var(--guava-800);
     --navy-light:  var(--guava-500);
     --navy-muted:  rgba(255,255,255,0.72);
-    --navy-border: rgba(255,255,255,0.22);
     --accent:      var(--guava-800);
 
     --check:           var(--guava-700);
@@ -114,7 +113,6 @@
     --top3:            var(--guava-700);
     --top3-bg:         var(--guava-100);
     --link:            var(--guava-700);
-    --drag-over:       var(--guava-100);
 
     --biz-bg:        var(--slate-bg);
     --biz-text:      var(--slate-fg);
@@ -124,16 +122,15 @@
     --personal:  var(--personal-text);
 
     --pastel-lavender-bg:  var(--plum-bg);   --pastel-lavender-text:  var(--plum-fg);
-    --pastel-sky-bg:       var(--sky-bg);    --pastel-sky-text:       var(--sky-fg);
+    --pastel-sky-text:     var(--sky-fg);
     --pastel-mint-bg:      var(--moss-bg);   --pastel-mint-text:      var(--moss-fg);
     --pastel-yellow-bg:    var(--ochre-bg);  --pastel-yellow-text:    var(--ochre-fg);
-    --pastel-coral-bg:     var(--guava-100); --pastel-coral-text:     var(--guava-700);
+    --pastel-coral-bg:     var(--guava-100);
 
     --toast-bg:        var(--ink);
     --toast-err-red:   var(--guava-500);
     --toast-err-amber: var(--ochre-fg);
 
-    --heatmap-l0: var(--surface-2);
     --heatmap-l1: var(--guava-100);
     --heatmap-l2: var(--guava-300);
     --heatmap-l3: var(--guava-700);
@@ -152,7 +149,6 @@
     --radius-md:   var(--r-md);
     --radius-lg:   var(--r-md);
     --radius-xl:   var(--r-lg);
-    --radius-pill: 9999px;
 
     --fs-nano:          9px;     /* tiny indicators (8–9px range rounds up) */
     --fs-label:         10px;    /* uppercase section labels, day-dot labels */
@@ -202,12 +198,10 @@
 
     /* ── Max-widths ───────────────────────────────────────────── */
     --max-content:   720px;
-    --max-pill-bar:  560px;
     --max-modal:     460px;
     --max-modal-lg:  600px;   /* legal, FAQ */
     --max-create:    480px;   /* FAB create panel */
     --max-auth:      380px;
-    --max-notes:     740px;
 
     /* ── Z-index stack (named roles, no magic numbers) ────────── */
     --z-pill-bar:      0;
@@ -222,9 +216,6 @@
     --z-dropdown:      400;
     --z-auth:          500;
     --z-legal:         600;
-    --z-onboard-bg:    800;
-    --z-onboard-ring:  801;
-    --z-onboard-tip:   802;
     --z-confirm:       900;
 
     /* ── Transitions + easing ─────────────────────────────────── */
@@ -545,28 +536,11 @@
     inset: -6px 0;     /* extends the tap region vertically to 44h */
   }
   .pill:hover { color: var(--ink); background: var(--surface-2); }
-  .pill.active,
-  .pill.biz.active,
-  .pill.personal.active,
-  .pill.top3-pill.active {
+  .pill.active {
     background: var(--guava-100);
     color: var(--guava-700);
     border-color: transparent;
     font-weight: 500;
-  }
-  /* Inactive tag-coloured variants collapse to flat — spec says one style only */
-  .pill.biz,
-  .pill.personal,
-  .pill.top3-pill {
-    background: transparent;
-    color: var(--ink-3);
-    border: none;
-  }
-  .pill.biz:hover,
-  .pill.personal:hover,
-  .pill.top3-pill:hover {
-    background: var(--surface-2);
-    color: var(--ink);
   }
   .pill-count {
     font-size: 10px;
@@ -967,8 +941,8 @@
   .chip--ochre, .tag.personal       { background: var(--ochre-bg); color: var(--ochre-fg); }
   .chip--plum                       { background: var(--plum-bg);  color: var(--plum-fg); }
   .chip--guava                      { background: var(--guava-100); color: var(--guava-700); }
-  .chip--ghost, .tag.has-note       { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
-  .tag.has-note svg                 { flex-shrink: 0; }
+  .chip--ghost, .tag.has-note, .tag.has-subtasks { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
+  .tag.has-note svg, .tag.has-subtasks svg       { flex-shrink: 0; }
   /* Legacy .tag.top3 — no longer rendered; priority is the strip */
   .tag.top3                         { display: none; }
 
@@ -1032,6 +1006,7 @@
   .subtask-row::before {
     content: ''; position: absolute;
     left: -8px; right: -8px; top: 0; bottom: 0;
+    pointer-events: none;
   }
   .subtask-radio {
     width: 14px; height: 14px;
@@ -1113,19 +1088,6 @@
      card. Hidden, but kept in markup so toggleTop3() and other handlers
      keep their event-target assumptions. */
   .star-btn { display: none; }
-  .del-btn {
-    width: 24px; height: 24px;
-    border-radius: var(--r-sm);
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--ink-3);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all var(--dur) var(--ease);
-    flex-shrink: 0;
-    padding: 0;
-  }
-  .del-btn:hover { background: var(--surface-2); color: var(--guava-700); }
 
   .drag-handle {
     display: flex; align-items: center; justify-content: center;
@@ -1176,20 +1138,6 @@
      stats live inline above the list. Hidden but element kept so
      updateTaskStatsBar / updateHabitStatsBar calls don't error. */
   .stats { display: none !important; }
-  .stats-legacy {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 var(--space-5);
-    background: var(--navy);
-    box-shadow: 0 -2px 12px rgba(30,60,140,0.08);
-    font-size: var(--fs-meta);
-    color: var(--navy-muted);
-    height: 40px;
-    z-index: var(--z-stats-bar);
-  }
   .stats-center {
     display: flex;
     align-items: center;
@@ -1891,103 +1839,6 @@
     margin-bottom: var(--space-1-5);
   }
   .confirm-input-wrap label strong { color: var(--text); }
-  /* ════════════════════════════
-     ONBOARDING TOOLTIP WALKTHROUGH
-  ════════════════════════════ */
-  #onboardOverlay {
-    position: fixed; inset: 0; z-index: var(--z-onboard-bg);
-    pointer-events: none;
-    transition: opacity var(--dur-slower);
-  }
-  #onboardOverlay.hidden { opacity: 0; pointer-events: none; }
-
-  /* Spotlight cutout via box-shadow */
-  #onboardSpotlight {
-    position: fixed; z-index: var(--z-onboard-ring);
-    border-radius: var(--radius-md);
-    box-shadow: 0 0 0 9999px rgba(10,10,30,0.72);
-    transition: all var(--dur-slower) var(--ease-material);
-    pointer-events: none;
-  }
-
-  /* Tooltip card */
-  #onboardTooltip {
-    position: fixed; z-index: var(--z-onboard-tip);
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-md);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.04);
-    padding: var(--space-5) var(--space-5) var(--space-4-5);
-    width: 280px;
-    transition: all var(--dur-slower) var(--ease-material);
-    pointer-events: all;
-  }
-  #onboardTooltip::before {
-    content: '';
-    position: absolute;
-    width: 10px; height: 10px;
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    transform: rotate(45deg);
-    transition: all var(--dur-slower) var(--ease-material);
-  }
-  #onboardTooltip.arrow-top::before    { top: -6px;    left: 24px; border-bottom: none; border-right: none; }
-  #onboardTooltip.arrow-bottom::before { bottom: -6px; left: 24px; border-top: none;    border-left: none; }
-  #onboardTooltip.arrow-left::before   { left: -6px;   top: 22px;  border-right: none;  border-bottom: none; }
-  #onboardTooltip.arrow-right::before  { right: -6px;  top: 22px;  border-left: none;   border-top: none; }
-  #onboardTooltip.arrow-none::before   { display: none; }
-
-  .onboard-step-row {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: var(--space-2-5);
-  }
-  .onboard-step-badge {
-    font-size: var(--fs-label); font-weight: var(--fw-semibold); letter-spacing: 1px;
-    text-transform: uppercase; color: var(--accent);
-    background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.2);
-    border-radius: var(--radius-xl); padding: var(--space-0-5) var(--space-2);
-  }
-  .onboard-dots {
-    display: flex; gap: var(--space-1); align-items: center;
-  }
-  .onboard-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--border2); transition: background var(--dur-calm);
-  }
-  .onboard-dot.active { background: var(--accent); width: 16px; border-radius: var(--radius-xs); }
-
-  .onboard-title {
-    font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--text);
-    margin-bottom: var(--space-1-5); line-height: 1.3;
-  }
-  .onboard-desc {
-    font-size: var(--fs-pill); color: var(--text2); line-height: 1.65;
-    margin-bottom: var(--space-4); font-weight: var(--fw-regular);
-  }
-  .onboard-desc strong { color: var(--text); }
-
-  .onboard-actions {
-    display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-  }
-  .onboard-skip {
-    font-size: var(--fs-pill); color: var(--muted); background: none; border: none;
-    cursor: pointer; padding: 0; font-family: inherit;
-    transition: color var(--dur-quick);
-  }
-  .onboard-skip:hover { color: var(--text2); }
-  .onboard-btns { display: flex; gap: var(--space-2); }
-  .onboard-back {
-    padding: var(--space-2) var(--space-3-5); border-radius: var(--radius-sm); font-size: var(--fs-pill); font-weight: var(--fw-medium);
-    font-family: inherit; cursor: pointer; transition: all var(--dur-quick);
-    background: var(--surface2); border: 1px solid var(--border2); color: var(--text2);
-  }
-  .onboard-back:hover { color: var(--text); }
-  .onboard-next {
-    padding: var(--space-2) var(--space-4-5); border-radius: var(--radius-sm); font-size: var(--fs-pill); font-weight: var(--fw-semibold);
-    font-family: inherit; cursor: pointer; transition: all var(--dur-quick);
-    background: var(--navy); border: 1px solid var(--navy); color: #fff;
-  }
-  .onboard-next:hover { background: var(--navy-dark); }
 
   /* ════════════════════════════
      CUSTOM CONFIRM DIALOG
@@ -2081,12 +1932,10 @@
     display: flex; flex-direction: column; align-items: center;
     padding: 48px 20px; text-align: center; gap: 12px;
   }
-  .empty-state-icon { display: none; }     /* no illustrations per spec */
   .empty-state-title {
     font-size: var(--t-md); font-weight: 500; color: var(--ink-3);
     margin: 0;
   }
-  .empty-state-desc { display: none; }     /* keep copy to one line */
   .empty-state-btn {
     /* Ghost chip-button, reuses .expand-action visual in render() */
     background: transparent;
@@ -2897,7 +2746,6 @@
     min-width: 0;
     background: transparent;
   }
-  .scratch-view .scratch-header { display: none; }  /* redundant with app header */
   /* Base .ne-toolbar is sticky with a surface fill + border-bottom. On
      scratch we want it flush inside the notes-layout card, no sticky. */
   .scratch-view .ne-toolbar {
@@ -2908,8 +2756,6 @@
     position: static;
     box-shadow: none;
   }
-  .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
-
   .nl-item.dragging { opacity: 0.4; }
   .nl-item.drag-target { border-color: var(--navy); background: rgba(45,95,166,0.06); }
   .note-action-btn { background: none; border: none; cursor: pointer; padding: var(--space-1-5); border-radius: var(--radius-sm); color: var(--muted); transition: color var(--dur-instant); }
@@ -3499,7 +3345,7 @@
       <div class="create-panel-tags">
         <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Work</button>
         <button class="tag-btn personal" id="opt-personal" onclick="toggleNewTag('personal')">Personal</button>
-        <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Star</button>
+        <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Priority</button>
         <button class="tag-btn" id="opt-someday" onclick="toggleNewTag('someday')">Later</button>
       </div>
       <div class="create-panel-actions">
@@ -3929,6 +3775,42 @@ async function toggleSubtask(taskClientId, subClientId) {
   render();
   pushSubtask(s);
 }
+function startEditSubtask(taskClientId, subClientId) {
+  const s = subtasks.find(x => x.client_id === subClientId);
+  if (!s || s.isNew) return;
+  const row = document.querySelector(`[data-sub-id="${subClientId}"]`);
+  if (!row) return;
+  const span = row.querySelector('.subtask-text');
+  if (!span) return;
+  const input = document.createElement('input');
+  input.className = 'subtask-input';
+  input.value = s.text;
+  let cancelled = false;
+  input.addEventListener('click', e => e.stopPropagation());
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')      { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape'){ e.preventDefault(); cancelled = true; input.blur(); }
+  });
+  input.addEventListener('blur', () => {
+    if (cancelled) { render(); return; }
+    commitEditSubtask(taskClientId, subClientId, input.value);
+  });
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+}
+function commitEditSubtask(taskClientId, subClientId, text) {
+  const s = subtasks.find(x => x.client_id === subClientId);
+  if (!s || s.isNew) return;
+  const trimmed = (text || '').trim();
+  // Blank edit or unchanged text: just re-render to restore the span view.
+  // Deletion is reserved for the × button so a stray blur can't drop a row.
+  if (!trimmed || trimmed === s.text) { render(); return; }
+  s.text = trimmed;
+  rebuildSubtasksIndex();
+  render();
+  pushSubtask(s);
+}
 async function deleteSubtask(taskClientId, subClientId) {
   const idx = subtasks.findIndex(s => s.client_id === subClientId);
   if (idx < 0) return;
@@ -4240,7 +4122,7 @@ async function confirmDeleteAccount() {
 function exportCSV() {
   if (!tasks.length) { alert('No tasks to export.'); return; }
   const stripHtml = h => { const d=document.createElement('div'); d.innerHTML=h; return d.textContent||''; };
-  const headers = ['Text','Note','Tags','Starred','Later','Done',];
+  const headers = ['Text','Note','Tags','Priority','Later','Done',];
   const rows = tasks.map(t => [
     `"${(t.text||'').replace(/"/g,'""')}"`,
     `"${stripHtml(t.note||'').replace(/"/g,'""')}"`,
@@ -4283,30 +4165,6 @@ function linkify(t) {
     const d = u.length > 55 ? u.slice(0,52)+'...' : u;
     return `<a href="${u}" target="_blank" rel="noopener">${d}</a>`;
   });
-}
-
-const seedActive = [
-  {text:"Schedule dentist appointment", tags:['personal']},
-  {text:"Review Q3 budget report",       tags:['biz'], top3:true},
-  {text:"Buy groceries for the week",    tags:['personal']},
-  {text:"Send project update to team",   tags:['biz'], top3:true},
-  {text:"Call back the plumber",         tags:['personal']},
-  {text:"Prep slides for Friday meeting",tags:['biz'], top3:true},
-  {text:"Research new laptop options",   tags:[], someday:true},
-  {text:"Read: Atomic Habits",           tags:['personal'], someday:true},
-];
-const seedDone = [
-  "Pay electricity bill",
-  "Book flights for conference",
-  "Send invoice to client",
-];
-
-function buildSeed() {
-  let id = Date.now();
-  return [
-    ...seedActive.map((t,i)=>({id:id+i,text:t.text,tags:t.tags||[],top3:t.top3||false,someday:t.someday||false,done:false,note:'',due:null,order:i})),
-    ...seedDone.map((text,i)=>({id:id+seedActive.length+i,text,tags:[],top3:false,someday:false,done:true,note:'',due:null,order:seedActive.length+i}))
-  ];
 }
 
 // ── Error / offline toast system ──
@@ -4472,23 +4330,13 @@ async function load() {
     return;
   }
 
-  const isNew = data.length === 0;
-  if (isNew) {
-    tasks = buildSeed();
-    await save();
-    render();
-    setStatus('saved');
-    setTimeout(startOnboarding, 600);
-  } else {
-    tasks = data.map(rowToTask);
-    // Populate rowIdMap so realtime DELETE events can resolve client_id
-    data.forEach(r => rowIdMap.set(r.id, r.client_id));
-    render();
-    setStatus('saved');
-  }
+  tasks = data.map(rowToTask);
+  // Populate rowIdMap so realtime DELETE events can resolve client_id
+  data.forEach(r => rowIdMap.set(r.id, r.client_id));
+  render();
+  setStatus('saved');
 
   subscribeToChanges();
-  // autoBackup runs after tasks are loaded so it snapshots real data, not seed
   autoBackup();
 }
 
@@ -5879,8 +5727,9 @@ function tHTMLsearch(t, query) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
+  const subsTag = subtasksTagHTML(t);
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.someday||t.due||t.note;
+  const hasMeta = t.tags.length||t.someday||t.due||t.note||subsTag;
   const cardCls = ['card','task-item'];
   if (t.top3) cardCls.push('top3','is-priority');
   if (t.done) cardCls.push('done','is-done');
@@ -5892,7 +5741,7 @@ function tHTMLsearch(t, query) {
     <div class="card-head">
       <div class="card-body task-content" onclick="openEdit(${t.id})">
         <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
-        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}</div>` : ''}
       </div>
       <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
@@ -5967,6 +5816,13 @@ document.addEventListener('mousedown', e => {
   }
 });
 
+function subtasksTagHTML(t) {
+  const arr = (subtasksByTask.get(String(t.id)) || []).filter(s => !s.isNew);
+  if (!arr.length) return '';
+  const done = arr.filter(s => s.done).length;
+  return `<span class="tag has-subtasks" title="Subtasks"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>${done} / ${arr.length} subtasks</span>`;
+}
+
 function dueBadgeHTML(due) {
   if (!due || due === '') return '';
   const today = new Date(); today.setHours(0,0,0,0);
@@ -5986,8 +5842,9 @@ function tHTML(t) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
+  const subsTag = subtasksTagHTML(t);
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.someday||t.due||t.note;
+  const hasMeta = t.tags.length||t.someday||t.due||t.note||subsTag;
   const isExpanded = expandedTaskIds.has(t.id);
   const expandHtml = isExpanded ? expansionBodyHTML(t) : '';
   const cardCls = ['card','task-item'];
@@ -6002,7 +5859,7 @@ function tHTML(t) {
     <div class="card-head">
       <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
         <div class="card__title task-text">${linkify(t.text)}</div>
-        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}</div>` : ''}
       </div>
       <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
@@ -6039,13 +5896,12 @@ function subtaskRowHTML(taskClientId, s) {
          onclick="event.stopPropagation()"
          onkeydown="handleSubtaskInputKey(event,'${taskClientId}','${s.client_id}')"
          onblur="commitNewSubtask('${taskClientId}','${s.client_id}',this.value)" />`
-    : `<span class="subtask-text">${escapeHTML(s.text)}</span>`;
-  // New rows: clicking radio shouldn't toggle (no real row yet)
-  const rowClick = s.isNew
-    ? `event.stopPropagation()`
-    : `event.stopPropagation();toggleSubtask('${taskClientId}','${s.client_id}')`;
-  return `<div class="subtask-row${s.done?' done':''}" data-sub-id="${s.client_id}" onclick="${rowClick}">
-    <span class="subtask-radio"></span>
+    : `<span class="subtask-text" onclick="event.stopPropagation();startEditSubtask('${taskClientId}','${s.client_id}')">${escapeHTML(s.text)}</span>`;
+  const radioClick = s.isNew
+    ? ''
+    : ` onclick="event.stopPropagation();toggleSubtask('${taskClientId}','${s.client_id}')"`;
+  return `<div class="subtask-row${s.done?' done':''}" data-sub-id="${s.client_id}">
+    <span class="subtask-radio"${radioClick}></span>
     ${inner}
     <button class="subtask-del" onclick="event.stopPropagation();deleteSubtask('${taskClientId}','${s.client_id}')" aria-label="Delete subtask">×</button>
   </div>`;
@@ -8279,7 +8135,7 @@ function openEdit(id) {
   document.getElementById('editDueDate').value = t.due||'';
   // Tags
   document.getElementById('editTags').innerHTML = [
-    {key:'top3',label:'&#9733;',cls:'t3',title:'Starred'},
+    {key:'top3',label:'&#9733;',cls:'t3',title:'Priority'},
     {key:'biz',label:'Work',cls:'biz'},
     {key:'personal',label:'Personal',cls:'personal'},
     {key:'someday',label:'Later',cls:''},
@@ -8961,201 +8817,6 @@ function escHtml(str) {
 
 
 
-
-/* ═══════════════════════════════════════════════
-   ONBOARDING TOOLTIP WALKTHROUGH
-   Fires once for new users (no tasks in storage)
-═══════════════════════════════════════════════ */
-
-
-const onboardSteps = [
-  {
-    target: '.logo',
-    arrow: 'bottom',
-    title: 'Welcome to GSD 👋',
-    desc: 'GSD is your personal task list — fast, focused, and synced everywhere. Let\'s take a 30-second tour.',
-    position: 'below',
-  },
-  {
-    target: '.pill-bar-inner',
-    arrow: 'top',
-    title: 'Filter your tasks',
-    desc: 'Switch between <strong>All</strong>, <strong>Work</strong>, <strong>Personal</strong>, <strong>Starred</strong>, and <strong>Later</strong> to focus on what matters right now.',
-    position: 'below',
-  },
-  {
-    target: '#floatingSearch',
-    arrow: 'top',
-    title: 'Search as you type',
-    desc: 'Start typing to instantly filter tasks by name, note, or tag. Hit <strong>Escape</strong> to clear.',
-    position: 'below',
-  },
-  {
-    target: '.fab',
-    arrow: 'top',
-    title: 'Add a task',
-    desc: 'Tap <strong>New Task</strong> to add anything. Tag it Work or Personal, <strong>star it</strong> to flag it as a priority, add a due date, or tuck it in Later.',
-    position: 'above',
-  },
-  {
-    target: '#userMenu',
-    arrow: 'left',
-    title: 'Your account',
-    desc: 'Tap your avatar to <strong>export your tasks</strong>, <strong>sign out</strong>, or manage your account. Your data belongs to you.',
-    position: 'below-left',
-  },
-];
-
-let onboardStep = 0;
-let onboardActive = false;
-
-function startOnboarding() {
-  onboardActive = true;
-  onboardStep = 0;
-  injectOnboardDOM();
-  showOnboardStep(0);
-}
-
-function injectOnboardDOM() {
-  if (document.getElementById('onboardOverlay')) return;
-  document.body.insertAdjacentHTML('beforeend', `
-    <div id="onboardOverlay"></div>
-    <div id="onboardSpotlight"></div>
-    <div id="onboardTooltip">
-      <div class="onboard-step-row">
-        <span class="onboard-step-badge" id="onboardBadge">Step 1 of ${onboardSteps.length}</span>
-        <div class="onboard-dots" id="onboardDots"></div>
-      </div>
-      <div class="onboard-title" id="onboardTitle"></div>
-      <div class="onboard-desc" id="onboardDesc"></div>
-      <div class="onboard-actions">
-        <button class="onboard-skip" onclick="skipOnboarding()">Skip tour</button>
-        <div class="onboard-btns">
-          <button class="onboard-back" id="onboardBack" onclick="prevOnboardStep()">Back</button>
-          <button class="onboard-next" id="onboardNext" onclick="nextOnboardStep()">Next →</button>
-        </div>
-      </div>
-    </div>
-  `);
-  // Close on overlay click
-  document.getElementById('onboardOverlay').addEventListener('click', skipOnboarding);
-}
-
-function showOnboardStep(idx) {
-  const step = onboardSteps[idx];
-  const total = onboardSteps.length;
-
-  // Update text
-  document.getElementById('onboardBadge').textContent = `Step ${idx+1} of ${total}`;
-  document.getElementById('onboardTitle').textContent = step.title;
-  document.getElementById('onboardDesc').innerHTML = step.desc;
-  document.getElementById('onboardNext').textContent = idx === total-1 ? 'Done ✓' : 'Next →';
-  document.getElementById('onboardBack').style.display = idx === 0 ? 'none' : '';
-
-  // Dots
-  document.getElementById('onboardDots').innerHTML = onboardSteps
-    .map((_,i) => `<div class="onboard-dot${i===idx?' active':''}"></div>`).join('');
-
-  // Spotlight target
-  const el = document.querySelector(step.target);
-  const spot = document.getElementById('onboardSpotlight');
-  const tip  = document.getElementById('onboardTooltip');
-
-  if (el) {
-    const r = el.getBoundingClientRect();
-    const pad = 6;
-    spot.style.left   = (r.left - pad) + 'px';
-    spot.style.top    = (r.top  - pad) + 'px';
-    spot.style.width  = (r.width  + pad*2) + 'px';
-    spot.style.height = (r.height + pad*2) + 'px';
-    spot.style.opacity = '1';
-
-    // Position tooltip relative to target
-    positionTooltip(tip, r, step);
-  } else {
-    // Fallback: center of screen
-    spot.style.opacity = '0';
-    tip.style.left = '50%';
-    tip.style.top  = '50%';
-    tip.style.transform = 'translate(-50%, -50%)';
-  }
-
-  // Arrow class
-  tip.className = 'arrow-' + step.arrow;
-}
-
-function positionTooltip(tip, targetRect, step) {
-  const TIP_W = 280, TIP_H = 200, MARGIN = 14;
-  const vw = window.innerWidth, vh = window.innerHeight;
-  let left, top;
-
-  switch (step.position) {
-    case 'below':
-      left = targetRect.left;
-      top  = targetRect.bottom + MARGIN;
-      break;
-    case 'above':
-      left = targetRect.left;
-      top  = targetRect.top - TIP_H - MARGIN;
-      break;
-    case 'below-left':
-      left = targetRect.right - TIP_W;
-      top  = targetRect.bottom + MARGIN;
-      break;
-    default:
-      left = targetRect.left;
-      top  = targetRect.bottom + MARGIN;
-  }
-
-  // Clamp within viewport
-  left = Math.max(12, Math.min(left, vw - TIP_W - 12));
-  top  = Math.max(12, Math.min(top,  vh - TIP_H - 12));
-
-  tip.style.left      = left + 'px';
-  tip.style.top       = top  + 'px';
-  tip.style.transform = 'none';
-}
-
-function nextOnboardStep() {
-  if (onboardStep >= onboardSteps.length - 1) {
-    finishOnboarding();
-  } else {
-    onboardStep++;
-    showOnboardStep(onboardStep);
-  }
-}
-
-function prevOnboardStep() {
-  if (onboardStep > 0) {
-    onboardStep--;
-    showOnboardStep(onboardStep);
-  }
-}
-
-function skipOnboarding() { finishOnboarding(); }
-
-async function finishOnboarding() {
-  onboardActive = false;
-  const overlay = document.getElementById('onboardOverlay');
-  const spot    = document.getElementById('onboardSpotlight');
-  const tip     = document.getElementById('onboardTooltip');
-  if (overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 300); }
-  if (spot)    { spot.style.opacity = '0';    setTimeout(() => spot.remove(),    300); }
-  if (tip)     { tip.style.opacity = '0';     setTimeout(() => tip.remove(),     300); }
-  // Clear seed tasks — delete from Supabase and wipe local state
-  if (currentUser && tasks.length) {
-    await db.from('tasks').delete().eq('user_id', currentUser.id);
-    await db.from('task_subtasks').delete().eq('user_id', currentUser.id);
-    tasks = [];
-    subtasks = []; subtasksByTask.clear(); subtaskRowIdMap.clear();
-    render();
-  }
-}
-
-// Reposition on resize
-window.addEventListener('resize', () => {
-  if (onboardActive) showOnboardStep(onboardStep);
-});
 
 /* ═══════════════════════════════════════════════
    CUSTOM CONFIRM DIALOG

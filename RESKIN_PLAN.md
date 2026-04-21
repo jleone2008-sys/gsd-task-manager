@@ -2,7 +2,7 @@
 
 Phased rollout of the visual system defined in [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), against the baseline mapped in [CURRENT_STATE.md](CURRENT_STATE.md). Every phase lists its **file scope**, **line-range scope inside [app.html](app.html)**, **acceptance criteria**, and **rollback strategy**.
 
-We are on the `ui-redesign` branch. Nothing ships to `main` until Phase 8.
+The redesign lives on `dev`. Nothing ships to `main` until Phase 8.
 
 ---
 
@@ -300,7 +300,7 @@ Verify at all three notes breakpoints (1080 / 800 / 600).
 5. Responsive pass: 375 / 600 / 900 / 1200px across every view.
 6. Final grep audit — confirm zero stray literals.
 7. Optionally author `gsd-brand-framework-v4.md` to replace v3.0. Keep v3.0 in repo for history.
-8. Merge `ui-redesign` → `main` via PR.
+8. Merge `dev` → `main` via PR.
 
 **Acceptance:**
 - No hex literals outside `:root` (documented exceptions only).
