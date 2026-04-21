@@ -312,7 +312,8 @@
     color: var(--guava-700);
     font-weight: 600;
   }
-  .sidebar-btn.is-active svg { fill: var(--guava-200); stroke: var(--guava-700); }
+  /* Legacy icons are stroke-only (no filled shapes) — keep fill: none on active. */
+  .sidebar-btn.is-active svg { fill: none; stroke: var(--guava-700); stroke-width: 2.2; }
   .sidebar-btn .count {
     margin-left: auto;
     font-size: 11px; font-weight: 600;
@@ -666,12 +667,15 @@
     width: 100%;
   }
   @media (min-width: 900px) {
-    .content { padding: 2px 40px 40px; max-width: 720px; }
-    /* Habits gets a wider column — charts/stats benefit from the extra room. */
-    .content[data-tool-view="habits"] { max-width: 880px; }
+    /* Main column is ~1180px (1400 shell cap − 220 sidebar). Widen Tasks
+       content so cards breathe more and the right-side whitespace around the
+       list shrinks. */
+    .content { padding: 2px 40px 40px; max-width: 920px; }
+    .content[data-tool-view="habits"] { max-width: 1000px; }
+    /* Scratch: document-style narrow column for readability. */
+    .content.scratch-view { max-width: 720px; }
     /* Notes: full main-column width so the 3-pane (notebooks | list | editor)
-       layout spans edge-to-edge. No max-width here — it would stuff the panes
-       into a narrow strip in the middle. */
+       layout spans edge-to-edge. */
     .content[data-tool-view="notes"] {
       max-width: none;
       padding: 0 20px 20px;
@@ -1191,11 +1195,15 @@
      viewport corner.
   ────────────────────────────────────────────────────────────── */
   :root {
-    /* Single source of truth for FAB bottom offset (mobile = above tabbar). */
+    /* Single source of truth for FAB positioning. The desktop offset anchors
+       the button to the RIGHT EDGE OF .app-shell (capped at 1400px) rather
+       than the viewport, so on wide monitors it sits near the content column
+       instead of drifting into blank space. */
+    --app-max: 1400px;
     --fab-bottom-mobile: calc(84px + env(safe-area-inset-bottom, 0px));
     --fab-bottom-desktop: 24px;
     --fab-right-mobile: 20px;
-    --fab-right-desktop: 24px;
+    --fab-right-desktop: calc(max(0px, (100vw - var(--app-max)) / 2) + 24px);
     --fab-size: 52px;
     --search-size: 40px;
     --fab-search-gap: 12px;
@@ -1267,8 +1275,9 @@
     background: transparent;
   }
   .mobile-nav-btn.active svg {
-    fill: var(--guava-200);
+    fill: none;
     stroke: var(--guava-700);
+    stroke-width: 2.2;
   }
   /* 4px guava dot beneath active tab label */
   .mobile-nav-btn::after {
@@ -2982,22 +2991,22 @@
   <a class="wordmark" href="#" aria-label="GSD"><span>gsd</span><span class="dot"></span></a>
   <nav class="sidebar-nav">
     <button class="sidebar-btn is-active" data-tool="tasks">
-      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span>Tasks</span>
       <span class="count" id="sidebarTasksCount">0</span>
     </button>
     <button class="sidebar-btn" data-tool="habits">
-      <svg viewBox="0 0 24 24"><path d="M4 7l3-3 6 6-3 3z"/><path d="M14 14l6 6"/><circle cx="16" cy="8" r="3"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
       <span>Habits</span>
       <span class="count" id="sidebarHabitsCount">0</span>
     </button>
     <button class="sidebar-btn" data-tool="notes">
-      <svg viewBox="0 0 24 24"><path d="M6 4h10l4 4v12H6z"/><path d="M16 4v4h4"/><path d="M9 12h6M9 15h4"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       <span>Notes</span>
       <span class="count" id="sidebarNotesCount">0</span>
     </button>
     <button class="sidebar-btn" data-tool="scratch">
-      <svg viewBox="0 0 24 24"><path d="M4 18l4-12 3 8 3-6 6 10"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       <span>Scratch</span>
     </button>
   </nav>
@@ -3168,26 +3177,27 @@
   <button class="err-dismiss" onclick="hideToast()">✕</button>
 </div>
 
-<!-- Mobile bottom tab bar — icons match the desktop sidebar (sourced from
-     gsd-handoff/screens-lifestyle.jsx's LI icon set). -->
+<!-- Mobile bottom tab bar — original legacy icons (the set the user prefers).
+     Desktop sidebar below now uses the SAME icons so mobile and desktop
+     iconography is identical. -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav">
   <button class="mobile-nav-btn active" data-tool="tasks">
-    <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     <span>Tasks</span>
     <span class="mobile-nav-badge" id="tasksBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="habits">
-    <svg viewBox="0 0 24 24"><path d="M4 7l3-3 6 6-3 3z"/><path d="M14 14l6 6"/><circle cx="16" cy="8" r="3"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
     <span>Habits</span>
     <span class="mobile-nav-badge" id="habitsBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="notes">
-    <svg viewBox="0 0 24 24"><path d="M6 4h10l4 4v12H6z"/><path d="M16 4v4h4"/><path d="M9 12h6M9 15h4"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     <span>Notes</span>
     <span class="mobile-nav-badge" id="notesBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="scratch">
-    <svg viewBox="0 0 24 24"><path d="M4 18l4-12 3 8 3-6 6 10"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
     <span>Scratch</span>
   </button>
 </nav>
@@ -7428,8 +7438,10 @@ let _scratchSaveTimer = null;
 function renderScratch() {
   const el = document.getElementById('scratchEditorContent');
   if (!el) return;
-  // On mobile the notes-editor is hidden by default; scratch is always the full view
-  document.getElementById('scratchEditor')?.classList.add('mobile-open');
+  // IMPORTANT: don't add .mobile-open here. That class turns the editor into
+  // a position:fixed top:0 overlay which covers the app header. Scratch
+  // should flow in-page with the header visible above it.
+  document.getElementById('scratchEditor')?.classList.remove('mobile-open');
   const saved = scratchNote.content || localStorage.getItem('gsd-scratch') || '';
   el.innerHTML = `
     <div class="ne-body">
