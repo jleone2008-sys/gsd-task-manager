@@ -781,16 +781,32 @@
     background: var(--surface);
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
-    /* Right padding is 46 (not 14) to reserve room for the absolute-positioned
-       .check at top-right so body text never runs under the check. */
-    padding: 13px 46px 13px 22px;
+    padding: 13px 14px 13px 22px;
     box-shadow: var(--shadow-card);
+    /* Column flex: .card-head on top (title + meta + check, centered together),
+       .card__expand below when expanded. Keeps the check centered on the
+       title row regardless of whether the expand body is showing. */
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
     gap: 0;
     cursor: default;
     user-select: none;
     transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  /* Top row — title block + check share the same horizontal flex line and
+     center vertically on it, so the check lines up with the middle of the
+     title (or title+meta when chips are present) and doesn't drift when the
+     card expands. */
+  .card-head,
+  .task-item > .card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .card-head .card-body,
+  .card-head .task-content {
+    flex: 1;
+    min-width: 0;
   }
   .card:hover,
   .task-item:hover {
@@ -858,11 +874,10 @@
   .task-item.dragging { opacity: 0.35; }
   .task-item.drag-target { border-color: var(--guava-300); box-shadow: var(--shadow-focus); }
 
-  /* Check circle — pinned absolute to the top-right of the card so it stays
-     aligned with the title row whether the card is collapsed or expanded.
-     top: 13px matches the card's padding-top; right: 14px matches the
-     padding-right; the card reserves space for the check via its padding,
-     so body content never runs under the check. */
+  /* Check circle — normal flex item inside .card-head, which uses
+     align-items: center so the check vertically centers with the title
+     block. When the card expands, .card__expand renders below .card-head
+     (siblings), so the check does NOT recenter to the full card height. */
   .check {
     width: 20px; height: 20px;
     border-radius: 50%;
@@ -870,9 +885,7 @@
     background: transparent;
     flex-shrink: 0;
     cursor: pointer;
-    position: absolute;
-    top: 13px;
-    right: 14px;
+    position: relative;
     padding: 0;
     transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
@@ -898,7 +911,7 @@
   }
 
   /* Legacy .checkbox — task-item still references it; matches .check above
-     (absolute top-right, aligned to the title row regardless of expansion). */
+     (flex child of .card-head, centered via align-items: center). */
   .checkbox {
     width: 20px; height: 20px;
     border-radius: 50%;
@@ -906,9 +919,7 @@
     background: transparent;
     cursor: pointer;
     flex-shrink: 0;
-    position: absolute;
-    top: 13px;
-    right: 14px;
+    position: relative;
     padding: 0;
     transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
@@ -5878,13 +5889,15 @@ function tHTMLsearch(t, query) {
     <div class="swipe-complete-bg">✓</div>
     <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
     <button class="star-btn" onclick="toggleTop3(${t.id})" tabindex="-1" aria-hidden="true"></button>
-    <div class="card-body task-content" onclick="openEdit(${t.id})">
-      <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
-      ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+    <div class="card-head">
+      <div class="card-body task-content" onclick="openEdit(${t.id})">
+        <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
+        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+      </div>
+      <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
+        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
-      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
   </div>`;
 }
 
@@ -5986,14 +5999,16 @@ function tHTML(t) {
     <div class="swipe-complete-bg">✓</div>
     <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
     <button class="star-btn" onclick="toggleTop3(${t.id})" tabindex="-1" aria-hidden="true"></button>
-    <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
-      <div class="card__title task-text">${linkify(t.text)}</div>
-      ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
-      ${expandHtml}
+    <div class="card-head">
+      <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
+        <div class="card__title task-text">${linkify(t.text)}</div>
+        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+      </div>
+      <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
+        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
-      <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
+    ${expandHtml}
   </div>`;
 }
 
