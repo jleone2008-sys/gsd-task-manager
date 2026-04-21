@@ -717,10 +717,12 @@
       margin: 0;
     }
   }
-  /* Mobile full-width tools */
+  /* Mobile full-width tools — both Notes and Scratch keep the same 20px
+     horizontal padding the rest of the app uses, so the .notes-layout card
+     (with --r-md radius + --shadow-card) reads as a proper card with side
+     gutters instead of stretching edge-to-edge. */
   @media (max-width: 899.98px) {
-    .content[data-tool-view="notes"] { max-width: none; padding: 0 0 100px; }
-    /* Scratch mobile: keep 20px side padding so text isn't edge-to-edge. */
+    .content[data-tool-view="notes"] { max-width: none; padding: 0 20px 100px; }
     .content.scratch-view { max-width: none; padding: 0 20px 100px; }
   }
 
