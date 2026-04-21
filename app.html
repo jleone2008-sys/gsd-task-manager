@@ -3344,7 +3344,7 @@
       <div class="create-panel-tags">
         <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Work</button>
         <button class="tag-btn personal" id="opt-personal" onclick="toggleNewTag('personal')">Personal</button>
-        <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Star</button>
+        <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Priority</button>
         <button class="tag-btn" id="opt-someday" onclick="toggleNewTag('someday')">Later</button>
       </div>
       <div class="create-panel-actions">
@@ -4085,7 +4085,7 @@ async function confirmDeleteAccount() {
 function exportCSV() {
   if (!tasks.length) { alert('No tasks to export.'); return; }
   const stripHtml = h => { const d=document.createElement('div'); d.innerHTML=h; return d.textContent||''; };
-  const headers = ['Text','Note','Tags','Starred','Later','Done',];
+  const headers = ['Text','Note','Tags','Priority','Later','Done',];
   const rows = tasks.map(t => [
     `"${(t.text||'').replace(/"/g,'""')}"`,
     `"${stripHtml(t.note||'').replace(/"/g,'""')}"`,
@@ -8090,7 +8090,7 @@ function openEdit(id) {
   document.getElementById('editDueDate').value = t.due||'';
   // Tags
   document.getElementById('editTags').innerHTML = [
-    {key:'top3',label:'&#9733;',cls:'t3',title:'Starred'},
+    {key:'top3',label:'&#9733;',cls:'t3',title:'Priority'},
     {key:'biz',label:'Work',cls:'biz'},
     {key:'personal',label:'Personal',cls:'personal'},
     {key:'someday',label:'Later',cls:''},
