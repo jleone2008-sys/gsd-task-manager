@@ -941,8 +941,8 @@
   .chip--ochre, .tag.personal       { background: var(--ochre-bg); color: var(--ochre-fg); }
   .chip--plum                       { background: var(--plum-bg);  color: var(--plum-fg); }
   .chip--guava                      { background: var(--guava-100); color: var(--guava-700); }
-  .chip--ghost, .tag.has-note       { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
-  .tag.has-note svg                 { flex-shrink: 0; }
+  .chip--ghost, .tag.has-note, .tag.has-subtasks { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
+  .tag.has-note svg, .tag.has-subtasks svg       { flex-shrink: 0; }
   /* Legacy .tag.top3 — no longer rendered; priority is the strip */
   .tag.top3                         { display: none; }
 
@@ -5726,8 +5726,9 @@ function tHTMLsearch(t, query) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
+  const subsTag = subtasksTagHTML(t);
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.someday||t.due||t.note;
+  const hasMeta = t.tags.length||t.someday||t.due||t.note||subsTag;
   const cardCls = ['card','task-item'];
   if (t.top3) cardCls.push('top3','is-priority');
   if (t.done) cardCls.push('done','is-done');
@@ -5739,7 +5740,7 @@ function tHTMLsearch(t, query) {
     <div class="card-head">
       <div class="card-body task-content" onclick="openEdit(${t.id})">
         <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
-        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}</div>` : ''}
       </div>
       <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
@@ -5814,6 +5815,13 @@ document.addEventListener('mousedown', e => {
   }
 });
 
+function subtasksTagHTML(t) {
+  const arr = (subtasksByTask.get(String(t.id)) || []).filter(s => !s.isNew);
+  if (!arr.length) return '';
+  const done = arr.filter(s => s.done).length;
+  return `<span class="tag has-subtasks" title="Subtasks"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>${done} / ${arr.length} subtasks</span>`;
+}
+
 function dueBadgeHTML(due) {
   if (!due || due === '') return '';
   const today = new Date(); today.setHours(0,0,0,0);
@@ -5833,8 +5841,9 @@ function tHTML(t) {
   const tagHtml = t.tags.map(tg=>`<span class="tag ${tg}">${tg==='biz'?'Work':'Personal'}</span>`).join('');
   const sdTag = t.someday?`<span class="tag someday">Later</span>`:'';
   const noteTag = t.note?`<span class="tag has-note" title="Has note"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Note</span>`:'';
+  const subsTag = subtasksTagHTML(t);
   const dueHtml = dueBadgeHTML(t.due);
-  const hasMeta = t.tags.length||t.someday||t.due||t.note;
+  const hasMeta = t.tags.length||t.someday||t.due||t.note||subsTag;
   const isExpanded = expandedTaskIds.has(t.id);
   const expandHtml = isExpanded ? expansionBodyHTML(t) : '';
   const cardCls = ['card','task-item'];
@@ -5849,7 +5858,7 @@ function tHTML(t) {
     <div class="card-head">
       <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
         <div class="card__title task-text">${linkify(t.text)}</div>
-        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${dueHtml}</div>` : ''}
+        ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}</div>` : ''}
       </div>
       <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
