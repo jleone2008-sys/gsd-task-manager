@@ -1084,11 +1084,6 @@
     align-items: center;
     flex-shrink: 0;
   }
-  /* Star button — priority is now signaled (and toggled) by .strip on the
-     card. Hidden, but kept in markup so toggleTop3() and other handlers
-     keep their event-target assumptions. */
-  .star-btn { display: none; }
-
   .drag-handle {
     display: flex; align-items: center; justify-content: center;
     cursor: grab; color: var(--border2); padding: var(--space-0-5) var(--space-0-5);
@@ -5737,7 +5732,6 @@ function tHTMLsearch(t, query) {
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
     <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
-    <button class="star-btn" onclick="toggleTop3(${t.id})" tabindex="-1" aria-hidden="true"></button>
     <div class="card-head">
       <div class="card-body task-content" onclick="openEdit(${t.id})">
         <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
@@ -5855,7 +5849,6 @@ function tHTML(t) {
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
     <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
-    <button class="star-btn" onclick="toggleTop3(${t.id})" tabindex="-1" aria-hidden="true"></button>
     <div class="card-head">
       <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
         <div class="card__title task-text">${linkify(t.text)}</div>
@@ -8360,7 +8353,7 @@ document.addEventListener('touchmove', function(e) {
     if (cbg) cbg.style.opacity = 0;
     swipeEl.classList.add('swiping');
     swipeEl.classList.remove('swiping-right');
-    const inner = swipeEl.querySelectorAll('.star-btn,.task-content,.task-actions-col');
+    const inner = swipeEl.querySelectorAll('.task-content,.task-actions-col');
     inner.forEach(el => el.style.transform = `translateX(${-Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
   } else if (dx > 0) {
     // Right swipe — complete
@@ -8375,7 +8368,7 @@ document.addEventListener('touchmove', function(e) {
     swipeEl.classList.remove('swiping');
     // Shift inner content right
     if (swipeType === 'task') {
-      const inner = swipeEl.querySelectorAll('.star-btn,.task-content,.task-actions-col');
+      const inner = swipeEl.querySelectorAll('.task-content,.task-actions-col');
       inner.forEach(el => el.style.transform = `translateX(${Math.min(swipeDelta, SWIPE_THRESHOLD)}px)`);
     } else {
       const inner = swipeEl.querySelectorAll('.habit-emoji-lg,.habit-today-content,.habit-check');
@@ -8410,7 +8403,7 @@ document.addEventListener('touchend', function(e) {
   const isRight = swipeIsRight;
 
   const innerSel = type === 'task'
-    ? '.star-btn,.task-content,.task-actions-col'
+    ? '.task-content,.task-actions-col'
     : '.habit-emoji-lg,.habit-today-content,.habit-check';
   const inner = item.querySelectorAll(innerSel);
 
