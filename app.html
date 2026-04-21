@@ -1113,19 +1113,6 @@
      card. Hidden, but kept in markup so toggleTop3() and other handlers
      keep their event-target assumptions. */
   .star-btn { display: none; }
-  .del-btn {
-    width: 24px; height: 24px;
-    border-radius: var(--r-sm);
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--ink-3);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all var(--dur) var(--ease);
-    flex-shrink: 0;
-    padding: 0;
-  }
-  .del-btn:hover { background: var(--surface-2); color: var(--guava-700); }
 
   .drag-handle {
     display: flex; align-items: center; justify-content: center;
@@ -1176,20 +1163,6 @@
      stats live inline above the list. Hidden but element kept so
      updateTaskStatsBar / updateHabitStatsBar calls don't error. */
   .stats { display: none !important; }
-  .stats-legacy {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 var(--space-5);
-    background: var(--navy);
-    box-shadow: 0 -2px 12px rgba(30,60,140,0.08);
-    font-size: var(--fs-meta);
-    color: var(--navy-muted);
-    height: 40px;
-    z-index: var(--z-stats-bar);
-  }
   .stats-center {
     display: flex;
     align-items: center;
@@ -2081,12 +2054,10 @@
     display: flex; flex-direction: column; align-items: center;
     padding: 48px 20px; text-align: center; gap: 12px;
   }
-  .empty-state-icon { display: none; }     /* no illustrations per spec */
   .empty-state-title {
     font-size: var(--t-md); font-weight: 500; color: var(--ink-3);
     margin: 0;
   }
-  .empty-state-desc { display: none; }     /* keep copy to one line */
   .empty-state-btn {
     /* Ghost chip-button, reuses .expand-action visual in render() */
     background: transparent;
@@ -2897,7 +2868,6 @@
     min-width: 0;
     background: transparent;
   }
-  .scratch-view .scratch-header { display: none; }  /* redundant with app header */
   /* Base .ne-toolbar is sticky with a surface fill + border-bottom. On
      scratch we want it flush inside the notes-layout card, no sticky. */
   .scratch-view .ne-toolbar {
@@ -2908,8 +2878,6 @@
     position: static;
     box-shadow: none;
   }
-  .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
-
   .nl-item.dragging { opacity: 0.4; }
   .nl-item.drag-target { border-color: var(--navy); background: rgba(45,95,166,0.06); }
   .note-action-btn { background: none; border: none; cursor: pointer; padding: var(--space-1-5); border-radius: var(--radius-sm); color: var(--muted); transition: color var(--dur-instant); }
