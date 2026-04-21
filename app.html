@@ -4130,30 +4130,6 @@ function linkify(t) {
   });
 }
 
-const seedActive = [
-  {text:"Schedule dentist appointment", tags:['personal']},
-  {text:"Review Q3 budget report",       tags:['biz'], top3:true},
-  {text:"Buy groceries for the week",    tags:['personal']},
-  {text:"Send project update to team",   tags:['biz'], top3:true},
-  {text:"Call back the plumber",         tags:['personal']},
-  {text:"Prep slides for Friday meeting",tags:['biz'], top3:true},
-  {text:"Research new laptop options",   tags:[], someday:true},
-  {text:"Read: Atomic Habits",           tags:['personal'], someday:true},
-];
-const seedDone = [
-  "Pay electricity bill",
-  "Book flights for conference",
-  "Send invoice to client",
-];
-
-function buildSeed() {
-  let id = Date.now();
-  return [
-    ...seedActive.map((t,i)=>({id:id+i,text:t.text,tags:t.tags||[],top3:t.top3||false,someday:t.someday||false,done:false,note:'',due:null,order:i})),
-    ...seedDone.map((text,i)=>({id:id+seedActive.length+i,text,tags:[],top3:false,someday:false,done:true,note:'',due:null,order:seedActive.length+i}))
-  ];
-}
-
 // ── Error / offline toast system ──
 let toastTimer = null;
 function showToast(msg, type) {
@@ -4317,22 +4293,13 @@ async function load() {
     return;
   }
 
-  const isNew = data.length === 0;
-  if (isNew) {
-    tasks = buildSeed();
-    await save();
-    render();
-    setStatus('saved');
-  } else {
-    tasks = data.map(rowToTask);
-    // Populate rowIdMap so realtime DELETE events can resolve client_id
-    data.forEach(r => rowIdMap.set(r.id, r.client_id));
-    render();
-    setStatus('saved');
-  }
+  tasks = data.map(rowToTask);
+  // Populate rowIdMap so realtime DELETE events can resolve client_id
+  data.forEach(r => rowIdMap.set(r.id, r.client_id));
+  render();
+  setStatus('saved');
 
   subscribeToChanges();
-  // autoBackup runs after tasks are loaded so it snapshots real data, not seed
   autoBackup();
 }
 
