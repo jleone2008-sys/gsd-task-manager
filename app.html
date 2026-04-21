@@ -2633,9 +2633,13 @@
   }
 
   /* ══════ NOTES ══════ */
-  /* Desktop notes layout: three panes (notebooks | list | editor) in a single
-     row, filling the full main-column width. No flex-wrap — the editor must
-     stay on the RIGHT, not wrap to a new line below the list. */
+  /* Desktop notes layout: two panes (notebooks sidebar | list OR editor).
+     Wrapped in a card shell matching task cards — 1px edge border, --r-md
+     radius, --shadow-card. overflow:hidden keeps the inner scroll from
+     spilling past the rounded corners.
+
+     When a note is selected, .has-active-note swaps the list for the editor
+     in the same grid slot instead of showing both. */
   .notes-layout {
     display: flex;
     flex-wrap: nowrap;
@@ -2644,7 +2648,27 @@
     max-width: 100%;
     width: 100%;
     margin: 0;
-    transition: all var(--dur-slower) ease;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;                 /* keep scroll inside the rounded box */
+    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .notes-layout:hover { box-shadow: var(--shadow-card-hover); border-color: var(--edge-strong); }
+  /* Desktop swap: with no active note the list fills the space beside the
+     notebooks sidebar; when a note is selected the list is replaced in place
+     by the editor. No empty "Select a note…" pane. */
+  @media (min-width: 900px) {
+    .notes-layout .notes-editor { display: none; }
+    .notes-layout .notes-list { flex: 1; min-width: 0; }
+    .notes-layout.has-active-note .notes-list { display: none; }
+    .notes-layout.has-active-note .notes-editor {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      background: var(--surface);
+    }
   }
   .notes-left-col { display: contents; }
   .notes-sidebar {
@@ -2940,7 +2964,15 @@
     .note-action-btn { display: none !important; }
   }
   @media (min-width: 900px) {
-    .mobile-note-header { display: none !important; }
+    /* Show the note-editor header on desktop too so the "← back" button is
+       available when a note takes over the list space. Renaming to a neutral
+       class would be ideal — for now we just stop hiding it. */
+    .mobile-note-header {
+      display: flex !important;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--edge);
+    }
     .mobile-nb-toggle { display: none !important; }
     .mobile-nb-drawer { display: none !important; }
   }
@@ -3261,7 +3293,7 @@
 <div class="pill-bar" data-tool-view="tasks">
   <div class="pill-bar-inner">
     <button class="pill active" data-filter="all" onclick="setCatFilter('all',this)">All<span class="pill-count" id="pc-all">0</span></button>
-    <button class="pill" data-filter="priority" onclick="setCatFilter('priority',this)">Priority<span class="pill-count" id="pc-priority">0</span></button>
+    <button class="pill" data-filter="overdue" onclick="setCatFilter('overdue',this)">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
     <button class="pill" data-filter="personal" onclick="setCatFilter('personal',this)">Personal<span class="pill-count" id="pc-personal">0</span></button>
     <button class="pill" data-filter="biz" onclick="setCatFilter('biz',this)">Work<span class="pill-count" id="pc-biz">0</span></button>
   </div>
@@ -3273,13 +3305,9 @@
     <button class="pill stat-pill" data-habit-view="stats">Statistics</button>
   </div>
 </div>
-<div class="pill-bar" data-tool-view="notes" style="display:none">
-  <div class="pill-bar-inner" id="notesPillsInner">
-    <button class="pill active" data-notes-filter="all">All<span class="pill-count" id="pc-notes-all">0</span></button>
-    <button class="pill" data-notes-filter="pinned">Pinned<span class="pill-count" id="pc-notes-pinned">0</span></button>
-    <!-- Tag pills injected dynamically by renderNotesPills() -->
-  </div>
-</div>
+<!-- Notes filter pill-bar removed per user direction — filtering happens
+     via the notebooks sidebar inside the notes section. -->
+
 
 </div><!-- /topbar -->
 
@@ -5510,6 +5538,7 @@ function emptyState(type) {
     personal: { title: 'No Personal tasks yet.',            btn: 'Add Personal task' },
     top3:     { title: 'No priority tasks.',                btn: null },
     priority: { title: 'No priority tasks.',                btn: null },
+    overdue:  { title: 'Nothing overdue.',                  btn: null },
     someday:  { title: 'Nothing Later.',                    btn: 'Add task' },
     all:      { title: 'Nothing to do. Add something.',     btn: 'Add task' },
   };
@@ -5526,7 +5555,9 @@ function render() {
   let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
   let done = tasks.filter(t=>t.done);
   let view = [...active];
-  // Tasks filter set: all · priority · personal · biz (Work).
+  // Tasks filter set: all · overdue · personal · biz (Work).
+  const _todayStr = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
+  if (filter==='overdue')  { view = view.filter(t => t.due && t.due < _todayStr); done = done.filter(t => t.due && t.due < _todayStr); }
   if (filter==='priority') { view = view.filter(t => t.top3); done = done.filter(t => t.top3); }
   if (filter==='biz')      { view = view.filter(t=>t.tags?.includes('biz')); done = done.filter(t=>t.tags?.includes('biz')); }
   if (filter==='personal') { view = view.filter(t=>t.tags?.includes('personal')); done = done.filter(t=>t.tags?.includes('personal')); }
@@ -5597,8 +5628,12 @@ function render() {
         html += `<div class="task-list" data-section="someday">${someday.map(t=>tHTML(t)).join('')}</div>`;
       }
     } else {
-      // Tag filter (biz / personal) — single list, no splits, no hidden someday.
-      const lbl = filter === 'biz' ? 'Work' : filter === 'personal' ? 'Personal' : 'Tasks';
+      // Single-list filter (biz / personal / overdue) — no splits, no
+      // hidden someday. Label matches the filter.
+      const lbl = filter === 'biz' ? 'Work'
+                : filter === 'personal' ? 'Personal'
+                : filter === 'overdue' ? 'Overdue'
+                : 'Tasks';
       if (view.length) {
         html += slabel(lbl, view.length, true);
         html += `<div class="task-list" data-section="main">${view.map(t=>tHTML(t)).join('')}</div>`;
@@ -5891,13 +5926,13 @@ function reorder(fromId, toId) {
 }
 
 /**
- * Tasks filter set: All · Priority · Personal · Work.
- * `filter` drives the render predicate. 'priority' also flips filterStarred so
- * the existing top3 branch of render() still works.
+ * Tasks filter set: All · Overdue · Personal · Work.
+ * `filter` drives the render predicate. filterStarred remains accessible
+ * for any internal callers but is no longer driven by a pill click.
  */
 function setCatFilter(f, el) {
   filter = f;
-  filterStarred = (f === 'priority');
+  filterStarred = false;
   const bar = document.querySelector('[data-tool-view="tasks"].pill-bar');
   if (bar) bar.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
   if (el) el.classList.add('active');
@@ -5915,10 +5950,11 @@ function setFilter(f, el) {
 
 /** Recompute Task pill counts from real data on every render. */
 function updateTaskPillCounts() {
+  const today = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
   const active = tasks.filter(t => !t.done);
   const counts = {
     all:      active.length,
-    priority: active.filter(t => t.top3).length,
+    overdue:  active.filter(t => t.due && t.due < today).length,
     personal: active.filter(t => t.tags?.includes('personal')).length,
     biz:      active.filter(t => t.tags?.includes('biz')).length,
   };
@@ -6593,6 +6629,10 @@ function renderNotes() {
   renderNoteEditor();
   updateNotesBadge();
   updateNotesStatsBar();
+  // Toggle the list / editor swap on desktop via a class. CSS uses this to
+  // hide the notes-list and expand the editor to fill the same space.
+  const layout = document.querySelector('[data-tool-view="notes"] .notes-layout');
+  if (layout) layout.classList.toggle('has-active-note', !!activeNoteId);
 }
 
 function getFilteredNotes() {
@@ -6631,8 +6671,8 @@ function renderNotesSidebar() {
       <span>All Notes</span><span class="cnt">${allCount}</span>
     </div>
     <div class="ns-item${notesSidebarView==='starred'?' active':''}" onclick="setNotesSidebarView('starred')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      <span>Starred</span><span class="cnt">${starCount}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76V6a2 2 0 1 1 4 0v4.76l3 1.54V15H6v-2.7l3-1.54z"/></svg>
+      <span>Pinned</span><span class="cnt">${starCount}</span>
     </div>
     <div class="ns-item${notesSidebarView==='trash'?' active':''}" onclick="setNotesSidebarView('trash')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -6728,7 +6768,7 @@ function renderNotesSidebar() {
   const mobileDrawer = document.getElementById('mobileNbDrawer');
   if (mobileToggle) {
     let currentLabel = 'All Notes';
-    if (notesSidebarView === 'starred') currentLabel = 'Starred';
+    if (notesSidebarView === 'starred') currentLabel = 'Pinned';
     else if (notesSidebarView === 'trash') currentLabel = 'Trash';
     else if (notesSidebarView.startsWith('notebook-')) {
       const nbId = parseInt(notesSidebarView.split('-')[1]);
@@ -6747,8 +6787,8 @@ function renderNotesSidebar() {
         All Notes <span class="cnt">${allCount}</span>
       </div>
       <div class="ns-item${notesSidebarView==='starred'?' active':''}" onclick="setNotesSidebarView('starred');document.getElementById('mobileNbDrawer').classList.remove('open')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Starred <span class="cnt">${starCount}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76V6a2 2 0 1 1 4 0v4.76l3 1.54V15H6v-2.7l3-1.54z"/></svg>
+        Pinned <span class="cnt">${starCount}</span>
       </div>
       <div class="ns-item${notesSidebarView==='trash'?' active':''}" onclick="setNotesSidebarView('trash');document.getElementById('mobileNbDrawer').classList.remove('open')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -6779,7 +6819,7 @@ function updateNlTitle() {
   if (!titleEl) return;
   const list = getFilteredNotes();
   let label = 'All Notes';
-  if (notesSidebarView === 'starred') label = 'Starred';
+  if (notesSidebarView === 'starred') label = 'Pinned';
   else if (notesSidebarView === 'trash') label = 'Trash';
   else if (notesSidebarView.startsWith('notebook-')) {
     const nbId = parseInt(notesSidebarView.split('-')[1]);
