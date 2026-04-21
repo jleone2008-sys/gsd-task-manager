@@ -106,13 +106,6 @@
     --navy-light:  var(--guava-500);
     --navy-muted:  rgba(255,255,255,0.72);
 
-    --biz-bg:        var(--slate-bg);
-    --biz-text:      var(--slate-fg);
-    --personal-bg:   var(--ochre-bg);
-    --personal-text: var(--ochre-fg);
-    --biz:       var(--biz-text);
-    --personal:  var(--personal-text);
-
     --heatmap-l1: var(--guava-100);
     --heatmap-l2: var(--guava-300);
     --heatmap-l3: var(--guava-700);
@@ -605,12 +598,12 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .tag-btn.biz { border-color: var(--biz-text); color: var(--biz); }
-  .tag-btn.personal { border-color: var(--personal-text); color: var(--personal); }
+  .tag-btn.biz { border-color: var(--slate-fg); color: var(--slate-fg); }
+  .tag-btn.personal { border-color: var(--ochre-fg); color: var(--ochre-fg); }
   .tag-btn.t3 { border-color: var(--guava-700); color: var(--guava-700); padding: var(--space-0-5) var(--space-2); font-size: var(--fs-search); }
   .tag-btn.selected { font-weight: var(--fw-semibold); }
-  .tag-btn.biz.selected { background: var(--biz-bg); }
-  .tag-btn.personal.selected { background: var(--personal-bg); }
+  .tag-btn.biz.selected { background: var(--slate-bg); }
+  .tag-btn.personal.selected { background: var(--ochre-bg); }
   .tag-btn.t3.selected { background: var(--guava-100); }
 
   /* CONTENT — main column scrollable area.
@@ -2601,8 +2594,8 @@
   }
   .nl-item-meta:empty { display: none; }
   .nl-tag { padding: var(--space-0-5) var(--space-1-5); border-radius: var(--r-md); font-size: var(--fs-nano); font-weight: var(--fw-medium); }
-  .tag-biz { background: var(--biz-bg); color: var(--biz); }
-  .tag-personal { background: var(--personal-bg); color: var(--personal); }
+  .tag-biz { background: var(--slate-bg); color: var(--slate-fg); }
+  .tag-personal { background: var(--ochre-bg); color: var(--ochre-fg); }
   .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); }
 
   .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex var(--dur-slower) ease; min-width: 480px; min-height: 0; position: relative; }
@@ -6813,7 +6806,7 @@ function renderNoteEditor() {
   const noteNb = note.notebookId ? notebooksArr.find(nb => nb.id === note.notebookId) : null;
   let noteNbTag = '';
   if (noteNb) {
-    const tc = noteNb.color === 'var(--biz)' ? 'tag-biz' : noteNb.color === 'var(--personal)' ? 'tag-personal' : '';
+    const tc = noteNb.color === 'var(--slate-fg)' ? 'tag-biz' : noteNb.color === 'var(--ochre-fg)' ? 'tag-personal' : '';
     const ts = tc ? '' : ` style="background:${noteNb.color}22;color:${noteNb.color}"`;
     noteNbTag = `<span class="nl-tag ${tc}"${ts}>${escHTML(noteNb.name)}</span><span class="dot-sep"></span>`;
   }
