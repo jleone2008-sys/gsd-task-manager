@@ -5238,9 +5238,8 @@ function renderHabitToday(active) {
   //   HABITS — habits that CAN still be completed today but aren't strictly
   //     required. Excludes habits that are fully complete for their period
   //     and don't allow extras.
-  const dueToday   = active.filter(h => isHabitDueToday(h));
-  const optional   = active.filter(h => !isHabitDueToday(h) && canHabitDoToday(h));
-  const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
+  const dueToday = active.filter(h => isHabitDueToday(h));
+  const optional = active.filter(h => !isHabitDueToday(h) && canHabitDoToday(h));
 
   if (active.length === 0) {
     el.innerHTML = `<div class="empty-state">
@@ -5249,37 +5248,13 @@ function renderHabitToday(active) {
     return;
   }
 
-  // Today % — contribution-weighted across ALL habits. Required habits
-  // contribute 1/1 (done) or 0/1 (missed). Opportunistic completions on
-  // optional habits contribute their count as num/den (full credit). Habits
-  // the user didn't touch and aren't required contribute 0/0 (excluded).
-  // Formula: pct = Σnum / Σden  (see todayContribution).
-  let todayNum = 0, todayDen = 0;
-  active.forEach(h => {
-    const c = todayContribution(h, today);
-    todayNum += c.num;
-    todayDen += c.den;
-  });
-  const todayPct = todayDen > 0 ? Math.round((todayNum / todayDen) * 100) : 100;
-
+  // Stats strip removed from the Today tab — the same Today % is surfaced
+  // in the Today filter pill via updateHabitStatsBar(). Best streak and
+  // 'done today' counters live on the Statistics tab.
   const dueHTML = dueToday.map(h => habitTodayCardHTML(h, today)).join('');
   const optHTML = optional.map(h => habitTodayCardHTML(h, today)).join('');
 
   el.innerHTML = `
-    <div class="stats-strip">
-      <div class="stat-block is-guava">
-        <span class="v">${todayPct}<em>%</em></span>
-        <span class="l">Today</span>
-      </div>
-      <div class="stat-block">
-        <span class="v">${bestStreak}</span>
-        <span class="l">Best streak</span>
-      </div>
-      <div class="stat-block">
-        <span class="v">${todayNum}<em>/${todayDen}</em></span>
-        <span class="l">Done today</span>
-      </div>
-    </div>
     ${dueToday.length
       ? `<div class="section-label">Due today</div>${dueHTML}`
       : '<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:13px">Nothing required today — nice.</div>'}
@@ -5630,10 +5605,13 @@ function updateHabitStatsBar(active) {
   paintBadge('habitsBadge', active.length);
   paintBadge('habitsBadgeMobile', active.length);
   const sbc = document.getElementById('sidebarHabitsCount'); if (sbc) sbc.textContent = active.length;
-  // Dynamic habit pill counts (Today / All)
+  // Today pill shows the contribution-weighted % done today (matches the
+  // formula used in renderHabitToday). 'All' pill shows the habit count.
   const todayStr_ = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
-  const dueToday = active.filter(h => isHabitDueToday(h)).length;
-  const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = dueToday;
+  let tNum = 0, tDen = 0;
+  active.forEach(h => { const c = todayContribution(h, todayStr_); tNum += c.num; tDen += c.den; });
+  const tPct = tDen > 0 ? Math.round((tNum / tDen) * 100) : 100;
+  const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = tPct + '%';
   const pcHA = document.getElementById('pc-habit-all');   if (pcHA) pcHA.textContent = active.length;
 
   if (activeTool !== 'habits') return;
