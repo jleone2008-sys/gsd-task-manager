@@ -267,8 +267,9 @@
     .app-shell {
       flex-direction: row;
       /* Cap the overall page width so content doesn't float in empty space
-         on very wide monitors. Sidebar (220px) + main share this cap. */
-      max-width: 1400px;
+         on very wide monitors. Pinned to --app-max (single source of truth
+         used by FAB positioning too). Sidebar (220px) + main share this cap. */
+      max-width: var(--app-max, 1250px);
       margin: 0 auto;
       box-shadow: 1px 0 0 var(--edge), -1px 0 0 var(--edge);
     }
@@ -1217,10 +1218,10 @@
   ────────────────────────────────────────────────────────────── */
   :root {
     /* Single source of truth for FAB positioning. The desktop offset anchors
-       the button to the RIGHT EDGE OF .app-shell (capped at 1400px) rather
-       than the viewport, so on wide monitors it sits near the content column
-       instead of drifting into blank space. */
-    --app-max: 1400px;
+       the button to the RIGHT EDGE OF .app-shell (capped at --app-max)
+       rather than the viewport, so on wide monitors it sits near the
+       content column instead of drifting into blank space. */
+    --app-max: 1250px;
     --fab-bottom-mobile: calc(84px + env(safe-area-inset-bottom, 0px));
     --fab-bottom-desktop: 24px;
     --fab-right-mobile: 20px;
