@@ -674,21 +674,25 @@
     width: 100%;
   }
   @media (min-width: 900px) {
-    /* Shared content column. Header title, pill-bar, and cards all share
-       the same horizontal bounds so "Tasks" starts at the same x as the
-       first card and the column has equal padding to both walls. */
-    .content { padding: 2px 40px 40px; max-width: var(--content-max, 960px); }
+    /* Shared content column. EVERY tab (Tasks / Habits / Scratch) uses the
+       same --content-max so the title, pill-bar, and cards all sit at the
+       same x regardless of which tab is active — no shift when switching.
+       --content-max reduced from 960 → 810 to trim ~75px of whitespace
+       from each side of the cards per user direction. */
+    .content { padding: 2px 40px 40px; max-width: var(--content-max, 810px); }
     .header-inner,
     .pill-bar {
-      max-width: calc(var(--content-max, 960px) + 0px);
+      max-width: var(--content-max, 810px);
       margin-left: auto;
       margin-right: auto;
     }
     .pill-bar-inner { max-width: none; margin: 0; }
-    /* Scratch: document-feel 640px column per spec. */
-    .content.scratch-view { max-width: 640px; }
-    /* Notes: full main-column width so the 3-pane (notebooks | list | editor)
-       layout spans edge-to-edge. Header/pills still use the shared column. */
+    /* Scratch: use the shared width so layout doesn't jump between tabs.
+       Text stays readable inside the 810 column with the narrow padding. */
+    .content.scratch-view { max-width: var(--content-max, 810px); }
+    /* Notes is the sole exception: full main-column width so the 3-pane
+       (notebooks | list | editor) layout spans edge-to-edge. Header/pills
+       still use the shared column, so the page title aligns across tabs. */
     .content[data-tool-view="notes"] {
       max-width: none;
       padding: 0 20px 20px;
