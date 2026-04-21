@@ -2664,18 +2664,21 @@
     flex-wrap: nowrap;
     align-items: stretch;
     /* Leave ~24px below the layout so the bottom of --shadow-card has room
-       to render inside the viewport (was calc(100vh - 140px) which pinned
-       the box flush to the viewport bottom and clipped the shadow). */
+       to render inside the viewport. */
     height: calc(100vh - 164px);
     max-width: 100%;
     width: 100%;
     margin: 0;
     background: var(--surface);
-    /* Same --r-md radius + --shadow-card shadow as .card / .task-item. */
+    /* Identical token set to .card / .task-item. overflow: hidden was
+       removed because, combined with border-radius, it caused the
+       browser to anti-alias the outer corner differently than the shadow —
+       which is what was reading as 'sharper corners' than the task cards.
+       Inner columns have their own backgrounds matching --surface, so
+       nothing visually 'leaks' past the rounded corner. */
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
     box-shadow: var(--shadow-card);
-    overflow: hidden;
     transition: none;
   }
   /* No :hover on the notes-layout — the box is a container, not a clickable
