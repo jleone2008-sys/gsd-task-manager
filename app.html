@@ -525,6 +525,13 @@
     white-space: nowrap;
     text-align: center;
     transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+    /* Tap target inflation per spec §9.1 — visual stays small; tap box = 44h. */
+    position: relative;
+    min-height: 32px;
+  }
+  .pill::before {
+    content: ''; position: absolute;
+    inset: -6px 0;     /* extends the tap region vertically to 44h */
   }
   .pill:hover { color: var(--ink); background: var(--surface-2); }
   .pill.active,
@@ -667,15 +674,21 @@
     width: 100%;
   }
   @media (min-width: 900px) {
-    /* Main column is ~1180px (1400 shell cap − 220 sidebar). Widen Tasks
-       content so cards breathe more and the right-side whitespace around the
-       list shrinks. */
-    .content { padding: 2px 40px 40px; max-width: 920px; }
-    .content[data-tool-view="habits"] { max-width: 1000px; }
-    /* Scratch: document-style narrow column for readability. */
-    .content.scratch-view { max-width: 720px; }
+    /* Shared content column. Header title, pill-bar, and cards all share
+       the same horizontal bounds so "Tasks" starts at the same x as the
+       first card and the column has equal padding to both walls. */
+    .content { padding: 2px 40px 40px; max-width: var(--content-max, 960px); }
+    .header-inner,
+    .pill-bar {
+      max-width: calc(var(--content-max, 960px) + 0px);
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .pill-bar-inner { max-width: none; margin: 0; }
+    /* Scratch: document-feel 640px column per spec. */
+    .content.scratch-view { max-width: 640px; }
     /* Notes: full main-column width so the 3-pane (notebooks | list | editor)
-       layout spans edge-to-edge. */
+       layout spans edge-to-edge. Header/pills still use the shared column. */
     .content[data-tool-view="notes"] {
       max-width: none;
       padding: 0 20px 20px;
@@ -1996,30 +2009,29 @@
   /* ════════════════════════════
      EMPTY STATES
   ════════════════════════════ */
+  /* Per spec §9.3: one-line Inter copy, single ghost-button CTA, no illustrations. */
   .empty-state {
     display: flex; flex-direction: column; align-items: center;
-    padding: 56px var(--space-6) var(--space-8); text-align: center;
+    padding: 48px 20px; text-align: center; gap: 12px;
   }
-  .empty-state-icon {
-    font-size: var(--fs-hero); margin-bottom: var(--space-3-5);
-    opacity: 0.7;
-  }
+  .empty-state-icon { display: none; }     /* no illustrations per spec */
   .empty-state-title {
-    font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text2);
-    margin-bottom: var(--space-2);
+    font-size: var(--t-md); font-weight: 500; color: var(--ink-3);
+    margin: 0;
   }
-  .empty-state-desc {
-    font-size: var(--fs-search); color: var(--muted); line-height: 1.65;
-    max-width: 260px; margin-bottom: var(--space-5);
-  }
+  .empty-state-desc { display: none; }     /* keep copy to one line */
   .empty-state-btn {
-    padding: var(--space-2) var(--space-5); border-radius: var(--radius-sm);
-    background: var(--navy); color: #fff; border: none;
-    font-size: var(--fs-search); font-weight: var(--fw-semibold); font-family: inherit;
-    cursor: pointer; transition: background var(--dur-quick);
-    display: inline-flex; align-items: center; gap: var(--space-2);
+    /* Ghost chip-button, reuses .expand-action visual in render() */
+    background: transparent;
+    color: var(--ink-3);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-sm);
+    padding: 6px 12px;
+    font-size: var(--t-sm); font-weight: 500;
+    font-family: inherit; cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
-  .empty-state-btn:hover { background: var(--navy-dark); }
+  .empty-state-btn:hover { background: var(--surface-2); color: var(--ink); }
 
   /* ════════════════════════════
      SWIPE TO DELETE
@@ -2635,12 +2647,69 @@
   .nl-title { font-size: var(--fs-body); font-weight: var(--fw-bold); margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-1-5); }
   .nl-count { font-size: var(--fs-meta); font-weight: var(--fw-medium); color: var(--muted); background: var(--surface2); padding: var(--space-0-5) var(--space-2); border-radius: var(--radius-sm); }
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
-  .nl-item { padding: var(--space-2-5) var(--space-2-5) var(--space-2); border-radius: var(--radius-md); cursor: pointer; transition: background var(--dur-quick) ease, box-shadow var(--dur-quick) ease, transform var(--dur-quick) ease; margin-bottom: var(--space-0-5); border: 1px solid transparent; animation: fadeUp var(--dur-calm) ease both; }
-  .nl-item:hover { background: var(--surface2); transform: translateX(2px); }
-  .nl-item.active { background: var(--surface2); box-shadow: var(--shadow-focus); }
-  .nl-item-title { font-size: var(--fs-search); font-weight: var(--fw-semibold); margin-bottom: var(--space-0-5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nl-item-preview { font-size: var(--fs-meta); color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: var(--space-1); }
-  .nl-item-meta { display: flex; align-items: center; gap: var(--space-1); font-size: var(--fs-label); color: var(--muted); }
+  /* Notes list item — spec NoteCard layout.
+     Card shell with column flex: title row (title left + date right),
+     2-line body, tag chip row. Max-width contained to parent so long
+     URLs never push cards off-screen on mobile. */
+  .nl-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: var(--r-md);
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+    margin-bottom: 6px;
+    max-width: 100%;
+    min-width: 0;
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+    animation: fadeUp var(--dur-calm) ease both;
+    overflow: hidden;           /* clip long URLs / words */
+    word-break: break-word;     /* wrap long strings instead of overflowing */
+  }
+  .nl-item:hover { background: var(--surface); border-color: var(--edge-strong); box-shadow: var(--shadow-card-hover); }
+  .nl-item.active { background: var(--surface); border-color: var(--guava-300); box-shadow: var(--shadow-card-hover); }
+  .nl-item-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .nl-item-title {
+    font-size: 15px; font-weight: 600;
+    color: var(--ink);
+    flex: 1; min-width: 0;
+    white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .nl-item-date {
+    font-size: 10px; font-weight: 600;
+    color: var(--ink-4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+  .nl-item-preview {
+    font-size: 13px;
+    color: var(--ink-3);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+    word-break: break-word;
+  }
+  .nl-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .nl-item-meta:empty { display: none; }
   .nl-tag { padding: var(--space-0-5) var(--space-1-5); border-radius: var(--radius-sm); font-size: var(--fs-nano); font-weight: var(--fw-medium); }
   .tag-biz { background: var(--biz-bg); color: var(--biz); }
   .tag-personal { background: var(--personal-bg); color: var(--personal); }
@@ -2700,10 +2769,27 @@
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
-  /* Scratch: auto-height so it sits below the sticky header instead of overlapping it.
-     On mobile the content padding-bottom already clears the tabbar. */
-  .scratch-view .notes-layout { height: auto; min-height: auto; }
-  .scratch-view .notes-editor { min-width: 0; min-height: 60vh; }
+  /* Scratch: auto-height, document feel. No card chrome around the editor —
+     it's text on the ground. Header already shows "Scratch"; the old inline
+     scratch-header label is removed from renderScratch. */
+  .scratch-view .notes-layout { height: auto; min-height: auto; display: block; }
+  .scratch-view .notes-editor { min-width: 0; min-height: 60vh; background: transparent; }
+  .scratch-view .ne-page {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 8px 0 40px;
+    min-height: auto;
+    border-radius: 0;
+  }
+  .scratch-view .scratch-header { display: none; }  /* redundant with app header */
+  .scratch-view .ne-toolbar {
+    background: transparent;
+    border: none;
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--edge);
+    margin-bottom: 16px;
+  }
   .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
 
   .nl-item.dragging { opacity: 0.4; }
@@ -2719,8 +2805,16 @@
   .nl-bulk-bar button.danger { color: var(--danger); border-color: var(--danger)44433; }
   .nl-bulk-bar button.danger:hover { background: var(--danger)41a; color: #fff; }
   .nl-bulk-bar .bulk-count { font-size: var(--fs-meta); color: var(--muted); margin-left: auto; }
-  .nl-item.select-mode { display: flex; align-items: flex-start; gap: var(--space-2); }
-  .nl-item .nl-checkbox { display: none; width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; margin-top: var(--space-0-5); }
+  .nl-item .nl-checkbox {
+    display: none;
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 16px; height: 16px;
+    accent-color: var(--guava-700);
+    cursor: pointer; flex-shrink: 0;
+    z-index: 1;
+  }
+  .nl-item.select-mode { position: relative; padding-right: 40px; }
   .nl-item.select-mode .nl-checkbox { display: block; }
 
   /* Note context menu */
@@ -5357,22 +5451,21 @@ function applySearch(list) {
 }
 
 function emptyState(type) {
+  // Per gsd-handoff/DESIGN_HANDOFF.md §9.3: one-line Inter copy, single ghost-
+  // button CTA, no illustrations. No emoji icons.
   const states = {
-    search:   { icon:'🔍', title:'No results found',        desc:'Try a different word or check your spelling.',                               btn:null },
-    biz:      { icon:'💼', title:'No work tasks',       desc:'Nothing tagged Work yet. Add a task and tag it Work.',               btn:'Add work task' },
-    personal: { icon:'🏠', title:'No personal tasks',       desc:'Nothing tagged Personal yet. Add a task and tag it Personal.',               btn:'Add personal task' },
-    top3:     { icon:'⭐', title:'No starred tasks',        desc:'Star any task to flag it as a priority. Tap the ★ on any task card.', btn:null },
-    someday:  { icon:'🌱', title:'Nothing in Someday',      desc:'Tasks you\'re not ready for yet live here. Add a task and tag it Someday.',   btn:'Add someday task' },
-    all:      { icon:'✅', title:'You\'re all caught up!',  desc:'No active tasks. Hit New Task to add something.',                            btn:'Add a task' },
+    search:   { title: 'No results.',                       btn: null },
+    biz:      { title: 'No Work tasks yet.',                btn: 'Add Work task' },
+    personal: { title: 'No Personal tasks yet.',            btn: 'Add Personal task' },
+    top3:     { title: 'No priority tasks.',                btn: null },
+    priority: { title: 'No priority tasks.',                btn: null },
+    someday:  { title: 'Nothing Later.',                    btn: 'Add task' },
+    all:      { title: 'Nothing to do. Add something.',     btn: 'Add task' },
   };
   const s = states[type] || states.all;
-  const btnHtml = s.btn ? `<button class="empty-state-btn" onclick="event.stopPropagation();openCreatePanel()">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    ${s.btn}</button>` : '';
+  const btnHtml = s.btn ? `<button class="expand-action empty-state-btn" onclick="event.stopPropagation();openCreatePanel()">${s.btn}</button>` : '';
   return `<div class="empty-state">
-    <div class="empty-state-icon">${s.icon}</div>
     <div class="empty-state-title">${s.title}</div>
-    <div class="empty-state-desc">${s.desc}</div>
     ${btnHtml}
   </div>`;
 }
@@ -6708,30 +6801,42 @@ function renderNoteList() {
     const preview = stripHTML(n.content).slice(0, 120) || 'No content';
     const date = formatNoteDate(n.updatedAt);
     const nb = n.notebookId ? notebooksArr.find(nb => nb.id === n.notebookId) : null;
-    let tagHtml = '';
-    if (nb) {
-      const tagClass = nb.color === 'var(--biz)' ? 'tag-biz' : nb.color === 'var(--personal)' ? 'tag-personal' : '';
-      const tagStyle = tagClass ? '' : ` style="background:${nb.color}22;color:${nb.color}"`;
-      tagHtml = `<span class="nl-tag ${tagClass}"${tagStyle}>${escHTML(nb.name)}</span><span class="dot-sep"></span>`;
-    }
+    // Map notebook to one of the spec's earth-tone chip tones. Notebook color
+    // is kept in the DB as a CSS var name; this coerces it to the chip tone
+    // that reads best on the warm surface.
+    const toneFor = (color) => {
+      if (!color) return 'slate';
+      if (color.includes('biz') || color.includes('sky'))    return 'slate';
+      if (color.includes('personal') || color.includes('plum')) return 'ochre';
+      if (color.includes('mint') || color.includes('check')) return 'moss';
+      if (color.includes('yellow') || color.includes('top3')) return 'ochre';
+      if (color.includes('coral') || color.includes('danger')) return 'guava';
+      return 'slate';
+    };
+    const tagHtml = nb
+      ? `<span class="chip chip--${toneFor(nb.color)}">${escHTML(nb.name)}</span>`
+      : '';
     if (notesSidebarView === 'trash') {
       html += `<div class="nl-item${active}${selClass}" data-note-id="${n.id}" oncontextmenu="showNoteContextMenu(event,${n.id})">
-        <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
+        <div class="nl-item-head">
+          <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
+          <div class="nl-item-date">${date}</div>
+        </div>
         <div class="nl-item-preview">${escHTML(preview)}</div>
-        <div class="nl-item-meta" style="gap:4px">
-          <button onclick="event.stopPropagation();restoreNote(${n.id})" style="border:1px solid var(--border2);border-radius:5px;padding:2px 8px;font-size:10px;font-family:inherit;cursor:pointer;background:var(--surface);color:var(--text2)">Restore</button>
-          <button onclick="event.stopPropagation();permanentDeleteNote(${n.id})" style="border:1px solid var(--border2);border-radius:5px;padding:2px 8px;font-size:10px;font-family:inherit;cursor:pointer;background:var(--surface);color:#e74c3c">Delete</button>
+        <div class="nl-item-meta" style="gap:6px">
+          <button onclick="event.stopPropagation();restoreNote(${n.id})" class="expand-action">Restore</button>
+          <button onclick="event.stopPropagation();permanentDeleteNote(${n.id})" class="expand-action" style="color:var(--guava-700);border-color:var(--guava-200)">Delete</button>
         </div>
       </div>`;
     } else {
-      const borderColor = nb ? nb.color : 'transparent';
-      html += `<div class="nl-item${active}${selClass}" onclick="${noteSelectMode ? `toggleNoteSelect(${n.id})` : `selectNote(${n.id})`}" data-note-id="${n.id}" draggable="true" style="border-left-color:${borderColor};animation-delay:${list.indexOf(n) * 0.03}s" oncontextmenu="showNoteContextMenu(event,${n.id})">
+      html += `<div class="nl-item${active}${selClass}" onclick="${noteSelectMode ? `toggleNoteSelect(${n.id})` : `selectNote(${n.id})`}" data-note-id="${n.id}" draggable="true" style="animation-delay:${list.indexOf(n) * 0.03}s" oncontextmenu="showNoteContextMenu(event,${n.id})">
         <input type="checkbox" class="nl-checkbox" ${checked} onclick="event.stopPropagation();toggleNoteSelect(${n.id})">
-        <div style="flex:1;min-width:0">
+        <div class="nl-item-head">
           <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
-          <div class="nl-item-preview">${escHTML(preview)}</div>
-          <div class="nl-item-meta">${tagHtml}<span>Edited ${date}</span></div>
+          <div class="nl-item-date">${date}</div>
         </div>
+        <div class="nl-item-preview">${escHTML(preview)}</div>
+        ${tagHtml ? `<div class="nl-item-meta">${tagHtml}</div>` : ''}
       </div>`;
     }
   });
@@ -7468,11 +7573,7 @@ function renderScratch() {
   const saved = scratchNote.content || localStorage.getItem('gsd-scratch') || '';
   el.innerHTML = `
     <div class="ne-body">
-      <div class="ne-page">
-        <div class="scratch-header">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span>Scratch</span>
-        </div>
+      <div class="ne-page"><!-- scratch-header removed: redundant with app header -->
         <div class="ne-toolbar">
           <div class="tb-group tb-desktop-only">
             <button class="tb-btn" onmousedown="scratchCmd(event,'undo')" title="Undo">
