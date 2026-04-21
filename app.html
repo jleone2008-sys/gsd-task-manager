@@ -4866,6 +4866,21 @@ function isHabitDueOnDate(habit, dateStr) {
   return true;
 }
 /**
+ * Per-habit contribution to today's score. Returns { num, den }.
+ *   Required today (strict pace): den = 1, num = 1 if done else 0
+ *   Optional + user did it:       den = today_count, num = today_count
+ *   Optional + user didn't touch: den = 0, num = 0 (excluded)
+ * Summed across all habits gives the overall Today %.
+ */
+function todayContribution(habit, today) {
+  const todayCount = getCompletionCountForDate(habit.id, today);
+  const required = isHabitDueToday(habit) ? 1 : 0;
+  const den = Math.max(required, todayCount);
+  const num = todayCount;
+  return { num, den };
+}
+
+/**
  * "Can be completed today" — the inclusion gate for the second Habits
  * section. Returns true if the user can still meaningfully tap the habit
  * today. Returns false if the habit is already 100% done for its period and
@@ -5225,7 +5240,6 @@ function renderHabitToday(active) {
   //     and don't allow extras.
   const dueToday   = active.filter(h => isHabitDueToday(h));
   const optional   = active.filter(h => !isHabitDueToday(h) && canHabitDoToday(h));
-  const doneDue    = dueToday.filter(h => isCompletedOn(h.id, today));
   const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
 
   if (active.length === 0) {
@@ -5235,10 +5249,18 @@ function renderHabitToday(active) {
     return;
   }
 
-  // Today % = done-today of due-today (already pace-aware via isHabitDueToday).
-  const todayPct = dueToday.length
-    ? Math.round((doneDue.length / dueToday.length) * 100)
-    : 100;
+  // Today % — contribution-weighted across ALL habits. Required habits
+  // contribute 1/1 (done) or 0/1 (missed). Opportunistic completions on
+  // optional habits contribute their count as num/den (full credit). Habits
+  // the user didn't touch and aren't required contribute 0/0 (excluded).
+  // Formula: pct = Σnum / Σden  (see todayContribution).
+  let todayNum = 0, todayDen = 0;
+  active.forEach(h => {
+    const c = todayContribution(h, today);
+    todayNum += c.num;
+    todayDen += c.den;
+  });
+  const todayPct = todayDen > 0 ? Math.round((todayNum / todayDen) * 100) : 100;
 
   const dueHTML = dueToday.map(h => habitTodayCardHTML(h, today)).join('');
   const optHTML = optional.map(h => habitTodayCardHTML(h, today)).join('');
@@ -5254,7 +5276,7 @@ function renderHabitToday(active) {
         <span class="l">Best streak</span>
       </div>
       <div class="stat-block">
-        <span class="v">${doneDue.length}<em>/${dueToday.length}</em></span>
+        <span class="v">${todayNum}<em>/${todayDen}</em></span>
         <span class="l">Done today</span>
       </div>
     </div>
@@ -5358,7 +5380,10 @@ function unarchiveHabit(habitId) {
 let statsMonth = new Date().getMonth();
 let statsMonthYear = new Date().getFullYear();
 let statsYear = new Date().getFullYear();
-let statsView = 'yearly'; // 'yearly' or 'monthly'
+// Default view: the current month so the most relevant insights show first.
+// 'monthly' starts on statsMonth/statsMonthYear (init'd to now above);
+// user can zoom out to 'yearly' from the month header.
+let statsView = 'monthly';
 
 function renderHabitStats(active) {
   const el = document.getElementById('habit-stats');
