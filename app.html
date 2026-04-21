@@ -127,10 +127,6 @@
     --pastel-yellow-bg:    var(--ochre-bg);  --pastel-yellow-text:    var(--ochre-fg);
     --pastel-coral-bg:     var(--guava-100);
 
-    --toast-bg:        var(--ink);
-    --toast-err-red:   var(--guava-500);
-    --toast-err-amber: var(--ochre-fg);
-
     --heatmap-l1: var(--guava-100);
     --heatmap-l2: var(--guava-300);
     --heatmap-l3: var(--guava-700);
@@ -1127,7 +1123,7 @@
   /* Error / offline toast */
   .error-toast {
     position: fixed; bottom: 52px; left: 16px;
-    background: var(--toast-bg); color: #fff;
+    background: var(--ink); color: #fff;
     padding: var(--space-2) var(--space-3-5); border-radius: var(--radius-sm);
     font-size: var(--fs-pill); display: flex; align-items: center; gap: var(--space-2);
     box-shadow: var(--shadow-lg);
@@ -1139,8 +1135,8 @@
   }
   .error-toast.visible { opacity: 1; pointer-events: all; transform: translateY(0); }
   .error-toast .err-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .error-toast .err-dot.red { background: var(--toast-err-red); }
-  .error-toast .err-dot.amber { background: var(--toast-err-amber); animation: blink 1.5s infinite; }
+  .error-toast .err-dot.red { background: var(--guava-500); }
+  .error-toast .err-dot.amber { background: var(--ochre-fg); animation: blink 1.5s infinite; }
   .error-toast .err-msg { white-space: nowrap; }
   .error-toast .err-dismiss {
     color: rgba(255,255,255,0.35); font-size: var(--fs-card); cursor: pointer;
