@@ -1788,8 +1788,9 @@
   }
   .user-avatar:hover { transform: scale(1.05); }
   .user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-  /* Settings gear badge — guava fill + white gear for high visibility.
-     Lives on the same node that owns the click handler (no extra DOM). */
+  /* Dropdown indicator — guava-700 circle with a white chevron-down,
+     signalling the profile icon opens a menu. Lives on the same node that
+     owns the click handler (no extra DOM). */
   .user-avatar::after,
   .sidebar-foot .avatar::after {
     content: '';
@@ -1798,7 +1799,7 @@
     right: -3px;
     width: 18px; height: 18px;
     border-radius: 50%;
-    background: var(--guava-700) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M22 12h-2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E") center / 14px no-repeat;
+    background: var(--guava-700) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") center / 12px no-repeat;
     box-shadow: 0 0 0 2px var(--bg);
     pointer-events: none;
   }
@@ -1806,7 +1807,7 @@
   .sidebar-foot .avatar::after {
     bottom: -2px; right: -2px;
     width: 15px; height: 15px;
-    background-size: 11px;
+    background-size: 10px;
     box-shadow: 0 0 0 1.5px var(--surface-2);
   }
 
@@ -2658,11 +2659,14 @@
     width: 100%;
     margin: 0;
     background: var(--surface);
-    border: 1px solid var(--edge);
-    border-radius: var(--r-md);
-    box-shadow: var(--shadow-card);
-    overflow: hidden;                 /* keep scroll inside the rounded box */
-    transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    /* Card shell identical to .card / .task-item — same --r-md radius and
+       --shadow-card shadow. !important guards against any legacy rule
+       further down the cascade overriding. */
+    border: 1px solid var(--edge) !important;
+    border-radius: var(--r-md) !important;
+    box-shadow: var(--shadow-card) !important;
+    overflow: hidden;
+    transition: none;
   }
   /* No :hover on the notes-layout — the box is a container, not a clickable
      card. The always-hovered state was reading as a permanent highlight. */
@@ -2871,10 +2875,13 @@
   }
   .scratch-view .scratch-header { display: none; }  /* redundant with app header */
   .scratch-view .ne-toolbar {
-    background: transparent;
-    border: none;
+    background: transparent !important;     /* beat the base .ne-toolbar surface fill */
+    border: none !important;                /* beat the base border-bottom line */
+    border-bottom: none !important;
     padding: 0 0 12px;
-    margin-bottom: 16px;
+    margin: 0 0 16px;
+    position: static;                       /* not sticky — avoids a visible banded layer */
+    box-shadow: none;
   }
   .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
 
