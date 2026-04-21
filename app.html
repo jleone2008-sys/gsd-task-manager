@@ -1765,18 +1765,43 @@
   }
 
   .user-avatar {
+    position: relative;     /* anchor for the gear badge */
     width: 34px; height: 34px; border-radius: 50%;
     background: var(--guava-200);
     border: none;
     display: grid; place-items: center;
     cursor: pointer; font-size: 12px; font-weight: 700;
-    color: var(--guava-700); overflow: hidden;
+    color: var(--guava-700);
     transition: transform var(--dur) var(--ease);
     user-select: none;
     flex-shrink: 0;
+    overflow: visible;      /* let the gear badge spill past the circle */
   }
   .user-avatar:hover { transform: scale(1.05); }
-  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  /* Settings gear badge — signals the profile icon opens the user menu.
+     Rendered via a pseudo-element so it lives on the exact same node that
+     owns the click handler (no extra DOM, no new tap target). */
+  .user-avatar::after,
+  .sidebar-foot .avatar::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c7367' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v2M12 22v-2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M22 12h-2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41'/%3E%3C/svg%3E") center / 9px no-repeat;
+    box-shadow: 0 0 0 1.5px var(--bg);
+    pointer-events: none;
+  }
+  /* Scale down for the smaller sidebar-footer avatar (26px). */
+  .sidebar-foot .avatar { position: relative; overflow: visible; }
+  .sidebar-foot .avatar::after {
+    bottom: -2px; right: -2px;
+    width: 11px; height: 11px;
+    background-size: 7px;
+    box-shadow: 0 0 0 1.5px var(--surface-2);
+  }
 
   .user-dropdown {
     position: absolute; top: calc(100% + 10px); right: 0;
@@ -2778,10 +2803,15 @@
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
   /* Scratch: same card shell as a task card (white box, 4px radius,
-     --shadow-card, --edge border) wrapped around the editor. */
+     --shadow-card, --edge border) wrapped around the editor. Must also
+     align LEFT to the sidebar with the same gutter as tasks — so the
+     inner .ne-body padding and .ne-page auto-centering are removed. */
   .scratch-view .notes-layout { height: auto; min-height: auto; display: block; }
   .scratch-view .notes-editor { min-width: 0; min-height: 60vh; background: transparent; }
+  .scratch-view .ne-body { padding: 0; }
   .scratch-view .ne-page {
+    margin: 8px 0 0;               /* left-align, no centering */
+    max-width: none;               /* fill the content column */
     background: var(--surface);
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
