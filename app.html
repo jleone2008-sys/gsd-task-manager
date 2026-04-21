@@ -5781,7 +5781,8 @@ function render() {
     }
   } else if (filter!=='someday') {
     if (filterStarred) {
-      // Priority filter — all items in view are already t.top3
+      // Legacy priority-only branch (filter='priority' no longer has a pill,
+      // but internal callers may still route through here).
       const lbl = filter==='biz'?'Priority · Work':filter==='personal'?'Priority · Personal':'Priority';
       if (view.length) {
         html += slabel(lbl, view.length, true);
@@ -5789,39 +5790,30 @@ function render() {
       } else {
         html += emptyState('top3');
       }
-    } else if (filter === 'all') {
-      // "All" is the only view that splits into sections. Tag filters (Personal /
-      // Work) render a single list that INCLUDES tagged someday tasks so they
-      // aren't silently hidden.
-      const top3 = view.filter(t=>t.top3);
-      const regular = view.filter(t=>!t.top3&&!t.someday);
-      const someday = view.filter(t=>t.someday && !t.top3);
+    } else {
+      // Every non-priority filter (All / Overdue / Personal / Work) renders as
+      // Priority section first, then the main bucket labelled for the filter.
+      // Later (someday) only surfaces under All — tag filters don't show it.
+      const top3    = view.filter(t => t.top3);
+      const regular = view.filter(t => !t.top3 && !t.someday);
+      const someday = view.filter(t => t.someday && !t.top3);
+      const regLabel = filter === 'biz'     ? 'Work'
+                     : filter === 'personal' ? 'Personal'
+                     : filter === 'overdue'  ? 'Overdue'
+                     :                         'Tasks';
       if (top3.length) {
         html += slabel('Priority', top3.length, true);
         html += `<div class="task-list" data-section="top3">${top3.map(t=>tHTML(t)).join('')}</div>`;
       }
       if (regular.length) {
-        html += slabel('Tasks', regular.length, !top3.length);
+        html += slabel(regLabel, regular.length, !top3.length);
         html += `<div class="task-list" data-section="main">${regular.map(t=>tHTML(t)).join('')}</div>`;
       } else if (!top3.length && !someday.length) {
-        html += emptyState('all');
+        html += emptyState(filter);
       }
-      if (someday.length) {
+      if (filter === 'all' && someday.length) {
         html += slabel('Later', someday.length);
         html += `<div class="task-list" data-section="someday">${someday.map(t=>tHTML(t)).join('')}</div>`;
-      }
-    } else {
-      // Single-list filter (biz / personal / overdue) — no splits, no
-      // hidden someday. Label matches the filter.
-      const lbl = filter === 'biz' ? 'Work'
-                : filter === 'personal' ? 'Personal'
-                : filter === 'overdue' ? 'Overdue'
-                : 'Tasks';
-      if (view.length) {
-        html += slabel(lbl, view.length, true);
-        html += `<div class="task-list" data-section="main">${view.map(t=>tHTML(t)).join('')}</div>`;
-      } else {
-        html += emptyState(filter);
       }
     }
   } else {
