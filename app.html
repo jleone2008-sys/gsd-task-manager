@@ -24,7 +24,7 @@
     </div>
     <div class="auth-tagline">Your personal task list — synced everywhere.<br>Sign in to get started.</div>
 
-    <button class="btn-google" onclick="signInWithGoogle()">
+    <button class="btn-google" id="btnGoogleSignIn">
       <svg width="18" height="18" viewBox="0 0 24 24">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -38,64 +38,62 @@
 
     <div class="auth-email-form">
       <div class="auth-error" id="authError"></div>
-      <input class="auth-input" type="email" id="authEmail" placeholder="Email address" autocomplete="email"
-        onkeydown="if(event.key==='Enter')handleEmailAuth()">
-      <input class="auth-input" type="password" id="authPassword" placeholder="Password" autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')handleEmailAuth()">
-      <button class="btn-auth" id="authSubmitBtn" onclick="handleEmailAuth()">Sign In</button>
+      <input class="auth-input" type="email" id="authEmail" placeholder="Email address" autocomplete="email">
+      <input class="auth-input" type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+      <button class="btn-auth" id="authSubmitBtn">Sign In</button>
       <div class="auth-toggle" id="authToggle">
-        No account? <a onclick="toggleAuthMode()">Sign up free</a>
+        No account? <a id="authToggleLink">Sign up free</a>
       </div>
     </div>
 
 
     <div class="auth-legal-footer">
       By signing in, you agree to our
-      <button onclick="event.stopPropagation();openLegalModal('terms')">Terms &amp; Conditions</button>
+      <button id="authLegalTermsBtn">Terms &amp; Conditions</button>
       and
-      <button onclick="event.stopPropagation();openLegalModal('privacy')">Privacy Policy</button>.
+      <button id="authLegalPrivacyBtn">Privacy Policy</button>.
     </div>
   </div>
 </div>
 
 <!-- ═══════════ FAQ MODAL ═══════════ -->
-<div class="modal-overlay" id="faqModal" onclick="if(event.target===this)closeFaqModal()">
+<div class="modal-overlay" id="faqModal">
   <div class="modal">
     <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <span class="modal-title">Help &amp; FAQ</span>
-      <button onclick="closeFaqModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-2);padding:2px;">
+      <button id="faqModalClose" style="background:none;border:none;cursor:pointer;color:var(--ink-2);padding:2px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-body">
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I create a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the <strong>+</strong> button at the bottom right, or use the <strong>Add Task</strong> input at the top. Type your task and press Enter to save.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do the lists (Work, Personal, Starred) work?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a"><strong>Work</strong> and <strong>Personal</strong> are your full task backlogs. <strong>Starred</strong> is your daily focus list — star your most important tasks each morning and work through them.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Is my data saved automatically?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes. Every change saves automatically to your account in real time, synced across any device you sign in on.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I back up or export my tasks?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Backup &amp; Restore</strong>. Download a JSON backup or restore from a previous file.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Can I use GSD on my phone?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes — fully responsive. On iOS or Android, open <strong>gsdtasks.com/app</strong> in Safari or Chrome and use "Add to Home Screen" to install it as a standalone app.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I mark a task complete?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the circle checkbox to the left of any task. Tap again to undo.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap a task to open it, then tap the trash icon. Completed tasks can be bulk-deleted using <strong>Clear completed</strong>.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">I forgot my password. How do I reset it?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. If you signed up with Google, just use the Google sign-in button.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">How do I delete my account and data?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all tasks. Download a backup first.</div></div>
+      <div class="faq-item"><button class="faq-q">How do I create a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the <strong>+</strong> button at the bottom right, or use the <strong>Add Task</strong> input at the top. Type your task and press Enter to save.</div></div>
+      <div class="faq-item"><button class="faq-q">How do the lists (Work, Personal, Starred) work?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a"><strong>Work</strong> and <strong>Personal</strong> are your full task backlogs. <strong>Starred</strong> is your daily focus list — star your most important tasks each morning and work through them.</div></div>
+      <div class="faq-item"><button class="faq-q">Is my data saved automatically?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes. Every change saves automatically to your account in real time, synced across any device you sign in on.</div></div>
+      <div class="faq-item"><button class="faq-q">How do I back up or export my tasks?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Backup &amp; Restore</strong>. Download a JSON backup or restore from a previous file.</div></div>
+      <div class="faq-item"><button class="faq-q">Can I use GSD on my phone?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Yes — fully responsive. On iOS or Android, open <strong>gsdtasks.com/app</strong> in Safari or Chrome and use "Add to Home Screen" to install it as a standalone app.</div></div>
+      <div class="faq-item"><button class="faq-q">How do I mark a task complete?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap the circle checkbox to the left of any task. Tap again to undo.</div></div>
+      <div class="faq-item"><button class="faq-q">How do I delete a task?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Tap a task to open it, then tap the trash icon. Completed tasks can be bulk-deleted using <strong>Clear completed</strong>.</div></div>
+      <div class="faq-item"><button class="faq-q">I forgot my password. How do I reset it?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">On the sign-in screen, click <strong>Forgot password?</strong> and enter your email. If you signed up with Google, just use the Google sign-in button.</div></div>
+      <div class="faq-item"><button class="faq-q">How do I delete my account and data?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button><div class="faq-a">Open your profile menu and tap <strong>Delete account &amp; data</strong>. This permanently removes your account and all tasks. Download a backup first.</div></div>
       <div class="faq-contact-note">Still have a question? <a href="mailto:support@gsdtasks.com" target="_blank">Contact support</a> — we typically respond within one business day.</div>
     </div>
   </div>
 </div>
 
 <!-- ═══════════ LEGAL MODAL (T&C + PRIVACY) ═══════════ -->
-<div class="modal-overlay" id="legalModal" onclick="if(event.target===this)closeLegalModal()">
+<div class="modal-overlay" id="legalModal">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="legalModalTitle">Terms &amp; Conditions</span>
-      <button class="modal-close" onclick="closeLegalModal()">&#x2715;</button>
+      <button class="modal-close" id="legalModalClose">&#x2715;</button>
     </div>
     <div class="legal-tabs">
-      <button class="legal-tab active" id="legalTabTerms" onclick="switchLegalTab('terms')">Terms &amp; Conditions</button>
-      <button class="legal-tab" id="legalTabPrivacy" onclick="switchLegalTab('privacy')">Privacy Policy</button>
+      <button class="legal-tab active" id="legalTabTerms" data-legal-tab="terms">Terms &amp; Conditions</button>
+      <button class="legal-tab" id="legalTabPrivacy" data-legal-tab="privacy">Privacy Policy</button>
     </div>
     <div class="legal-body" id="legalBody"></div>
     <div style="padding-top:14px;border-top:1px solid var(--edge);margin-top:12px;">
-      <button class="btn-sm-accent" onclick="closeLegalModal()" style="width:100%;">Got it</button>
+      <button class="btn-sm-accent" id="legalGotItBtn" style="width:100%;">Got it</button>
     </div>
   </div>
 </div>
@@ -105,21 +103,20 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Delete Account & Data</span>
-      <button class="modal-close" onclick="closeDeleteAccountModal()">&#x2715;</button>
+      <button class="modal-close" id="deleteAccountModalClose">&#x2715;</button>
     </div>
     <div class="danger-zone">
       <p>⚠️ This will permanently delete your account and all tasks. This cannot be undone.</p>
     </div>
     <div class="confirm-input-wrap">
       <label>Type <strong>DELETE</strong> to confirm:</label>
-      <input class="auth-input" type="text" id="deleteConfirmInput" placeholder="DELETE"
-        onkeydown="if(event.key==='Enter')confirmDeleteAccount()">
+      <input class="auth-input" type="text" id="deleteConfirmInput" placeholder="DELETE">
     </div>
     <div class="modal-actions">
-      <button class="btn-sm" onclick="closeDeleteAccountModal()">Cancel</button>
+      <button class="btn-sm" id="deleteAccountCancelBtn">Cancel</button>
       <button class="btn-sm" id="deleteConfirmBtn"
         style="background:var(--guava-700);color:#fff;border-color:var(--guava-700);opacity:0.4;cursor:not-allowed"
-        onclick="confirmDeleteAccount()" disabled>Delete Everything</button>
+        disabled>Delete Everything</button>
     </div>
   </div>
 </div>
@@ -131,8 +128,8 @@
     <div class="confirm-card-title" id="confirmTitle">Delete task?</div>
     <div class="confirm-card-desc" id="confirmDesc">This task will be permanently removed.</div>
     <div class="confirm-card-actions">
-      <button class="confirm-btn-cancel" onclick="resolveConfirm(false)">Cancel</button>
-      <button class="confirm-btn-confirm danger" id="confirmOkBtn" onclick="resolveConfirm(true)">Delete</button>
+      <button class="confirm-btn-cancel" id="confirmCancelBtn">Cancel</button>
+      <button class="confirm-btn-confirm danger" id="confirmOkBtn">Delete</button>
     </div>
   </div>
 </div>
@@ -143,7 +140,7 @@
 <!-- ═══════════ UNDO TOAST ═══════════ -->
 <div id="undoToast">
   <span id="undoMsg">Task deleted</span>
-  <button onclick="undoDelete()">Undo</button>
+  <button id="undoBtn">Undo</button>
   <div class="toast-progress" id="toastProgress"></div>
 </div>
 
@@ -152,7 +149,7 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Backup & Restore</span>
-      <button class="modal-close" onclick="closeBackupModal()">&#x2715;</button>
+      <button class="modal-close" id="backupModalClose">&#x2715;</button>
     </div>
     <div style="margin-bottom:16px;">
       <div style="background:var(--surface2,#f4f6fb);border:1px solid var(--edge);border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;">
@@ -163,11 +160,11 @@
       </div>
       <div style="font-size:12px;color:var(--ink-3);margin-bottom:10px;line-height:1.6;">Export a full backup of all your data (tasks, habits, completions). JSON preserves everything. CSV is for spreadsheets (tasks only).</div>
       <div style="display:flex;gap:8px;margin-bottom:18px;">
-        <button class="btn-sm-accent" onclick="exportJSON()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <button class="btn-sm-accent" id="btnExportJSON" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export JSON
         </button>
-        <button class="btn-sm" onclick="exportCSV()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <button class="btn-sm" id="btnExportCSV" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export CSV
         </button>
@@ -182,8 +179,8 @@
       <div style="border-top:1px solid var(--edge);padding-top:16px;">
         <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px;">Restore from a JSON backup file:</div>
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-          <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreJSON(this)">
-          <button class="btn-sm" onclick="document.getElementById('restoreFile').click()" style="display:flex;align-items:center;gap:6px;">
+          <input type="file" id="restoreFile" accept=".json" style="display:none">
+          <button class="btn-sm" id="btnChooseRestoreFile" style="display:flex;align-items:center;gap:6px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Choose file
           </button>
@@ -225,7 +222,7 @@
     </button>
   </nav>
   <div class="sidebar-sep"></div>
-  <div class="sidebar-foot" id="sidebarFooter" onclick="toggleUserDropdown()">
+  <div class="sidebar-foot" id="sidebarFooter">
     <div class="avatar" id="sidebarAvatar">S</div>
     <div style="line-height:1.3;min-width:0;flex:1;overflow:hidden;">
       <div id="sidebarUserName" style="font-weight:600;color:var(--ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Signed in</div>
@@ -250,36 +247,36 @@
     <!-- Desktop-only header actions (new-task button, search, etc.) -->
     <div class="header-actions" id="headerActions"></div>
     <div class="user-menu" id="userMenu" style="display:none">
-      <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()" title="Account"></div>
+      <div class="user-avatar" id="userAvatar" title="Account"></div>
       <div class="user-dropdown" id="userDropdown">
         <div class="user-dropdown-profile">
           <div class="user-dropdown-name" id="dropdownName">—</div>
           <div class="user-dropdown-email" id="dropdownEmail">—</div>
         </div>
-        <button class="dropdown-item" onclick="openBackupModal(); toggleUserDropdown(false)">
+        <button class="dropdown-item" data-action="backup">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Backup & Restore
         </button>
-        <button class="dropdown-item" onclick="openLegalModal('terms'); toggleUserDropdown(false)">
+        <button class="dropdown-item" data-action="legal-terms">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Terms & Conditions
         </button>
-        <button class="dropdown-item" onclick="openLegalModal('privacy'); toggleUserDropdown(false)">
+        <button class="dropdown-item" data-action="legal-privacy">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Privacy Policy
         </button>
         <div class="dropdown-sep"></div>
-        <button class="dropdown-item" onclick="openFaqModal(); toggleUserDropdown(false)">
+        <button class="dropdown-item" data-action="faq">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Help &amp; FAQ
         </button>
         <div class="dropdown-sep"></div>
-        <button class="dropdown-item danger" onclick="openDeleteAccountModal(); toggleUserDropdown(false)">
+        <button class="dropdown-item danger" data-action="delete-account">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
           Delete account & data
         </button>
         <div class="dropdown-sep"></div>
-        <button class="dropdown-item danger" onclick="signOut()">
+        <button class="dropdown-item danger" data-action="signout">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Sign out
         </button>
@@ -294,10 +291,10 @@
      visibility via the [data-tool-view] selector so exactly one shows at a time. -->
 <div class="pill-bar" data-tool-view="tasks">
   <div class="pill-bar-inner">
-    <button class="pill active" data-filter="all" onclick="setCatFilter('all',this)">All<span class="pill-count" id="pc-all">0</span></button>
-    <button class="pill" data-filter="overdue" onclick="setCatFilter('overdue',this)">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
-    <button class="pill" data-filter="personal" onclick="setCatFilter('personal',this)">Personal<span class="pill-count" id="pc-personal">0</span></button>
-    <button class="pill" data-filter="biz" onclick="setCatFilter('biz',this)">Work<span class="pill-count" id="pc-biz">0</span></button>
+    <button class="pill active" data-filter="all">All<span class="pill-count" id="pc-all">0</span></button>
+    <button class="pill" data-filter="overdue">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
+    <button class="pill" data-filter="personal">Personal<span class="pill-count" id="pc-personal">0</span></button>
+    <button class="pill" data-filter="biz">Work<span class="pill-count" id="pc-biz">0</span></button>
   </div>
 </div>
 <div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
@@ -340,7 +337,7 @@
     <aside class="notes-sidebar" id="notesSidebar"></aside>
     <!-- Notes list -->
     <div class="notes-list" id="notesList">
-      <div class="mobile-nb-toggle" id="mobileNbToggle" onclick="document.getElementById('mobileNbDrawer').classList.toggle('open')" style="display:none"></div>
+      <div class="mobile-nb-toggle" id="mobileNbToggle" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <div class="nl-header">
         <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span></div>
@@ -362,8 +359,8 @@
 <div class="error-toast" id="errorToast">
   <span class="err-dot red" id="errDot"></span>
   <span class="err-msg" id="errMsg">You're offline — changes saved locally</span>
-  <button class="err-retry" id="errRetry" style="display:none" onclick="retrySyncAll()">Retry now</button>
-  <button class="err-dismiss" onclick="hideToast()">✕</button>
+  <button class="err-retry" id="errRetry" style="display:none">Retry now</button>
+  <button class="err-dismiss" id="errDismissBtn">✕</button>
 </div>
 
 <!-- Mobile bottom tab bar — original legacy icons (the set the user prefers).
@@ -392,75 +389,74 @@
 </nav>
 
 <!-- FLOATING SEARCH BAR -->
-<div class="floating-search" id="floatingSearch" onclick="expandFloatingSearch()">
+<div class="floating-search" id="floatingSearch">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-  <input type="text" id="floatingSearchInput" placeholder="Search tasks..." oninput="handleFloatingSearch(this.value)" onkeydown="if(event.key==='Escape')collapseFloatingSearch()">
-  <button class="fs-clear" onclick="event.stopPropagation();clearFloatingSearch()">
+  <input type="text" id="floatingSearchInput" placeholder="Search tasks...">
+  <button class="fs-clear" id="fsClear">
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
 </div>
 
 <!-- FLOATING NEW TASK BUTTON -->
-<button class="fab" id="fabBtn" onclick="openCreatePanel()">
+<button class="fab" id="fabBtn">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
 <!-- FLOATING CREATE PANEL -->
-<div class="create-panel" id="createPanel" onclick="if(event.target===this)closeCreatePanel()">
+<div class="create-panel" id="createPanel">
   <div class="create-panel-inner">
     <div class="add-row">
-      <input type="text" id="newTaskInput" placeholder="Add a task..."
-        onkeydown="if(event.key==='Enter')addTask();if(event.key==='Escape')closeCreatePanel()">
+      <input type="text" id="newTaskInput" placeholder="Add a task...">
     </div>
     <div class="add-note-wrap" id="noteWrap">
       <textarea id="newNoteInput" placeholder="Add a note or paste a URL..."></textarea>
     </div>
     <div class="add-note-wrap" id="dueDateWrap" style="padding: 0 0 4px;">
-      <input type="date" id="newDueDate" class="auth-input" style="font-size:12px;padding:7px 10px;color:var(--ink-3);" onkeydown="if(event.key==='Enter'){event.preventDefault();addTask()}" formnovalidate>
+      <input type="date" id="newDueDate" class="auth-input" style="font-size:12px;padding:7px 10px;color:var(--ink-3);" formnovalidate>
     </div>
     <div class="create-panel-footer">
       <div class="create-panel-tags">
-        <button class="tag-btn biz" id="opt-biz" onclick="toggleNewTag('biz')">Work</button>
-        <button class="tag-btn personal" id="opt-personal" onclick="toggleNewTag('personal')">Personal</button>
-        <button class="tag-btn t3" id="opt-top3" onclick="toggleNewTag('top3')">&#9733; Priority</button>
-        <button class="tag-btn" id="opt-someday" onclick="toggleNewTag('someday')">Later</button>
+        <button class="tag-btn biz" id="opt-biz" data-new-tag="biz">Work</button>
+        <button class="tag-btn personal" id="opt-personal" data-new-tag="personal">Personal</button>
+        <button class="tag-btn t3" id="opt-top3" data-new-tag="top3">&#9733; Priority</button>
+        <button class="tag-btn" id="opt-someday" data-new-tag="someday">Later</button>
       </div>
       <div class="create-panel-actions">
-        <button class="btn-note" id="noteToggle" onclick="toggleNoteField()">+ Note</button>
-        <button class="btn-note" id="dueDateToggle" onclick="toggleDueDateField()">📅 Due</button>
-        <button class="btn-add" onclick="addTask()">Add</button>
+        <button class="btn-note" id="noteToggle">+ Note</button>
+        <button class="btn-note" id="dueDateToggle">📅 Due</button>
+        <button class="btn-add" id="btnAddTask">Add</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- HABIT CREATE PANEL -->
-<div class="habit-create-panel" id="habitCreatePanel" onclick="if(event.target===this)closeHabitCreatePanel()">
+<div class="habit-create-panel" id="habitCreatePanel">
   <div class="habit-create-inner">
     <div class="habit-create-row">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <button class="emoji-pick-btn" id="habitEmojiBtn" onclick="document.getElementById('habitEmojiGrid').style.display=document.getElementById('habitEmojiGrid').style.display==='grid'?'none':'grid'" title="Tap to change icon">✅</button>
+        <button class="emoji-pick-btn" id="habitEmojiBtn" title="Tap to change icon">✅</button>
         <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
       </div>
-      <input type="text" id="habitNameInput" placeholder="Habit name..." onkeydown="if(event.key==='Enter')addHabit();if(event.key==='Escape')closeHabitCreatePanel()">
+      <input type="text" id="habitNameInput" placeholder="Habit name...">
     </div>
     <div class="emoji-grid" id="habitEmojiGrid" style="display:none">
-      <button onclick="pickHabitEmoji('🏃')">🏃</button><button onclick="pickHabitEmoji('💪')">💪</button>
-      <button onclick="pickHabitEmoji('🧘')">🧘</button><button onclick="pickHabitEmoji('🚶')">🚶</button>
-      <button onclick="pickHabitEmoji('🚴')">🚴</button><button onclick="pickHabitEmoji('🏊')">🏊</button>
-      <button onclick="pickHabitEmoji('📖')">📖</button><button onclick="pickHabitEmoji('🧠')">🧠</button>
-      <button onclick="pickHabitEmoji('✍️')">✍️</button><button onclick="pickHabitEmoji('📝')">📝</button>
-      <button onclick="pickHabitEmoji('💧')">💧</button><button onclick="pickHabitEmoji('🥗')">🥗</button>
-      <button onclick="pickHabitEmoji('😴')">😴</button><button onclick="pickHabitEmoji('💊')">💊</button>
-      <button onclick="pickHabitEmoji('🧹')">🧹</button><button onclick="pickHabitEmoji('🪥')">🪥</button>
-      <button onclick="pickHabitEmoji('👨‍👩‍👧')">👨‍👩‍👧</button><button onclick="pickHabitEmoji('👥')">👥</button>
-      <button onclick="pickHabitEmoji('🤝')">🤝</button><button onclick="pickHabitEmoji('💬')">💬</button>
-      <button onclick="pickHabitEmoji('📞')">📞</button><button onclick="pickHabitEmoji('🎉')">🎉</button>
-      <button onclick="pickHabitEmoji('💰')">💰</button><button onclick="pickHabitEmoji('📊')">📊</button>
-      <button onclick="pickHabitEmoji('🎯')">🎯</button><button onclick="pickHabitEmoji('🎨')">🎨</button>
-      <button onclick="pickHabitEmoji('🎸')">🎸</button><button onclick="pickHabitEmoji('🎮')">🎮</button>
-      <button onclick="pickHabitEmoji('🙏')">🙏</button><button onclick="pickHabitEmoji('🌱')">🌱</button>
-      <button onclick="pickHabitEmoji('☀️')">☀️</button><button onclick="pickHabitEmoji('✅')">✅</button>
+      <button data-emoji-target="create" data-emoji="🏃">🏃</button><button data-emoji-target="create" data-emoji="💪">💪</button>
+      <button data-emoji-target="create" data-emoji="🧘">🧘</button><button data-emoji-target="create" data-emoji="🚶">🚶</button>
+      <button data-emoji-target="create" data-emoji="🚴">🚴</button><button data-emoji-target="create" data-emoji="🏊">🏊</button>
+      <button data-emoji-target="create" data-emoji="📖">📖</button><button data-emoji-target="create" data-emoji="🧠">🧠</button>
+      <button data-emoji-target="create" data-emoji="✍️">✍️</button><button data-emoji-target="create" data-emoji="📝">📝</button>
+      <button data-emoji-target="create" data-emoji="💧">💧</button><button data-emoji-target="create" data-emoji="🥗">🥗</button>
+      <button data-emoji-target="create" data-emoji="😴">😴</button><button data-emoji-target="create" data-emoji="💊">💊</button>
+      <button data-emoji-target="create" data-emoji="🧹">🧹</button><button data-emoji-target="create" data-emoji="🪥">🪥</button>
+      <button data-emoji-target="create" data-emoji="👨‍👩‍👧">👨‍👩‍👧</button><button data-emoji-target="create" data-emoji="👥">👥</button>
+      <button data-emoji-target="create" data-emoji="🤝">🤝</button><button data-emoji-target="create" data-emoji="💬">💬</button>
+      <button data-emoji-target="create" data-emoji="📞">📞</button><button data-emoji-target="create" data-emoji="🎉">🎉</button>
+      <button data-emoji-target="create" data-emoji="💰">💰</button><button data-emoji-target="create" data-emoji="📊">📊</button>
+      <button data-emoji-target="create" data-emoji="🎯">🎯</button><button data-emoji-target="create" data-emoji="🎨">🎨</button>
+      <button data-emoji-target="create" data-emoji="🎸">🎸</button><button data-emoji-target="create" data-emoji="🎮">🎮</button>
+      <button data-emoji-target="create" data-emoji="🙏">🙏</button><button data-emoji-target="create" data-emoji="🌱">🌱</button>
+      <button data-emoji-target="create" data-emoji="☀️">☀️</button><button data-emoji-target="create" data-emoji="✅">✅</button>
     </div>
     <div class="freq-options" id="habitFreqOptions">
       <button class="freq-btn active" data-freq="daily">Daily</button>
@@ -494,40 +490,40 @@
       </label>
     </div>
     <div class="habit-create-actions">
-      <button class="btn-cancel" onclick="closeHabitCreatePanel()">Cancel</button>
-      <button class="btn-save" onclick="addHabit()">Add Habit</button>
+      <button class="btn-cancel" id="habitCreateCancelBtn">Cancel</button>
+      <button class="btn-save" id="habitCreateAddBtn">Add Habit</button>
     </div>
   </div>
 </div>
 
 <!-- HABIT EDIT MODAL -->
-<div class="habit-edit-overlay" id="habitEditOverlay" onclick="if(event.target===this)closeHabitEdit()">
+<div class="habit-edit-overlay" id="habitEditOverlay">
   <div class="habit-edit-modal">
     <h3>Edit Habit</h3>
     <div class="habit-create-row">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <button class="emoji-pick-btn" id="habitEditEmojiBtn" onclick="document.getElementById('habitEditEmojiGrid').style.display=document.getElementById('habitEditEmojiGrid').style.display==='grid'?'none':'grid'" title="Tap to change icon">✅</button>
+        <button class="emoji-pick-btn" id="habitEditEmojiBtn" title="Tap to change icon">✅</button>
         <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
       </div>
-      <input type="text" id="habitEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')saveHabitEdit()">
+      <input type="text" id="habitEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
     </div>
     <div class="emoji-grid" id="habitEditEmojiGrid" style="display:none">
-      <button onclick="pickHabitEditEmoji('🏃')">🏃</button><button onclick="pickHabitEditEmoji('💪')">💪</button>
-      <button onclick="pickHabitEditEmoji('🧘')">🧘</button><button onclick="pickHabitEditEmoji('🚶')">🚶</button>
-      <button onclick="pickHabitEditEmoji('🚴')">🚴</button><button onclick="pickHabitEditEmoji('🏊')">🏊</button>
-      <button onclick="pickHabitEditEmoji('📖')">📖</button><button onclick="pickHabitEditEmoji('🧠')">🧠</button>
-      <button onclick="pickHabitEditEmoji('✍️')">✍️</button><button onclick="pickHabitEditEmoji('📝')">📝</button>
-      <button onclick="pickHabitEditEmoji('💧')">💧</button><button onclick="pickHabitEditEmoji('🥗')">🥗</button>
-      <button onclick="pickHabitEditEmoji('😴')">😴</button><button onclick="pickHabitEditEmoji('💊')">💊</button>
-      <button onclick="pickHabitEditEmoji('🧹')">🧹</button><button onclick="pickHabitEditEmoji('🪥')">🪥</button>
-      <button onclick="pickHabitEditEmoji('👨‍👩‍👧')">👨‍👩‍👧</button><button onclick="pickHabitEditEmoji('👥')">👥</button>
-      <button onclick="pickHabitEditEmoji('🤝')">🤝</button><button onclick="pickHabitEditEmoji('💬')">💬</button>
-      <button onclick="pickHabitEditEmoji('📞')">📞</button><button onclick="pickHabitEditEmoji('🎉')">🎉</button>
-      <button onclick="pickHabitEditEmoji('💰')">💰</button><button onclick="pickHabitEditEmoji('📊')">📊</button>
-      <button onclick="pickHabitEditEmoji('🎯')">🎯</button><button onclick="pickHabitEditEmoji('🎨')">🎨</button>
-      <button onclick="pickHabitEditEmoji('🎸')">🎸</button><button onclick="pickHabitEditEmoji('🎮')">🎮</button>
-      <button onclick="pickHabitEditEmoji('🙏')">🙏</button><button onclick="pickHabitEditEmoji('🌱')">🌱</button>
-      <button onclick="pickHabitEditEmoji('☀️')">☀️</button><button onclick="pickHabitEditEmoji('✅')">✅</button>
+      <button data-emoji-target="edit" data-emoji="🏃">🏃</button><button data-emoji-target="edit" data-emoji="💪">💪</button>
+      <button data-emoji-target="edit" data-emoji="🧘">🧘</button><button data-emoji-target="edit" data-emoji="🚶">🚶</button>
+      <button data-emoji-target="edit" data-emoji="🚴">🚴</button><button data-emoji-target="edit" data-emoji="🏊">🏊</button>
+      <button data-emoji-target="edit" data-emoji="📖">📖</button><button data-emoji-target="edit" data-emoji="🧠">🧠</button>
+      <button data-emoji-target="edit" data-emoji="✍️">✍️</button><button data-emoji-target="edit" data-emoji="📝">📝</button>
+      <button data-emoji-target="edit" data-emoji="💧">💧</button><button data-emoji-target="edit" data-emoji="🥗">🥗</button>
+      <button data-emoji-target="edit" data-emoji="😴">😴</button><button data-emoji-target="edit" data-emoji="💊">💊</button>
+      <button data-emoji-target="edit" data-emoji="🧹">🧹</button><button data-emoji-target="edit" data-emoji="🪥">🪥</button>
+      <button data-emoji-target="edit" data-emoji="👨‍👩‍👧">👨‍👩‍👧</button><button data-emoji-target="edit" data-emoji="👥">👥</button>
+      <button data-emoji-target="edit" data-emoji="🤝">🤝</button><button data-emoji-target="edit" data-emoji="💬">💬</button>
+      <button data-emoji-target="edit" data-emoji="📞">📞</button><button data-emoji-target="edit" data-emoji="🎉">🎉</button>
+      <button data-emoji-target="edit" data-emoji="💰">💰</button><button data-emoji-target="edit" data-emoji="📊">📊</button>
+      <button data-emoji-target="edit" data-emoji="🎯">🎯</button><button data-emoji-target="edit" data-emoji="🎨">🎨</button>
+      <button data-emoji-target="edit" data-emoji="🎸">🎸</button><button data-emoji-target="edit" data-emoji="🎮">🎮</button>
+      <button data-emoji-target="edit" data-emoji="🙏">🙏</button><button data-emoji-target="edit" data-emoji="🌱">🌱</button>
+      <button data-emoji-target="edit" data-emoji="☀️">☀️</button><button data-emoji-target="edit" data-emoji="✅">✅</button>
     </div>
     <div class="habit-edit-field">
       <label>Frequency</label>
@@ -564,37 +560,37 @@
     </div>
     <div class="habit-edit-actions">
       <div class="habit-edit-danger">
-        <button onclick="archiveHabit()">Archive</button>
-        <button onclick="confirmDeleteHabit()">Delete</button>
+        <button id="habitEditArchiveBtn">Archive</button>
+        <button id="habitEditDeleteBtn">Delete</button>
       </div>
       <div class="habit-edit-save">
-        <button class="btn-cancel" style="padding:6px 14px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer" onclick="closeHabitEdit()">Cancel</button>
-        <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="saveHabitEdit()">Save</button>
+        <button class="btn-cancel" style="padding:6px 14px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer" id="habitEditCancelBtn">Cancel</button>
+        <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" id="habitEditSaveBtn">Save</button>
       </div>
     </div>
   </div>
 </div>
 
 <!-- HABIT DRILL-IN -->
-<div class="habit-drill-overlay" id="habitDrillOverlay" onclick="if(event.target===this)closeDrillIn()">
+<div class="habit-drill-overlay" id="habitDrillOverlay">
   <div class="habit-drill-panel">
     <div class="habit-drill-header">
-      <button class="habit-drill-back" onclick="closeDrillIn()">&larr;</button>
+      <button class="habit-drill-back" id="habitDrillBackBtn">&larr;</button>
       <span class="habit-drill-emoji" id="drillEmoji"></span>
       <span class="habit-drill-name" id="drillName"></span>
     </div>
     <div class="habit-drill-tabs">
-      <button class="drill-tab active" data-drill-tab="calendar" onclick="switchDrillTab('calendar')">Calendar</button>
-      <button class="drill-tab" data-drill-tab="stats" onclick="switchDrillTab('stats')">Statistics</button>
-      <button class="drill-tab" data-drill-tab="edit" onclick="switchDrillTab('edit')">Edit</button>
+      <button class="drill-tab active" data-drill-tab="calendar">Calendar</button>
+      <button class="drill-tab" data-drill-tab="stats">Statistics</button>
+      <button class="drill-tab" data-drill-tab="edit">Edit</button>
     </div>
     <div class="habit-drill-body">
       <!-- Calendar Tab -->
       <div class="habit-drill-tab-content active" id="drillTabCalendar">
         <div class="habit-cal-nav">
-          <button onclick="drillCalPrev()">&lsaquo;</button>
+          <button id="drillCalPrevBtn">&lsaquo;</button>
           <span class="habit-cal-month" id="drillCalMonth"></span>
-          <button onclick="drillCalNext()">&rsaquo;</button>
+          <button id="drillCalNextBtn">&rsaquo;</button>
         </div>
         <div class="habit-cal-grid" id="drillCalGrid"></div>
         <div class="habit-cal-streak" id="drillCalStreak"></div>
@@ -609,28 +605,28 @@
         <div class="drill-edit-section">
           <div class="habit-create-row" style="margin-bottom:10px">
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-              <button class="emoji-pick-btn" id="drillEditEmojiBtn" onclick="document.getElementById('drillEditEmojiGrid').style.display=document.getElementById('drillEditEmojiGrid').style.display==='grid'?'none':'grid'" title="Tap to change icon">✅</button>
+              <button class="emoji-pick-btn" id="drillEditEmojiBtn" title="Tap to change icon">✅</button>
               <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
             </div>
-            <input type="text" id="drillEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')saveHabitDrill()">
+            <input type="text" id="drillEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
           </div>
           <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
-            <button onclick="pickDrillEditEmoji('🏃')">🏃</button><button onclick="pickDrillEditEmoji('💪')">💪</button>
-            <button onclick="pickDrillEditEmoji('🧘')">🧘</button><button onclick="pickDrillEditEmoji('🚶')">🚶</button>
-            <button onclick="pickDrillEditEmoji('🚴')">🚴</button><button onclick="pickDrillEditEmoji('🏊')">🏊</button>
-            <button onclick="pickDrillEditEmoji('📖')">📖</button><button onclick="pickDrillEditEmoji('🧠')">🧠</button>
-            <button onclick="pickDrillEditEmoji('✍️')">✍️</button><button onclick="pickDrillEditEmoji('📝')">📝</button>
-            <button onclick="pickDrillEditEmoji('💧')">💧</button><button onclick="pickDrillEditEmoji('🥗')">🥗</button>
-            <button onclick="pickDrillEditEmoji('😴')">😴</button><button onclick="pickDrillEditEmoji('💊')">💊</button>
-            <button onclick="pickDrillEditEmoji('🧹')">🧹</button><button onclick="pickDrillEditEmoji('🪥')">🪥</button>
-            <button onclick="pickDrillEditEmoji('👨‍👩‍👧')">👨‍👩‍👧</button><button onclick="pickDrillEditEmoji('👥')">👥</button>
-            <button onclick="pickDrillEditEmoji('🤝')">🤝</button><button onclick="pickDrillEditEmoji('💬')">💬</button>
-            <button onclick="pickDrillEditEmoji('📞')">📞</button><button onclick="pickDrillEditEmoji('🎉')">🎉</button>
-            <button onclick="pickDrillEditEmoji('💰')">💰</button><button onclick="pickDrillEditEmoji('📊')">📊</button>
-            <button onclick="pickDrillEditEmoji('🎯')">🎯</button><button onclick="pickDrillEditEmoji('🎨')">🎨</button>
-            <button onclick="pickDrillEditEmoji('🎸')">🎸</button><button onclick="pickDrillEditEmoji('🎮')">🎮</button>
-            <button onclick="pickDrillEditEmoji('🙏')">🙏</button><button onclick="pickDrillEditEmoji('🌱')">🌱</button>
-            <button onclick="pickDrillEditEmoji('☀️')">☀️</button><button onclick="pickDrillEditEmoji('✅')">✅</button>
+            <button data-emoji-target="drill" data-emoji="🏃">🏃</button><button data-emoji-target="drill" data-emoji="💪">💪</button>
+            <button data-emoji-target="drill" data-emoji="🧘">🧘</button><button data-emoji-target="drill" data-emoji="🚶">🚶</button>
+            <button data-emoji-target="drill" data-emoji="🚴">🚴</button><button data-emoji-target="drill" data-emoji="🏊">🏊</button>
+            <button data-emoji-target="drill" data-emoji="📖">📖</button><button data-emoji-target="drill" data-emoji="🧠">🧠</button>
+            <button data-emoji-target="drill" data-emoji="✍️">✍️</button><button data-emoji-target="drill" data-emoji="📝">📝</button>
+            <button data-emoji-target="drill" data-emoji="💧">💧</button><button data-emoji-target="drill" data-emoji="🥗">🥗</button>
+            <button data-emoji-target="drill" data-emoji="😴">😴</button><button data-emoji-target="drill" data-emoji="💊">💊</button>
+            <button data-emoji-target="drill" data-emoji="🧹">🧹</button><button data-emoji-target="drill" data-emoji="🪥">🪥</button>
+            <button data-emoji-target="drill" data-emoji="👨‍👩‍👧">👨‍👩‍👧</button><button data-emoji-target="drill" data-emoji="👥">👥</button>
+            <button data-emoji-target="drill" data-emoji="🤝">🤝</button><button data-emoji-target="drill" data-emoji="💬">💬</button>
+            <button data-emoji-target="drill" data-emoji="📞">📞</button><button data-emoji-target="drill" data-emoji="🎉">🎉</button>
+            <button data-emoji-target="drill" data-emoji="💰">💰</button><button data-emoji-target="drill" data-emoji="📊">📊</button>
+            <button data-emoji-target="drill" data-emoji="🎯">🎯</button><button data-emoji-target="drill" data-emoji="🎨">🎨</button>
+            <button data-emoji-target="drill" data-emoji="🎸">🎸</button><button data-emoji-target="drill" data-emoji="🎮">🎮</button>
+            <button data-emoji-target="drill" data-emoji="🙏">🙏</button><button data-emoji-target="drill" data-emoji="🌱">🌱</button>
+            <button data-emoji-target="drill" data-emoji="☀️">☀️</button><button data-emoji-target="drill" data-emoji="✅">✅</button>
           </div>
           <div class="habit-edit-field">
             <label>Frequency</label>
@@ -667,11 +663,11 @@
           </div>
           <div class="drill-edit-actions">
             <div class="habit-edit-danger">
-              <button onclick="archiveHabitDrill()">Archive</button>
-              <button onclick="confirmDeleteHabitDrill()">Delete</button>
+              <button id="drillEditArchiveBtn">Archive</button>
+              <button id="drillEditDeleteBtn">Delete</button>
             </div>
             <div class="habit-edit-save">
-              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer" onclick="saveHabitDrill()">Save</button>
+              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer" id="drillEditSaveBtn">Save</button>
             </div>
           </div>
         </div>
@@ -685,24 +681,22 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Edit Task</span>
-      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+      <button class="modal-close" id="editModalClose">&#x2715;</button>
     </div>
     <textarea class="modal-textarea" id="editText" rows="2" placeholder="Task..."></textarea>
 
     <!-- Rich text note -->
     <div style="margin-bottom:12px;">
       <div class="rich-toolbar" id="richToolbar">
-        <button class="rich-btn" data-cmd="bold" onmousedown="richCmd(event,'bold')" title="Bold"><strong>B</strong></button>
-        <button class="rich-btn" data-cmd="italic" onmousedown="richCmd(event,'italic')" title="Italic"><em>I</em></button>
+        <button class="rich-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+        <button class="rich-btn" data-cmd="italic" title="Italic"><em>I</em></button>
         <div class="rich-btn-sep"></div>
-        <button class="rich-btn" data-cmd="insertUnorderedList" onmousedown="richCmd(event,'insertUnorderedList')" title="Bullet list">☰</button>
+        <button class="rich-btn" data-cmd="insertUnorderedList" title="Bullet list">☰</button>
         <div class="rich-btn-sep"></div>
-        <button class="rich-btn" id="richLinkBtn" onmousedown="richInsertLink(event)" title="Link">🔗</button>
+        <button class="rich-btn" id="richLinkBtn" title="Link">🔗</button>
       </div>
       <div class="rich-editor" id="editNoteRich" contenteditable="true"
-        data-placeholder="Add a note…"
-        onkeyup="richAutoLink(this)"
-        oninput="updateRichToolbarState()">
+        data-placeholder="Add a note…">
       </div>
     </div>
 
@@ -715,9 +709,9 @@
     <div class="modal-footer-row">
       <div class="modal-tags" id="editTags"></div>
       <div class="modal-action-btns">
-        <button class="btn-sm" id="editDeleteBtn" onclick="delTask(editId);closeModal();" title="Delete task" style="color:var(--guava-700);border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-        <button class="btn-sm" onclick="closeModal()">Cancel</button>
-        <button class="btn-sm-accent" onclick="saveEdit()">Save</button>
+        <button class="btn-sm" id="editDeleteBtn" title="Delete task" style="color:var(--guava-700);border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        <button class="btn-sm" id="editCancelBtn">Cancel</button>
+        <button class="btn-sm-accent" id="editSaveBtn">Save</button>
       </div>
     </div>
   </div>
@@ -735,10 +729,10 @@
 <script src="/src/09-touch.js" defer></script>
 <script src="/src/10-legal-backup.js" defer></script>
 <script src="/src/11-init.js" defer></script>
-<div class="sort-dropdown" id="sortDropdown" onclick="event.stopPropagation()">
-  <div class="sort-opt active" onclick="setSort('default')">User Sorted</div>
-  <div class="sort-opt" onclick="setSort('recent')">Recently Created</div>
-  <div class="sort-opt" onclick="setSort('due')">Due Date</div>
+<div class="sort-dropdown" id="sortDropdown">
+  <div class="sort-opt active" data-sort="default">User Sorted</div>
+  <div class="sort-opt" data-sort="recent">Recently Created</div>
+  <div class="sort-opt" data-sort="due">Due Date</div>
 </div>
 </body>
 </html>

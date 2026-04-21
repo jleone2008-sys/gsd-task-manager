@@ -632,16 +632,16 @@ function habitTodayCardHTML(h, today) {
       : '';
     return `<div class="${cardCls}" data-habit-id="${h.id}">
       <div class="swipe-complete-bg">✓</div>
-      <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
-      <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
+      <span class="habit-emoji-lg" data-habit-action="drill" data-habit-id="${h.id}">${escHTML(h.emoji || '')}</span>
+      <div class="habit-today-content" data-habit-action="drill" data-habit-id="${h.id}" style="cursor:pointer">
         <div class="habit-card-top">
           <span class="habit-name">${escHTML(h.name || '')}</span>${countBadge}
         </div>
         <div class="habit-card-meta">${progressMeta ? progressMeta + ' · ' : ''}<span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        <button onclick="event.stopPropagation();removeLastCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--edge-strong);background:var(--surface);color:var(--ink-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" title="Remove one">−</button>
-        <button onclick="event.stopPropagation();toggleCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--guava-700);background:var(--guava-700);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700" title="Add another">+</button>
+        <button data-habit-action="remove-last" data-habit-id="${h.id}" data-habit-date="${today}" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--edge-strong);background:var(--surface);color:var(--ink-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" title="Remove one">−</button>
+        <button data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--guava-700);background:var(--guava-700);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700" title="Add another">+</button>
       </div>
     </div>`;
   }
@@ -649,14 +649,14 @@ function habitTodayCardHTML(h, today) {
   // Standard card — either incomplete or done-without-extras.
   return `<div class="${cardCls}" data-habit-id="${h.id}">
     <div class="swipe-complete-bg">✓</div>
-    <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
-    <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
+    <span class="habit-emoji-lg" data-habit-action="drill" data-habit-id="${h.id}">${escHTML(h.emoji || '')}</span>
+    <div class="habit-today-content" data-habit-action="drill" data-habit-id="${h.id}" style="cursor:pointer">
       <div class="habit-card-top">
         <span class="habit-name">${escHTML(h.name || '')}</span>
       </div>
       <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
     </div>
-    <div class="habit-check${isDone ? ' checked' : ''}" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+    <div class="habit-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
   </div>`;
 }
 
@@ -727,7 +727,7 @@ function renderHabitAll(active) {
         dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="habit-day-dot disabled">${dayNum}</div></div>`;
       } else {
         const cls = `habit-day-dot${done?' done':''}${isToday?' today':''}`;
-        dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="${cls}" onclick="event.stopPropagation();this.classList.add('just-toggled');toggleCompletion(${h.id},'${ds}')">${dayNum}</div></div>`;
+        dots += `<div class="habit-day"><span class="habit-day-label">${dayShort(ds)}</span><div class="${cls}" data-habit-action="toggle-complete-dot" data-habit-id="${h.id}" data-habit-date="${ds}">${dayNum}</div></div>`;
       }
     });
 
@@ -740,7 +740,7 @@ function renderHabitAll(active) {
       h.frequency === 'x_per_month' ? 'this month' :
                                       'this month';
 
-    html += `<div class="habit-card" onclick="openHabitDrillIn(${h.id})">
+    html += `<div class="habit-card" data-habit-action="drill" data-habit-id="${h.id}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div class="habit-name" style="font-size:15px;font-weight:600">${escHTML(h.name || '')}</div>
@@ -752,9 +752,9 @@ function renderHabitAll(active) {
       <div class="habit-card-footer" style="padding-left:0;margin-top:14px;padding-bottom:0">
         <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--guava-700)">✓</span> ${pct}% ${periodLabel}</div>
         <div class="habit-card-actions">
-          <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
-          <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'stats')" title="Statistics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
-          <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'edit')" title="More"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
+          <button class="habit-action-btn" data-habit-action="drill-calendar" data-habit-id="${h.id}" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+          <button class="habit-action-btn" data-habit-action="drill-stats" data-habit-id="${h.id}" title="Statistics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
+          <button class="habit-action-btn" data-habit-action="drill-edit" data-habit-id="${h.id}" title="More"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg></button>
         </div>
       </div>
     </div>`;
@@ -762,13 +762,13 @@ function renderHabitAll(active) {
 
   // Archived habits section
   if (archived.length) {
-    html += `<div class="section-label" style="margin-top:24px;cursor:pointer;user-select:none" onclick="document.getElementById('archivedHabitsSection').style.display=document.getElementById('archivedHabitsSection').style.display==='none'?'block':'none';this.querySelector('.arch-arrow').textContent=document.getElementById('archivedHabitsSection').style.display==='none'?'▸':'▾'">📦 ARCHIVED <span class="arch-arrow">▸</span> <span style="font-weight:400;color:var(--ink-3);font-size:11px">${archived.length}</span></div>`;
+    html += `<div class="section-label" style="margin-top:24px;cursor:pointer;user-select:none" data-habit-action="toggle-archived">📦 ARCHIVED <span class="arch-arrow">▸</span> <span style="font-weight:400;color:var(--ink-3);font-size:11px">${archived.length}</span></div>`;
     html += `<div id="archivedHabitsSection" style="display:none">`;
     archived.forEach(h => {
       html += `<div class="habit-card" style="opacity:0.6">
         <div class="habit-card-top">
           <span class="habit-emoji">${escHTML(h.emoji || '')}</span><span class="habit-name">${escHTML(h.name || '')}</span>
-          <button onclick="unarchiveHabit(${h.id})" style="margin-left:auto;background:none;border:1px solid var(--edge);border-radius:8px;padding:4px 12px;font-size:11px;font-family:inherit;cursor:pointer;color:var(--ink-2);">Unarchive</button>
+          <button data-habit-action="unarchive" data-habit-id="${h.id}" style="margin-left:auto;background:none;border:1px solid var(--edge);border-radius:8px;padding:4px 12px;font-size:11px;font-family:inherit;cursor:pointer;color:var(--ink-2);">Unarchive</button>
         </div>
       </div>`;
     });
@@ -924,7 +924,7 @@ function renderStatsYearly(active) {
     const isPast = moStart <= today;
     const barColor = isCurrent ? 'var(--guava-700)' : isPast && pct > 0 ? 'var(--guava-700)' : 'var(--surface-2)';
     const opacity = isPast ? 1 : 0.2;
-    trendHtml += `<div class="st-trend-wrap" style="cursor:pointer" onclick="statsMonth=${mo};statsMonthYear=${y};statsView='monthly';renderHabits()" title="View ${MO_SHORT[mo]} ${y}">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
+    trendHtml += `<div class="st-trend-wrap" style="cursor:pointer" data-stats-action="to-monthly" data-stats-month="${mo}" data-stats-year="${y}" title="View ${MO_SHORT[mo]} ${y}">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
   }
   const longestStreak = Math.max(...active.map(h => computeBestStreak(h.id)), 0);
 
@@ -942,9 +942,9 @@ function renderStatsYearly(active) {
     </div>
     <div class="st-card">
       <div class="st-nav">
-        <button onclick="statsYear=${y - 1};renderHabits()">← ${y - 1}</button>
+        <button data-stats-action="year-prev" data-stats-year="${y - 1}">← ${y - 1}</button>
         <span class="st-nav-label">${y}</span>
-        <button onclick="statsYear=${y + 1};renderHabits()" ${isCurrentYear?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
+        <button data-stats-action="year-next" data-stats-year="${y + 1}" ${isCurrentYear?'disabled style="opacity:0.3;cursor:default"':''}>${y + 1} →</button>
       </div>
       <div class="st-card-title" style="margin-top:8px">Monthly Trend</div>
       <div class="st-trend">${trendHtml}</div>
@@ -1016,9 +1016,9 @@ function renderStatsMonthly(active) {
     </div>
     <div class="st-card">
       <div class="st-nav">
-        <button onclick="statsMonth=${prevM};statsMonthYear=${prevY};renderHabits()">← ${MO_SHORT[prevM]}</button>
-        <span class="st-nav-label" style="cursor:pointer" onclick="statsView='yearly';statsYear=${y};renderHabits()" title="Back to ${y} overview">${MO[m]} ${y} ▴</span>
-        <button onclick="statsMonth=${nextM};statsMonthYear=${nextY};renderHabits()" ${isCurrentMonth?'disabled style="opacity:0.3;cursor:default"':''}>${MO_SHORT[nextM]} →</button>
+        <button data-stats-action="month-nav" data-stats-month="${prevM}" data-stats-year="${prevY}">← ${MO_SHORT[prevM]}</button>
+        <span class="st-nav-label" style="cursor:pointer" data-stats-action="to-yearly" data-stats-year="${y}" title="Back to ${y} overview">${MO[m]} ${y} ▴</span>
+        <button data-stats-action="month-nav" data-stats-month="${nextM}" data-stats-year="${nextY}" ${isCurrentMonth?'disabled style="opacity:0.3;cursor:default"':''}>${MO_SHORT[nextM]} →</button>
       </div>
       <div class="st-card-title" style="margin-top:8px">Weekly Trend</div>
       <div class="st-trend">${trendHtml}</div>
@@ -1047,3 +1047,52 @@ function updateHabitStatsBar(active) {
   const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = tPct + '%';
   const pcHA = document.getElementById('pc-habit-all');   if (pcHA) pcHA.textContent = active.length;
 }
+
+/* ── HABIT CARD + STATS DELEGATION ──
+ * One document-level listener dispatches habit actions (drill-in, toggle
+ * completion, archive toggle) and stats navigation (year/month switches).
+ * Cards live in #habit-today, #habit-all, #habit-stats — each re-renders
+ * innerHTML; doc-level delegation avoids rebinding per render.
+ */
+document.addEventListener('click', e => {
+  const hAction = e.target.closest('[data-habit-action]');
+  if (hAction) {
+    const action = hAction.dataset.habitAction;
+    const id = hAction.dataset.habitId ? parseInt(hAction.dataset.habitId) : null;
+    const date = hAction.dataset.habitDate || null;
+    switch (action) {
+      case 'drill':          openHabitDrillIn(id); return;
+      case 'drill-calendar': openHabitDrillIn(id, 'calendar'); return;
+      case 'drill-stats':    openHabitDrillIn(id, 'stats'); return;
+      case 'drill-edit':     openHabitDrillIn(id, 'edit'); return;
+      case 'remove-last':    removeLastCompletion(id, date); return;
+      case 'toggle-complete': toggleCompletion(id, date); return;
+      case 'toggle-complete-dot':
+        hAction.classList.add('just-toggled');
+        toggleCompletion(id, date);
+        return;
+      case 'unarchive':      unarchiveHabit(id); return;
+      case 'toggle-archived': {
+        const sec = document.getElementById('archivedHabitsSection');
+        const hidden = sec.style.display === 'none';
+        sec.style.display = hidden ? 'block' : 'none';
+        const arrow = hAction.querySelector('.arch-arrow');
+        if (arrow) arrow.textContent = hidden ? '▾' : '▸';
+        return;
+      }
+    }
+  }
+  const sAction = e.target.closest('[data-stats-action]');
+  if (sAction) {
+    const action = sAction.dataset.statsAction;
+    const y = sAction.dataset.statsYear ? parseInt(sAction.dataset.statsYear) : null;
+    const m = sAction.dataset.statsMonth ? parseInt(sAction.dataset.statsMonth) : null;
+    switch (action) {
+      case 'year-prev':
+      case 'year-next':  statsYear = y; renderHabits(); return;
+      case 'month-nav':  statsMonth = m; statsMonthYear = y; renderHabits(); return;
+      case 'to-yearly':  statsView = 'yearly'; statsYear = y; renderHabits(); return;
+      case 'to-monthly': statsMonth = m; statsMonthYear = y; statsView = 'monthly'; renderHabits(); return;
+    }
+  }
+});

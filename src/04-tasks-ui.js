@@ -29,7 +29,7 @@ function emptyState(type) {
     all:      { title: 'Nothing to do. Add something.',     btn: 'Add task' },
   };
   const s = states[type] || states.all;
-  const btnHtml = s.btn ? `<button class="expand-action empty-state-btn" onclick="event.stopPropagation();openCreatePanel()">${s.btn}</button>` : '';
+  const btnHtml = s.btn ? `<button class="expand-action empty-state-btn" data-task-action="open-create">${s.btn}</button>` : '';
   return `<div class="empty-state">
     <div class="empty-state-title">${s.title}</div>
     ${btnHtml}
@@ -129,7 +129,7 @@ function render() {
   }
 
   if (!isSearching && done.length && ['all','biz','personal'].includes(filter)) {
-    html += `<div class="done-toggle" onclick="toggleDone()">&#9654;&nbsp; Completed (${done.length})</div>`;
+    html += `<div class="done-toggle" data-task-action="toggle-done-section">&#9654;&nbsp; Completed (${done.length})</div>`;
     if (showDone) html += `<div class="task-list" data-section="done" style="margin-top:4px">${done.map(t=>tHTML(t)).join('')}</div>`;
   }
   c.innerHTML = html;
@@ -155,7 +155,7 @@ function slabel(l,n,showSort) {
   // Strip legacy "&#9733; " (☆) prefix used for Starred sections — strip is the only signal now
   const cleaned = l.replace(/^&#9733;\s*/,'').replace(/^Starred\s*/,'Priority ').trim();
   const sortLabels = {default:'User Sorted',recent:'Recent',due:'Due Date'};
-  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" onclick="toggleSortDropdown(event)">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button></div>` : '';
+  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" data-task-action="toggle-sort">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button></div>` : '';
   return `<div class="section-label">${cleaned}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 
@@ -173,13 +173,13 @@ function tHTMLsearch(t, query) {
   return `<div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
-    <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
+    <span class="strip" data-task-action="toggle-top3" title="Toggle priority"></span>
     <div class="card-head">
-      <div class="card-body task-content" onclick="openEdit(${t.id})">
+      <div class="card-body task-content" data-task-action="open-edit">
         <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
         ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}</div>` : ''}
       </div>
-      <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
+      <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done?'Reopen':'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -290,13 +290,13 @@ function tHTML(t) {
   return `<div class="${cardCls.join(' ')}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
-    <span class="strip" onclick="event.stopPropagation();toggleTop3(${t.id})" title="Toggle priority"></span>
+    <span class="strip" data-task-action="toggle-top3" title="Toggle priority"></span>
     <div class="card-head">
-      <div class="card-body task-content" onclick="toggleTaskExpand(${t.id})">
+      <div class="card-body task-content" data-task-action="toggle-expand">
         <div class="card__title task-text">${linkify(t.text)}</div>
         ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}</div>` : ''}
       </div>
-      <button class="check checkbox" onclick="event.stopPropagation();toggleDone_t(${t.id})" aria-label="${t.done?'Reopen':'Complete'}">
+      <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done?'Reopen':'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -317,28 +317,22 @@ function expansionBodyHTML(t) {
     ${noteHtml}
     ${subsHtml}
     <div class="card__actions task-expand__actions">
-      <button class="expand-action" onclick="event.stopPropagation();startNewSubtask('${tcid}')">+ subtask</button>
-      <button class="expand-action" onclick="event.stopPropagation();openEdit(${t.id})">edit</button>
-      <button class="expand-action${priorityOn}" onclick="event.stopPropagation();toggleTop3(${t.id})">priority</button>
+      <button class="expand-action" data-task-action="new-subtask">+ subtask</button>
+      <button class="expand-action" data-task-action="open-edit">edit</button>
+      <button class="expand-action${priorityOn}" data-task-action="toggle-top3">priority</button>
     </div>
   </div>`;
 }
 
 function subtaskRowHTML(taskClientId, s) {
   const inner = s.isNew
-    ? `<input class="subtask-input"
-         placeholder="New subtask…"
-         onclick="event.stopPropagation()"
-         onkeydown="handleSubtaskInputKey(event,'${taskClientId}','${s.client_id}')"
-         onblur="commitNewSubtask('${taskClientId}','${s.client_id}',this.value)" />`
-    : `<span class="subtask-text" onclick="event.stopPropagation();startEditSubtask('${taskClientId}','${s.client_id}')">${escapeHTML(s.text)}</span>`;
-  const radioClick = s.isNew
-    ? ''
-    : ` onclick="event.stopPropagation();toggleSubtask('${taskClientId}','${s.client_id}')"`;
+    ? `<input class="subtask-input" data-new-subtask-input placeholder="New subtask…" />`
+    : `<span class="subtask-text" data-task-action="edit-subtask">${escapeHTML(s.text)}</span>`;
+  const radioAttr = s.isNew ? '' : ' data-task-action="toggle-subtask"';
   return `<div class="subtask-row${s.done?' done':''}" data-sub-id="${s.client_id}">
-    <span class="subtask-radio"${radioClick}></span>
+    <span class="subtask-radio"${radioAttr}></span>
     ${inner}
-    <button class="subtask-del" onclick="event.stopPropagation();deleteSubtask('${taskClientId}','${s.client_id}')" aria-label="Delete subtask">×</button>
+    <button class="subtask-del" data-task-action="delete-subtask" aria-label="Delete subtask">×</button>
   </div>`;
 }
 
@@ -455,4 +449,71 @@ document.addEventListener('click', function(e) {
   if (hPanel && hPanel.classList.contains('open') && !hPanel.contains(e.target) && !fab.contains(e.target)) {
     closeHabitCreatePanel();
   }
+});
+
+/* ── PILL BAR, FLOATING SEARCH, FAB & CREATE PANEL SHELL ── */
+document.querySelector('.pill-bar[data-tool-view="tasks"] .pill-bar-inner')
+  .addEventListener('click', e => {
+    const pill = e.target.closest('.pill[data-filter]');
+    if (!pill) return;
+    setCatFilter(pill.dataset.filter, pill);
+  });
+
+document.getElementById('floatingSearch').addEventListener('click', expandFloatingSearch);
+document.getElementById('floatingSearchInput').addEventListener('input', e => handleFloatingSearch(e.target.value));
+document.getElementById('floatingSearchInput').addEventListener('keydown', e => {
+  if (e.key === 'Escape') collapseFloatingSearch();
+});
+document.getElementById('fsClear').addEventListener('click', e => {
+  e.stopPropagation();
+  clearFloatingSearch();
+});
+
+document.getElementById('fabBtn').addEventListener('click', openCreatePanel);
+document.getElementById('createPanel').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCreatePanel();
+});
+
+/* ── TASK LIST DELEGATION ──
+ * One click listener on #taskContainer dispatches all task-card actions
+ * based on [data-task-action]. Task id comes from closest .task-item
+ * (existing data-id), subtask id from closest .subtask-row (data-sub-id).
+ */
+document.getElementById('taskContainer').addEventListener('click', e => {
+  const actionEl = e.target.closest('[data-task-action]');
+  if (!actionEl) return;
+  const action = actionEl.dataset.taskAction;
+  const taskItem = actionEl.closest('.task-item');
+  const tid = taskItem ? parseInt(taskItem.dataset.id) : null;
+  const tcid = taskItem ? taskItem.dataset.id : null;
+  const subRow = actionEl.closest('.subtask-row');
+  const subCid = subRow ? subRow.dataset.subId : null;
+
+  switch (action) {
+    case 'open-create':         openCreatePanel(); break;
+    case 'toggle-done-section': toggleDone(); break;
+    case 'toggle-sort':         toggleSortDropdown(e); break;
+    case 'toggle-top3':         toggleTop3(tid); break;
+    case 'toggle-done':         toggleDone_t(tid); break;
+    case 'toggle-expand':       toggleTaskExpand(tid); break;
+    case 'open-edit':           openEdit(tid); break;
+    case 'new-subtask':         startNewSubtask(tcid); break;
+    case 'toggle-subtask':      toggleSubtask(tcid, subCid); break;
+    case 'edit-subtask':        startEditSubtask(tcid, subCid); break;
+    case 'delete-subtask':      deleteSubtask(tcid, subCid); break;
+  }
+});
+document.getElementById('taskContainer').addEventListener('keydown', e => {
+  const inp = e.target.closest('.subtask-input[data-new-subtask-input]');
+  if (!inp) return;
+  const taskItem = inp.closest('.task-item');
+  const subRow = inp.closest('.subtask-row');
+  if (taskItem && subRow) handleSubtaskInputKey(e, taskItem.dataset.id, subRow.dataset.subId);
+});
+document.getElementById('taskContainer').addEventListener('focusout', e => {
+  const inp = e.target.closest('.subtask-input[data-new-subtask-input]');
+  if (!inp) return;
+  const taskItem = inp.closest('.task-item');
+  const subRow = inp.closest('.subtask-row');
+  if (taskItem && subRow) commitNewSubtask(taskItem.dataset.id, subRow.dataset.subId, inp.value);
 });

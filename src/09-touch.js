@@ -247,3 +247,6 @@ function undoDelete() {
   document.getElementById('undoToast').classList.remove('show');
   render(); saveTask(t);
 }
+
+/* ── UNDO TOAST HANDLER ── */
+document.getElementById('undoBtn').addEventListener('click', undoDelete);

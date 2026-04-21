@@ -13,7 +13,7 @@ function noteInsertChecklist(e) {
   const sel = window.getSelection();
   const text = sel.rangeCount ? sel.toString().trim() : '';
   const label = text || 'Item';
-  document.execCommand('insertHTML', false, '<div class="note-checklist-item"><input type="checkbox" onclick="this.parentElement.classList.toggle(\'checked\',this.checked)"> <span>' + label.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>');
+  document.execCommand('insertHTML', false, '<div class="note-checklist-item"><input type="checkbox"> <span>' + label.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>');
 }
 function noteHighlight(e) {
   e.preventDefault();
@@ -58,11 +58,11 @@ function showNoteMenu(e) {
   const note = notesArr.find(n => n.id === activeNoteId);
   const starLabel = note?.starred ? 'Unstar' : 'Star';
   menu.innerHTML = `
-    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();toggleNoteStar()">
+    <button class="nb-menu-btn" data-note-action="star">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="${note?.starred?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       ${starLabel}
     </button>
-    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();trashNote()" style="color:var(--guava-700)">
+    <button class="nb-menu-btn" data-note-action="trash" style="color:var(--guava-700)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Move to Trash
     </button>`;
@@ -70,6 +70,11 @@ function showNoteMenu(e) {
     Object.assign(b.style, {display:'flex',alignItems:'center',gap:'8px',width:'100%',padding:'8px 12px',border:'none',background:'none',fontFamily:'inherit',fontSize:'12px',cursor:'pointer',borderRadius:'7px',color:b.style.color||'var(--ink)'});
     b.addEventListener('mouseenter', () => b.style.background = 'var(--surface-2)');
     b.addEventListener('mouseleave', () => b.style.background = 'none');
+    b.addEventListener('click', () => {
+      menu.remove();
+      if (b.dataset.noteAction === 'star') toggleNoteStar();
+      else if (b.dataset.noteAction === 'trash') trashNote();
+    });
   });
   document.body.appendChild(menu);
   const x = Math.min(e.clientX || (window.innerWidth - 160), window.innerWidth - 170);
@@ -275,7 +280,7 @@ function openEdit(id) {
     {key:'someday',label:'Later',cls:''},
   ].map(td=>{
     const sel=(td.key==='top3'?t.top3:td.key==='someday'?t.someday:t.tags.includes(td.key))?'selected':'';
-    return `<button class="tag-btn ${td.cls} ${sel}" data-key="${td.key}" title="${td.title||td.label}" onclick="this.classList.toggle('selected')">${td.label}</button>`;
+    return `<button class="tag-btn ${td.cls} ${sel}" data-key="${td.key}" title="${td.title||td.label}">${td.label}</button>`;
   }).join('');
   document.getElementById('editModal').classList.add('open');
   setTimeout(()=>updateRichToolbarState(), 50);
@@ -327,6 +332,17 @@ function richAutoLink(el) {
   // Auto-linkify plain-typed URLs — only on space/enter
 }
 // Paste handler for task note editor — auto-links bare URLs
+document.getElementById('editTags').addEventListener('click', e => {
+  const btn = e.target.closest('.tag-btn');
+  if (btn) btn.classList.toggle('selected');
+});
+// Checklist item toggle inside any note contenteditable
+document.addEventListener('click', e => {
+  const cb = e.target;
+  if (cb && cb.matches && cb.matches('.note-checklist-item > input[type="checkbox"]')) {
+    cb.parentElement.classList.toggle('checked', cb.checked);
+  }
+});
 document.getElementById('editNoteRich').addEventListener('paste', e => {
   const plain = e.clipboardData.getData('text/plain').trim();
   if (/^https?:\/\/\S+$/.test(plain)) {
@@ -379,3 +395,42 @@ function initNoteClamps() {
     btn.style.display = isClamped ? 'block' : 'none';
   });
 }
+
+/* ── CREATE-PANEL FORM & SORT DROPDOWN ── */
+document.getElementById('newTaskInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTask();
+  else if (e.key === 'Escape') closeCreatePanel();
+});
+document.getElementById('newDueDate').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addTask(); }
+});
+document.querySelectorAll('.create-panel-tags .tag-btn[data-new-tag]').forEach(btn => {
+  btn.addEventListener('click', () => toggleNewTag(btn.dataset.newTag));
+});
+document.getElementById('noteToggle').addEventListener('click', toggleNoteField);
+document.getElementById('dueDateToggle').addEventListener('click', toggleDueDateField);
+document.getElementById('btnAddTask').addEventListener('click', addTask);
+
+document.getElementById('sortDropdown').addEventListener('click', e => {
+  e.stopPropagation();
+  const opt = e.target.closest('.sort-opt[data-sort]');
+  if (opt) setSort(opt.dataset.sort);
+});
+
+/* ── TASK EDIT MODAL HANDLERS ── */
+document.getElementById('editModalClose').addEventListener('click', closeModal);
+document.getElementById('editCancelBtn').addEventListener('click', closeModal);
+document.getElementById('editSaveBtn').addEventListener('click', saveEdit);
+document.getElementById('editDeleteBtn').addEventListener('click', () => {
+  delTask(editId);
+  closeModal();
+});
+
+document.querySelectorAll('#richToolbar .rich-btn[data-cmd]').forEach(btn => {
+  btn.addEventListener('mousedown', e => richCmd(e, btn.dataset.cmd));
+});
+document.getElementById('richLinkBtn').addEventListener('mousedown', richInsertLink);
+
+const editNoteRichEl = document.getElementById('editNoteRich');
+editNoteRichEl.addEventListener('keyup', () => richAutoLink(editNoteRichEl));
+editNoteRichEl.addEventListener('input', updateRichToolbarState);
