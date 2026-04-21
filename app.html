@@ -1641,11 +1641,15 @@
        --app-max and centered; the sidebar starts at the shell's LEFT edge,
        which is (100vw - --app-max)/2 from the viewport edge (or 0 on
        narrower screens). Same anchoring trick as the FAB. */
-    .user-dropdown {
-      position: fixed !important;
-      top: auto !important; right: auto !important;
-      bottom: 60px !important;
-      left: calc(max(0px, (100vw - var(--app-max, 1250px)) / 2) + 12px) !important;
+    /* Bumped selector specificity (.user-menu > .user-dropdown) to
+       beat the unscoped .user-dropdown rule that comes later in
+       source order. Without the extra class, we'd be back to
+       needing !important on every property here. */
+    .user-menu .user-dropdown {
+      position: fixed;
+      top: auto; right: auto;
+      bottom: 60px;
+      left: calc(max(0px, (100vw - var(--app-max, 1250px)) / 2) + 12px);
       width: 196px;
     }
   }
@@ -2735,8 +2739,8 @@
     .mobile-nb-drawer { display: none; background: var(--surface); border-bottom: 1px solid var(--edge); padding: var(--space-1) var(--space-2) var(--space-2); }
     .mobile-nb-drawer.open { display: block; }
     .mobile-nb-drawer .ns-item { padding: var(--space-2) var(--space-2-5); font-size: var(--fs-search); }
-    .tb-desktop-only { display: none !important; }
-    .note-action-btn { display: none !important; }
+    .tb-desktop-only { display: none; }
+    .note-action-btn { display: none; }
   }
   /* Note-editor header + back button + inline actions.
      Defined unscoped so they render correctly at every width (desktop AND
@@ -2788,8 +2792,8 @@
   .mobile-note-action svg { width: 18px; height: 18px; }
 
   @media (min-width: 900px) {
-    .mobile-nb-toggle { display: none !important; }
-    .mobile-nb-drawer { display: none !important; }
+    .mobile-nb-toggle { display: none; }
+    .mobile-nb-drawer { display: none; }
   }
   /* Medium: sidebar + list stack into one column, editor beside it */
   @media (max-width: 1080px) and (min-width: 900px) {
