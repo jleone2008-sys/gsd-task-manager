@@ -819,7 +819,10 @@
   .task-item.dragging { opacity: 0.35; }
   .task-item.drag-target { border-color: var(--guava-300); box-shadow: var(--shadow-focus); }
 
-  /* Check circle — 20px, right-aligned. Tap area inflated to 44×44. */
+  /* Check circle — 20px, right-aligned, VERTICALLY CENTERED in the card.
+     The card itself uses align-items: flex-start so the title/meta stay
+     top-aligned; the check overrides with align-self: center so it lines
+     up with the middle of the card regardless of meta row height. */
   .check {
     width: 20px; height: 20px;
     border-radius: 50%;
@@ -828,7 +831,8 @@
     flex-shrink: 0;
     cursor: pointer;
     position: relative;
-    margin-top: 1px;
+    align-self: center;
+    margin-top: 0;
     padding: 0;
     transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
@@ -853,7 +857,7 @@
     transform: rotate(-45deg);
   }
 
-  /* Legacy .checkbox — task-item still references it; map to .check visuals */
+  /* Legacy .checkbox — task-item still references it; match .check above. */
   .checkbox {
     width: 20px; height: 20px;
     border-radius: 50%;
@@ -862,9 +866,9 @@
     cursor: pointer;
     flex-shrink: 0;
     position: relative;
-    margin-top: 1px;
+    margin-top: 0;
     padding: 0;
-    align-self: flex-start;
+    align-self: center;
     transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
   .checkbox::before {
@@ -1289,16 +1293,28 @@
     transition: background var(--dur) var(--ease);
   }
   .mobile-nav-btn.active::after { background: var(--guava-700); }
-  /* Badge kept for compat, styled subtle */
+  /* Native-style badge — nestled in the icon's top-right corner.
+     The icon is 22px wide, centered horizontally; anchoring the badge to
+     left: calc(50% + 4px) places it over the icon's upper-right, and a
+     surface-coloured ring separates it visually from the icon and button. */
   .mobile-nav-badge {
-    position: absolute; top: 2px; right: 10%;
-    font-size: var(--fs-nano); font-weight: 600;
+    position: absolute;
+    top: 0;
+    left: calc(50% + 4px);
+    font-size: 9px; font-weight: 700;
     color: #fff;
     background: var(--guava-700);
-    padding: 0 4px; border-radius: var(--r-sm);
-    min-width: 14px; text-align: center; line-height: 1.4;
+    padding: 0 4px;
+    border-radius: 999px;
+    min-width: 14px; height: 14px;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--surface);
+    pointer-events: none;
   }
   .mobile-nav-btn.active .mobile-nav-badge { background: var(--guava-800); }
+  /* Hide the badge when the count is 0 so idle tabs stay clean. */
+  .mobile-nav-badge[data-empty="true"] { display: none; }
 
   /* Legacy mobile-slim-stats — spec removes the stat strip in the chrome.
      Per-screen stats live inline above the list now. */
@@ -3563,6 +3579,14 @@ function escapeHTML(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/** Write a tabbar/sidebar badge count and hide the pill when it's zero. */
+function paintBadge(id, n) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = n;
+  el.dataset.empty = (!n || n === 0) ? 'true' : 'false';
+}
+
 function toggleTaskExpand(id) {
   if (expandedTaskIds.has(id)) expandedTaskIds.delete(id);
   else expandedTaskIds.add(id);
@@ -5247,8 +5271,8 @@ function renderStatsMonthly(active) {
 
 function updateHabitStatsBar(active) {
   // Badge always updates regardless of active tool
-  const hb = document.getElementById('habitsBadge'); if (hb) hb.textContent = active.length;
-  const hbm = document.getElementById('habitsBadgeMobile'); if (hbm) hbm.textContent = active.length;
+  paintBadge('habitsBadge', active.length);
+  paintBadge('habitsBadgeMobile', active.length);
   const sbc = document.getElementById('sidebarHabitsCount'); if (sbc) sbc.textContent = active.length;
   // Dynamic habit pill counts (Today / All)
   const todayStr_ = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
@@ -5488,10 +5512,9 @@ function render() {
         <span><span class="sv-pers">${perN}</span> personal</span>
       </span>`;
   }
-  // Update tool switcher badges (always)
-  const tb=document.getElementById('tasksBadge');if(tb)tb.textContent=actN;
-  const tbm=document.getElementById('tasksBadgeMobile');if(tbm)tbm.textContent=actN;
-  // Sidebar count (desktop)
+  // Update tool switcher badges (always) + sidebar count (desktop)
+  paintBadge('tasksBadge', actN);
+  paintBadge('tasksBadgeMobile', actN);
   const sbc=document.getElementById('sidebarTasksCount');if(sbc)sbc.textContent=actN;
   // Dynamic pill counts
   updateTaskPillCounts();
@@ -6913,8 +6936,8 @@ function noteHeading(tag) {
 
 function updateNotesBadge() {
   const count = notesArr.filter(n => !n.trashed).length;
-  const nb = document.getElementById('notesBadge'); if (nb) nb.textContent = count;
-  const nbm = document.getElementById('notesBadgeMobile'); if (nbm) nbm.textContent = count;
+  paintBadge('notesBadge', count);
+  paintBadge('notesBadgeMobile', count);
   const sbc = document.getElementById('sidebarNotesCount'); if (sbc) sbc.textContent = count;
   const pcAll = document.getElementById('pc-notes-all'); if (pcAll) pcAll.textContent = count;
   const pinned = notesArr.filter(n => !n.trashed && n.pinned).length;
