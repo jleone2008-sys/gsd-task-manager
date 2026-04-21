@@ -343,8 +343,14 @@
     display: flex; flex-direction: column;
     min-width: 0;
     position: relative;
-    overflow-x: hidden;   /* prevent horizontal page scroll from any inner overflow */
+    /* Intentionally NO overflow-x:hidden — CSS forces overflow-y:auto when
+       one axis is non-visible, which breaks sticky positioning on the topbar.
+       Any horizontal overflow must be contained at the element level instead. */
   }
+  /* Clip any horizontal overflow at the body level WITHOUT triggering a
+     scroll container (which would break sticky positioning on .topbar).
+     `overflow: clip` is the modern, sticky-safe equivalent of hidden. */
+  body { overflow-x: clip; }
 
   /* ──────────────────────────────────────────────────────────────
      WORDMARK — lowercase gsd + guava dot
@@ -1404,35 +1410,22 @@
 
   /* MOBILE */
   @media (max-width: 899.98px) {
-    .header-inner { padding: var(--space-1-5) var(--space-3); height: 48px; gap: var(--space-1); }
-    .pill-bar { padding: var(--space-2) var(--space-3) var(--space-3); }
-    .pill-bar-inner { max-width: 100%; gap: var(--space-1); padding: var(--space-1) var(--space-1); }
-    .pill { font-size: var(--fs-meta); padding: var(--space-1-5) var(--space-1); }
-    .logo-main { font-size: var(--fs-title-mobile); }
+    /* NOTE: legacy mobile overrides for header / content / pill-bar / logo-main
+       removed — they were crushing the new lifestyle chrome (forcing the header
+       to 48px tall and shrinking the wordmark). The new rules at the top of the
+       file are already mobile-first. */
     .user-menu { flex-shrink: 0; }
     .add-section { padding: var(--space-3) var(--space-3) 0; }
     .add-row { gap: var(--space-1); }
     .add-row input[type=text] { font-size: var(--fs-search); padding: var(--space-2) var(--space-2-5); }
     .btn-note { font-size: var(--fs-meta); padding: var(--space-2) var(--space-2); }
     .btn-add { font-size: var(--fs-pill); padding: var(--space-2) var(--space-3); }
-    .content { padding: var(--space-1-5) var(--space-3) var(--nav-clear-mobile); overflow-x: hidden; }
     .task-actions { opacity: 1; }
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--muted); }
     .stats { display: none; }
-    /* FAB sits raised above the dark dock, centered over the empty gap
-       between the left and right stat groups. Square theme: --radius-sm. */
-    .fab {
-      left: 50%; right: auto;
-      bottom: calc(62px + env(safe-area-inset-bottom, 0));
-      transform: translateX(-50%);
-      width: 52px; height: 52px;
-      border-radius: var(--radius-sm);
-      box-shadow: var(--shadow-lg);
-      z-index: calc(var(--z-mobile-nav) + 1);
-    }
-    .fab:hover { transform: translateX(-50%) scale(1.06); }
-    .fab:active { transform: translateX(-50%) scale(0.94); }
+    /* Mobile FAB position now comes from the :root --fab-* vars + the
+       lifestyle .fab rule at the top of the file. No override here. */
     /* Habits mobile */
     .habits-content { padding: 0; }
     /* .habit-sub-pills inherits .pill-bar mobile padding */
@@ -1475,7 +1468,8 @@
     right: calc(var(--fab-right-mobile) + var(--fab-size) + var(--fab-search-gap));
     height: var(--search-size);
     width: var(--search-size);
-    border-radius: 50%;
+    /* Square, matches FAB radius (spec uses --r-lg for floating elements). */
+    border-radius: var(--r-lg);
     background: var(--surface);
     border: 1px solid var(--edge);
     box-shadow: var(--shadow-card);
@@ -1485,12 +1479,12 @@
     overflow: hidden;
     cursor: pointer;
     transition: width var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
-                border-color var(--dur) var(--ease), border-radius var(--dur) var(--ease);
+                border-color var(--dur) var(--ease);
   }
   .floating-search:hover { box-shadow: var(--shadow-card-hover); }
   .floating-search.expanded {
     width: 200px;
-    border-radius: 20px;
+    border-radius: var(--r-lg);
     justify-content: flex-start;
     padding: 0 12px;
     border-color: var(--edge-strong);
@@ -2106,10 +2100,15 @@
   .habit-sub-pills { /* inherits .pill-bar layout */ }
   .habit-sub-content { display: none; }
   .habit-sub-content.active { display: block; }
-  .pill.habit-pill { border-color: var(--check); color: var(--pastel-mint-text); background: var(--pastel-mint-bg); }
-  .pill.habit-pill.active { background: var(--check); color: #fff; border-color: var(--check); }
-  .pill.stat-pill { border-color: var(--accent); color: var(--accent); background: var(--pastel-lavender-bg); }
-  .pill.stat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  /* Legacy per-tool pill color variants removed — all pills share the flat
+     lifestyle style (transparent + guava-on-active). This keeps the header
+     nav visually identical across Tasks / Habits / Notes. */
+  .pill.habit-pill,
+  .pill.stat-pill { background: transparent; color: var(--ink-3); border: none; }
+  .pill.habit-pill:hover,
+  .pill.stat-pill:hover { background: var(--surface-2); color: var(--ink); }
+  .pill.habit-pill.active,
+  .pill.stat-pill.active { background: var(--guava-100); color: var(--guava-700); border: none; }
 
   /* ──────────────────────────────────────────────────────────────
      HABITS — stats strip + cards per gsd-handoff/screens-lifestyle.jsx
