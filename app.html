@@ -105,15 +105,6 @@
     --navy-dark:   var(--guava-800);
     --navy-light:  var(--guava-500);
     --navy-muted:  rgba(255,255,255,0.72);
-    --accent:      var(--guava-800);
-
-    --check:           var(--guava-700);
-    --danger:          var(--guava-700);
-    --danger-bg:       var(--guava-100);
-    --danger-border:   var(--guava-200);
-    --top3:            var(--guava-700);
-    --top3-bg:         var(--guava-100);
-    --link:            var(--guava-700);
 
     --biz-bg:        var(--slate-bg);
     --biz-text:      var(--slate-fg);
@@ -616,11 +607,11 @@
   }
   .tag-btn.biz { border-color: var(--biz-text); color: var(--biz); }
   .tag-btn.personal { border-color: var(--personal-text); color: var(--personal); }
-  .tag-btn.t3 { border-color: var(--top3); color: var(--top3); padding: var(--space-0-5) var(--space-2); font-size: var(--fs-search); }
+  .tag-btn.t3 { border-color: var(--guava-700); color: var(--guava-700); padding: var(--space-0-5) var(--space-2); font-size: var(--fs-search); }
   .tag-btn.selected { font-weight: var(--fw-semibold); }
   .tag-btn.biz.selected { background: var(--biz-bg); }
   .tag-btn.personal.selected { background: var(--personal-bg); }
-  .tag-btn.t3.selected { background: var(--top3-bg); }
+  .tag-btn.t3.selected { background: var(--guava-100); }
 
   /* CONTENT — main column scrollable area.
      padding-top is 0 so the gap from header title → first card is driven
@@ -710,7 +701,7 @@
   .sort-dropdown.open { display: block; }
   .sort-opt { padding: var(--space-2) var(--space-3); font-size: var(--fs-meta); cursor: pointer; color: var(--fg); letter-spacing: 0; text-transform: none; font-weight: var(--fw-regular); }
   .sort-opt:hover { background: var(--border); }
-  .sort-opt.active { color: var(--link); font-weight: var(--fw-semibold); }
+  .sort-opt.active { color: var(--guava-700); font-weight: var(--fw-semibold); }
 
   /* ──────────────────────────────────────────────────────────────
      TASK LIST — Lifestyle card per gsd-handoff/screens-lifestyle.jsx
@@ -1333,7 +1324,7 @@
   .modal-footer { display: flex; gap: var(--space-2); justify-content: flex-end; }
   .btn-sm { padding: var(--space-1-5) var(--space-3); border-radius: var(--r-md); border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-medium); cursor: pointer; }
   .btn-sm:hover { border-color: var(--muted); }
-  #editDeleteBtn:hover { background: var(--danger-bg); border-color: var(--danger); }
+  #editDeleteBtn:hover { background: var(--guava-100); border-color: var(--guava-700); }
   .btn-sm-accent { padding: var(--space-1-5) var(--space-3); border-radius: var(--r-md); border: none; background: var(--navy); color: #fff; font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-semibold); cursor: pointer; }
   .btn-sm-accent:hover { background: var(--navy-dark); }
 
@@ -1545,7 +1536,7 @@
     letter-spacing: -0.4px; text-transform: none;
     white-space: nowrap; display: flex; align-items: baseline; gap: 0;
   }
-  .auth-logo-name .auth-dot { color: var(--link); font-style: normal; }
+  .auth-logo-name .auth-dot { color: var(--guava-700); font-style: normal; }
   .auth-logo-name .auth-tm { font-weight: var(--fw-regular); font-size: var(--fs-card); color: var(--muted); letter-spacing: 0; margin-left: var(--space-2); }
   .auth-tagline {
     font-size: var(--fs-pill); color: var(--muted); margin-bottom: var(--space-7);
@@ -1602,8 +1593,8 @@
 
   .auth-error {
     width: 100%; padding: var(--space-2) var(--space-3); border-radius: var(--r-md);
-    background: var(--danger-bg); border: 1px solid var(--danger-border);
-    color: var(--danger); font-size: var(--fs-pill); display: none; margin-bottom: var(--space-1);
+    background: var(--guava-100); border: 1px solid var(--guava-200);
+    color: var(--guava-700); font-size: var(--fs-pill); display: none; margin-bottom: var(--space-1);
   }
   .auth-error.show { display: block; }
 
@@ -1620,7 +1611,7 @@
   }
   .auth-legal-footer button {
     background: none; border: none; padding: 0; cursor: pointer;
-    color: var(--accent); font-size: var(--fs-meta); font-family: inherit;
+    color: var(--guava-800); font-size: var(--fs-meta); font-family: inherit;
     text-decoration: underline; text-underline-offset: 2px;
   }
   .auth-legal-footer button:hover { color: var(--navy); }
@@ -1754,24 +1745,24 @@
     text-align: left; transition: background var(--dur-instant);
   }
   .dropdown-item:hover { background: var(--surface2); }
-  .dropdown-item.danger { color: var(--danger); }
+  .dropdown-item.danger { color: var(--guava-700); }
   .dropdown-item svg { flex-shrink: 0; color: var(--muted); }
-  .dropdown-item.danger svg { color: var(--danger); }
+  .dropdown-item.danger svg { color: var(--guava-700); }
   .dropdown-sep { height: 1px; background: var(--border); margin: var(--space-1) 0; }
 
   /* ════════════════════════════
      MODAL OVERRIDES (shared)
   ════════════════════════════ */
   .modal-overlay.danger-modal .modal {
-    border-top: 3px solid var(--danger);
+    border-top: 3px solid var(--guava-700);
   }
   .danger-zone {
-    background: var(--danger-bg); border: 1px solid var(--danger-border);
+    background: var(--guava-100); border: 1px solid var(--guava-200);
     border-radius: var(--r-md); padding: var(--space-3-5) var(--space-4);
     margin-bottom: var(--space-4);
   }
   .danger-zone p {
-    font-size: var(--fs-search); color: var(--danger); line-height: 1.6;
+    font-size: var(--fs-search); color: var(--guava-700); line-height: 1.6;
   }
   .confirm-input-wrap { margin-bottom: var(--space-3-5); }
   .confirm-input-wrap label {
@@ -1831,9 +1822,9 @@
     border: none; transition: all var(--dur-quick);
   }
   .confirm-btn-confirm.danger {
-    background: var(--danger); color: #fff;
+    background: var(--guava-700); color: #fff;
   }
-  .confirm-btn-confirm.danger:hover { background: var(--danger); }
+  .confirm-btn-confirm.danger:hover { background: var(--guava-700); }
   .confirm-btn-confirm.primary {
     background: var(--navy); color: #fff;
   }
@@ -1900,7 +1891,7 @@
   .swipe-delete-bg {
     position: absolute; right: 0; top: 0; bottom: 0;
     width: 120px;
-    background: var(--danger);
+    background: var(--guava-700);
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: var(--fs-section);
     pointer-events: none;
@@ -1912,7 +1903,7 @@
   .swipe-complete-bg {
     position: absolute; left: 0; top: 0; bottom: 0;
     width: 120px;
-    background: var(--check);
+    background: var(--guava-700);
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: var(--fs-section);
     pointer-events: none;
@@ -1989,7 +1980,7 @@
   .rich-editor:focus { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
   .rich-editor ul { margin: var(--space-1) 0; padding-left: var(--space-4-5); }
   .rich-editor li { margin: var(--space-0-5) 0; }
-  .rich-editor a { color: var(--link); }
+  .rich-editor a { color: var(--guava-700); }
   .rich-editor:empty::before {
     content: attr(data-placeholder); color: var(--muted); pointer-events: none;
   }
@@ -2283,7 +2274,7 @@
   .st-cal-day.empty { background: none; }
   .st-cal-day.missed { background: var(--surface2); color: var(--muted); }
   .st-cal-day.partial { background: var(--moss-bg); color: var(--moss-fg); }
-  .st-cal-day.done { background: var(--check); color: #fff; }
+  .st-cal-day.done { background: var(--guava-700); color: #fff; }
   .st-cal-day.today { box-shadow: inset 0 0 0 2px var(--navy); }
   .st-cal-day.future { background: none; color: var(--border2); }
 
@@ -2394,7 +2385,7 @@
   .habit-edit-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-4); }
   .habit-edit-danger { display: flex; gap: var(--space-2); }
   .habit-edit-danger button { background: none; border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--space-1-5) var(--space-3); font-family: inherit; font-size: var(--fs-pill); cursor: pointer; color: var(--text2); }
-  .habit-edit-danger button:hover { border-color: var(--danger); color: var(--danger); }
+  .habit-edit-danger button:hover { border-color: var(--guava-700); color: var(--guava-700); }
   .habit-edit-save { display: flex; gap: var(--space-2); }
 
   /* ══════ HABIT DRILL-IN ══════ */
@@ -2423,10 +2414,10 @@
   .habit-cal-label { font-size: var(--fs-label); font-weight: var(--fw-semibold); color: var(--muted); text-transform: uppercase; padding: var(--space-1) 0 var(--space-2); }
   .habit-cal-cell { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: var(--space-0-5) auto; font-size: var(--fs-pill); font-weight: var(--fw-medium); color: var(--text); cursor: pointer; transition: all var(--dur-fast); border: 2px solid transparent; }
   .habit-cal-cell:hover { background: var(--hover); }
-  .habit-cal-cell.completed { background: var(--check); color: #fff; border-color: var(--check); }
-  .habit-cal-cell.completed:hover { background: var(--check); }
+  .habit-cal-cell.completed { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
+  .habit-cal-cell.completed:hover { background: var(--guava-700); }
   .habit-cal-cell.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
-  .habit-cal-cell.today.completed { border-color: var(--check); box-shadow: none; }
+  .habit-cal-cell.today.completed { border-color: var(--guava-700); box-shadow: none; }
   .habit-cal-cell.empty { cursor: default; color: transparent; }
   .habit-cal-cell.empty:hover { background: none; }
   .habit-cal-cell.other-month { color: var(--border2); cursor: default; }
@@ -2700,14 +2691,14 @@
   .nl-item.drag-target { border-color: var(--navy); background: rgba(45,95,166,0.06); }
   .note-action-btn { background: none; border: none; cursor: pointer; padding: var(--space-1-5); border-radius: var(--r-md); color: var(--muted); transition: color var(--dur-instant); }
   .note-action-btn:hover { color: var(--text); background: var(--surface2); }
-  .note-action-btn.starred { color: var(--top3); }
+  .note-action-btn.starred { color: var(--guava-700); }
 
   /* Bulk select mode */
   .nl-bulk-bar { display: flex; align-items: center; gap: var(--space-1-5); padding: var(--space-1-5) var(--space-2-5); border-bottom: 1px solid var(--border); background: var(--surface); }
   .nl-bulk-bar button { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--space-1) var(--space-2-5); font-size: var(--fs-meta); font-family: inherit; cursor: pointer; background: var(--surface); color: var(--text2); }
   .nl-bulk-bar button:hover { background: var(--surface2); }
-  .nl-bulk-bar button.danger { color: var(--danger); border-color: var(--danger)44433; }
-  .nl-bulk-bar button.danger:hover { background: var(--danger)41a; color: #fff; }
+  .nl-bulk-bar button.danger { color: var(--guava-700); border-color: var(--guava-700)44433; }
+  .nl-bulk-bar button.danger:hover { background: var(--guava-700)41a; color: #fff; }
   .nl-bulk-bar .bulk-count { font-size: var(--fs-meta); color: var(--muted); margin-left: auto; }
   .nl-item .nl-checkbox {
     display: none;
@@ -2725,7 +2716,7 @@
   .note-ctx-menu { position: fixed; z-index: var(--z-auth); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--space-1); box-shadow: var(--shadow-card-hover); min-width: 170px; animation: fadeUp var(--dur-fast) ease both; }
   .note-ctx-menu button { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-3); border: none; background: none; font-family: inherit; font-size: var(--fs-pill); cursor: pointer; border-radius: var(--r-md); color: var(--text); }
   .note-ctx-menu button:hover { background: var(--surface2); }
-  .note-ctx-menu button.danger { color: var(--danger); }
+  .note-ctx-menu button.danger { color: var(--guava-700); }
   .note-ctx-menu .ctx-divider { height: 1px; background: var(--border); margin: var(--space-0-5) var(--space-1-5); }
   .note-ctx-menu .ctx-submenu { position: relative; }
   .note-ctx-menu .ctx-sub-items { display: none; position: absolute; left: 100%; top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--space-1); box-shadow: var(--shadow-card-hover); min-width: 140px; }
@@ -2949,7 +2940,7 @@
     <div class="modal-actions">
       <button class="btn-sm" onclick="closeDeleteAccountModal()">Cancel</button>
       <button class="btn-sm" id="deleteConfirmBtn"
-        style="background:var(--danger);color:#fff;border-color:var(--danger);opacity:0.4;cursor:not-allowed"
+        style="background:var(--guava-700);color:#fff;border-color:var(--guava-700);opacity:0.4;cursor:not-allowed"
         onclick="confirmDeleteAccount()" disabled>Delete Everything</button>
     </div>
   </div>
@@ -2987,7 +2978,7 @@
     </div>
     <div style="margin-bottom:16px;">
       <div style="background:var(--surface2,#f4f6fb);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--guava-800)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <div style="font-size:11.5px;color:var(--text2);line-height:1.6;">
           <strong style="color:var(--text);">Your data syncs to your account.</strong> Manual backups are downloaded to your device — they are never uploaded to our servers or shared with anyone.
         </div>
@@ -3546,7 +3537,7 @@
     <div class="modal-footer-row">
       <div class="modal-tags" id="editTags"></div>
       <div class="modal-action-btns">
-        <button class="btn-sm" id="editDeleteBtn" onclick="delTask(editId);closeModal();" title="Delete task" style="color:var(--danger);border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        <button class="btn-sm" id="editDeleteBtn" onclick="delTask(editId);closeModal();" title="Delete task" style="color:var(--guava-700);border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
         <button class="btn-sm" onclick="closeModal()">Cancel</button>
         <button class="btn-sm-accent" onclick="saveEdit()">Save</button>
       </div>
@@ -4916,10 +4907,10 @@ function computeScore(habit) {
 }
 
 function scoreColor(score) {
-  if (score >= 80) return 'var(--check)';
+  if (score >= 80) return 'var(--guava-700)';
   if (score >= 60) return 'var(--navy)';
-  if (score >= 40) return 'var(--accent)';
-  return 'var(--danger)';
+  if (score >= 40) return 'var(--guava-800)';
+  return 'var(--guava-700)';
 }
 
 const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -5075,13 +5066,13 @@ function renderHabitAll(active) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div class="habit-name" style="font-size:15px;font-weight:600">${escHTML(h.name || '')}</div>
-          <div style="font-size:12px;color:var(--check);margin-top:2px">${freqLabel(h)}</div>
+          <div style="font-size:12px;color:var(--guava-700);margin-top:2px">${freqLabel(h)}</div>
         </div>
         <span style="font-size:28px;line-height:1">${escHTML(h.emoji || '')}</span>
       </div>
       <div class="habit-week-dots">${dots}</div>
       <div class="habit-card-footer" style="padding-left:0;margin-top:14px;padding-bottom:0">
-        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--check)">✓</span> ${pct}% ${periodLabel}</div>
+        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · <span style="color:var(--guava-700)">✓</span> ${pct}% ${periodLabel}</div>
         <div class="habit-card-actions">
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'calendar')" title="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
           <button class="habit-action-btn" onclick="event.stopPropagation();openHabitDrillIn(${h.id},'stats')" title="Statistics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></button>
@@ -5217,7 +5208,7 @@ function computeStatsData(active, startDate, endDate) {
 
   let rankHtml = '';
   rankings.forEach((h, i) => {
-    const color = h.pct >= 80 ? 'var(--check)' : h.pct >= 60 ? 'var(--check)' : h.pct >= 40 ? 'var(--top3)' : 'var(--danger)';
+    const color = h.pct >= 80 ? 'var(--guava-700)' : h.pct >= 60 ? 'var(--guava-700)' : h.pct >= 40 ? 'var(--guava-700)' : 'var(--guava-700)';
     rankHtml += `<div class="st-rank"><span class="rn">${i + 1}</span><span class="re">${escHTML(h.emoji || '')}</span><span class="rname">${escHTML(h.name || '')}</span><div class="rbar"><div class="rbar-fill" style="width:${h.pct}%;background:${color}"></div></div><span class="rpct" style="color:${color}">${h.pct}%</span></div>`;
   });
 
@@ -5253,7 +5244,7 @@ function renderStatsYearly(active) {
     const h = pct > 0 ? (pct / 100) * 65 : 0;
     const isCurrent = y === new Date().getFullYear() && mo === new Date().getMonth();
     const isPast = moStart <= today;
-    const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? 'var(--check)' : 'var(--surface2)';
+    const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? 'var(--guava-700)' : 'var(--surface2)';
     const opacity = isPast ? 1 : 0.2;
     trendHtml += `<div class="st-trend-wrap" style="cursor:pointer" onclick="statsMonth=${mo};statsMonthYear=${y};statsView='monthly';renderHabits()" title="View ${MO_SHORT[mo]} ${y}">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
   }
@@ -5268,8 +5259,8 @@ function renderStatsYearly(active) {
   el.innerHTML = `
     <div class="stat-cards-grid" style="margin-bottom:10px">
       <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
     <div class="st-card">
       <div class="st-nav">
@@ -5342,8 +5333,8 @@ function renderStatsMonthly(active) {
   el.innerHTML = `
     <div class="stat-cards-grid" style="margin-bottom:10px">
       <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--check)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
-      <div class="stat-card"><div class="sc-val" style="color:var(--top3)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
     <div class="st-card">
       <div class="st-nav">
@@ -6100,7 +6091,7 @@ function renderDrillCalendar() {
   const streak = computeStreak(drillHabitId);
   const best = computeBestStreak(drillHabitId);
   document.getElementById('drillCalStreak').innerHTML = `
-    <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--top3)">${streak}</div><div class="streak-lbl">Current Streak</div></div>
+    <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--guava-700)">${streak}</div><div class="streak-lbl">Current Streak</div></div>
     <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--navy)">${best}</div><div class="streak-lbl">Best Streak</div></div>
   `;
 }
@@ -6155,9 +6146,9 @@ function renderDrillStats() {
   `;
 
   document.getElementById('drillStatGrid').innerHTML = `
-    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--top3)">${streak}</div><div class="ds-lbl">Current Streak</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--guava-700)">${streak}</div><div class="ds-lbl">Current Streak</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--navy)">${best}</div><div class="ds-lbl">Best Streak</div></div>
-    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--check)">${weekCount}</div><div class="ds-lbl">This Week</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--guava-700)">${weekCount}</div><div class="ds-lbl">This Week</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val">${monthCount}</div><div class="ds-lbl">This Month</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val">${yearCount}</div><div class="ds-lbl">This Year</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val">${allCount}</div><div class="ds-lbl">All Time</div></div>
@@ -6682,7 +6673,7 @@ function updateNlTitle() {
   }
   let extra = '';
   if (notesSidebarView === 'trash' && list.length > 0) {
-    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:var(--danger);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='var(--danger)10a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--danger)'">Empty Trash</button>`;
+    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:var(--guava-700);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='var(--guava-700)10a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--guava-700)'">Empty Trash</button>`;
   } else if (notesSidebarView !== 'trash') {
     extra = `<button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--muted);display:flex;align-items:center">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
@@ -6839,11 +6830,11 @@ function renderNoteEditor() {
         <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:var(--danger)">
+        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:var(--guava-700)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
         <button class="mobile-note-action" onclick="toggleNoteStar()" title="Star">
-          <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2" style="color:var(--top3)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2" style="color:var(--guava-700)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>
     </div>
@@ -6863,7 +6854,7 @@ function renderNoteEditor() {
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
-            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:var(--danger);padding:3px">
+            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:var(--guava-700);padding:3px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
             <button class="note-action-btn${note.starred ? ' starred' : ''}" id="noteStarBtn" onclick="toggleNoteStar()" title="Star" style="padding:3px">
@@ -7120,7 +7111,7 @@ function showNotebookMenu(e, id) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Edit
     </button>
-    <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--danger)">
+    <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--guava-700)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Delete
     </button>`;
@@ -7292,7 +7283,7 @@ function showInlineConfirm(title, message, onConfirm) {
     <div style="font-size:13px;color:var(--text2);margin-bottom:20px">${message}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button id="icCancel" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer;color:var(--text2)">Cancel</button>
-      <button id="icConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--danger);color:#fff;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600">Delete</button>
+      <button id="icConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600">Delete</button>
     </div>`;
   overlay.appendChild(card);
   document.body.appendChild(overlay);
@@ -7741,7 +7732,7 @@ function showNoteMenu(e) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="${note?.starred?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       ${starLabel}
     </button>
-    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();trashNote()" style="color:var(--danger)">
+    <button class="nb-menu-btn" onclick="this.closest('.nb-context-menu').remove();trashNote()" style="color:var(--guava-700)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Move to Trash
     </button>`;
@@ -8612,7 +8603,7 @@ async function renderBackupDates() {
   }
   const todayStr = new Date().toISOString().slice(0, 10);
   el.innerHTML = dates.map(({ backup_date: d, task_count: tCount, habit_count: hCount }) => {
-    const label = d === todayStr ? `${d} <span style="color:var(--accent);font-size:10px;">today</span>` : d;
+    const label = d === todayStr ? `${d} <span style="color:var(--guava-800);font-size:10px;">today</span>` : d;
     const parts = [];
     if (tCount) parts.push(`${tCount} tasks`);
     if (hCount) parts.push(`${hCount} habits`);
