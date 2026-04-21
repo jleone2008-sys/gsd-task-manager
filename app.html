@@ -4849,6 +4849,26 @@ function isHabitDueOnDate(habit, dateStr) {
   return true;
 }
 /**
+ * "Can be completed today" — the inclusion gate for the second Habits
+ * section. Returns true if the user can still meaningfully tap the habit
+ * today. Returns false if the habit is already 100% done for its period and
+ * doesn't allow extras, or if today isn't a scheduled day for strict cadences.
+ */
+function canHabitDoToday(habit) {
+  const today = todayStr();
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') {
+    // Quota habits: blocked only when fully met AND no extras allowed.
+    if (isQuotaMet(habit, today) && !habit.allowExtras) return false;
+    return true;
+  }
+  // Strict cadences (daily / weekdays / custom): must be a scheduled day.
+  if (!isHabitDueOnDate(habit, today)) return false;
+  // Done today and no extras → nothing more to do for the period.
+  if (isCompletedOn(habit.id, today) && !habit.allowExtras) return false;
+  return true;
+}
+
+/**
  * Pace-aware "due today" for quota habits.
  * A 3x/month habit with 1 completed and 20 days left in the month is NOT
  * "due today" — you have time. It only becomes "due today" when you'd
@@ -5116,96 +5136,95 @@ function renderHabits() {
   updateHabitStatsBar(active);
 }
 
-function renderHabitToday(active) {
-  const el = document.getElementById('habit-today');
-  if (!el) return;
-  const today = todayStr();
-  const due = active.filter(h => isHabitDueToday(h));
-  const done = due.filter(h => isCompletedOn(h.id, today));
-  const remaining = due.filter(h => !isCompletedOn(h.id, today));
-  const pct = due.length ? Math.round((done.length / due.length) * 100) : 0;
+/**
+ * Build the Today view card HTML for a single habit. Extracted so both the
+ * DUE TODAY and HABITS sections can reuse the exact same markup.
+ * "isExtras + isDone" branch renders the +/- controls; the default is the
+ * standard toggle check.
+ */
+function habitTodayCardHTML(h, today) {
+  const streak = computeStreak(h.id);
+  const isDone = isCompletedOn(h.id, today);
+  const isExtras = !!h.allowExtras;
+  const todayCount = getCompletionCountForDate(h.id, today);
+  const periodCount = h.frequency === 'x_per_month' ? getMonthCompletions(h.id, today)
+                   : h.frequency === 'x_per_week'  ? getWeekCompletions(h.id, today)
+                   : 0;
+  const periodGoal = h.frequencyCount || 1;
+  const periodLabel = h.frequency === 'x_per_month' ? 'this month'
+                    : h.frequency === 'x_per_week'  ? 'this week'
+                    : '';
+  const cardCls = `habit-card habit-today-card${isDone ? ' habit-done' : ''}`;
 
-  // Best streak across all habits
-  const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
-
-  // Progress ring
-  const circ = 2 * Math.PI * 23; // r=23
-  const offset = circ * (1 - pct / 100);
-
-  // Remaining cards
-  let remHTML = '';
-  remaining.forEach(h => {
-    const streak = computeStreak(h.id);
-    remHTML += `<div class="habit-card habit-today-card" data-habit-id="${h.id}">
+  if (isDone && isExtras) {
+    // Completed + extras allowed → show count badge + +/- controls.
+    const countBadge = todayCount > 1
+      ? `<span style="font-size:10px;font-weight:700;color:var(--guava-700);background:var(--guava-100);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>`
+      : '';
+    const progressMeta = periodLabel
+      ? `<span style="color:var(--guava-700);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}`
+      : '';
+    return `<div class="${cardCls}" data-habit-id="${h.id}">
       <div class="swipe-complete-bg">✓</div>
       <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
       <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
         <div class="habit-card-top">
-          <span class="habit-name">${escHTML(h.name || '')}</span>
+          <span class="habit-name">${escHTML(h.name || '')}</span>${countBadge}
         </div>
-        <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
+        <div class="habit-card-meta">${progressMeta ? progressMeta + ' · ' : ''}<span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span></div>
       </div>
-      <div class="habit-check" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <button onclick="event.stopPropagation();removeLastCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--edge-strong);background:var(--surface);color:var(--ink-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" title="Remove one">−</button>
+        <button onclick="event.stopPropagation();toggleCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--guava-700);background:var(--guava-700);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700" title="Add another">+</button>
+      </div>
     </div>`;
-  });
+  }
 
-  // Completed cards
-  let doneHTML = '';
-  done.forEach(h => {
-    const streak = computeStreak(h.id);
-    const todayCount = getCompletionCountForDate(h.id, today);
-    const isExtras = h.allowExtras;
-    const periodCount = h.frequency === 'x_per_month' ? getMonthCompletions(h.id, today) : h.frequency === 'x_per_week' ? getWeekCompletions(h.id, today) : 0;
-    const periodGoal = h.frequencyCount || 1;
-    const periodLabel = h.frequency === 'x_per_month' ? 'this month' : h.frequency === 'x_per_week' ? 'this week' : '';
+  // Standard card — either incomplete or done-without-extras.
+  return `<div class="${cardCls}" data-habit-id="${h.id}">
+    <div class="swipe-complete-bg">✓</div>
+    <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
+    <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
+      <div class="habit-card-top">
+        <span class="habit-name">${escHTML(h.name || '')}</span>
+      </div>
+      <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
+    </div>
+    <div class="habit-check${isDone ? ' checked' : ''}" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+  </div>`;
+}
 
-    if (isExtras) {
-      // Extras-enabled: full opacity, +/- buttons, count badge
-      const countBadge = todayCount > 1 ? `<span style="font-size:10px;font-weight:700;color:var(--navy);background:rgba(45,95,166,0.12);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>` : '';
-      const progressMeta = periodLabel ? `<span style="color:var(--check);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}` : '';
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}">
-        <div class="swipe-complete-bg">✓</div>
-        <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
-        <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
-          <div class="habit-card-top">
-            <span class="habit-name">${escHTML(h.name || '')}</span>${countBadge}
-          </div>
-          <div class="habit-card-meta">${progressMeta ? progressMeta + ' · ' : ''}<span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-          <button onclick="event.stopPropagation();removeLastCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" title="Remove one">−</button>
-          <button onclick="event.stopPropagation();toggleCompletion(${h.id},'${today}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--check);background:var(--check);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700" title="Add another">+</button>
-        </div>
-      </div>`;
-    } else {
-      doneHTML += `<div class="habit-card habit-today-card habit-done" data-habit-id="${h.id}">
-        <div class="swipe-complete-bg">✓</div>
-        <span class="habit-emoji-lg" onclick="openHabitDrillIn(${h.id})">${escHTML(h.emoji || '')}</span>
-        <div class="habit-today-content" onclick="openHabitDrillIn(${h.id})" style="cursor:pointer">
-          <div class="habit-card-top">
-            <span class="habit-name">${escHTML(h.name || '')}</span>
-          </div>
-          <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
-        </div>
-        <div class="habit-check checked" onclick="toggleCompletion(${h.id},'${today}')"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
-      </div>`;
-    }
-  });
+function renderHabitToday(active) {
+  const el = document.getElementById('habit-today');
+  if (!el) return;
+  const today = todayStr();
 
-  if (due.length === 0 && active.length === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--muted)">
-      <div style="font-size:32px;margin-bottom:12px">🎯</div>
-      <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:4px">No habits yet</div>
-      <div style="font-size:13px">Tap + to create your first habit.</div>
+  // Two sections:
+  //   DUE TODAY — habits that must be completed today to stay on pace. Both
+  //     remaining and already-done-today entries show here (done ones visibly
+  //     checked); this gives a complete view of "what was required today".
+  //   HABITS — habits that CAN still be completed today but aren't strictly
+  //     required. Excludes habits that are fully complete for their period
+  //     and don't allow extras.
+  const dueToday   = active.filter(h => isHabitDueToday(h));
+  const optional   = active.filter(h => !isHabitDueToday(h) && canHabitDoToday(h));
+  const doneDue    = dueToday.filter(h => isCompletedOn(h.id, today));
+  const bestStreak = active.length ? Math.max(...active.map(h => computeBestStreak(h.id)), 0) : 0;
+
+  if (active.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-state-title">No habits yet. Start one.</div>
     </div>`;
     return;
   }
 
-  // "Today %" = completed today / due today. isHabitDueToday already accounts
-  // for quota habits that have already met their goal for the period AND for
-  // quota habits that don't need to be done today (pace-aware). So a 1x/month
-  // habit done on day 1 doesn't count against today's stat on day 2.
-  const todayPct = due.length ? Math.round((done.length / due.length) * 100) : 100;
+  // Today % = done-today of due-today (already pace-aware via isHabitDueToday).
+  const todayPct = dueToday.length
+    ? Math.round((doneDue.length / dueToday.length) * 100)
+    : 100;
+
+  const dueHTML = dueToday.map(h => habitTodayCardHTML(h, today)).join('');
+  const optHTML = optional.map(h => habitTodayCardHTML(h, today)).join('');
 
   el.innerHTML = `
     <div class="stats-strip">
@@ -5218,13 +5237,14 @@ function renderHabitToday(active) {
         <span class="l">Best streak</span>
       </div>
       <div class="stat-block">
-        <span class="v">${done.length}<em>/${due.length}</em></span>
+        <span class="v">${doneDue.length}<em>/${dueToday.length}</em></span>
         <span class="l">Done today</span>
       </div>
     </div>
-    ${remaining.length ? `<div class="section-label">Due today</div>${remHTML}` : ''}
-    ${done.length ? `<div class="section-label">Completed</div>${doneHTML}` : ''}
-    ${due.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:13px">No habits due today</div>' : ''}
+    ${dueToday.length
+      ? `<div class="section-label">Due today</div>${dueHTML}`
+      : '<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:13px">Nothing required today — nice.</div>'}
+    ${optional.length ? `<div class="section-label">Habits</div>${optHTML}` : ''}
   `;
 }
 
