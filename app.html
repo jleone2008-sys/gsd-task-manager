@@ -5844,7 +5844,10 @@ function tHTML(t) {
 
 function expansionBodyHTML(t) {
   const tcid = String(t.id);
-  const noteHtml = t.note ? `<div class="card__note task-expand__note">${linkify(t.note)}</div>` : '';
+  // Notes are stored as rich HTML from the contenteditable editor. Use
+  // richToDisplay (DOMPurify-backed) so tags render as formatted text, not
+  // escaped source. linkify would escape the HTML and show raw <b>…</b>.
+  const noteHtml = t.note ? `<div class="card__note task-expand__note">${richToDisplay(t.note)}</div>` : '';
   const subs = subtasksByTask.get(tcid) || [];
   const subsHtml = `<div class="card__subtasks task-expand__subs" id="subs-${tcid}">${subs.map(s=>subtaskRowHTML(tcid, s)).join('')}</div>`;
   const priorityOn = t.top3 ? ' is-on' : '';
