@@ -89,17 +89,6 @@
     --dur-fast:  120ms;
     --dur:       180ms;
 
-    /* ══════════════════════════════════════════════════════════
-       LEGACY ALIASES — map old token names to the lifestyle set.
-       Kept so component CSS that hasn't been ported yet still
-       renders. These will be removed as each screen is rebuilt.
-    ══════════════════════════════════════════════════════════ */
-
-    --navy:        var(--guava-700);
-    --navy-dark:   var(--guava-800);
-    --navy-light:  var(--guava-500);
-    --navy-muted:  rgba(255,255,255,0.72);
-
     --highlight-yellow: #fef08a;
 
     --fs-nano:          9px;     /* tiny indicators (8–9px range rounds up) */
@@ -513,7 +502,7 @@
     outline: none;
     transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
-  .add-row input[type=text]:focus { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
+  .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .add-row input[type=text]::placeholder { color: var(--ink-3); }
 
   .btn-note {
@@ -531,14 +520,14 @@
     line-height: 1;
     flex-shrink: 0;
   }
-  .btn-note:hover { border-color: var(--navy-light); color: var(--navy); }
-  .btn-note.active { border-color: var(--navy); color: var(--navy); background: var(--plum-bg); }
+  .btn-note:hover { border-color: var(--guava-500); color: var(--guava-700); }
+  .btn-note.active { border-color: var(--guava-700); color: var(--guava-700); background: var(--plum-bg); }
 
   .btn-add {
     padding: var(--space-2) var(--space-4);
     border-radius: var(--r-md);
     border: none;
-    background: var(--navy);
+    background: var(--guava-700);
     color: #fff;
     font-family: inherit;
     font-size: var(--fs-search);
@@ -548,7 +537,7 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .btn-add:hover { background: var(--navy-dark); }
+  .btn-add:hover { background: var(--guava-800); }
 
   .add-note-wrap {
     max-height: 0;
@@ -571,7 +560,7 @@
     resize: none;
     height: 60px;
   }
-  .add-note-wrap textarea:focus { border-color: var(--navy-light); }
+  .add-note-wrap textarea:focus { border-color: var(--guava-500); }
   .add-note-wrap textarea::placeholder { color: var(--ink-3); }
 
   .add-tags { display: flex; gap: var(--space-1-5); flex-wrap: wrap; padding-bottom: var(--space-2-5); }
@@ -1044,7 +1033,7 @@
     opacity: 0.4; transition: none;
   }
   .task-item.touch-drag-over {
-    border-top: 2px solid var(--navy-light);
+    border-top: 2px solid var(--guava-500);
   }
   .touch-drag-ghost {
     position: fixed; pointer-events: none; z-index: var(--z-dropdown);
@@ -1268,7 +1257,7 @@
     font-family: inherit; color: var(--ink); background: var(--surface);
     outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
-  .create-panel-inner .add-row input[type=text]:focus { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
+  .create-panel-inner .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .create-panel-inner .add-row input[type=text]::placeholder { color: var(--ink-3); }
   .create-panel-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .create-panel-tags { display: flex; gap: var(--space-1); flex-wrap: wrap; }
@@ -1296,7 +1285,7 @@
     padding: var(--space-2) var(--space-2-5); color: var(--ink); font-family: inherit; font-size: var(--fs-task); outline: none;
     margin-bottom: var(--space-2-5); transition: border-color var(--dur-fast);
   }
-  .modal input:focus, .modal textarea:focus { border-color: var(--navy-light); background: #fff; }
+  .modal input:focus, .modal textarea:focus { border-color: var(--guava-500); background: #fff; }
   .modal textarea { resize: vertical; min-height: 60px; }
   .modal-tags { display: flex; gap: var(--space-1); flex-wrap: nowrap; align-items: center; overflow: hidden; }
   .modal-footer-row {
@@ -1308,8 +1297,8 @@
   .btn-sm { padding: var(--space-1-5) var(--space-3); border-radius: var(--r-md); border: 1px solid var(--edge-strong); background: var(--surface); color: var(--ink); font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-medium); cursor: pointer; }
   .btn-sm:hover { border-color: var(--ink-3); }
   #editDeleteBtn:hover { background: var(--guava-100); border-color: var(--guava-700); }
-  .btn-sm-accent { padding: var(--space-1-5) var(--space-3); border-radius: var(--r-md); border: none; background: var(--navy); color: #fff; font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-semibold); cursor: pointer; }
-  .btn-sm-accent:hover { background: var(--navy-dark); }
+  .btn-sm-accent { padding: var(--space-1-5) var(--space-3); border-radius: var(--r-md); border: none; background: var(--guava-700); color: #fff; font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-semibold); cursor: pointer; }
+  .btn-sm-accent:hover { background: var(--guava-800); }
 
   .empty { text-align: center; padding: var(--space-6); color: var(--ink-3); font-size: var(--fs-search); }
 
@@ -1510,7 +1499,7 @@
   }
   .auth-logo-badge {
     width: 72px; height: 72px; border-radius: var(--r-md);
-    background: var(--navy); display: flex; align-items: center; justify-content: center;
+    background: var(--guava-700); display: flex; align-items: center; justify-content: center;
     font-size: var(--fs-title-mobile); margin-bottom: var(--space-2-5);
     box-shadow: var(--shadow-card-hover);
   }
@@ -1536,7 +1525,7 @@
     margin-bottom: var(--space-4);
   }
   .btn-google:hover {
-    border-color: var(--navy-light);
+    border-color: var(--guava-500);
     box-shadow: var(--shadow-card);
     transform: translateY(-1px);
   }
@@ -1558,21 +1547,21 @@
     transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
   .auth-input:focus {
-    border-color: var(--navy-light);
+    border-color: var(--guava-500);
     box-shadow: var(--shadow-focus);
   }
   .btn-auth {
     width: 100%; padding: var(--space-2-5); border-radius: var(--r-md);
-    background: var(--navy); color: #fff; border: none;
+    background: var(--guava-700); color: #fff; border: none;
     font-size: var(--fs-task); font-weight: var(--fw-semibold); font-family: inherit;
     cursor: pointer; transition: background var(--dur-quick);
   }
-  .btn-auth:hover { background: var(--navy-dark); }
+  .btn-auth:hover { background: var(--guava-800); }
 
   .auth-toggle {
     margin-top: var(--space-2); font-size: var(--fs-pill); color: var(--ink-3); text-align: center;
   }
-  .auth-toggle a { color: var(--navy); cursor: pointer; text-decoration: underline; }
+  .auth-toggle a { color: var(--guava-700); cursor: pointer; text-decoration: underline; }
 
   .auth-error {
     width: 100%; padding: var(--space-2) var(--space-3); border-radius: var(--r-md);
@@ -1597,7 +1586,7 @@
     color: var(--guava-800); font-size: var(--fs-meta); font-family: inherit;
     text-decoration: underline; text-underline-offset: 2px;
   }
-  .auth-legal-footer button:hover { color: var(--navy); }
+  .auth-legal-footer button:hover { color: var(--guava-700); }
 
   /* LEGAL MODAL */
   #legalModal .modal {
@@ -1629,13 +1618,13 @@
     transition: color var(--dur-quick);
   }
   .legal-tab.active {
-    color: var(--navy);
+    color: var(--guava-700);
   }
   .legal-tab.active::after {
     content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
-    height: 2px; background: var(--navy); border-radius: 2px 2px 0 0;
+    height: 2px; background: var(--guava-700); border-radius: 2px 2px 0 0;
   }
-  .legal-tab:hover { color: var(--navy); }
+  .legal-tab:hover { color: var(--guava-700); }
 
   /* ════════════════════════════
      USER MENU (header)
@@ -1809,9 +1798,9 @@
   }
   .confirm-btn-confirm.danger:hover { background: var(--guava-700); }
   .confirm-btn-confirm.primary {
-    background: var(--navy); color: #fff;
+    background: var(--guava-700); color: #fff;
   }
-  .confirm-btn-confirm.primary:hover { background: var(--navy-dark); }
+  .confirm-btn-confirm.primary:hover { background: var(--guava-800); }
 
   /* ════════════════════════════
      KEYBOARD SHORTCUT HINT
@@ -1951,7 +1940,7 @@
     line-height: 1.4;
   }
   .rich-btn:hover { background: var(--surface); border-color: var(--edge-strong); }
-  .rich-btn.active { background: var(--surface); border-color: var(--edge-strong); color: var(--navy); font-weight: var(--fw-bold); }
+  .rich-btn.active { background: var(--surface); border-color: var(--edge-strong); color: var(--guava-700); font-weight: var(--fw-bold); }
   .rich-btn-sep { width: 1px; background: var(--edge-strong); margin: var(--space-0-5) var(--space-0-5); }
   .rich-editor {
     min-height: 70px; max-height: 180px; overflow-y: auto;
@@ -1960,7 +1949,7 @@
     color: var(--ink); font-family: inherit; outline: none;
     background: var(--surface);
   }
-  .rich-editor:focus { border-color: var(--navy-light); box-shadow: var(--shadow-focus); }
+  .rich-editor:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .rich-editor ul { margin: var(--space-1) 0; padding-left: var(--space-4-5); }
   .rich-editor li { margin: var(--space-0-5) 0; }
   .rich-editor a { color: var(--guava-700); }
@@ -2232,7 +2221,7 @@
   .heatmap-cell.l1 { background: var(--guava-100); }
   .heatmap-cell.l2 { background: var(--guava-300); }
   .heatmap-cell.l3 { background: var(--guava-700); }
-  .heatmap-cell.l4 { background: var(--navy); }
+  .heatmap-cell.l4 { background: var(--guava-700); }
   .heatmap-legend { display: flex; align-items: center; gap: var(--space-1); margin-top: var(--space-2-5); font-size: var(--fs-label); color: var(--ink-3); }
   .heatmap-legend .heatmap-cell { width: 10px; height: 10px; aspect-ratio: auto; max-width: none; flex: none; }
 
@@ -2258,26 +2247,26 @@
   .st-cal-day.missed { background: var(--surface-2); color: var(--ink-3); }
   .st-cal-day.partial { background: var(--moss-bg); color: var(--moss-fg); }
   .st-cal-day.done { background: var(--guava-700); color: #fff; }
-  .st-cal-day.today { box-shadow: inset 0 0 0 2px var(--navy); }
+  .st-cal-day.today { box-shadow: inset 0 0 0 2px var(--guava-700); }
   .st-cal-day.future { background: none; color: var(--edge-strong); }
 
   /* DOW chart */
   .st-dow { display: flex; align-items: flex-end; gap: var(--space-1-5); height: 90px; padding-top: var(--space-2); }
   .st-dow-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-0-5); }
-  .st-dow-bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--navy); min-height: 2px; transition: height var(--dur-slower); }
+  .st-dow-bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--guava-700); min-height: 2px; transition: height var(--dur-slower); }
   .st-dow-lbl { font-size: var(--fs-label); color: var(--ink-3); font-weight: var(--fw-medium); }
   .st-dow-pct { font-size: var(--fs-nano); color: var(--ink-2); font-weight: var(--fw-semibold); }
 
   /* Insight */
-  .st-insight { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3) var(--space-3-5); background: rgba(45,95,166,0.05); border-radius: var(--r-md); border-left: 3px solid var(--navy); }
-  .st-insight svg { flex-shrink: 0; color: var(--navy); }
+  .st-insight { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3) var(--space-3-5); background: rgba(45,95,166,0.05); border-radius: var(--r-md); border-left: 3px solid var(--guava-700); }
+  .st-insight svg { flex-shrink: 0; color: var(--guava-700); }
   .st-insight-text { font-size: var(--fs-pill); color: var(--ink-2); line-height: 1.5; }
   .st-insight-text strong { color: var(--ink); }
 
   /* Year summary */
   .st-year-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-bottom: var(--space-2-5); }
   .st-year-card { background: var(--surface-2); border-radius: var(--r-md); padding: var(--space-3-5); }
-  .st-year-card .yv { font-size: var(--fs-title); font-weight: var(--fw-black); color: var(--navy); line-height: 1; }
+  .st-year-card .yv { font-size: var(--fs-title); font-weight: var(--fw-black); color: var(--guava-700); line-height: 1; }
   .st-year-card .yl { font-size: var(--fs-micro); color: var(--ink-3); margin-top: var(--space-1); }
   .st-year-card .ys { font-size: var(--fs-meta); color: var(--ink-2); margin-top: var(--space-0-5); font-weight: var(--fw-medium); }
 
@@ -2292,7 +2281,7 @@
   .st-hm-cell.l1 { background: var(--guava-100); }
   .st-hm-cell.l2 { background: var(--guava-300); }
   .st-hm-cell.l3 { background: var(--guava-700); }
-  .st-hm-cell.l4 { background: var(--navy); }
+  .st-hm-cell.l4 { background: var(--guava-700); }
   .st-hm-months { display: flex; font-size: var(--fs-nano); color: var(--ink-3); margin-bottom: var(--space-1); }
   .st-hm-months span { width: calc(13px * 4.33 + 2px * 3.33); text-align: left; }
   .st-hm-day-labels-top { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-0-5); margin-bottom: var(--space-1); font-size: var(--fs-label); color: var(--ink-3); text-align: center; font-weight: var(--fw-medium); }
@@ -2305,7 +2294,7 @@
   .st-woy-cell.l1 { background: var(--guava-100); }
   .st-woy-cell.l2 { background: var(--guava-300); }
   .st-woy-cell.l3 { background: var(--guava-700); }
-  .st-woy-cell.l4 { background: var(--navy); }
+  .st-woy-cell.l4 { background: var(--guava-700); }
   .st-woy-labels { display: flex; justify-content: space-between; font-size: var(--fs-nano); color: var(--ink-3); margin-top: var(--space-1); }
 
   /* 12-month trend */
@@ -2341,20 +2330,20 @@
   .habit-create-inner { width: 100%; max-width: var(--max-create); background: var(--surface); border: 1px solid var(--edge-strong); border-radius: var(--r-md); box-shadow: var(--shadow-raised); padding: var(--space-4-5); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
   .habit-create-row { display: flex; gap: var(--space-2); margin-bottom: var(--space-2-5); align-items: center; }
   .habit-create-row input[type=text] { flex: 1; border: 1px solid var(--edge-strong); border-radius: var(--r-md); padding: var(--space-2) var(--space-3); font-family: inherit; font-size: var(--fs-search); outline: none; }
-  .habit-create-row input[type=text]:focus { border-color: var(--navy); }
+  .habit-create-row input[type=text]:focus { border-color: var(--guava-700); }
   .emoji-pick-btn { font-size: var(--fs-title); width: 44px; height: 44px; border: 1.5px dashed var(--edge-strong); border-radius: var(--r-md); background: var(--surface-2); cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; transition: border-color var(--dur-quick), background var(--dur-quick); }
-  .emoji-pick-btn:hover { border-color: var(--navy); background: var(--surface); }
-  .emoji-pick-btn::after { content: '✎'; position: absolute; bottom: -2px; right: -2px; font-size: var(--fs-label); width: 16px; height: 16px; background: var(--navy); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .emoji-pick-btn:hover { border-color: var(--guava-700); background: var(--surface); }
+  .emoji-pick-btn::after { content: '✎'; position: absolute; bottom: -2px; right: -2px; font-size: var(--fs-label); width: 16px; height: 16px; background: var(--guava-700); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; }
   .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-1); margin-bottom: var(--space-2-5); }
   .emoji-grid button { font-size: var(--fs-title-mobile); border: none; background: none; cursor: pointer; padding: var(--space-1); border-radius: var(--r-md); }
   .emoji-grid button:hover { background: var(--hover); }
   .freq-options { display: flex; gap: var(--space-1); margin-bottom: var(--space-2-5); flex-wrap: wrap; }
   .freq-btn { padding: var(--space-1) var(--space-2-5); border: 1px solid var(--edge-strong); border-radius: var(--r-md); background: var(--surface); font-family: inherit; font-size: var(--fs-meta); cursor: pointer; }
-  .freq-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .freq-btn.active { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
   .habit-create-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
   .habit-create-actions button { padding: var(--space-2) var(--space-4-5); border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-search); font-weight: var(--fw-semibold); cursor: pointer; border: none; }
   .habit-create-actions .btn-cancel { background: var(--surface-2); color: var(--ink-2); }
-  .habit-create-actions .btn-save { background: var(--navy); color: #fff; }
+  .habit-create-actions .btn-save { background: var(--guava-700); color: #fff; }
 
   /* Habit edit modal */
   .habit-edit-overlay { display: none; position: fixed; inset: 0; background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); z-index: var(--z-dropdown); align-items: center; justify-content: center; }
@@ -2364,7 +2353,7 @@
   .habit-edit-field { margin-bottom: var(--space-3); }
   .habit-edit-field label { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: var(--space-1); }
   .habit-edit-field input[type=text] { width: 100%; border: 1px solid var(--edge-strong); border-radius: var(--r-md); padding: var(--space-2) var(--space-3); font-family: inherit; font-size: var(--fs-search); outline: none; box-sizing: border-box; }
-  .habit-edit-field input[type=text]:focus { border-color: var(--navy); }
+  .habit-edit-field input[type=text]:focus { border-color: var(--guava-700); }
   .habit-edit-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-4); }
   .habit-edit-danger { display: flex; gap: var(--space-2); }
   .habit-edit-danger button { background: none; border: 1px solid var(--edge); border-radius: var(--r-md); padding: var(--space-1-5) var(--space-3); font-family: inherit; font-size: var(--fs-pill); cursor: pointer; color: var(--ink-2); }
@@ -2377,13 +2366,13 @@
   .habit-drill-panel { width: 90%; max-width: var(--max-modal-lg); max-height: 85vh; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--shadow-raised); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-slow) var(--ease-spring) both; }
   .habit-drill-header { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3-5) var(--space-4); border-bottom: 1px solid var(--edge); }
   .habit-drill-back { background: none; border: none; cursor: pointer; font-size: var(--fs-title-mobile); color: var(--ink-2); padding: 0 var(--space-1); line-height: 1; }
-  .habit-drill-back:hover { color: var(--navy); }
+  .habit-drill-back:hover { color: var(--guava-700); }
   .habit-drill-emoji { font-size: var(--fs-title-mobile); }
   .habit-drill-name { font-size: var(--fs-body); font-weight: var(--fw-bold); flex: 1; }
   .habit-drill-tabs { display: flex; justify-content: center; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; }
   .habit-drill-tabs .drill-tab { padding: var(--space-1-5) var(--space-4-5); border-radius: var(--r-lg); border: 1px solid var(--edge-strong); background: var(--surface); font-family: inherit; font-size: var(--fs-pill); font-weight: var(--fw-medium); cursor: pointer; color: var(--ink-2); transition: all var(--dur-fast); }
-  .habit-drill-tabs .drill-tab:hover { border-color: var(--navy-light); }
-  .habit-drill-tabs .drill-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .habit-drill-tabs .drill-tab:hover { border-color: var(--guava-500); }
+  .habit-drill-tabs .drill-tab.active { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
   .habit-drill-body { flex: 1; overflow-y: auto; padding: var(--space-4); }
   .habit-drill-tab-content { display: none; }
   .habit-drill-tab-content.active { display: block; }
@@ -2391,7 +2380,7 @@
   /* Calendar */
   .habit-cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
   .habit-cal-nav button { background: none; border: 1px solid var(--edge); border-radius: var(--r-md); width: 32px; height: 32px; cursor: pointer; font-size: var(--fs-card); color: var(--ink-2); display: flex; align-items: center; justify-content: center; }
-  .habit-cal-nav button:hover { border-color: var(--navy); color: var(--navy); }
+  .habit-cal-nav button:hover { border-color: var(--guava-700); color: var(--guava-700); }
   .habit-cal-month { font-size: var(--fs-body); font-weight: var(--fw-bold); }
   .habit-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-1); text-align: center; }
   .habit-cal-label { font-size: var(--fs-label); font-weight: var(--fw-semibold); color: var(--ink-3); text-transform: uppercase; padding: var(--space-1) 0 var(--space-2); }
@@ -2399,7 +2388,7 @@
   .habit-cal-cell:hover { background: var(--hover); }
   .habit-cal-cell.completed { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
   .habit-cal-cell.completed:hover { background: var(--guava-700); }
-  .habit-cal-cell.today { border-color: var(--navy); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
+  .habit-cal-cell.today { border-color: var(--guava-700); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
   .habit-cal-cell.today.completed { border-color: var(--guava-700); box-shadow: none; }
   .habit-cal-cell.empty { cursor: default; color: transparent; }
   .habit-cal-cell.empty:hover { background: none; }
@@ -2501,13 +2490,13 @@
     font-size: var(--fs-search); color: var(--ink-2);
   }
   .ns-item:hover { background: var(--surface-2); }
-  .ns-item.active { background: var(--surface-2); color: var(--navy); font-weight: var(--fw-semibold); box-shadow: inset 3px 0 0 var(--navy); }
+  .ns-item.active { background: var(--surface-2); color: var(--guava-700); font-weight: var(--fw-semibold); box-shadow: inset 3px 0 0 var(--guava-700); }
   .ns-item svg { width: 15px; height: 15px; flex-shrink: 0; }
   .ns-item .cnt { font-size: var(--fs-meta); color: var(--ink-3); font-weight: var(--fw-medium); background: var(--surface-2); padding: var(--space-0-5) var(--space-1-5); border-radius: var(--r-md); margin-left: auto; flex-shrink: 0; }
   .nb-edit-btn { display: none; border: none; background: none; cursor: pointer; padding: var(--space-0-5); border-radius: var(--r-sm); color: var(--ink-3); flex-shrink: 0; }
   .nb-edit-btn:hover { background: var(--hover); color: var(--ink); }
   .ns-item:hover .nb-edit-btn { display: flex; }
-  .ns-item.active .cnt { background: rgba(45,95,166,0.12); color: var(--navy); }
+  .ns-item.active .cnt { background: rgba(45,95,166,0.12); color: var(--guava-700); }
   .ns-divider { height: 1px; background: var(--edge); margin: var(--space-1) var(--space-3); }
   .nb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
@@ -2602,7 +2591,7 @@
     color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
   .tb-btn:hover { background: var(--surface-2); }
-  .tb-btn.tb-active { background: var(--navy); color: #fff; }
+  .tb-btn.tb-active { background: var(--guava-700); color: #fff; }
   .tb-btn svg { width: 15px; height: 15px; }
   .tb-select { padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); font-family: inherit; font-size: var(--fs-meta); cursor: pointer; outline: none; }
   .ne-body { flex: 1; overflow-y: auto; padding: 20px 28px 40px; }
@@ -2642,10 +2631,10 @@
   .ne-text h2 { font-size: var(--fs-card); font-weight: var(--fw-bold); margin: var(--space-5) 0 var(--space-1-5); letter-spacing: -0.2px; }
   .ne-text ul, .ne-text ol { margin: var(--space-1-5) 0 var(--space-2-5) var(--space-4-5); }
   .ne-text li { margin-bottom: var(--space-0-5); }
-  .ne-text blockquote { border-left: 3px solid var(--navy); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
-  .ne-text a { color: var(--navy); text-decoration: underline; cursor: pointer; }
+  .ne-text blockquote { border-left: 3px solid var(--guava-700); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
+  .ne-text a { color: var(--guava-700); text-decoration: underline; cursor: pointer; }
   .ne-text .note-checklist-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-0-5) 0; margin: var(--space-0-5) 0; }
-  .ne-text .note-checklist-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--navy); cursor: pointer; flex-shrink: 0; border-radius: var(--r-sm); }
+  .ne-text .note-checklist-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--guava-700); cursor: pointer; flex-shrink: 0; border-radius: var(--r-sm); }
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--ink-3); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: var(--fs-body); position: absolute; inset: 0; }
@@ -2671,7 +2660,7 @@
     box-shadow: none;
   }
   .nl-item.dragging { opacity: 0.4; }
-  .nl-item.drag-target { border-color: var(--navy); background: rgba(45,95,166,0.06); }
+  .nl-item.drag-target { border-color: var(--guava-700); background: rgba(45,95,166,0.06); }
   .note-action-btn { background: none; border: none; cursor: pointer; padding: var(--space-1-5); border-radius: var(--r-md); color: var(--ink-3); transition: color var(--dur-instant); }
   .note-action-btn:hover { color: var(--ink); background: var(--surface-2); }
   .note-action-btn.starred { color: var(--guava-700); }
@@ -2706,7 +2695,7 @@
   .note-ctx-menu .ctx-submenu:hover .ctx-sub-items { display: block; }
 
   /* Sidebar drop targets */
-  .ns-item.drop-target { background: rgba(45,95,166,0.12); border: 1px dashed var(--navy); }
+  .ns-item.drop-target { background: rgba(45,95,166,0.12); border: 1px dashed var(--guava-700); }
 
   /* ──── MOBILE NOTES ──── */
   @media (max-width: 899.98px) {
@@ -2719,7 +2708,7 @@
     .nl-title { font-size: var(--fs-card); }
     .nl-scroll { padding: var(--space-1) var(--space-3) 120px; }
     .nl-item { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-2); }
-    .nl-item.active { border-color: var(--navy); box-shadow: var(--shadow-card-hover); }
+    .nl-item.active { border-color: var(--guava-700); box-shadow: var(--shadow-card-hover); }
     .notes-editor { display: none; }
     .notes-editor.mobile-open {
       display: flex; position: fixed;
@@ -2742,7 +2731,7 @@
       font-size: var(--fs-pill); font-weight: var(--fw-semibold); color: var(--ink-2); cursor: pointer;
     }
     .mobile-nb-toggle svg { width: 14px; height: 14px; color: var(--ink-3); }
-    .mobile-nb-toggle .current-nb { color: var(--navy); }
+    .mobile-nb-toggle .current-nb { color: var(--guava-700); }
     .mobile-nb-drawer { display: none; background: var(--surface); border-bottom: 1px solid var(--edge); padding: var(--space-1) var(--space-2) var(--space-2); }
     .mobile-nb-drawer.open { display: block; }
     .mobile-nb-drawer .ns-item { padding: var(--space-2) var(--space-2-5); font-size: var(--fs-search); }
@@ -3293,7 +3282,7 @@
     </div>
     <div id="habitExtrasToggle" style="display:none;margin-bottom:10px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink-2)">
-        <input type="checkbox" id="habitAllowExtras" style="accent-color:var(--navy);width:15px;height:15px">
+        <input type="checkbox" id="habitAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
         Allow extras beyond goal
         <span style="font-size:10px;color:var(--ink-3)">(log more than the minimum)</span>
       </label>
@@ -3362,7 +3351,7 @@
       </div>
       <div id="habitEditExtrasToggle" style="display:none;margin-top:8px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink-2)">
-          <input type="checkbox" id="habitEditAllowExtras" style="accent-color:var(--navy);width:15px;height:15px">
+          <input type="checkbox" id="habitEditAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
           Allow extras beyond goal
         </label>
       </div>
@@ -3374,7 +3363,7 @@
       </div>
       <div class="habit-edit-save">
         <button class="btn-cancel" style="padding:6px 14px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer" onclick="closeHabitEdit()">Cancel</button>
-        <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="saveHabitEdit()">Save</button>
+        <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" onclick="saveHabitEdit()">Save</button>
       </div>
     </div>
   </div>
@@ -3465,7 +3454,7 @@
             </div>
             <div id="drillEditExtrasToggle" style="display:none;margin-top:8px">
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink-2)">
-                <input type="checkbox" id="drillEditAllowExtras" style="accent-color:var(--navy);width:15px;height:15px">
+                <input type="checkbox" id="drillEditAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
                 Allow extras beyond goal
               </label>
             </div>
@@ -3476,7 +3465,7 @@
               <button onclick="confirmDeleteHabitDrill()">Delete</button>
             </div>
             <div class="habit-edit-save">
-              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer" onclick="saveHabitDrill()">Save</button>
+              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer" onclick="saveHabitDrill()">Save</button>
             </div>
           </div>
         </div>
@@ -4891,7 +4880,7 @@ function computeScore(habit) {
 
 function scoreColor(score) {
   if (score >= 80) return 'var(--guava-700)';
-  if (score >= 60) return 'var(--navy)';
+  if (score >= 60) return 'var(--guava-700)';
   if (score >= 40) return 'var(--guava-800)';
   return 'var(--guava-700)';
 }
@@ -5227,7 +5216,7 @@ function renderStatsYearly(active) {
     const h = pct > 0 ? (pct / 100) * 65 : 0;
     const isCurrent = y === new Date().getFullYear() && mo === new Date().getMonth();
     const isPast = moStart <= today;
-    const barColor = isCurrent ? 'var(--navy)' : isPast && pct > 0 ? 'var(--guava-700)' : 'var(--surface-2)';
+    const barColor = isCurrent ? 'var(--guava-700)' : isPast && pct > 0 ? 'var(--guava-700)' : 'var(--surface-2)';
     const opacity = isPast ? 1 : 0.2;
     trendHtml += `<div class="st-trend-wrap" style="cursor:pointer" onclick="statsMonth=${mo};statsMonthYear=${y};statsView='monthly';renderHabits()" title="View ${MO_SHORT[mo]} ${y}">${pct > 0 ? `<div class="st-trend-pct">${pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor};opacity:${opacity}"></div><div class="st-trend-mo">${MO_SHORT[mo]}</div></div>`;
   }
@@ -5241,7 +5230,7 @@ function renderStatsYearly(active) {
 
   el.innerHTML = `
     <div class="stat-cards-grid" style="margin-bottom:10px">
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
       <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${bestMonthRate > 0 ? MO_SHORT[bestMonthIdx] : '—'}</div><div class="sc-lbl">Best Month</div></div>
       <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
@@ -5302,7 +5291,7 @@ function renderStatsMonthly(active) {
   }
   weeks.forEach(w => {
     const h = w.pct > 0 ? (w.pct / 100) * 65 : 0;
-    const barColor = w.pct > 0 ? 'var(--navy)' : 'var(--surface-2)';
+    const barColor = w.pct > 0 ? 'var(--guava-700)' : 'var(--surface-2)';
     trendHtml += `<div class="st-trend-wrap">${w.pct > 0 ? `<div class="st-trend-pct">${w.pct}%</div>` : ''}<div class="st-trend-bar" style="height:${Math.max(h, 2)}px;background:${barColor}"></div><div class="st-trend-mo">${w.label}</div></div>`;
   });
 
@@ -5315,7 +5304,7 @@ function renderStatsMonthly(active) {
 
   el.innerHTML = `
     <div class="stat-cards-grid" style="margin-bottom:10px">
-      <div class="stat-card"><div class="sc-val" style="color:var(--navy)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
+      <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${s.completionRate}%</div><div class="sc-lbl">Completion Rate</div></div>
       <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${currentStreak}</div><div class="sc-lbl">Current Streak</div></div>
       <div class="stat-card"><div class="sc-val" style="color:var(--guava-700)">${longestStreak}</div><div class="sc-lbl">Longest Streak</div></div>
     </div>
@@ -6075,7 +6064,7 @@ function renderDrillCalendar() {
   const best = computeBestStreak(drillHabitId);
   document.getElementById('drillCalStreak').innerHTML = `
     <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--guava-700)">${streak}</div><div class="streak-lbl">Current Streak</div></div>
-    <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--navy)">${best}</div><div class="streak-lbl">Best Streak</div></div>
+    <div class="habit-cal-streak-item"><div class="streak-val" style="color:var(--guava-700)">${best}</div><div class="streak-lbl">Best Streak</div></div>
   `;
 }
 
@@ -6130,7 +6119,7 @@ function renderDrillStats() {
 
   document.getElementById('drillStatGrid').innerHTML = `
     <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--guava-700)">${streak}</div><div class="ds-lbl">Current Streak</div></div>
-    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--navy)">${best}</div><div class="ds-lbl">Best Streak</div></div>
+    <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--guava-700)">${best}</div><div class="ds-lbl">Best Streak</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val" style="color:var(--guava-700)">${weekCount}</div><div class="ds-lbl">This Week</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val">${monthCount}</div><div class="ds-lbl">This Month</div></div>
     <div class="habit-drill-stat-card"><div class="ds-val">${yearCount}</div><div class="ds-lbl">This Year</div></div>
@@ -6631,7 +6620,7 @@ function renderNotesSidebar() {
         ${escHTML(nb.name || 'Untitled')} <span class="cnt">${nbCount}</span>
       </div>`;
     });
-    drawerHtml += `<div class="ns-item" onclick="createNotebook();document.getElementById('mobileNbDrawer').classList.remove('open')" style="color:var(--navy);font-weight:600">
+    drawerHtml += `<div class="ns-item" onclick="createNotebook();document.getElementById('mobileNbDrawer').classList.remove('open')" style="color:var(--guava-700);font-weight:600">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Notebook
     </div>`;
@@ -7129,7 +7118,7 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
     <input id="inlinePromptInput" type="text" value="${escAttr(defaultVal || '')}" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button onclick="document.getElementById('inlinePromptOverlay').style.display='none'" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
-      <button id="inlinePromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+      <button id="inlinePromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>`;
   const inp = document.getElementById('inlinePromptInput');
@@ -7200,7 +7189,7 @@ function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onCon
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button onclick="document.getElementById('nbPromptOverlay').style.display='none'" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
-      <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--navy);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+      <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>`;
   const emojiBtn = document.getElementById('nbEmojiBtn');
