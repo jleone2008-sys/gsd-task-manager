@@ -1,5 +1,11 @@
 # Legacy Code Audit & Cleanup — execution plan
 
+> **STATUS: COMPLETE (2026-04-21).** Every phase below has been executed
+> and shipped to `dev`. The runbook is kept for historical reference
+> in case a similar cleanup is needed on a future port. For the
+> current post-cleanup state see the "Legacy audit — completed"
+> section of [PROGRESS.md](PROGRESS.md).
+
 This is a runbook for cleaning up the dead code and aliased tokens
 that built up during the lifestyle redesign port. **Read `PROGRESS.md`
 first** — it has the working rules and broader context.
