@@ -264,7 +264,14 @@
     min-height: 100vh;
   }
   @media (min-width: 900px) {
-    .app-shell { flex-direction: row; }
+    .app-shell {
+      flex-direction: row;
+      /* Cap the overall page width so content doesn't float in empty space
+         on very wide monitors. Sidebar (220px) + main share this cap. */
+      max-width: 1400px;
+      margin: 0 auto;
+      box-shadow: 1px 0 0 var(--edge), -1px 0 0 var(--edge);
+    }
   }
 
   /* ──────────────────────────────────────────────────────────────
@@ -422,8 +429,10 @@
     flex: 1; min-width: 0;
   }
   .logo-main {
-    /* Mobile wordmark — bolder per mockup */
-    display: inline-flex; align-items: baseline; gap: 3px;
+    /* Mobile wordmark — letters + guava dot sit on the same baseline. */
+    display: inline-flex;
+    align-items: flex-end;          /* align along the bottom edge of the letters */
+    gap: 3px;
     font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
     color: var(--ink); line-height: 1;
     text-transform: lowercase;
@@ -434,10 +443,15 @@
     background: var(--guava-700);
     border-radius: 50%;
     font-size: 0; line-height: 0;
-    margin-bottom: 2px;
+    /* Sit flush on the baseline (same line as gsd), not raised above it. */
+    margin-bottom: 0;
     font-style: normal;
     color: transparent;
+    flex-shrink: 0;
   }
+  /* Same rule for the spec .wordmark / .dot pair used in the sidebar. */
+  .wordmark { align-items: flex-end; }
+  .wordmark .dot { margin-bottom: 0; }
 
   /* Page title in header — bolder and larger per mockup */
   .page-title-mobile {
@@ -655,13 +669,20 @@
     .content { padding: 2px 40px 40px; max-width: 720px; }
     /* Habits gets a wider column — charts/stats benefit from the extra room. */
     .content[data-tool-view="habits"] { max-width: 880px; }
-    /* Notes uses a larger reading column, card list is single-column per spec. */
-    .content[data-tool-view="notes"] { max-width: 820px; padding: 2px 40px 40px; }
+    /* Notes: full main-column width so the 3-pane (notebooks | list | editor)
+       layout spans edge-to-edge. No max-width here — it would stuff the panes
+       into a narrow strip in the middle. */
+    .content[data-tool-view="notes"] {
+      max-width: none;
+      padding: 0 20px 20px;
+      margin: 0;
+    }
   }
-  /* Notes mobile: full width, no internal padding; the notes-list paints its own bg and padding. */
+  /* Mobile full-width tools */
   @media (max-width: 899.98px) {
     .content[data-tool-view="notes"] { max-width: none; padding: 0 0 100px; }
-    .content.scratch-view { max-width: none; padding: 0 0 100px; }
+    /* Scratch mobile: keep 20px side padding so text isn't edge-to-edge. */
+    .content.scratch-view { max-width: none; padding: 0 20px 100px; }
   }
 
   /* Section label — matches spec .section-hed (uppercase, --ink-4) */
@@ -2537,8 +2558,19 @@
   }
 
   /* ══════ NOTES ══════ */
-  /* Desktop notes layout fills the main column below sticky topbar (~140px on desktop). */
-  .notes-layout { display: flex; flex-wrap: wrap; height: calc(100vh - 140px); max-width: 100%; margin: 0 auto; transition: all var(--dur-slower) ease; }
+  /* Desktop notes layout: three panes (notebooks | list | editor) in a single
+     row, filling the full main-column width. No flex-wrap — the editor must
+     stay on the RIGHT, not wrap to a new line below the list. */
+  .notes-layout {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    height: calc(100vh - 140px);
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    transition: all var(--dur-slower) ease;
+  }
   .notes-left-col { display: contents; }
   .notes-sidebar {
     width: 240px; background: var(--surface); border-right: 1px solid var(--border);
@@ -3059,10 +3091,9 @@
 <div class="pill-bar" data-tool-view="tasks">
   <div class="pill-bar-inner">
     <button class="pill active" data-filter="all" onclick="setCatFilter('all',this)">All<span class="pill-count" id="pc-all">0</span></button>
-    <button class="pill" data-filter="today" onclick="setCatFilter('today',this)">Today<span class="pill-count" id="pc-today">0</span></button>
-    <button class="pill" data-filter="overdue" onclick="setCatFilter('overdue',this)">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
     <button class="pill" data-filter="priority" onclick="setCatFilter('priority',this)">Priority<span class="pill-count" id="pc-priority">0</span></button>
-    <button class="pill" data-filter="later" onclick="setCatFilter('later',this)">Later<span class="pill-count" id="pc-later">0</span></button>
+    <button class="pill" data-filter="personal" onclick="setCatFilter('personal',this)">Personal<span class="pill-count" id="pc-personal">0</span></button>
+    <button class="pill" data-filter="biz" onclick="setCatFilter('biz',this)">Work<span class="pill-count" id="pc-biz">0</span></button>
   </div>
 </div>
 <div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
@@ -3137,25 +3168,26 @@
   <button class="err-dismiss" onclick="hideToast()">✕</button>
 </div>
 
-<!-- Mobile bottom tab bar — hidden on desktop, shown ≤600px -->
+<!-- Mobile bottom tab bar — icons match the desktop sidebar (sourced from
+     gsd-handoff/screens-lifestyle.jsx's LI icon set). -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav">
   <button class="mobile-nav-btn active" data-tool="tasks">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg>
     <span>Tasks</span>
     <span class="mobile-nav-badge" id="tasksBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="habits">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M4 7l3-3 6 6-3 3z"/><path d="M14 14l6 6"/><circle cx="16" cy="8" r="3"/></svg>
     <span>Habits</span>
     <span class="mobile-nav-badge" id="habitsBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="notes">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M6 4h10l4 4v12H6z"/><path d="M16 4v4h4"/><path d="M9 12h6M9 15h4"/></svg>
     <span>Notes</span>
     <span class="mobile-nav-badge" id="notesBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="scratch">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M4 18l4-12 3 8 3-6 6 10"/></svg>
     <span>Scratch</span>
   </button>
 </nav>
@@ -5313,20 +5345,16 @@ function emptyState(type) {
 
 function render() {
   const c = document.getElementById('taskContainer');
-  const today = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
   let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
   let done = tasks.filter(t=>t.done);
   let view = [...active];
-  // New lifestyle filter set: all · today · overdue · priority · later
-  if (filter==='today')    { view = view.filter(t => t.due === today); done = done.filter(t => t.due === today); }
-  if (filter==='overdue')  { view = view.filter(t => t.due && t.due < today); done = done.filter(t => t.due && t.due < today); }
-  if (filter==='later')    { view = view.filter(t => t.someday || (t.due && t.due > today)); done = done.filter(t => t.someday || (t.due && t.due > today)); }
+  // Tasks filter set: all · priority · personal · biz (Work).
   if (filter==='priority') { view = view.filter(t => t.top3); done = done.filter(t => t.top3); }
-  // Legacy filters (still accepted from older call sites)
-  if (filter==='biz')      { view = view.filter(t=>t.tags.includes('biz')); done = done.filter(t=>t.tags.includes('biz')); }
-  if (filter==='personal') { view = view.filter(t=>t.tags.includes('personal')); done = done.filter(t=>t.tags.includes('personal')); }
+  if (filter==='biz')      { view = view.filter(t=>t.tags?.includes('biz')); done = done.filter(t=>t.tags?.includes('biz')); }
+  if (filter==='personal') { view = view.filter(t=>t.tags?.includes('personal')); done = done.filter(t=>t.tags?.includes('personal')); }
+  // Legacy internal filter still honored by callers not going through the pills.
   if (filter==='someday')  view = view.filter(t=>t.someday);
-  // filterStarred still drives the "Priority" filter — kept for back-compat.
+  // filterStarred drives the Priority pill.
   if (filterStarred && filter !== 'priority') { view = view.filter(t=>t.top3); done = done.filter(t=>t.top3); }
 
   // Apply search across active + done
@@ -5361,32 +5389,43 @@ function render() {
     }
   } else if (filter!=='someday') {
     if (filterStarred) {
-      // Starred filter active — all items in view are already starred
-      const lbl = filter==='biz'?'&#9733; Starred Work':filter==='personal'?'&#9733; Starred Personal':'&#9733; Starred';
+      // Priority filter — all items in view are already t.top3
+      const lbl = filter==='biz'?'Priority · Work':filter==='personal'?'Priority · Personal':'Priority';
       if (view.length) {
         html += slabel(lbl, view.length, true);
         html += `<div class="task-list" data-section="top3">${view.map(t=>tHTML(t)).join('')}</div>`;
       } else {
         html += emptyState('top3');
       }
-    } else {
+    } else if (filter === 'all') {
+      // "All" is the only view that splits into sections. Tag filters (Personal /
+      // Work) render a single list that INCLUDES tagged someday tasks so they
+      // aren't silently hidden.
       const top3 = view.filter(t=>t.top3);
       const regular = view.filter(t=>!t.top3&&!t.someday);
-      const someday = view.filter(t=>t.someday);
+      const someday = view.filter(t=>t.someday && !t.top3);
       if (top3.length) {
-        html += slabel('&#9733; Starred', top3.length, true);
+        html += slabel('Priority', top3.length, true);
         html += `<div class="task-list" data-section="top3">${top3.map(t=>tHTML(t)).join('')}</div>`;
       }
-      const lbl = filter==='biz'?'Work':filter==='personal'?'Personal':'Tasks';
       if (regular.length) {
-        html += slabel(lbl, regular.length, !top3.length);
+        html += slabel('Tasks', regular.length, !top3.length);
         html += `<div class="task-list" data-section="main">${regular.map(t=>tHTML(t)).join('')}</div>`;
-      } else if (!top3.length) {
-        html += emptyState(filter === 'all' ? 'all' : filter);
+      } else if (!top3.length && !someday.length) {
+        html += emptyState('all');
       }
-      if (someday.length && filter==='all') {
+      if (someday.length) {
         html += slabel('Later', someday.length);
         html += `<div class="task-list" data-section="someday">${someday.map(t=>tHTML(t)).join('')}</div>`;
+      }
+    } else {
+      // Tag filter (biz / personal) — single list, no splits, no hidden someday.
+      const lbl = filter === 'biz' ? 'Work' : filter === 'personal' ? 'Personal' : 'Tasks';
+      if (view.length) {
+        html += slabel(lbl, view.length, true);
+        html += `<div class="task-list" data-section="main">${view.map(t=>tHTML(t)).join('')}</div>`;
+      } else {
+        html += emptyState(filter);
       }
     }
   } else {
@@ -5675,14 +5714,13 @@ function reorder(fromId, toId) {
 }
 
 /**
- * New task-pill filter set per lifestyle spec: All · Today · Overdue · Priority · Later.
- * `filter` drives the render predicate in render(). Synonyms kept for DB/legacy:
- *   biz → 'work' tag; personal → 'personal' tag (still supported if called internally).
+ * Tasks filter set: All · Priority · Personal · Work.
+ * `filter` drives the render predicate. 'priority' also flips filterStarred so
+ * the existing top3 branch of render() still works.
  */
 function setCatFilter(f, el) {
   filter = f;
-  filterStarred = (f === 'priority');   // route Priority pill through the existing top3 logic
-  // Clear all pill active states in the Tasks pill-bar, then mark the clicked one.
+  filterStarred = (f === 'priority');
   const bar = document.querySelector('[data-tool-view="tasks"].pill-bar');
   if (bar) bar.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
   if (el) el.classList.add('active');
@@ -5698,20 +5736,14 @@ function setFilter(f, el) {
   setCatFilter(f, el);
 }
 
-/**
- * Recompute and paint the Task pill counts — dynamic per render.
- * Counts reflect incomplete tasks (done tasks are excluded from the pill numbers,
- * matching what the list actually shows by default).
- */
+/** Recompute Task pill counts from real data on every render. */
 function updateTaskPillCounts() {
-  const today = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
   const active = tasks.filter(t => !t.done);
   const counts = {
     all:      active.length,
-    today:    active.filter(t => t.due === today).length,
-    overdue:  active.filter(t => t.due && t.due < today).length,
     priority: active.filter(t => t.top3).length,
-    later:    active.filter(t => t.someday || (t.due && t.due > today)).length,
+    personal: active.filter(t => t.tags?.includes('personal')).length,
+    biz:      active.filter(t => t.tags?.includes('biz')).length,
   };
   for (const [k, v] of Object.entries(counts)) {
     const el = document.getElementById('pc-' + k);
