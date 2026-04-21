@@ -701,7 +701,9 @@
       padding-right: 25px;
     }
     .pill-bar-inner { max-width: none; margin: 0; }
-    .content.scratch-view { max-width: var(--content-max, 810px); }
+    /* Scratch mirrors the Notes footprint on desktop — full main-column
+       width so the writing surface breathes edge-to-edge. */
+    .content.scratch-view { max-width: none; padding: 0 25px 20px; }
     /* Notes is the sole exception: full main-column width so the 3-pane
        (notebooks | list | editor) layout spans edge-to-edge. */
     .content[data-tool-view="notes"] {
@@ -2655,7 +2657,8 @@
     overflow: hidden;                 /* keep scroll inside the rounded box */
     transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
-  .notes-layout:hover { box-shadow: var(--shadow-card-hover); border-color: var(--edge-strong); }
+  /* No :hover on the notes-layout — the box is a container, not a clickable
+     card. The always-hovered state was reading as a permanent highlight. */
   /* Desktop swap: with no active note the list fills the space beside the
      notebooks sidebar; when a note is selected the list is replaced in place
      by the editor. No empty "Select a note…" pane. */
@@ -2831,17 +2834,14 @@
   .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
   .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--muted); }
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: var(--fs-body); position: absolute; inset: 0; }
-  /* Scratch: same card shell as a task card. The rules use !important
-     because the notes-editor mobile override (display: none) fires after
-     these and would otherwise hide scratch entirely on phones — scratch
-     reuses .notes-editor for markup but is ALWAYS in-flow, never an
-     overlay. */
+  /* Scratch: same card shell as a task card, sized to match Notes on desktop.
+     !important beats the notes-editor mobile override (display: none) —
+     scratch reuses .notes-editor for markup but is always in-flow. */
   .scratch-view .notes-layout { height: auto; min-height: auto; display: block; }
   .scratch-view .notes-editor {
     display: flex !important;
     position: static !important;
     min-width: 0;
-    min-height: 60vh;
     background: transparent;
     top: auto; left: auto; right: auto; bottom: auto;
     z-index: auto;
@@ -2857,12 +2857,16 @@
     padding: 20px 24px 40px;
     min-height: 60vh;
   }
+  @media (min-width: 900px) {
+    /* Match the Notes card footprint: same viewport-based height. */
+    .scratch-view .notes-editor { min-height: calc(100vh - 140px); }
+    .scratch-view .ne-page      { min-height: calc(100vh - 140px); }
+  }
   .scratch-view .scratch-header { display: none; }  /* redundant with app header */
   .scratch-view .ne-toolbar {
     background: transparent;
     border: none;
     padding: 0 0 12px;
-    border-bottom: 1px solid var(--edge);
     margin-bottom: 16px;
   }
   .scratch-header { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); font-weight: var(--fw-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--space-2-5); padding-bottom: var(--space-2-5); border-bottom: 1px solid var(--border); }
