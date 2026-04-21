@@ -2668,6 +2668,7 @@
      When a note is selected, .has-active-note swaps the list for the editor
      in the same grid slot instead of showing both. */
   .notes-layout {
+    position: relative;                 /* match .task-item and .habit-card */
     display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
@@ -2678,15 +2679,14 @@
     width: 100%;
     margin: 0;
     background: var(--surface);
-    /* Identical token set to .card / .task-item. overflow: hidden was
-       removed because, combined with border-radius, it caused the
-       browser to anti-alias the outer corner differently than the shadow —
-       which is what was reading as 'sharper corners' than the task cards.
-       Inner columns have their own backgrounds matching --surface, so
-       nothing visually 'leaks' past the rounded corner. */
+    /* Identical set of declarations to .card / .task-item / .habit-card so
+       the box renders exactly the same way: same border, same --r-md, same
+       --shadow-card, and same overflow: hidden (both task cards and habit
+       cards use it — my earlier removal is what made notes drift). */
     border: 1px solid var(--edge);
     border-radius: var(--r-md);
     box-shadow: var(--shadow-card);
+    overflow: hidden;
     transition: none;
   }
   /* No :hover on the notes-layout — the box is a container, not a clickable
