@@ -797,16 +797,6 @@
     background: var(--guava-700);
     border-color: var(--guava-700);
   }
-  .card.is-done .check::after,
-  .task-item.done .check::after {
-    content: '';
-    position: absolute;
-    left: 4px; top: 7px;
-    width: 8px; height: 4px;
-    border-left: 1.5px solid #fff;
-    border-bottom: 1.5px solid #fff;
-    transform: rotate(-45deg);
-  }
 
   /* Legacy .checkbox — task-item still references it; matches .check above
      (flex child of .card-head, centered via align-items: center). */
@@ -828,15 +818,6 @@
   .task-item.done .checkbox {
     background: var(--guava-700);
     border-color: var(--guava-700);
-  }
-  .task-item.done .checkbox::after {
-    content: '';
-    position: absolute;
-    left: 4px; top: 7px;
-    width: 8px; height: 4px;
-    border-left: 1.5px solid #fff;
-    border-bottom: 1.5px solid #fff;
-    transform: rotate(-45deg);
   }
   .checkbox svg { display: none; }
 
