@@ -924,12 +924,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    /* Left inset = 10% of parent (same spine anchor as before).
-       Right inset mirrors the spine's position inside the left inset:
-       spine sits 36px inside the 10% gutter, so the card's right edge
-       mirrors that offset, giving a symmetric visual inset. */
-    margin-left: 10%;
-    margin-right: calc(10% - 36px);
+    width: 80%;
+    margin: 0 auto;
     animation: expandIn var(--dur) var(--ease);
   }
   .subtask-wrap { position: relative; }
