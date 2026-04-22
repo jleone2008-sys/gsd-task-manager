@@ -268,3 +268,7 @@ function nextSubtaskPosition(taskClientId) {
   return Math.max(...arr.map(s => s.position ?? 0)) + 10;
 }
 
+/* ── ERROR TOAST HANDLERS ── */
+document.getElementById('errRetry').addEventListener('click', retrySyncAll);
+document.getElementById('errDismissBtn').addEventListener('click', hideToast);
+

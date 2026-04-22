@@ -81,3 +81,13 @@ function toggleFaq(btn) {
   document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
   if (!isOpen) item.classList.add('open');
 }
+
+/* ── FAQ MODAL HANDLERS ── */
+document.getElementById('faqModal').addEventListener('click', function(e) {
+  if (e.target === this) closeFaqModal();
+});
+document.getElementById('faqModalClose').addEventListener('click', closeFaqModal);
+document.getElementById('faqModal').querySelector('.modal-body').addEventListener('click', e => {
+  const q = e.target.closest('.faq-q');
+  if (q) toggleFaq(q);
+});

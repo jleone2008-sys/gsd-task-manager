@@ -277,30 +277,30 @@ function renderNotesSidebar() {
   const trashCount = notesArr.filter(n => n.trashed).length;
 
   let html = `<div class="ns-section">
-    <div class="ns-item${notesSidebarView==='all'?' active':''}" onclick="setNotesSidebarView('all')">
+    <div class="ns-item${notesSidebarView==='all'?' active':''}" data-notes-action="view" data-view="all">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       <span>All Notes</span><span class="cnt">${allCount}</span>
     </div>
-    <div class="ns-item${notesSidebarView==='starred'?' active':''}" onclick="setNotesSidebarView('starred')">
+    <div class="ns-item${notesSidebarView==='starred'?' active':''}" data-notes-action="view" data-view="starred">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76V6a2 2 0 1 1 4 0v4.76l3 1.54V15H6v-2.7l3-1.54z"/></svg>
       <span>Pinned</span><span class="cnt">${starCount}</span>
     </div>
-    <div class="ns-item${notesSidebarView==='trash'?' active':''}" onclick="setNotesSidebarView('trash')">
+    <div class="ns-item${notesSidebarView==='trash'?' active':''}" data-notes-action="view" data-view="trash">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       <span>Trash</span><span class="cnt">${trashCount}</span>
     </div>
   </div>
   <div class="ns-divider"></div>
   <div class="ns-section">
-    <div class="ns-label">Notebooks<button onclick="createNotebook()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button></div>`;
+    <div class="ns-label">Notebooks<button data-notes-action="create-notebook"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button></div>`;
   notebooksArr.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(nb => {
     const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
     const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
     const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
-    html += `<div class="ns-item${active}" draggable="true" data-nb-id="${nb.id}" onclick="setNotesSidebarView('notebook-${nb.id}')" oncontextmenu="event.preventDefault();showNotebookMenu(event,${nb.id})">
+    html += `<div class="ns-item${active}" draggable="true" data-nb-id="${nb.id}" data-notes-action="view-notebook">
       ${nbIcon}
       <span>${escHTML(nb.name || 'Untitled')}</span><span class="cnt">${nbCount}</span>
-      <button class="nb-edit-btn" onclick="event.stopPropagation();showNotebookMenu(event,${nb.id})" title="Edit notebook">
+      <button class="nb-edit-btn" data-notes-action="show-nb-menu" data-nb-id="${nb.id}" title="Edit notebook">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </button>
     </div>`;
@@ -393,15 +393,15 @@ function renderNotesSidebar() {
   }
   if (mobileDrawer) {
     let drawerHtml = `
-      <div class="ns-item${notesSidebarView==='all'?' active':''}" onclick="setNotesSidebarView('all');document.getElementById('mobileNbDrawer').classList.remove('open')">
+      <div class="ns-item${notesSidebarView==='all'?' active':''}" data-notes-action="view-mobile" data-view="all">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         All Notes <span class="cnt">${allCount}</span>
       </div>
-      <div class="ns-item${notesSidebarView==='starred'?' active':''}" onclick="setNotesSidebarView('starred');document.getElementById('mobileNbDrawer').classList.remove('open')">
+      <div class="ns-item${notesSidebarView==='starred'?' active':''}" data-notes-action="view-mobile" data-view="starred">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76V6a2 2 0 1 1 4 0v4.76l3 1.54V15H6v-2.7l3-1.54z"/></svg>
         Pinned <span class="cnt">${starCount}</span>
       </div>
-      <div class="ns-item${notesSidebarView==='trash'?' active':''}" onclick="setNotesSidebarView('trash');document.getElementById('mobileNbDrawer').classList.remove('open')">
+      <div class="ns-item${notesSidebarView==='trash'?' active':''}" data-notes-action="view-mobile" data-view="trash">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         Trash <span class="cnt">${trashCount}</span>
       </div>`;
@@ -409,12 +409,12 @@ function renderNotesSidebar() {
       const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
       const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
       const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
-      drawerHtml += `<div class="ns-item${active}" onclick="setNotesSidebarView('notebook-${nb.id}');document.getElementById('mobileNbDrawer').classList.remove('open')">
+      drawerHtml += `<div class="ns-item${active}" data-notes-action="view-notebook-mobile" data-nb-id="${nb.id}">
         ${nbIcon}
         ${escHTML(nb.name || 'Untitled')} <span class="cnt">${nbCount}</span>
       </div>`;
     });
-    drawerHtml += `<div class="ns-item" onclick="createNotebook();document.getElementById('mobileNbDrawer').classList.remove('open')" style="color:var(--guava-700);font-weight:600">
+    drawerHtml += `<div class="ns-item" data-notes-action="create-notebook-mobile" style="color:var(--guava-700);font-weight:600">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Notebook
     </div>`;
@@ -439,9 +439,9 @@ function updateNlTitle() {
   }
   let extra = '';
   if (notesSidebarView === 'trash' && list.length > 0) {
-    extra = `<button onclick="emptyTrash()" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:var(--guava-700);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px" onmouseover="this.style.background='var(--guava-700)10a';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='var(--guava-700)'">Empty Trash</button>`;
+    extra = `<button data-notes-action="empty-trash" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:var(--guava-700);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px">Empty Trash</button>`;
   } else if (notesSidebarView !== 'trash') {
-    extra = `<button onclick="enterNoteSelectMode()" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--ink-3);display:flex;align-items:center">
+    extra = `<button data-notes-action="enter-select-mode" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--ink-3);display:flex;align-items:center">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
     </button>`;
   }
@@ -467,13 +467,13 @@ function renderNoteList() {
       const cnt = selectedNoteIds.size;
       bulkBar.style.display = '';
       bulkBar.innerHTML = `
-        <button onclick="toggleSelectAllNotes()">
+        <button data-notes-action="toggle-select-all">
           ${cnt === list.length && list.length > 0 ? 'Deselect all' : 'Select all'}
         </button>
-        <button class="danger" onclick="bulkTrashNotes()" ${cnt === 0 ? 'disabled' : ''}>Trash (${cnt})</button>
-        <button onclick="bulkMoveNotes(event)" ${cnt === 0 ? 'disabled' : ''}>Move (${cnt})</button>
+        <button class="danger" data-notes-action="bulk-trash" ${cnt === 0 ? 'disabled' : ''}>Trash (${cnt})</button>
+        <button data-notes-action="bulk-move" ${cnt === 0 ? 'disabled' : ''}>Move (${cnt})</button>
         <span class="bulk-count">${cnt} selected</span>
-        <button onclick="exitNoteSelectMode()" style="border:none;padding:4px;color:var(--ink-3)">✕</button>`;
+        <button data-notes-action="exit-select-mode" style="border:none;padding:4px;color:var(--ink-3)">✕</button>`;
     } else {
       bulkBar.style.display = 'none';
     }
@@ -519,20 +519,20 @@ function renderNoteList() {
       ? `<span class="chip chip--${toneFor(nb.color)}">${escHTML(nb.name)}</span>`
       : '';
     if (notesSidebarView === 'trash') {
-      html += `<div class="nl-item${active}${selClass}" data-note-id="${n.id}" oncontextmenu="showNoteContextMenu(event,${n.id})">
+      html += `<div class="nl-item${active}${selClass}" data-note-id="${n.id}" data-notes-ctx="note">
         <div class="nl-item-head">
           <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
           <div class="nl-item-date">${date}</div>
         </div>
         <div class="nl-item-preview">${escHTML(preview)}</div>
         <div class="nl-item-meta" style="gap:6px">
-          <button onclick="event.stopPropagation();restoreNote(${n.id})" class="expand-action">Restore</button>
-          <button onclick="event.stopPropagation();permanentDeleteNote(${n.id})" class="expand-action" style="color:var(--guava-700);border-color:var(--guava-200)">Delete</button>
+          <button data-notes-action="note-restore" class="expand-action">Restore</button>
+          <button data-notes-action="note-permanent-delete" class="expand-action" style="color:var(--guava-700);border-color:var(--guava-200)">Delete</button>
         </div>
       </div>`;
     } else {
-      html += `<div class="nl-item${active}${selClass}" onclick="${noteSelectMode ? `toggleNoteSelect(${n.id})` : `selectNote(${n.id})`}" data-note-id="${n.id}" draggable="true" style="animation-delay:${list.indexOf(n) * 0.03}s" oncontextmenu="showNoteContextMenu(event,${n.id})">
-        <input type="checkbox" class="nl-checkbox" ${checked} onclick="event.stopPropagation();toggleNoteSelect(${n.id})">
+      html += `<div class="nl-item${active}${selClass}" data-notes-action="note-click" data-note-id="${n.id}" draggable="true" style="animation-delay:${list.indexOf(n) * 0.03}s" data-notes-ctx="note">
+        <input type="checkbox" class="nl-checkbox" ${checked} data-notes-action="note-toggle-select">
         <div class="nl-item-head">
           <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
           <div class="nl-item-date">${date}</div>
@@ -586,27 +586,27 @@ function renderNoteEditor() {
 
   el.innerHTML = `
     <div class="mobile-note-header">
-      <button class="mobile-note-back" onclick="deselectNote()">
+      <button class="mobile-note-back" data-notes-action="deselect-note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <div class="mobile-note-actions">
-        <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
+        <button class="mobile-note-action" data-notes-mousedown="exec-undo" title="Undo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         </button>
-        <button class="mobile-note-action" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
+        <button class="mobile-note-action" data-notes-mousedown="exec-redo" title="Redo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="confirmTrashNote()" title="Trash" style="color:var(--guava-700)">
+        <button class="mobile-note-action" data-notes-action="confirm-trash" title="Trash" style="color:var(--guava-700)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
-        <button class="mobile-note-action" onclick="toggleNoteStar()" title="Star">
+        <button class="mobile-note-action" data-notes-action="toggle-star" title="Star">
           <svg viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2" style="color:var(--guava-700)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>
     </div>
     <div class="ne-body">
       <div class="ne-page">
-        <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" oninput="onNoteTitleChange(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
+        <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="ne-meta">
           <div class="ne-meta-item">
             ${noteNbTag}
@@ -616,72 +616,72 @@ function renderNoteEditor() {
             Edited ${formatNoteDate(note.updatedAt)}
           </div>
           <div class="ne-meta-item" style="margin-left:auto;gap:8px">
-            <select onchange="handleNoteNbChange(this, ${note.id})" style="border:1px solid var(--edge);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--ink-2);cursor:pointer">
+            <select data-notes-change="note-nb" data-note-id="${note.id}" style="border:1px solid var(--edge);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--ink-2);cursor:pointer">
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
-            <button class="note-action-btn" onclick="confirmTrashNote()" title="Move to Trash" style="color:var(--guava-700);padding:3px">
+            <button class="note-action-btn" data-notes-action="confirm-trash" title="Move to Trash" style="color:var(--guava-700);padding:3px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
-            <button class="note-action-btn${note.starred ? ' starred' : ''}" id="noteStarBtn" onclick="toggleNoteStar()" title="Star" style="padding:3px">
+            <button class="note-action-btn${note.starred ? ' starred' : ''}" id="noteStarBtn" data-notes-action="toggle-star" title="Star" style="padding:3px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
           </div>
         </div>
         <div class="ne-toolbar">
           <div class="tb-group tb-desktop-only">
-            <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('undo')" title="Undo">
+            <button class="tb-btn" data-notes-mousedown="exec-undo" title="Undo">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
-            <button class="tb-btn" onmousedown="event.preventDefault();document.execCommand('redo')" title="Redo">
+            <button class="tb-btn" data-notes-mousedown="exec-redo" title="Redo">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
             </button>
           </div>
           <div class="tb-group">
-            <select class="tb-select" onchange="noteHeading(this.value)">
+            <select class="tb-select" data-notes-change="note-heading">
               <option value="p">Normal</option>
               <option value="h1">Heading 1</option>
               <option value="h2">Heading 2</option>
             </select>
           </div>
           <div class="tb-group">
-            <button class="tb-btn" onmousedown="noteCmd(event,'bold')" title="Bold">
+            <button class="tb-btn" data-notes-cmd="bold" title="Bold">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
             </button>
-            <button class="tb-btn" onmousedown="noteCmd(event,'italic')" title="Italic">
+            <button class="tb-btn" data-notes-cmd="italic" title="Italic">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
             </button>
-            <button class="tb-btn" onmousedown="noteCmd(event,'underline')" title="Underline">
+            <button class="tb-btn" data-notes-cmd="underline" title="Underline">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
             </button>
           </div>
           <div class="tb-group">
-            <button class="tb-btn" onmousedown="noteInsertChecklist(event)" title="Checklist">
+            <button class="tb-btn" data-notes-mousedown="checklist" title="Checklist">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M5 8l1.5 1.5L9 6"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
             </button>
-            <button class="tb-btn" onmousedown="noteCmd(event,'insertUnorderedList')" title="Bullet list">
+            <button class="tb-btn" data-notes-cmd="insertUnorderedList" title="Bullet list">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
             </button>
-            <button class="tb-btn" onmousedown="noteCmd(event,'insertOrderedList')" title="Numbered list">
+            <button class="tb-btn" data-notes-cmd="insertOrderedList" title="Numbered list">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="4" y="7.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">1</text><text x="4" y="13.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">2</text><text x="4" y="19.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">3</text></svg>
             </button>
-            <button class="tb-btn" onmousedown="noteInsertLink(event)" title="Insert link">
+            <button class="tb-btn" data-notes-mousedown="link" title="Insert link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             </button>
-            <button class="tb-btn tb-highlight" onmousedown="noteHighlight(event)" title="Highlight" style="background:var(--highlight-yellow);border-radius:var(--r-sm)">
+            <button class="tb-btn tb-highlight" data-notes-mousedown="highlight" title="Highlight" style="background:var(--highlight-yellow);border-radius:var(--r-sm)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </button>
           </div>
           <div class="tb-group">
-            <button class="tb-btn" onmousedown="noteCmd(event,'indent')" title="Indent">
+            <button class="tb-btn" data-notes-cmd="indent" title="Indent">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="3 12 6 14 3 16"/></svg>
             </button>
-            <button class="tb-btn" onmousedown="noteCmd(event,'outdent')" title="Outdent">
+            <button class="tb-btn" data-notes-cmd="outdent" title="Outdent">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
             </button>
           </div>
         </div>
-        <div class="ne-text" id="noteContentEditable" contenteditable="true" data-placeholder="Start writing..." oninput="onNoteContentChange()">${note.content}</div>
+        <div class="ne-text" id="noteContentEditable" contenteditable="true" data-placeholder="Start writing...">${note.content}</div>
       </div>
     </div>
   `;
@@ -873,11 +873,11 @@ function showNotebookMenu(e, id) {
     minWidth:'140px', animation:'fadeUp 0.15s ease both'
   });
   menu.innerHTML = `
-    <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();renameNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--ink)">
+    <button data-notes-action="nb-rename" data-nb-id="${id}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--ink)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Edit
     </button>
-    <button onclick="event.stopPropagation();this.closest('.nb-context-menu').remove();deleteNotebook(${id})" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--guava-700)">
+    <button data-notes-action="nb-delete" data-nb-id="${id}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--guava-700)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Delete
     </button>`;
@@ -911,7 +911,7 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
     <div style="font-size:15px;font-weight:700;margin-bottom:12px">${title}</div>
     <input id="inlinePromptInput" type="text" value="${escAttr(defaultVal || '')}" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-      <button onclick="document.getElementById('inlinePromptOverlay').style.display='none'" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
+      <button data-notes-action="close-inline-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
       <button id="inlinePromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>`;
@@ -973,16 +973,16 @@ function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onCon
       </div>
     </div>
     <div class="emoji-grid" id="nbEmojiGrid" style="display:none">
-      ${NB_EMOJIS.map(e => `<button onclick="document.getElementById('nbEmojiBtn').textContent='${e}';document.getElementById('nbEmojiGrid').style.display='none'">${e}</button>`).join('')}
+      ${NB_EMOJIS.map(e => `<button data-nb-emoji="${e}">${e}</button>`).join('')}
     </div>
     <div style="margin-bottom:14px">
       <div style="font-size:11px;color:var(--ink-3);margin-bottom:6px;font-weight:500">Color</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="nbColorPicker">
-        ${NB_COLORS.map(c => `<button onclick="document.querySelectorAll('#nbColorPicker button').forEach(b=>b.style.outline='none');this.style.outline='2px solid var(--ink)';this.dataset.selected='true'" data-color="${c}" style="width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;background:${c}${c === selectedColor ? ';outline:2px solid var(--ink)' : ''}" ${c === selectedColor ? 'data-selected="true"' : ''}></button>`).join('')}
+        ${NB_COLORS.map(c => `<button data-nb-color="${c}" data-color="${c}" style="width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;background:${c}${c === selectedColor ? ';outline:2px solid var(--ink)' : ''}" ${c === selectedColor ? 'data-selected="true"' : ''}></button>`).join('')}
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-      <button onclick="document.getElementById('nbPromptOverlay').style.display='none'" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
+      <button data-notes-action="close-nb-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
       <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>`;
@@ -1132,11 +1132,11 @@ function bulkMoveNotes(e) {
   document.querySelectorAll('.note-ctx-menu').forEach(m => m.remove());
   const menu = document.createElement('div');
   menu.className = 'note-ctx-menu';
-  let html = `<button onclick="this.closest('.note-ctx-menu').remove();bulkMoveToNotebook(null)">
+  let html = `<button data-notes-action="ctx-bulk-move-nb" data-nb-id="">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     No notebook</button>`;
   notebooksArr.forEach(nb => {
-    html += `<button onclick="this.closest('.note-ctx-menu').remove();bulkMoveToNotebook(${nb.id})">
+    html += `<button data-notes-action="ctx-bulk-move-nb" data-nb-id="${nb.id}">
       <div class="nb-dot" style="background:${nb.color}"></div>${escHTML(nb.name)}</button>`;
   });
   menu.innerHTML = html;
@@ -1169,17 +1169,17 @@ function showNoteContextMenu(e, noteId) {
   let html = '';
   if (note.trashed) {
     html = `
-      <button onclick="this.closest('.note-ctx-menu').remove();restoreNote(${noteId})">
+      <button data-notes-action="ctx-restore" data-note-id="${noteId}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         Restore</button>
-      <button class="danger" onclick="this.closest('.note-ctx-menu').remove();permanentDeleteNote(${noteId})">
+      <button class="danger" data-notes-action="ctx-permanent-delete" data-note-id="${noteId}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         Delete permanently</button>`;
   } else {
     const starLabel = note.starred ? 'Unstar' : 'Star';
     const starFill = note.starred ? 'currentColor' : 'none';
     html = `
-      <button onclick="this.closest('.note-ctx-menu').remove();activeNoteId=${noteId};toggleNoteStar()">
+      <button data-notes-action="ctx-star" data-note-id="${noteId}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         ${starLabel}</button>
       <div class="ctx-submenu">
@@ -1188,17 +1188,17 @@ function showNoteContextMenu(e, noteId) {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         <div class="ctx-sub-items">
-          <button onclick="this.closest('.note-ctx-menu').remove();moveNoteToNotebook(${noteId},null)">No notebook</button>`;
+          <button data-notes-action="ctx-move-nb" data-note-id="${noteId}" data-nb-id="">No notebook</button>`;
     notebooksArr.forEach(nb => {
-      html += `<button onclick="this.closest('.note-ctx-menu').remove();moveNoteToNotebook(${noteId},${nb.id})">
+      html += `<button data-notes-action="ctx-move-nb" data-note-id="${noteId}" data-nb-id="${nb.id}">
         <div class="nb-dot" style="background:${nb.color}"></div>${escHTML(nb.name)}</button>`;
     });
     html += `</div></div>
-      <button onclick="this.closest('.note-ctx-menu').remove();enterNoteSelectMode();toggleNoteSelect(${noteId})">
+      <button data-notes-action="ctx-select" data-note-id="${noteId}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
         Select</button>
       <div class="ctx-divider"></div>
-      <button class="danger" onclick="this.closest('.note-ctx-menu').remove();activeNoteId=${noteId};trashNote()">
+      <button class="danger" data-notes-action="ctx-trash" data-note-id="${noteId}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         Move to Trash</button>`;
   }
@@ -1260,3 +1260,129 @@ function onNoteDrop(e) {
   // Save all reordered notes
   list.forEach(n => saveNoteToDB(n));
 }
+
+/* ── MOBILE NOTEBOOK DRAWER TOGGLE ── */
+document.getElementById('mobileNbToggle').addEventListener('click', () => {
+  document.getElementById('mobileNbDrawer').classList.toggle('open');
+});
+
+/* ── NOTES DOM DELEGATION ──
+ * Notes UI is rendered into multiple dynamic containers (sidebar, mobile
+ * drawer, notes list, editor). Document-level delegation keyed on
+ * [data-notes-action] + [data-notes-cmd] + [data-notes-mousedown] +
+ * [data-notes-change] binds once and survives every re-render.
+ */
+
+// Click dispatcher
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-notes-action]');
+  if (!el) return;
+  const action = el.dataset.notesAction;
+  const nbId = el.dataset.nbId;
+  const nbIdNum = nbId === '' ? null : (nbId !== undefined ? parseInt(nbId) : null);
+  const noteId = el.dataset.noteId ? parseInt(el.dataset.noteId) : null;
+  const view = el.dataset.view || null;
+
+  // Context-menu auto-close
+  const noteCtxMenu = el.closest('.note-ctx-menu');
+  const nbCtxMenu = el.closest('.nb-context-menu');
+  const closeDrawer = () => document.getElementById('mobileNbDrawer').classList.remove('open');
+
+  switch (action) {
+    case 'view':            setNotesSidebarView(view); return;
+    case 'view-mobile':     setNotesSidebarView(view); closeDrawer(); return;
+    case 'view-notebook':   setNotesSidebarView('notebook-' + el.dataset.nbId); return;
+    case 'view-notebook-mobile': setNotesSidebarView('notebook-' + el.dataset.nbId); closeDrawer(); return;
+    case 'create-notebook': createNotebook(); return;
+    case 'create-notebook-mobile': createNotebook(); closeDrawer(); return;
+    case 'show-nb-menu':    e.stopPropagation(); showNotebookMenu(e, nbIdNum); return;
+    case 'empty-trash':     emptyTrash(); return;
+    case 'enter-select-mode': enterNoteSelectMode(); return;
+    case 'toggle-select-all': toggleSelectAllNotes(); return;
+    case 'bulk-trash':      bulkTrashNotes(); return;
+    case 'bulk-move':       bulkMoveNotes(e); return;
+    case 'exit-select-mode': exitNoteSelectMode(); return;
+    case 'note-click':
+      if (noteSelectMode) toggleNoteSelect(noteId);
+      else selectNote(noteId);
+      return;
+    case 'note-toggle-select': e.stopPropagation(); toggleNoteSelect(noteId); return;
+    case 'note-restore':    e.stopPropagation(); restoreNote(noteId); return;
+    case 'note-permanent-delete': e.stopPropagation(); permanentDeleteNote(noteId); return;
+    case 'deselect-note':   deselectNote(); return;
+    case 'confirm-trash':   confirmTrashNote(); return;
+    case 'toggle-star':     toggleNoteStar(); return;
+    case 'nb-rename':       e.stopPropagation(); if (nbCtxMenu) nbCtxMenu.remove(); renameNotebook(nbIdNum); return;
+    case 'nb-delete':       e.stopPropagation(); if (nbCtxMenu) nbCtxMenu.remove(); deleteNotebook(nbIdNum); return;
+    case 'close-inline-prompt': document.getElementById('inlinePromptOverlay').style.display = 'none'; return;
+    case 'close-nb-prompt': document.getElementById('nbPromptOverlay').style.display = 'none'; return;
+    case 'ctx-bulk-move-nb': if (noteCtxMenu) noteCtxMenu.remove(); bulkMoveToNotebook(nbIdNum); return;
+    case 'ctx-restore':     if (noteCtxMenu) noteCtxMenu.remove(); restoreNote(noteId); return;
+    case 'ctx-permanent-delete': if (noteCtxMenu) noteCtxMenu.remove(); permanentDeleteNote(noteId); return;
+    case 'ctx-star':        if (noteCtxMenu) noteCtxMenu.remove(); activeNoteId = noteId; toggleNoteStar(); return;
+    case 'ctx-move-nb':     if (noteCtxMenu) noteCtxMenu.remove(); moveNoteToNotebook(noteId, nbIdNum); return;
+    case 'ctx-select':      if (noteCtxMenu) noteCtxMenu.remove(); enterNoteSelectMode(); toggleNoteSelect(noteId); return;
+    case 'ctx-trash':       if (noteCtxMenu) noteCtxMenu.remove(); activeNoteId = noteId; trashNote(); return;
+  }
+});
+
+// NB emoji grid click (inline DOM manipulation)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-nb-emoji]');
+  if (!btn) return;
+  document.getElementById('nbEmojiBtn').textContent = btn.dataset.nbEmoji;
+  document.getElementById('nbEmojiGrid').style.display = 'none';
+});
+
+// NB color picker (inline DOM manipulation)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-nb-color]');
+  if (!btn) return;
+  document.querySelectorAll('#nbColorPicker button').forEach(b => b.style.outline = 'none');
+  btn.style.outline = '2px solid var(--ink)';
+  btn.dataset.selected = 'true';
+});
+
+// Rich toolbar — mousedown (preserves selection)
+document.addEventListener('mousedown', e => {
+  const cmdBtn = e.target.closest('[data-notes-cmd]');
+  if (cmdBtn) { noteCmd(e, cmdBtn.dataset.notesCmd); return; }
+  const actBtn = e.target.closest('[data-notes-mousedown]');
+  if (!actBtn) return;
+  const action = actBtn.dataset.notesMousedown;
+  if (action === 'exec-undo') { e.preventDefault(); document.execCommand('undo'); return; }
+  if (action === 'exec-redo') { e.preventDefault(); document.execCommand('redo'); return; }
+  if (action === 'checklist') { noteInsertChecklist(e); return; }
+  if (action === 'link')      { noteInsertLink(e); return; }
+  if (action === 'highlight') { noteHighlight(e); return; }
+});
+
+// Change dispatcher (note heading <select>, notebook <select>)
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-notes-change]');
+  if (!el) return;
+  const kind = el.dataset.notesChange;
+  if (kind === 'note-heading') return noteHeading(el.value);
+  if (kind === 'note-nb') return handleNoteNbChange(el, parseInt(el.dataset.noteId));
+});
+
+// Input dispatcher for note title + content (dynamically rendered)
+document.addEventListener('input', e => {
+  if (e.target.id === 'noteTitleInput') return onNoteTitleChange(e.target.value);
+  if (e.target.id === 'noteContentEditable') return onNoteContentChange();
+});
+
+// Context menu dispatcher (right-click on notes / notebooks)
+document.addEventListener('contextmenu', e => {
+  const noteEl = e.target.closest('[data-notes-ctx="note"][data-note-id]');
+  if (noteEl) {
+    e.preventDefault();
+    showNoteContextMenu(e, parseInt(noteEl.dataset.noteId));
+    return;
+  }
+  const nbEl = e.target.closest('.ns-item[data-nb-id]');
+  if (nbEl && nbEl.dataset.notesAction === 'view-notebook') {
+    e.preventDefault();
+    showNotebookMenu(e, parseInt(nbEl.dataset.nbId));
+  }
+});

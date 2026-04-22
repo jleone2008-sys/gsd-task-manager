@@ -256,8 +256,8 @@ function renderDrillCalendar() {
     if (completed) cls += ' completed';
     if (isToday) cls += ' today';
     if (isFuture) cls += ' future';
-    const onclick = isFuture ? '' : `onclick="toggleDrillCompletion('${ds}')"`;
-    html += `<div class="${cls}" ${onclick}>${d}</div>`;
+    const dataAttr = isFuture ? '' : `data-drill-date="${ds}"`;
+    html += `<div class="${cls}" ${dataAttr}>${d}</div>`;
   }
 
   document.getElementById('drillCalGrid').innerHTML = html;
@@ -406,4 +406,77 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('habitDrillOverlay').classList.contains('open')) {
     closeDrillIn();
   }
+});
+
+/* ── HABIT CREATE PANEL HANDLERS ── */
+document.getElementById('habitCreatePanel').addEventListener('click', function(e) {
+  if (e.target === this) closeHabitCreatePanel();
+});
+document.getElementById('habitEmojiBtn').addEventListener('click', () => {
+  const g = document.getElementById('habitEmojiGrid');
+  g.style.display = g.style.display === 'grid' ? 'none' : 'grid';
+});
+document.getElementById('habitNameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addHabit();
+  else if (e.key === 'Escape') closeHabitCreatePanel();
+});
+document.getElementById('habitCreateCancelBtn').addEventListener('click', closeHabitCreatePanel);
+document.getElementById('habitCreateAddBtn').addEventListener('click', addHabit);
+
+/* ── HABIT EDIT OVERLAY HANDLERS ── */
+document.getElementById('habitEditOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeHabitEdit();
+});
+document.getElementById('habitEditEmojiBtn').addEventListener('click', () => {
+  const g = document.getElementById('habitEditEmojiGrid');
+  g.style.display = g.style.display === 'grid' ? 'none' : 'grid';
+});
+document.getElementById('habitEditName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveHabitEdit();
+});
+document.getElementById('habitEditArchiveBtn').addEventListener('click', archiveHabit);
+document.getElementById('habitEditDeleteBtn').addEventListener('click', confirmDeleteHabit);
+document.getElementById('habitEditCancelBtn').addEventListener('click', closeHabitEdit);
+document.getElementById('habitEditSaveBtn').addEventListener('click', saveHabitEdit);
+
+/* ── HABIT DRILL-IN HANDLERS ── */
+document.getElementById('habitDrillOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeDrillIn();
+});
+document.getElementById('habitDrillBackBtn').addEventListener('click', closeDrillIn);
+document.querySelectorAll('.habit-drill-tabs [data-drill-tab]').forEach(btn => {
+  btn.addEventListener('click', () => switchDrillTab(btn.dataset.drillTab));
+});
+document.getElementById('drillCalPrevBtn').addEventListener('click', drillCalPrev);
+document.getElementById('drillCalNextBtn').addEventListener('click', drillCalNext);
+document.getElementById('drillEditEmojiBtn').addEventListener('click', () => {
+  const g = document.getElementById('drillEditEmojiGrid');
+  g.style.display = g.style.display === 'grid' ? 'none' : 'grid';
+});
+document.getElementById('drillEditName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveHabitDrill();
+});
+document.getElementById('drillEditArchiveBtn').addEventListener('click', archiveHabitDrill);
+document.getElementById('drillEditDeleteBtn').addEventListener('click', confirmDeleteHabitDrill);
+document.getElementById('drillEditSaveBtn').addEventListener('click', saveHabitDrill);
+
+/* ── DRILL CALENDAR DELEGATION ── */
+document.getElementById('drillCalGrid').addEventListener('click', e => {
+  const cell = e.target.closest('.habit-cal-cell[data-drill-date]');
+  if (cell) toggleDrillCompletion(cell.dataset.drillDate);
+});
+
+/* ── EMOJI GRIDS (delegation on each grid, buttons carry data-emoji) ── */
+const _emojiPickers = {
+  create: pickHabitEmoji,
+  edit:   pickHabitEditEmoji,
+  drill:  pickDrillEditEmoji,
+};
+['habitEmojiGrid', 'habitEditEmojiGrid', 'drillEditEmojiGrid'].forEach(gridId => {
+  document.getElementById(gridId).addEventListener('click', e => {
+    const btn = e.target.closest('button[data-emoji]');
+    if (!btn) return;
+    const fn = _emojiPickers[btn.dataset.emojiTarget];
+    if (fn) fn(btn.dataset.emoji);
+  });
 });

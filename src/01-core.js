@@ -188,8 +188,8 @@ function toggleAuthMode() {
   document.getElementById('authSubmitBtn').textContent =
     authMode === 'signin' ? 'Sign In' : 'Create Account';
   document.getElementById('authToggle').innerHTML = authMode === 'signin'
-    ? 'No account? <a onclick="toggleAuthMode()">Sign up free</a>'
-    : 'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';
+    ? 'No account? <a id="authToggleLink">Sign up free</a>'
+    : 'Already have an account? <a id="authToggleLink">Sign in</a>';
   clearAuthError();
 }
 
@@ -512,4 +512,52 @@ async function restoreSession() {
     }
   });
 }
+
+/* ── AUTH SCREEN HANDLERS ── */
+document.getElementById('btnGoogleSignIn').addEventListener('click', signInWithGoogle);
+document.getElementById('authSubmitBtn').addEventListener('click', handleEmailAuth);
+// Delegated because toggleAuthMode replaces #authToggle innerHTML, losing the id binding
+document.getElementById('authToggle').addEventListener('click', e => {
+  if (e.target.closest('#authToggleLink')) toggleAuthMode();
+});
+['authEmail', 'authPassword'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleEmailAuth();
+  });
+});
+document.getElementById('authLegalTermsBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  openLegalModal('terms');
+});
+document.getElementById('authLegalPrivacyBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  openLegalModal('privacy');
+});
+
+/* ── USER MENU / SIDEBAR FOOTER ── */
+document.getElementById('sidebarFooter').addEventListener('click', () => toggleUserDropdown());
+document.getElementById('userAvatar').addEventListener('click', () => toggleUserDropdown());
+document.getElementById('userDropdown').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+  switch (action) {
+    case 'backup':          openBackupModal(); break;
+    case 'legal-terms':     openLegalModal('terms'); break;
+    case 'legal-privacy':   openLegalModal('privacy'); break;
+    case 'faq':             openFaqModal(); break;
+    case 'delete-account':  openDeleteAccountModal(); break;
+    case 'signout':         signOut(); return;
+    default: return;
+  }
+  toggleUserDropdown(false);
+});
+
+/* ── DELETE ACCOUNT MODAL HANDLERS ── */
+document.getElementById('deleteAccountModalClose').addEventListener('click', closeDeleteAccountModal);
+document.getElementById('deleteAccountCancelBtn').addEventListener('click', closeDeleteAccountModal);
+document.getElementById('deleteConfirmBtn').addEventListener('click', confirmDeleteAccount);
+document.getElementById('deleteConfirmInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmDeleteAccount();
+});
 

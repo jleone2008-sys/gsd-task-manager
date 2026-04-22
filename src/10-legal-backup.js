@@ -310,7 +310,7 @@ async function renderBackupDates() {
     const summary = parts.length ? parts.join(', ') : 'no data';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--edge);">
       <span style="font-size:12px;">${label} <span style="color:var(--ink-3);font-size:11px;">(${summary})</span></span>
-      <button class="btn-sm" onclick="restoreFromDate('${d}')" style="font-size:11px;padding:3px 9px;">Restore</button>
+      <button class="btn-sm" data-restore-date="${d}" style="font-size:11px;padding:3px 9px;">Restore</button>
     </div>`;
   }).join('');
 }
@@ -347,4 +347,33 @@ function resolveConfirm(confirmed) {
 // Close on backdrop click
 document.getElementById('confirmDialog').addEventListener('click', function(e) {
   if (e.target === this) resolveConfirm(false);
+});
+
+/* ── LEGAL MODAL HANDLERS ── */
+document.getElementById('legalModal').addEventListener('click', function(e) {
+  if (e.target === this) closeLegalModal();
+});
+document.getElementById('legalModalClose').addEventListener('click', closeLegalModal);
+document.getElementById('legalGotItBtn').addEventListener('click', closeLegalModal);
+document.querySelectorAll('.legal-tabs [data-legal-tab]').forEach(btn => {
+  btn.addEventListener('click', () => switchLegalTab(btn.dataset.legalTab));
+});
+
+/* ── BACKUP MODAL HANDLERS ── */
+document.getElementById('backupModalClose').addEventListener('click', closeBackupModal);
+document.getElementById('btnExportJSON').addEventListener('click', exportJSON);
+document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+document.getElementById('restoreFile').addEventListener('change', function() { restoreJSON(this); });
+document.getElementById('btnChooseRestoreFile').addEventListener('click', () => {
+  document.getElementById('restoreFile').click();
+});
+
+/* ── CONFIRM DIALOG BUTTONS ── */
+document.getElementById('confirmCancelBtn').addEventListener('click', () => resolveConfirm(false));
+document.getElementById('confirmOkBtn').addEventListener('click', () => resolveConfirm(true));
+
+/* ── BACKUP DATE LIST DELEGATION ── */
+document.getElementById('backupDateList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-restore-date]');
+  if (btn) restoreFromDate(btn.dataset.restoreDate);
 });
