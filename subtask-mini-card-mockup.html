@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Subtask Mini Card — Mockup Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg:           #f6f2ea;
+      --surface:      #ffffff;
+      --surface-2:    #ede8dc;
+      --edge:         #ddd6c7;
+      --edge-strong:  #c9c1ad;
+
+      --ink:   #1a1714;
+      --ink-2: #3d362d;
+      --ink-3: #6e6559;
+      --ink-4: #a8a094;
+      --ink-5: #cac3b6;
+
+      --guava-900: #6b1320;
+      --guava-700: #b82d3b;
+      --guava-500: #d94a55;
+      --guava-300: #f3a8ae;
+      --guava-200: #fad4d7;
+      --guava-100: #fde8ea;
+      --guava-50:  #fef5f6;
+
+      --clay-fg:  #a86247;  --clay-bg:  #f1dfd4;
+      --slate-fg: #5a6673;  --slate-bg: #dee2e7;
+      --ochre-fg: #a37826;  --ochre-bg: #f0e4c9;
+
+      --r-sm: 3px;
+      --r-md: 4px;
+
+      --shadow-card:       0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
+      --shadow-card-hover: 0 1px 0 rgba(20,15,10,0.04), 0 2px 4px rgba(20,15,10,0.08);
+
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+      --t-xs:  11px;
+      --t-sm:  13px;
+      --t-md:  15px;
+
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+      --dur:  180ms;
+    }
+
+    html, body { margin: 0; padding: 0; background: var(--bg); font-family: var(--font-sans); color: var(--ink); }
+
+    .page {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .page__title {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0 0 4px;
+    }
+    .page__subtitle {
+      font-size: 13px;
+      color: var(--ink-3);
+      margin: 0 0 32px;
+    }
+    .section {
+      margin-top: 40px;
+    }
+    .section__label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-4);
+      font-weight: 600;
+      margin: 0 0 12px;
+    }
+    .section__caption {
+      font-size: 12px;
+      color: var(--ink-3);
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+
+    /* ── card primitives ─────────────────────────────── */
+    .card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--edge);
+      border-radius: var(--r-md);
+      padding: 13px 14px 13px 22px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+      cursor: pointer;
+    }
+    .card:hover { box-shadow: var(--shadow-card-hover); border-color: var(--edge-strong); }
+    .strip {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: transparent;
+      border-top-left-radius: var(--r-md);
+      border-bottom-left-radius: var(--r-md);
+    }
+    .card.is-priority > .strip { background: var(--guava-700); }
+
+    .card__body { flex: 1; min-width: 0; }
+    .card__title {
+      font-size: var(--t-md);
+      font-weight: 500;
+      color: var(--ink);
+      line-height: 1.35;
+    }
+    .card__meta {
+      margin-top: 6px;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .check {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid var(--edge-strong);
+      background: transparent;
+      flex-shrink: 0;
+      cursor: pointer;
+      padding: 0;
+      transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+    }
+    .check:hover { border-color: var(--ink-3); }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: var(--r-sm);
+      font-size: var(--t-xs);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      border: none;
+    }
+    .chip--slate { background: var(--slate-bg); color: var(--slate-fg); }
+    .chip--clay  { background: var(--clay-bg);  color: var(--clay-fg); }
+    .chip--ochre { background: var(--ochre-bg); color: var(--ochre-fg); }
+    .chip--ghost { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
+
+    .card__expand {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--edge);
+      cursor: default;
+    }
+    .card__note {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink-2);
+      word-break: break-word;
+    }
+    .card__note a {
+      color: var(--guava-700);
+      border-bottom: 1px solid var(--guava-200);
+      text-decoration: none;
+    }
+    .card__actions {
+      display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+    }
+    .expand-action {
+      font-family: inherit;
+      font-size: 11px; font-weight: 500;
+      padding: 4px 8px;
+      background: transparent;
+      color: var(--ink-3);
+      border: 1px solid var(--edge);
+      border-radius: var(--r-sm);
+      cursor: pointer;
+    }
+    .expand-action:hover { background: var(--surface-2); color: var(--ink); }
+    .expand-action.is-on { color: var(--guava-700); border-color: var(--guava-300); background: var(--guava-50); }
+
+    /* ── task list ────────────────────────────────── */
+    .task-list { display: grid; gap: 6px; min-height: 4px; }
+    .task-group { display: flex; flex-direction: column; gap: 6px; }
+
+    .subtask-list {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 80%;
+      margin: 0 auto;
+    }
+
+    .subtask-wrap { position: relative; }
+
+    .card--mini {
+      padding: 8px 12px 8px 16px;
+      cursor: default;
+    }
+    .card--mini .strip { width: 3px; border-top-left-radius: var(--r-md); border-bottom-left-radius: var(--r-md); }
+    .card--mini .card__title { font-size: var(--t-sm); }
+    .card--mini .check { width: 16px; height: 16px; }
+
+    /* Guava spine */
+    .subtask-wrap::before {
+      content: '';
+      position: absolute;
+      left: -18px;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--guava-200);
+      border-radius: 1px;
+      pointer-events: none;
+    }
+    .subtask-wrap:first-child::before { top: -6px; }
+    .subtask-wrap:last-child::before {
+      bottom: auto;
+      height: calc(50% + 4px);
+      width: 7px;
+      background: transparent;
+      border-left: 2px solid var(--guava-200);
+      border-bottom: 2px solid var(--guava-200);
+      border-bottom-left-radius: var(--r-md);
+      border-radius: 0 0 0 var(--r-md);
+    }
+    .subtask-wrap:last-child::after { display: none; }
+    .subtask-wrap:first-child:last-child::before {
+      top: -6px;
+      bottom: auto;
+      height: calc(50% + 6px);
+    }
+
+    .subtask-wrap::after {
+      content: '';
+      position: absolute;
+      left: -18px;
+      top: 50%;
+      width: 7px;
+      height: 2px;
+      background: var(--guava-200);
+      transform: translateY(-1px);
+      pointer-events: none;
+    }
+
+    .subtask-wrap .node {
+      position: absolute;
+      left: -8px;
+      top: 50%;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--guava-700);
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      box-shadow: 0 0 0 2px var(--bg);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-2px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card__expand, .subtask-list { animation: fadeIn var(--dur) var(--ease); }
+  </style>
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    function Check({ done, onClick }) {
+      return (
+        <button
+          className="check"
+          aria-label="Complete"
+          onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}
+          style={done ? { background: 'var(--guava-700)', borderColor: 'var(--guava-700)' } : undefined}
+        />
+      );
+    }
+
+    function ParentCard({ title, priority, chips = [], expanded, onToggle, note, actions }) {
+      return (
+        <div className={`card ${priority ? 'is-priority' : ''}`} onClick={onToggle}>
+          <span className="strip" />
+          <div className="card__body">
+            <div className="card__title">{title}</div>
+            {chips.length > 0 && (
+              <div className="card__meta">
+                {chips.map(([text, tone], i) => (
+                  <span key={i} className={`chip chip--${tone}`}>{text}</span>
+                ))}
+              </div>
+            )}
+            {expanded && (note || actions) && (
+              <div className="card__expand" onClick={(e) => e.stopPropagation()}>
+                {note && <div className="card__note">{note}</div>}
+                {actions && (
+                  <div className="card__actions">
+                    <button className="expand-action">edit</button>
+                    <button className="expand-action is-on">priority</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <Check />
+        </div>
+      );
+    }
+
+    function SubtaskCard({ title, done, priority, onToggle }) {
+      return (
+        <div className={`card card--mini ${priority ? 'is-priority' : ''}`} style={done ? { opacity: 0.7 } : undefined}>
+          <span className="strip" />
+          <div className="card__body">
+            <div className="card__title" style={done ? { textDecoration: 'line-through', color: 'var(--ink-4)' } : undefined}>{title}</div>
+          </div>
+          <Check done={done} onClick={onToggle} />
+        </div>
+      );
+    }
+
+    function TaskGroup({ task, subs, expandedInit = false }) {
+      const [expanded, setExpanded] = React.useState(expandedInit);
+      const [subDone, setSubDone] = React.useState(subs.map(s => !!s.done));
+      const toggleSub = (i) => setSubDone(d => d.map((v, j) => j === i ? !v : v));
+      return (
+        <div className="task-group">
+          <ParentCard {...task} expanded={expanded} onToggle={() => setExpanded(e => !e)} />
+          {expanded && subs.length > 0 && (
+            <div className="subtask-list">
+              {subs.map((s, i) => (
+                <div className="subtask-wrap" key={i}>
+                  <span className="node" />
+                  <SubtaskCard {...s} done={subDone[i]} onToggle={() => toggleSub(i)} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const PARENT = {
+      title: 'Schedule Ty, TJ & Maeve for AI discovery',
+      priority: true,
+      chips: [['Work', 'slate'], ['Note', 'ghost'], ['2 / 3 subtasks', 'ghost'], ['Due today', 'clay']],
+      note: <a href="#" onClick={(e) => e.preventDefault()}>https://docs.google.com/forms/d/e/1FAIpQLScmI8c8FCjrgMfWCE004r3Y8KngSHIa5ojN_fSLsoxi3AZQbA/viewform?pli=1</a>,
+      actions: true,
+    };
+    const SUBS = [
+      { title: 'Schedule Ty' },
+      { title: 'Schedule TJ', done: true },
+      { title: 'Schedule Maeve', done: true },
+    ];
+    const SUBS_ONE = [{ title: 'Confirm slot with Ty' }];
+    const SUBS_MANY = [
+      { title: 'Draft invite email' },
+      { title: 'Send to Ty' },
+      { title: 'Send to TJ' },
+      { title: 'Send to Maeve' },
+      { title: 'Confirm all 3 replies' },
+    ];
+
+    function Scene({ initialOpen, subs = SUBS, showOthers = true }) {
+      return (
+        <div className="task-list">
+          {showOthers && (
+            <ParentCard title="Close chase adbuzz account" priority chips={[['Personal', 'ochre']]} />
+          )}
+          {showOthers && (
+            <ParentCard title="Book Milwaukee Trip" priority chips={[['Personal', 'ochre']]} />
+          )}
+          <TaskGroup task={PARENT} subs={subs} expandedInit={initialOpen} />
+          {showOthers && (
+            <ParentCard title="Watch Chris interview from Maeve" priority chips={[['Work', 'slate'], ['Note', 'ghost']]} />
+          )}
+          {showOthers && (
+            <ParentCard title="Brief teams on Safety Plan launch" chips={[['Work', 'slate']]} />
+          )}
+        </div>
+      );
+    }
+
+    function Section({ label, caption, children }) {
+      return (
+        <div className="section">
+          <div className="section__label">{label}</div>
+          {caption && <p className="section__caption">{caption}</p>}
+          {children}
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <div className="page">
+          <h1 className="page__title">Subtask Mini Card — Guava Spine</h1>
+          <p className="page__subtitle">
+            Tap the third parent ("Schedule Ty, TJ &amp; Maeve…") to toggle the inline note + subtask unfold.
+            Subtasks render at 80% width beneath the parent, connected by a guava spine that terminates at the last row's center.
+          </p>
+
+          <Section label="Collapsed — default list state">
+            <Scene initialOpen={false} />
+          </Section>
+
+          <Section label="Expanded — tap parent → inline edit + subtasks unfold">
+            <Scene initialOpen />
+          </Section>
+
+          <Section
+            label="Edge case — 1 subtask"
+            caption="Spine combines first + last rules into a short L-shape."
+          >
+            <Scene initialOpen subs={SUBS_ONE} showOthers={false} />
+          </Section>
+
+          <Section
+            label="Edge case — 5 subtasks"
+            caption="Spine extends through all middle rows; terminates at center of last row."
+          >
+            <Scene initialOpen subs={SUBS_MANY} showOthers={false} />
+          </Section>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
