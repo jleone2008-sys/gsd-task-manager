@@ -952,26 +952,27 @@
   /* Mini-card variant — used inside .subtask-list.
      Overrides `.card`'s default `flex-direction: column` (which stacks
      .card-head above .card__expand on parent cards). Subtask rows have
-     no expansion body, so strip/delete/body/check lay out on one row. */
-  .card--mini {
+     no expansion body, so strip/delete/body/check lay out on one row.
+     Selectors use `.card.card--mini` for specificity to beat `.card`. */
+  .card.card--mini {
     padding: 8px 12px;
     cursor: default;
     flex-direction: row;
     align-items: center;
     gap: 10px;
   }
-  .card--mini > .strip {
+  .card.card--mini > .strip {
     width: 3px;
     border-top-left-radius: var(--r-md);
     border-bottom-left-radius: var(--r-md);
   }
-  .card--mini .card__title { font-size: var(--t-sm); }
-  .card--mini .check { width: 16px; height: 16px; }
+  .card.card--mini .card-body { cursor: default; }
+  .card.card--mini .card__title { font-size: var(--t-sm); }
+  .card.card--mini .check { width: 16px; height: 16px; }
 
-  /* Always-visible × delete, scoped to mini-cards so it doesn't
-     collide with the legacy `.subtask-del` rule below. Positioned
-     opposite the completion check for mobile tap safety. */
-  .card--mini .subtask-del {
+  /* Always-visible × delete on the far left of the mini-card,
+     positioned opposite the completion check for mobile tap safety. */
+  .card.card--mini .subtask-del {
     width: 18px; height: 18px;
     display: inline-flex;
     align-items: center;
@@ -989,7 +990,7 @@
     flex-shrink: 0;
     transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
   }
-  .card--mini .subtask-del:hover {
+  .card.card--mini .subtask-del:hover {
     color: var(--guava-700);
     background: var(--guava-50);
   }
@@ -1048,60 +1049,20 @@
   }
   /* ── END NEW SUBTASK DESIGN ────────────────────────────────── */
 
-  .card__subtasks,
-  .task-expand__subs { display: flex; flex-direction: column; }
-  .card__subtask,
-  .subtask-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 5px 0;
-    font-size: 13px;
-    color: var(--ink-2);
-    cursor: pointer;
-    position: relative;
-  }
-  .card__subtask::before,
-  .subtask-row::before {
-    content: ''; position: absolute;
-    left: -8px; right: -8px; top: 0; bottom: 0;
-    pointer-events: none;
-  }
-  .subtask-radio {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 1.5px solid var(--edge-strong);
-    background: transparent;
-    flex-shrink: 0;
-    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
-  }
-  .subtask-row.done .subtask-radio {
-    background: var(--guava-700);
-    border-color: var(--guava-700);
-  }
-  .subtask-row.done .subtask-text {
-    text-decoration: line-through;
-    color: var(--ink-4);
-  }
-  .subtask-text { flex: 1; min-width: 0; }
+  /* Subtask new/edit input — transparent and inherits type from the
+     card it sits inside. Reused by both the "+ subtask" draft flow and
+     startEditSubtask() which swaps the title span for an input. */
   .subtask-input {
     flex: 1; min-width: 0;
+    width: 100%;
     background: transparent;
     border: none;
     outline: none;
     font-family: inherit;
-    font-size: 13px;
-    color: var(--ink-2);
+    font-size: var(--t-sm);
+    color: var(--ink);
     padding: 0;
   }
-  .subtask-del {
-    background: none; border: none;
-    color: var(--ink-4);
-    cursor: pointer;
-    padding: 4px 6px;
-    font-size: 14px;
-    line-height: 1;
-    border-radius: var(--r-sm);
-  }
-  .subtask-del:hover { color: var(--guava-700); background: var(--guava-50); }
   .card__actions,
   .task-expand__actions {
     display: flex; gap: 6px; margin-top: 10px;
