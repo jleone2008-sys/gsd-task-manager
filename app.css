@@ -949,10 +949,15 @@
   }
   .subtask-wrap { position: relative; }
 
-  /* Mini-card variant — used inside .subtask-list */
+  /* Mini-card variant — used inside .subtask-list.
+     Overrides `.card`'s default `flex-direction: column` (which stacks
+     .card-head above .card__expand on parent cards). Subtask rows have
+     no expansion body, so strip/delete/body/check lay out on one row. */
   .card--mini {
     padding: 8px 12px;
     cursor: default;
+    flex-direction: row;
+    align-items: center;
     gap: 10px;
   }
   .card--mini > .strip {
