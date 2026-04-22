@@ -203,10 +203,34 @@
     .card--mini {
       padding: 8px 12px 8px 16px;
       cursor: default;
+      gap: 10px;
     }
     .card--mini .strip { width: 3px; border-top-left-radius: var(--r-md); border-bottom-left-radius: var(--r-md); }
     .card--mini .card__title { font-size: var(--t-sm); }
     .card--mini .check { width: 16px; height: 16px; }
+
+    /* Delete button — far-left of mini-card, opposite the check.
+       Always visible (mobile has no hover). Small and muted so it
+       doesn't compete with the title or check. */
+    .subtask-del {
+      width: 18px; height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      border: none;
+      color: var(--ink-4);
+      font-size: 16px;
+      line-height: 1;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: var(--r-sm);
+      flex-shrink: 0;
+      transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+    }
+    .subtask-del:hover { color: var(--guava-700); background: var(--guava-50); }
 
     /* Guava spine */
     .subtask-wrap::before {
@@ -316,10 +340,15 @@
       );
     }
 
-    function SubtaskCard({ title, done, priority, onToggle }) {
+    function SubtaskCard({ title, done, priority, onToggle, onDelete }) {
       return (
         <div className={`card card--mini ${priority ? 'is-priority' : ''}`}>
           <span className="strip" />
+          <button
+            className="subtask-del"
+            aria-label="Delete subtask"
+            onClick={(e) => { e.stopPropagation(); onDelete && onDelete(); }}
+          >×</button>
           <div className="card__body">
             <div className="card__title" style={done ? { textDecoration: 'line-through', color: 'var(--ink-4)' } : undefined}>{title}</div>
           </div>
