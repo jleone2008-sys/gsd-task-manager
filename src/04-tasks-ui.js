@@ -344,9 +344,7 @@ function subtaskRowHTML(taskClientId, s) {
       <span class="strip"></span>
       <button class="subtask-del" data-task-action="delete-subtask" aria-label="Delete subtask">×</button>
       <div class="card-body">${bodyInner}</div>
-      <button class="check"${checkAttr} ${checkAria}>
-        <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-      </button>
+      <button class="check"${checkAttr} ${checkAria}></button>
     </div>
   </div>`;
 }
