@@ -797,16 +797,6 @@
     background: var(--guava-700);
     border-color: var(--guava-700);
   }
-  .card.is-done .check::after,
-  .task-item.done .check::after {
-    content: '';
-    position: absolute;
-    left: 4px; top: 7px;
-    width: 8px; height: 4px;
-    border-left: 1.5px solid #fff;
-    border-bottom: 1.5px solid #fff;
-    transform: rotate(-45deg);
-  }
 
   /* Legacy .checkbox — task-item still references it; matches .check above
      (flex child of .card-head, centered via align-items: center). */
@@ -828,15 +818,6 @@
   .task-item.done .checkbox {
     background: var(--guava-700);
     border-color: var(--guava-700);
-  }
-  .task-item.done .checkbox::after {
-    content: '';
-    position: absolute;
-    left: 4px; top: 7px;
-    width: 8px; height: 4px;
-    border-left: 1.5px solid #fff;
-    border-bottom: 1.5px solid #fff;
-    transform: rotate(-45deg);
   }
   .checkbox svg { display: none; }
 
@@ -915,60 +896,154 @@
     border-bottom: 1px solid var(--guava-200);
     text-decoration: none;
   }
-  .card__subtasks,
-  .task-expand__subs { display: flex; flex-direction: column; }
-  .card__subtask,
-  .subtask-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 5px 0;
-    font-size: 13px;
-    color: var(--ink-2);
-    cursor: pointer;
-    position: relative;
+  /* ──────────────────────────────────────────────────────────────
+     NEW SUBTASK DESIGN — Guava Spine mini-cards (see
+     subtask-mini-card-mockup.html). Added alongside the legacy
+     `.subtask-row` styles; legacy will be removed once the renderer
+     switches to emit `.card--mini` markup.
+
+     Structure a task group will emit:
+       <div class="task-group">
+         <div class="card is-priority">…parent…</div>
+         <div class="subtask-list">
+           <div class="subtask-wrap">
+             <span class="node"></span>
+             <div class="card card--mini">…subtask…</div>
+           </div>
+           …
+         </div>
+       </div>
+  ────────────────────────────────────────────────────────────── */
+  .task-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
-  .card__subtask::before,
-  .subtask-row::before {
-    content: ''; position: absolute;
-    left: -8px; right: -8px; top: 0; bottom: 0;
+  .subtask-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 80%;
+    margin: 0 auto;
+    animation: expandIn var(--dur) var(--ease);
+  }
+  .subtask-wrap { position: relative; }
+
+  /* Mini-card variant — used inside .subtask-list.
+     Overrides `.card`'s default `flex-direction: column` (which stacks
+     .card-head above .card__expand on parent cards). Subtask rows have
+     no expansion body, so strip/delete/body/check lay out on one row.
+     Selectors use `.card.card--mini` for specificity to beat `.card`. */
+  .card.card--mini {
+    padding: 8px 12px;
+    cursor: default;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .card.card--mini > .strip {
+    width: 3px;
+    border-top-left-radius: var(--r-md);
+    border-bottom-left-radius: var(--r-md);
+  }
+  .card.card--mini .card-body { cursor: default; }
+  .card.card--mini .card__title { font-size: var(--t-sm); }
+  .card.card--mini .check { width: 16px; height: 16px; }
+
+  /* Always-visible × delete on the far left of the mini-card,
+     positioned opposite the completion check for mobile tap safety. */
+  .card.card--mini .subtask-del {
+    width: 18px; height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+    color: var(--ink-4);
+    font-size: 16px;
+    line-height: 1;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    flex-shrink: 0;
+    transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .card.card--mini .subtask-del:hover {
+    color: var(--guava-700);
+    background: var(--guava-50);
+  }
+
+  /* Guava spine — vertical line + horizontal elbow + node dot.
+     Spine anchors at -36px (left of the subtask-wrap). Node sits at
+     -11px. Elbow runs from -36 to node center (25px). */
+  .subtask-wrap::before {
+    content: '';
+    position: absolute;
+    left: -36px;
+    top: -4px;
+    bottom: -4px;
+    width: 2px;
+    background: var(--guava-200);
+    border-radius: 1px;
     pointer-events: none;
   }
-  .subtask-radio {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 1.5px solid var(--edge-strong);
+  .subtask-wrap:first-child::before { top: -6px; }
+  .subtask-wrap:last-child::before {
+    bottom: auto;
+    height: calc(50% + 4px);
+    width: 25px;
     background: transparent;
-    flex-shrink: 0;
-    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+    border-left: 2px solid var(--guava-200);
+    border-bottom: 2px solid var(--guava-200);
+    border-radius: 0 0 0 var(--r-md);
   }
-  .subtask-row.done .subtask-radio {
+  .subtask-wrap:last-child::after { display: none; }
+  .subtask-wrap:first-child:last-child::before {
+    top: -6px;
+    bottom: auto;
+    height: calc(50% + 6px);
+  }
+  .subtask-wrap::after {
+    content: '';
+    position: absolute;
+    left: -36px;
+    top: 50%;
+    width: 25px;
+    height: 2px;
+    background: var(--guava-200);
+    transform: translateY(-1px);
+    pointer-events: none;
+  }
+  .subtask-wrap > .node {
+    position: absolute;
+    left: -11px;
+    top: 50%;
+    width: 6px; height: 6px;
+    border-radius: 50%;
     background: var(--guava-700);
-    border-color: var(--guava-700);
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    box-shadow: 0 0 0 2px var(--bg);
   }
-  .subtask-row.done .subtask-text {
-    text-decoration: line-through;
-    color: var(--ink-4);
-  }
-  .subtask-text { flex: 1; min-width: 0; }
+  /* ── END NEW SUBTASK DESIGN ────────────────────────────────── */
+
+  /* Subtask new/edit input — transparent and inherits type from the
+     card it sits inside. Reused by both the "+ subtask" draft flow and
+     startEditSubtask() which swaps the title span for an input. */
   .subtask-input {
     flex: 1; min-width: 0;
+    width: 100%;
     background: transparent;
     border: none;
     outline: none;
     font-family: inherit;
-    font-size: 13px;
-    color: var(--ink-2);
+    font-size: var(--t-sm);
+    color: var(--ink);
     padding: 0;
   }
-  .subtask-del {
-    background: none; border: none;
-    color: var(--ink-4);
-    cursor: pointer;
-    padding: 4px 6px;
-    font-size: 14px;
-    line-height: 1;
-    border-radius: var(--r-sm);
-  }
-  .subtask-del:hover { color: var(--guava-700); background: var(--guava-50); }
   .card__actions,
   .task-expand__actions {
     display: flex; gap: 6px; margin-top: 10px;
