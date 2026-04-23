@@ -51,30 +51,32 @@ window.addEventListener('offline', () => {
 
 function rowToTask(r) {
   return {
-    id:      r.client_id,
-    text:    r.text    || '',
-    note:    r.note    || '',
-    tags:    r.tags    || [],
-    top3:    r.top3    || false,
-    someday: r.someday || false,
-    done:    r.done    || false,
-    due:     r.due     || null,
-    order:   r.order   || 0,
+    id:          r.client_id,
+    text:        r.text        || '',
+    note:        r.note        || '',
+    tags:        r.tags        || [],
+    top3:        r.top3        || false,
+    someday:     r.someday     || false,
+    done:        r.done        || false,
+    due:         r.due         || null,
+    order:       r.order       || 0,
+    completedAt: r.completed_at || null,
   };
 }
 
 function taskToRow(t) {
   return {
-    user_id:   currentUser.id,
-    client_id: t.id,
-    text:      t.text    || '',
-    note:      t.note    || '',
-    tags:      t.tags    || [],
-    top3:      t.top3    || false,
-    someday:   t.someday || false,
-    done:      t.done    || false,
-    due:       t.due     || null,
-    order:     t.order   || 0,
+    user_id:      currentUser.id,
+    client_id:    t.id,
+    text:         t.text        || '',
+    note:         t.note        || '',
+    tags:         t.tags        || [],
+    top3:         t.top3        || false,
+    someday:      t.someday     || false,
+    done:         t.done        || false,
+    due:          t.due         || null,
+    order:        t.order       || 0,
+    completed_at: t.completedAt || null,
   };
 }
 
