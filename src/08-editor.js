@@ -206,7 +206,11 @@ function addTask() {
 }
 function toggleDone_t(id) {
   const t = tasks.find(t=>t.id===id);
-  if (t) { t.done=!t.done; render(); saveTask(t); }
+  if (!t) return;
+  t.done = !t.done;
+  t.completedAt = t.done ? Date.now() : null;
+  render();
+  saveTask(t);
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);

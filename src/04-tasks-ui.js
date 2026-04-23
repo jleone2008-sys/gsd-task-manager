@@ -39,7 +39,7 @@ function emptyState(type) {
 function render() {
   const c = document.getElementById('taskContainer');
   let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
-  let done = tasks.filter(t=>t.done);
+  let done = tasks.filter(t=>t.done).sort((a,b) => (b.completedAt||b.id) - (a.completedAt||a.id));
   let view = [...active];
   // Tasks filter set: all · overdue · personal · biz (Work).
   const _todayStr = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
