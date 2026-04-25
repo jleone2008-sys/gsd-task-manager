@@ -226,6 +226,7 @@ function signInWithGoogle() {
 async function handleBetaOAuthCallback() {
   if (!location.hash.includes('id_token=')) return false;
 
+  console.log('[beta-auth] OAuth callback detected in hash');
   const params = new URLSearchParams(location.hash.slice(1));
   const idToken     = params.get('id_token');
   const accessToken = params.get('access_token');
@@ -236,6 +237,7 @@ async function handleBetaOAuthCallback() {
   history.replaceState(null, '', location.pathname);
 
   if (error) {
+    console.log('[beta-auth] Error param:', error);
     showAuthError('Google sign-in failed: ' + error);
     document.getElementById('authScreen').classList.remove('hidden');
     return true;
@@ -244,6 +246,7 @@ async function handleBetaOAuthCallback() {
   // CSRF check
   const expectedState = sessionStorage.getItem('beta_oauth_state');
   sessionStorage.removeItem('beta_oauth_state');
+  console.log('[beta-auth] state check — got:', state, 'expected:', expectedState);
   if (!state || state !== expectedState) {
     showAuthError('Sign-in failed: invalid state. Please try again.');
     document.getElementById('authScreen').classList.remove('hidden');
@@ -251,6 +254,7 @@ async function handleBetaOAuthCallback() {
   }
 
   const grantedScopes = (params.get('granted_scope') || '').split(' ');
+  console.log('[beta-auth] granted scopes:', grantedScopes);
   const REQUIRED_SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/calendar.events.owned',
@@ -261,17 +265,20 @@ async function handleBetaOAuthCallback() {
   ];
   const missing = REQUIRED_SCOPES.filter(s => !grantedScopes.includes(s));
   if (missing.length) {
+    console.log('[beta-auth] missing scopes:', missing);
     showAuthError('Beta features require permissions to work. Please try again.');
     document.getElementById('authScreen').classList.remove('hidden');
     return true;
   }
 
+  console.log('[beta-auth] calling signInWithIdToken…');
   const { error: authError } = await db.auth.signInWithIdToken({
     provider: 'google',
     token: idToken,
     access_token: accessToken,
   });
 
+  console.log('[beta-auth] signInWithIdToken result — error:', authError);
   if (authError) {
     showAuthError('Sign-in failed: ' + authError.message);
     document.getElementById('authScreen').classList.remove('hidden');
@@ -312,6 +319,7 @@ async function signInUser(user) {
 }
 
 async function _signInUser(user) {
+  console.log('[beta-auth] _signInUser called for', user?.email);
   // In admin impersonation mode the session is already set; skip whitelist + profile checks
   if (isAdminViewMode) {
     try { db.removeAllChannels(); } catch (_) {}
@@ -326,11 +334,12 @@ async function _signInUser(user) {
     return;
   }
 
-  const { data } = await db.from('beta_users')
+  const { data, error: wlErr } = await db.from('beta_users')
     .select('email')
     .eq('email', user.email)
     .maybeSingle();
 
+  console.log('[beta-auth] beta_users check — data:', data, 'error:', wlErr);
   if (!data) {
     showBetaNotInvitedScreen();
     db.auth.signOut();
