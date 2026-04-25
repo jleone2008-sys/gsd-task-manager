@@ -17,11 +17,11 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: 'Missing authorization code.' };
   }
 
-  const clientId     = process.env.BETA_GOOGLE_CLIENT_ID;
+  const clientId     = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
   const clientSecret = process.env.BETA_GOOGLE_CLIENT_SECRET;
 
-  if (!clientId || !clientSecret) {
-    console.error('Missing BETA_GOOGLE_CLIENT_ID or BETA_GOOGLE_CLIENT_SECRET env vars');
+  if (!clientSecret) {
+    console.error('Missing BETA_GOOGLE_CLIENT_SECRET env var');
     return redirect(`/beta/app#error=server_misconfiguration&state=${state || ''}`);
   }
 
