@@ -494,13 +494,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ── BETA: Inject badge into header logo ── */
-  const logoMain = document.querySelector('.logo-main');
-  if (logoMain) {
-    const badge = document.createElement('span');
-    badge.textContent = 'BETA';
-    badge.style.cssText = 'display:inline-block;background:#f59e0b;color:#000;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;margin-left:5px;letter-spacing:0.5px;vertical-align:middle;line-height:1;';
-    logoMain.after(badge);
+  /* ── BETA: Show version label in profile dropdown ── */
+  const dropdownEmail = document.getElementById('dropdownEmail');
+  if (dropdownEmail) {
+    const betaLabel = document.createElement('div');
+    betaLabel.textContent = 'Version: Beta Mode';
+    betaLabel.style.cssText = 'font-size:11px;color:#f59e0b;font-weight:600;margin-top:4px;';
+    dropdownEmail.after(betaLabel);
   }
 });
 async function confirmDeleteAccount() {
