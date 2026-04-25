@@ -22,3 +22,8 @@
   from = "/beta"
   to = "/beta/app.html"
   status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin/app.html"
+  status = 200

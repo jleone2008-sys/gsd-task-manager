@@ -172,6 +172,11 @@ const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
+let currentUserProfile = null;
+let isAdminViewMode = false;
+let googleAccessToken = null;   // set after OAuth or admin impersonation
+let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
+const VALID_TABS = ['tasks', 'habits', 'notes', 'scratch'];
 
 // Set this after creating the beta Google Cloud project
 const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
@@ -296,6 +301,20 @@ function showBetaNotInvitedScreen() {
 
 /* ── BETA: Check whitelist before loading user data ── */
 async function signInUser(user) {
+  // In admin impersonation mode the session is already set; skip whitelist + profile checks
+  if (isAdminViewMode) {
+    try { db.removeAllChannels(); } catch (_) {}
+    currentUser = user;
+    document.getElementById('authScreen').classList.add('hidden');
+    setUserUI(user);
+    load();
+    loadHabits();
+    loadNotes();
+    loadSubtasks();
+    if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
+    return;
+  }
+
   const { data } = await db.from('beta_users')
     .select('email')
     .eq('email', user.email)
@@ -307,10 +326,31 @@ async function signInUser(user) {
     return;
   }
 
+  // Check user profile for role/status/tab permissions
+  const { data: profile } = await db.from('user_profiles')
+    .select('role, status, tab_permissions, supabase_user_id')
+    .eq('email', user.email)
+    .maybeSingle();
+
+  if (profile?.status === 'disabled') {
+    showAccountDisabledScreen();
+    db.auth.signOut();
+    return;
+  }
+
+  currentUserProfile = profile || { role: 'standard', status: 'active', tab_permissions: VALID_TABS };
+
+  // Populate supabase_user_id in user_profiles if not already set
+  if (!profile?.supabase_user_id) {
+    db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id }).catch(() => {});
+  }
+
   try { db.removeAllChannels(); } catch (_) {}
   currentUser = user;
   document.getElementById('authScreen').classList.add('hidden');
   setUserUI(user);
+  applyTabPermissions(currentUserProfile.tab_permissions);
+  if (currentUserProfile.role === 'admin') injectAdminLink();
   load();
   loadHabits();
   loadNotes();
@@ -541,6 +581,9 @@ function exportCSV() {
 
 /* ── RESTORE SESSION ON LOAD ── */
 async function restoreSession() {
+  // Admin "view as user" mode: inject impersonation session before normal auth
+  if (await checkAdminViewMode()) return;
+
   // Auth state listener must be set up before the callback handler fires signInWithIdToken
   db.auth.onAuthStateChange((_event, session) => {
     if (session?.user && !currentUser) {
@@ -557,6 +600,158 @@ async function restoreSession() {
   } else {
     document.getElementById('authScreen').classList.remove('hidden');
   }
+}
+
+/* ── ADMIN VIEW MODE ── */
+async function checkAdminViewMode() {
+  if (!location.search.includes('admin_view=1')) return false;
+  const stored = localStorage.getItem('gsd_admin_impersonate');
+  if (!stored) return false;
+
+  let payload;
+  try { payload = JSON.parse(stored); } catch { return false; }
+
+  const { supabase_access_token, google_access_token, target_email, display_name, admin_auth_token } = payload;
+  if (!supabase_access_token || !google_access_token || !target_email) return false;
+
+  localStorage.removeItem('gsd_admin_impersonate');
+  isAdminViewMode = true;
+  googleAccessToken  = google_access_token;
+  googleTokenExpiry  = Date.now() + 3500000; // treat as ~58 min; auto-refresh via ensureGoogleToken
+
+  // Store admin token for mid-session Google token refresh
+  sessionStorage.setItem('_admin_auth', admin_auth_token || '');
+  sessionStorage.setItem('_admin_view_email', target_email);
+
+  // Set Supabase session for target user
+  const { error } = await db.auth.setSession({ access_token: supabase_access_token, refresh_token: '' });
+  if (error) {
+    console.error('Admin view setSession failed:', error.message);
+    isAdminViewMode = false;
+    return false;
+  }
+
+  // Auth state change will fire signInUser; inject banner after brief delay
+  setTimeout(() => injectAdminViewBanner(display_name || target_email), 300);
+
+  // Set up auth listener for impersonated user
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user && !currentUser) signInUser(session.user);
+  });
+
+  return true;
+}
+
+function injectAdminViewBanner(label) {
+  if (document.getElementById('adminViewBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'adminViewBanner';
+  banner.style.cssText = [
+    'position:fixed;top:0;left:0;right:0;z-index:9999',
+    'background:#d97706;color:#fff;font-family:Inter,sans-serif',
+    'padding:.5rem 1rem;display:flex;align-items:center;justify-content:space-between',
+    'font-size:.8rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2)',
+  ].join(';');
+  banner.innerHTML = `<span>👁 Viewing as: ${escapeHTML(label)}</span>
+    <button id="exitAdminView" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:.25rem .75rem;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600">Exit</button>`;
+  document.body.prepend(banner);
+
+  // Offset the app content so it doesn't sit under the banner
+  document.body.style.paddingTop = '36px';
+
+  document.getElementById('exitAdminView').addEventListener('click', async () => {
+    isAdminViewMode = false;
+    googleAccessToken = null;
+    sessionStorage.removeItem('_admin_auth');
+    sessionStorage.removeItem('_admin_view_email');
+    await db.auth.signOut();
+    location.href = '/admin/app.html';
+  });
+}
+
+/* ── TAB PERMISSIONS ── */
+function applyTabPermissions(perms) {
+  if (!perms || perms.length === 0) return;
+  VALID_TABS.forEach(tool => {
+    const allowed = perms.includes(tool);
+    // Mobile nav buttons
+    document.querySelectorAll(`.mobile-nav-btn[data-tool="${tool}"]`).forEach(el => {
+      el.style.display = allowed ? '' : 'none';
+    });
+    // Sidebar buttons
+    document.querySelectorAll(`.sidebar-btn[data-tool="${tool}"]`).forEach(el => {
+      el.style.display = allowed ? '' : 'none';
+    });
+    // Tool views
+    document.querySelectorAll(`[data-tool-view="${tool}"]`).forEach(el => {
+      if (!allowed) el.style.display = 'none';
+    });
+  });
+  // If current active tool is now disabled, switch to first allowed tab
+  if (typeof activeTool !== 'undefined' && !perms.includes(activeTool)) {
+    const first = VALID_TABS.find(t => perms.includes(t));
+    if (first && typeof switchTool === 'function') switchTool(first);
+  }
+}
+
+/* ── ADMIN LINK IN DROPDOWN ── */
+function injectAdminLink() {
+  const dropdown = document.getElementById('userDropdown');
+  if (!dropdown || dropdown.querySelector('[data-action="admin"]')) return;
+  const link = document.createElement('a');
+  link.href = '/admin/app.html';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.dataset.action = 'admin';
+  link.style.cssText = 'display:flex;align-items:center;gap:.5rem;padding:.625rem .875rem;color:#1e3a5f;font-size:.825rem;font-weight:600;text-decoration:none;border-top:1px solid #f0f0f0;margin-top:.25rem;';
+  link.innerHTML = '⚙️ Admin Panel';
+  dropdown.appendChild(link);
+}
+
+/* ── ACCOUNT DISABLED SCREEN ── */
+function showAccountDisabledScreen() {
+  const authCard = document.querySelector('.auth-card');
+  if (authCard) {
+    authCard.innerHTML = `
+      <div style="text-align:center;padding:2.5rem 1.5rem;">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">🚫</div>
+        <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;">Account Disabled</div>
+        <p style="color:#888;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.5;">
+          Your beta access has been disabled. Please contact the GSD team for assistance.
+        </p>
+        <a href="https://gsdtasks.com/app" style="display:inline-block;color:#1e3a5f;font-weight:600;font-size:0.9rem;text-decoration:none;border:1px solid #1e3a5f;padding:0.5rem 1.25rem;border-radius:8px;">
+          ← Back to GSD Tasks
+        </a>
+      </div>`;
+  }
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+/* ── GOOGLE TOKEN MANAGEMENT ── */
+async function ensureGoogleToken() {
+  if (!isAdminViewMode) return googleAccessToken; // normal users: token from Supabase session
+  if (googleAccessToken && googleTokenExpiry > Date.now() + 60000) return googleAccessToken;
+
+  // Refresh via admin-api using the admin's auth token
+  const adminAuthToken = sessionStorage.getItem('_admin_auth');
+  const targetEmail    = sessionStorage.getItem('_admin_view_email');
+  if (!adminAuthToken || !targetEmail) return googleAccessToken; // best effort
+
+  try {
+    const res = await fetch('/.netlify/functions/admin-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminAuthToken}` },
+      body: JSON.stringify({ action: 'get-google-token', target_email: targetEmail }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      googleAccessToken = data.google_access_token;
+      googleTokenExpiry = Date.now() + 3500000;
+    }
+  } catch (err) {
+    console.warn('Google token refresh failed:', err.message);
+  }
+  return googleAccessToken;
 }
 
 /* ── AUTH SCREEN HANDLERS ── */
