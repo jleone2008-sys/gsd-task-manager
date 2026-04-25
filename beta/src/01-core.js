@@ -173,6 +173,9 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 
+// Set this after creating the beta Google Cloud project
+const BETA_GOOGLE_CLIENT_ID = 'REPLACE_WITH_BETA_CLIENT_ID';
+
 function showAuthError(msg) {
   const el = document.getElementById('authError');
   el.textContent = msg; el.classList.add('show');
@@ -187,23 +190,72 @@ function onChannelStatus(status, err) {
   }
 }
 
-/* ── BETA: Request extra Google API scopes ── */
-async function signInWithGoogle() {
-  const { error } = await db.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin + '/beta/app',
-      scopes: [
-        'https://www.googleapis.com/auth/calendar.readonly',
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/drive.readonly',
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/photoslibrary.readonly',
-        'https://www.googleapis.com/auth/keep.readonly',
-      ].join(' ')
-    }
+/* ── BETA: Custom OAuth flow via Netlify function proxy ── */
+function signInWithGoogle() {
+  const state = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  sessionStorage.setItem('beta_oauth_state', state);
+
+  const params = new URLSearchParams({
+    client_id:     BETA_GOOGLE_CLIENT_ID,
+    redirect_uri:  window.location.origin + '/.netlify/functions/beta-auth',
+    response_type: 'code',
+    scope: [
+      'openid', 'email', 'profile',
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/drive',
+      'https://www.googleapis.com/auth/photoslibrary.readonly',
+      'https://www.googleapis.com/auth/keep.readonly',
+    ].join(' '),
+    access_type: 'offline',
+    prompt: 'consent',
+    state,
   });
-  if (error) showAuthError('Google sign-in failed: ' + error.message);
+
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+}
+
+/* ── BETA: Handle redirect back from Netlify function ── */
+async function handleBetaOAuthCallback() {
+  if (!location.hash.includes('id_token=')) return false;
+
+  const params = new URLSearchParams(location.hash.slice(1));
+  const idToken     = params.get('id_token');
+  const accessToken = params.get('access_token');
+  const state       = params.get('state');
+  const error       = params.get('error');
+
+  // Clear hash from URL immediately
+  history.replaceState(null, '', location.pathname);
+
+  if (error) {
+    showAuthError('Google sign-in failed: ' + error);
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
+  }
+
+  // CSRF check
+  const expectedState = sessionStorage.getItem('beta_oauth_state');
+  sessionStorage.removeItem('beta_oauth_state');
+  if (!state || state !== expectedState) {
+    showAuthError('Sign-in failed: invalid state. Please try again.');
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
+  }
+
+  const { error: authError } = await db.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken,
+    access_token: accessToken,
+  });
+
+  if (authError) {
+    showAuthError('Sign-in failed: ' + authError.message);
+    document.getElementById('authScreen').classList.remove('hidden');
+  }
+
+  return true;
 }
 
 /* ── BETA: Show not-invited screen ── */
@@ -473,17 +525,22 @@ function exportCSV() {
 
 /* ── RESTORE SESSION ON LOAD ── */
 async function restoreSession() {
+  // Auth state listener must be set up before the callback handler fires signInWithIdToken
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user && !currentUser) {
+      signInUser(session.user);
+    }
+  });
+
+  // Handle redirect back from Netlify OAuth proxy
+  if (await handleBetaOAuthCallback()) return;
+
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) {
     signInUser(session.user);
   } else {
     document.getElementById('authScreen').classList.remove('hidden');
   }
-  db.auth.onAuthStateChange((_event, session) => {
-    if (session?.user && !currentUser) {
-      signInUser(session.user);
-    }
-  });
 }
 
 /* ── AUTH SCREEN HANDLERS ── */
