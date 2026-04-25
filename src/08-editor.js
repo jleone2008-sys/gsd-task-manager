@@ -184,18 +184,22 @@ function addTask() {
     tags: [...newTags].filter(t=>t!=='top3'&&t!=='someday'),
     top3: newTags.has('top3'),
     someday: newTags.has('someday'),
-    done: false, note, due, order: -1
+    done: false, note, due, order: -1,
+    recur: newRecur || null,
   };
   tasks.unshift(newTask);
   tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0)).forEach((t,i)=>t.order=i);
   document.getElementById('newTaskInput').value = '';
   document.getElementById('newNoteInput').value = '';
   document.getElementById('newDueDate').value = '';
-  noteOpen = false; dueDateOpen = false;
+  noteOpen = false; dueDateOpen = false; repeatOpen = false;
   document.getElementById('noteWrap').classList.remove('open');
   document.getElementById('noteToggle').classList.remove('active');
   document.getElementById('dueDateWrap').classList.remove('open');
   document.getElementById('dueDateToggle').classList.remove('active');
+  document.getElementById('repeatWrap').innerHTML = '';
+  document.getElementById('repeatToggle').classList.remove('active');
+  newRecur = null;
   newTags.clear();
   document.querySelectorAll('.create-panel-tags .tag-btn').forEach(b=>b.classList.remove('selected'));
   closeCreatePanel();
@@ -209,6 +213,15 @@ function toggleDone_t(id) {
   if (!t) return;
   t.done = !t.done;
   t.completedAt = t.done ? Date.now() : null;
+  if (t.done && t.recur && t.recur.end === 'never') {
+    const next = {
+      ...t, id: Date.now(), done: false, completedAt: null,
+      due: nextDueDate(t.due, t.recur), order: -1,
+    };
+    tasks.unshift(next);
+    tasks.filter(x => !x.done).sort((a,b) => (a.order??0)-(b.order??0)).forEach((x,i) => x.order = i);
+    saveTask(next);
+  }
   render();
   saveTask(t);
 }
@@ -286,6 +299,10 @@ function openEdit(id) {
     const sel=(td.key==='top3'?t.top3:td.key==='someday'?t.someday:t.tags.includes(td.key))?'selected':'';
     return `<button class="tag-btn ${td.cls} ${sel}" data-key="${td.key}" title="${td.title||td.label}">${td.label}</button>`;
   }).join('');
+  editRecur = t.recur || null;
+  const editRepeatSection = document.getElementById('editRepeatSection');
+  editRepeatSection.innerHTML = repeatSectionHTML(editRecur);
+  initRepeatListeners(editRepeatSection, true);
   document.getElementById('editModal').classList.add('open');
   setTimeout(()=>updateRichToolbarState(), 50);
 }
@@ -300,6 +317,7 @@ function saveEdit() {
   const sel=[...document.querySelectorAll('#editTags .tag-btn.selected')].map(b=>b.dataset.key).filter(Boolean);
   t.tags=sel.filter(s=>s==='biz'||s==='personal');
   t.top3=sel.includes('top3'); t.someday=sel.includes('someday');
+  t.recur = editRecur;
   closeModal(); render(); saveTask(t);
 }
 function closeModal() { document.getElementById('editModal').classList.remove('open'); editId=null; }
@@ -400,6 +418,128 @@ function initNoteClamps() {
   });
 }
 
+/* ═══════════════════════════════════════════════
+   RECURRING TASKS
+═══════════════════════════════════════════════ */
+let newRecur = null;
+let editRecur = null;
+let repeatOpen = false;
+
+const _RECUR_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+
+function repeatSectionHTML(currentRecur) {
+  const on = !!currentRecur;
+  const freq = currentRecur?.freq || 'daily';
+  const days = currentRecur?.days || [];
+  const end  = currentRecur?.end  || 'never';
+  const FREQ_LABELS = ['daily','weekly','monthly','yearly'];
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  const optsHtml = on ? `<div class="repeat-opts">
+    <div class="repeat-freq-row">
+      <span class="repeat-label">Freq</span>
+      ${FREQ_LABELS.map(f=>`<button class="freq-btn${f===freq?' sel':''}" data-rfreq="${f}">${f.charAt(0).toUpperCase()+f.slice(1)}</button>`).join('')}
+    </div>
+    ${freq==='weekly'?`<div class="repeat-days-row">
+      <span class="repeat-label">Days</span>
+      ${DAYS.map(d=>`<button class="day-btn${days.includes(d)?' sel':''}" data-rday="${d}">${d[0]}</button>`).join('')}
+    </div>`:''}
+    <div class="repeat-end-row">
+      <span class="repeat-label">End</span>
+      <button class="end-btn${end==='never'?' sel':''}" data-rend="never">Never</button>
+      <button class="end-btn${end==='after'?' sel':''}" data-rend="after">After…</button>
+      <button class="end-btn${end==='date'?' sel':''}" data-rend="date">On date</button>
+    </div>
+    ${end==='after'?`<input type="number" class="repeat-end-input" id="repeatAfterCount" placeholder="# of times" min="1" value="${currentRecur?.afterCount||''}">` :''}
+    ${end==='date' ?`<input type="date"   class="repeat-end-input" id="repeatEndDate"    value="${currentRecur?.endDate||''}">` :''}
+  </div>` : '';
+
+  return `<div class="repeat-row">
+    <div class="repeat-icon">${_RECUR_SVG}</div>
+    <span style="font-size:12px;font-weight:600;color:var(--ink-2);flex:1;">Repeat</span>
+    <label class="toggle-switch">
+      <input type="checkbox" class="recur-toggle-chk" ${on?'checked':''}>
+      <span class="track"></span>
+    </label>
+  </div>
+  ${optsHtml}`;
+}
+
+function initRepeatListeners(wrapEl, isEdit) {
+  const version = String(Date.now() + Math.random());
+  wrapEl.dataset.repeatV = version;
+  const live = () => wrapEl.dataset.repeatV === version;
+
+  const getRecur = () => isEdit ? editRecur : newRecur;
+  const setRecur = r => { if (isEdit) editRecur = r; else newRecur = r; };
+
+  wrapEl.addEventListener('change', e => {
+    if (!live()) return;
+    const chk = e.target.closest('.recur-toggle-chk');
+    if (!chk) return;
+    setRecur(chk.checked ? { freq:'daily', days:[], end:'never' } : null);
+    wrapEl.innerHTML = repeatSectionHTML(getRecur());
+    initRepeatListeners(wrapEl, isEdit);
+  });
+
+  wrapEl.addEventListener('click', e => {
+    if (!live()) return;
+    const fb = e.target.closest('[data-rfreq]');
+    const db = e.target.closest('[data-rday]');
+    const eb = e.target.closest('[data-rend]');
+    if (!fb && !db && !eb) return;
+    const cur = getRecur();
+    if (!cur) return;
+
+    if (fb) {
+      setRecur({ ...cur, freq: fb.dataset.rfreq, days: fb.dataset.rfreq === 'weekly' ? cur.days : [] });
+      wrapEl.innerHTML = repeatSectionHTML(getRecur());
+      initRepeatListeners(wrapEl, isEdit);
+    } else if (db) {
+      const d = db.dataset.rday;
+      const newDays = cur.days.includes(d) ? cur.days.filter(x=>x!==d) : [...cur.days, d];
+      setRecur({ ...cur, days: newDays });
+      db.classList.toggle('sel', !cur.days.includes(d));
+    } else if (eb) {
+      setRecur({ ...cur, end: eb.dataset.rend });
+      wrapEl.innerHTML = repeatSectionHTML(getRecur());
+      initRepeatListeners(wrapEl, isEdit);
+    }
+  });
+
+  wrapEl.addEventListener('input', e => {
+    if (!live()) return;
+    const inp = e.target;
+    const cur = getRecur();
+    if (!cur) return;
+    if (inp.id === 'repeatAfterCount') setRecur({ ...cur, afterCount: parseInt(inp.value)||null });
+    if (inp.id === 'repeatEndDate')    setRecur({ ...cur, endDate: inp.value || null });
+  });
+}
+
+function toggleRepeatField() {
+  repeatOpen = !repeatOpen;
+  const wrap = document.getElementById('repeatWrap');
+  document.getElementById('repeatToggle').classList.toggle('active', repeatOpen);
+  if (repeatOpen) {
+    wrap.innerHTML = repeatSectionHTML(newRecur);
+    initRepeatListeners(wrap, false);
+  } else {
+    wrap.innerHTML = '';
+    newRecur = null;
+  }
+}
+
+function nextDueDate(due, recur) {
+  if (!due) return null;
+  const d = new Date(due + 'T00:00:00');
+  if (recur.freq === 'daily')   d.setDate(d.getDate() + 1);
+  if (recur.freq === 'weekly')  d.setDate(d.getDate() + 7);
+  if (recur.freq === 'monthly') d.setMonth(d.getMonth() + 1);
+  if (recur.freq === 'yearly')  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /* ── CREATE-PANEL FORM & SORT DROPDOWN ── */
 document.getElementById('newTaskInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') addTask();
@@ -413,6 +553,7 @@ document.querySelectorAll('.create-panel-tags .tag-btn[data-new-tag]').forEach(b
 });
 document.getElementById('noteToggle').addEventListener('click', toggleNoteField);
 document.getElementById('dueDateToggle').addEventListener('click', toggleDueDateField);
+document.getElementById('repeatToggle').addEventListener('click', toggleRepeatField);
 document.getElementById('btnAddTask').addEventListener('click', addTask);
 
 document.getElementById('sortDropdown').addEventListener('click', e => {

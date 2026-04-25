@@ -61,6 +61,8 @@ function rowToTask(r) {
     due:         r.due         || null,
     order:       r.order       || 0,
     completedAt: r.completed_at || null,
+    createdAt:   r.created_at ? new Date(r.created_at).getTime() : r.client_id,
+    recur:       r.recur || null,
   };
 }
 
@@ -77,6 +79,7 @@ function taskToRow(t) {
     due:          t.due         || null,
     order:        t.order       || 0,
     completed_at: t.completedAt || null,
+    recur:        t.recur || null,
   };
 }
 

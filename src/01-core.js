@@ -1,5 +1,6 @@
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false, sortBy = 'default';
+let taskStatsView = 'daily';
 let noteOpen = false, dueDateOpen = false;
 let dragId = null, dragOverId = null;
 let searchQuery = '';
