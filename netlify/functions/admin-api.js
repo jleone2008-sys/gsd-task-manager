@@ -222,13 +222,22 @@ async function getGsdData(body, serviceKey) {
   const { target_email } = body;
   if (!target_email) return json(400, { error: 'target_email_required' });
 
-  // Look up supabase_user_id
+  // Look up supabase_user_id — fall back to auth.users lookup if not cached yet
   const profileRes = await supabaseFetch(
     `/rest/v1/user_profiles?email=eq.${encodeURIComponent(target_email)}&select=supabase_user_id`,
     'GET', null, null, serviceKey
   );
   const profiles = await profileRes.json();
-  const uid = profiles?.[0]?.supabase_user_id;
+  let uid = profiles?.[0]?.supabase_user_id;
+
+  if (!uid) {
+    const authRes = await supabaseFetch('/auth/v1/admin/users?per_page=1000', 'GET', null, null, serviceKey);
+    if (authRes.ok) {
+      const authData = await authRes.json();
+      const match = (authData.users || []).find(u => u.email === target_email);
+      if (match) uid = match.id;
+    }
+  }
   if (!uid) return json(404, { error: 'user_not_found' });
 
   // Fetch counts from each table in parallel
