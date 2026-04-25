@@ -66,6 +66,7 @@ exports.handler = async (event) => {
       case 'view-as-user':      return cors(await viewAsUser(JSON.parse(event.body), serviceKey));
       case 'get-google-token':  return cors(await getGoogleToken(JSON.parse(event.body), serviceKey));
       case 'get-gsd-data':      return cors(await getGsdData(JSON.parse(event.body), serviceKey));
+      case 'proxy-photos':      return cors(await proxyPhotos(JSON.parse(event.body)));
       default:                  return cors(json(400, { error: 'unknown_action' }));
     }
   } catch (err) {
@@ -253,6 +254,19 @@ async function getGsdData(body, serviceKey) {
   ]);
 
   return json(200, { task_count: tasks, habit_count: habits, note_count: notes, last_backup: backups });
+}
+
+async function proxyPhotos(body) {
+  const { google_access_token, page_size = 20 } = body;
+  if (!google_access_token) return json(400, { error: 'google_access_token_required' });
+
+  const res = await fetch(
+    `https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=${page_size}`,
+    { headers: { Authorization: `Bearer ${google_access_token}` } }
+  );
+  const data = await res.json();
+  if (!res.ok) return json(res.status, { error: data.error?.message || 'photos_api_error' });
+  return json(200, data);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

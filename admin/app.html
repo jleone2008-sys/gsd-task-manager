@@ -641,12 +641,9 @@ async function loadGoogleTasks(area, token) {
 }
 
 async function loadPhotos(area, token) {
-  // Photos Library API has CORS restrictions — proxy through admin-api if needed
   try {
-    const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=20', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await adminFetch('POST', { action: 'proxy-photos', google_access_token: token, page_size: 20 });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || `HTTP ${res.status}`); }
     const data = await res.json();
     const items = data.mediaItems || [];
 
@@ -661,7 +658,7 @@ async function loadPhotos(area, token) {
 
     area.innerHTML = `<div style="font-size:.75rem;color:#9aaabb;margin-bottom:.5rem">Showing ${items.length} recent items</div>${thumbs}`;
   } catch (err) {
-    area.innerHTML = `<div class="error-msg">Photos API error: ${escHtml(err.message)}<br><small>The Photos Library API may require a CORS proxy for admin access.</small></div>`;
+    area.innerHTML = `<div class="error-msg">Photos API error: ${escHtml(err.message)}</div>`;
   }
 }
 
