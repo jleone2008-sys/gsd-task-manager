@@ -253,7 +253,23 @@ async function handleBetaOAuthCallback() {
     return true;
   }
 
-  console.log('[beta-auth] granted scopes:', (params.get('granted_scope') || '').split(' '));
+  const grantedScopes = (params.get('granted_scope') || '').split(' ');
+  console.log('[beta-auth] granted scopes:', grantedScopes);
+  const REQUIRED_SCOPES = [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events.owned',
+    'https://www.googleapis.com/auth/calendar.events.owned.readonly',
+    'https://www.googleapis.com/auth/photoslibrary',
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/drive',
+  ];
+  const missing = REQUIRED_SCOPES.filter(s => !grantedScopes.includes(s));
+  if (missing.length) {
+    console.log('[beta-auth] missing scopes:', missing);
+    showAuthError('Beta features require permissions to work. Please try again.');
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
+  }
   console.log('[beta-auth] calling signInWithIdToken…');
   const { error: authError } = await db.auth.signInWithIdToken({
     provider: 'google',
@@ -350,10 +366,12 @@ async function _signInUser(user) {
 
   try { db.removeAllChannels(); } catch (_) {}
   currentUser = user;
+  console.log('[beta-auth] hiding authScreen, loading app for', user.email);
   document.getElementById('authScreen').classList.add('hidden');
-  setUserUI(user);
-  applyTabPermissions(currentUserProfile.tab_permissions);
-  if (currentUserProfile.role === 'admin') injectAdminLink();
+  try { setUserUI(user); } catch(e) { console.error('[beta-auth] setUserUI threw:', e); }
+  try { applyTabPermissions(currentUserProfile.tab_permissions); } catch(e) { console.error('[beta-auth] applyTabPermissions threw:', e); }
+  try { if (currentUserProfile.role === 'admin') injectAdminLink(); } catch(e) { console.error('[beta-auth] injectAdminLink threw:', e); }
+  console.log('[beta-auth] calling load()');
   load();
   loadHabits();
   loadNotes();
