@@ -79,7 +79,7 @@ exports.handler = async (event) => {
 async function listUsers(serviceKey) {
   // Get all user_profiles
   const profilesRes = await supabaseFetch(
-    '/rest/v1/user_profiles?select=email,role,status,tab_permissions,display_name,supabase_user_id,updated_at',
+    '/rest/v1/user_profiles?select=email,role,status,tab_permissions,display_name,supabase_user_id,updated_at,google_refresh_token_enc',
     'GET', null, null, serviceKey
   );
   const profiles = await profilesRes.json();
