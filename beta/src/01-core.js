@@ -206,6 +206,7 @@ function signInWithGoogle() {
       'https://www.googleapis.com/auth/calendar.events.owned.readonly',
       'https://www.googleapis.com/auth/drive.photos.readonly',
       'https://www.googleapis.com/auth/photoslibrary',
+      'https://www.googleapis.com/auth/tasks',
       'https://www.googleapis.com/auth/drive',
     ].join(' '),
     access_type: 'offline',
