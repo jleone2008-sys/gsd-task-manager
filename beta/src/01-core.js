@@ -253,24 +253,7 @@ async function handleBetaOAuthCallback() {
     return true;
   }
 
-  const grantedScopes = (params.get('granted_scope') || '').split(' ');
-  console.log('[beta-auth] granted scopes:', grantedScopes);
-  const REQUIRED_SCOPES = [
-    'https://www.googleapis.com/auth/calendar.readonly',
-    'https://www.googleapis.com/auth/calendar.events.owned',
-    'https://www.googleapis.com/auth/calendar.events.owned.readonly',
-    'https://www.googleapis.com/auth/photoslibrary',
-    'https://www.googleapis.com/auth/tasks',
-    'https://www.googleapis.com/auth/drive',
-  ];
-  const missing = REQUIRED_SCOPES.filter(s => !grantedScopes.includes(s));
-  if (missing.length) {
-    console.log('[beta-auth] missing scopes:', missing);
-    showAuthError('Beta features require permissions to work. Please try again.');
-    document.getElementById('authScreen').classList.remove('hidden');
-    return true;
-  }
-
+  console.log('[beta-auth] granted scopes:', (params.get('granted_scope') || '').split(' '));
   console.log('[beta-auth] calling signInWithIdToken…');
   const { error: authError } = await db.auth.signInWithIdToken({
     provider: 'google',
