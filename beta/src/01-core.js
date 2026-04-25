@@ -174,6 +174,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 let currentUserProfile = null;
 let isAdminViewMode = false;
+let signingIn = false;
 let googleAccessToken = null;   // set after OAuth or admin impersonation
 let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
 const VALID_TABS = ['tasks', 'habits', 'notes', 'scratch'];
@@ -301,6 +302,16 @@ function showBetaNotInvitedScreen() {
 
 /* ── BETA: Check whitelist before loading user data ── */
 async function signInUser(user) {
+  if (signingIn || currentUser) return;
+  signingIn = true;
+  try {
+    await _signInUser(user);
+  } finally {
+    signingIn = false;
+  }
+}
+
+async function _signInUser(user) {
   // In admin impersonation mode the session is already set; skip whitelist + profile checks
   if (isAdminViewMode) {
     try { db.removeAllChannels(); } catch (_) {}
@@ -363,6 +374,7 @@ async function signOut() {
   db.removeAllChannels();
   await db.auth.signOut();
   currentUser = null;
+  signingIn = false;
   tasks = [];
   subtasks = []; subtasksByTask.clear(); subtaskRowIdMap.clear(); expandedTaskIds.clear();
   habitsArr = []; habitCompletions = [];
