@@ -244,6 +244,22 @@ async function handleBetaOAuthCallback() {
     return true;
   }
 
+  const grantedScopes = (params.get('granted_scope') || '').split(' ');
+  const REQUIRED_SCOPES = [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events.owned',
+    'https://www.googleapis.com/auth/calendar.events.owned.readonly',
+    'https://www.googleapis.com/auth/photoslibrary',
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/drive',
+  ];
+  const missing = REQUIRED_SCOPES.filter(s => !grantedScopes.includes(s));
+  if (missing.length) {
+    showAuthError('Beta requires all permissions to work. Please try again and accept all permissions.');
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
+  }
+
   const { error: authError } = await db.auth.signInWithIdToken({
     provider: 'google',
     token: idToken,

@@ -50,9 +50,10 @@ exports.handler = async (event) => {
   }
 
   const params = new URLSearchParams({
-    id_token:     tokens.id_token     || '',
-    access_token: tokens.access_token || '',
-    state:        state               || '',
+    id_token:      tokens.id_token     || '',
+    access_token:  tokens.access_token || '',
+    granted_scope: tokens.scope        || '',
+    state:         state               || '',
   });
 
   return redirect(`/beta/app#${params}`);
