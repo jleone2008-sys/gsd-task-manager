@@ -199,6 +199,7 @@ async function signInWithGoogle() {
         'https://www.googleapis.com/auth/drive.readonly',
         'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/photoslibrary.readonly',
+        'https://www.googleapis.com/auth/keep.readonly',
       ].join(' ')
     }
   });
