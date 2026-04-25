@@ -50,7 +50,7 @@ function computeTaskStatsData(period, offset) {
       const hs = new Date(start); hs.setHours(h,0,0,0);
       const he = new Date(start); he.setHours(h,59,59,999);
       bars.push({ l: h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h-12}p`,
-        created:   tasks.filter(t => { const d=new Date(t.id); return d>=hs&&d<=he; }).length,
+        created:   tasks.filter(t => { const d=new Date(t.createdAt || t.id); return d>=hs&&d<=he; }).length,
         completed: tasks.filter(t => { if (!t.completedAt) return false; const d=new Date(t.completedAt); return d>=hs&&d<=he; }).length });
     }
   } else if (period === 'weekly') {
@@ -65,7 +65,7 @@ function computeTaskStatsData(period, offset) {
       const ds = new Date(weekStart); ds.setDate(ds.getDate()+d); ds.setHours(0,0,0,0);
       const de = new Date(ds); de.setHours(23,59,59,999);
       bars.push({ l: days[d],
-        created:   tasks.filter(t => { const x=new Date(t.id); return x>=ds&&x<=de; }).length,
+        created:   tasks.filter(t => { const x=new Date(t.createdAt || t.id); return x>=ds&&x<=de; }).length,
         completed: tasks.filter(t => { if (!t.completedAt) return false; const x=new Date(t.completedAt); return x>=ds&&x<=de; }).length });
     }
   } else if (period === 'monthly') {
@@ -80,7 +80,7 @@ function computeTaskStatsData(period, offset) {
       const wsC = ws < start ? new Date(start) : ws;
       const weC = we > end   ? new Date(end)   : we;
       bars.push({ l: `W${w+1}`,
-        created:   tasks.filter(t => { const x=new Date(t.id); return x>=wsC&&x<=weC; }).length,
+        created:   tasks.filter(t => { const x=new Date(t.createdAt || t.id); return x>=wsC&&x<=weC; }).length,
         completed: tasks.filter(t => { if (!t.completedAt) return false; const x=new Date(t.completedAt); return x>=wsC&&x<=weC; }).length });
     }
   } else { // yearly
@@ -93,12 +93,12 @@ function computeTaskStatsData(period, offset) {
       const ms = new Date(yr, m, 1, 0, 0, 0, 0);
       const me = new Date(yr, m+1, 0, 23, 59, 59, 999);
       bars.push({ l: mNames[m],
-        created:   tasks.filter(t => { const x=new Date(t.id); return x>=ms&&x<=me; }).length,
+        created:   tasks.filter(t => { const x=new Date(t.createdAt || t.id); return x>=ms&&x<=me; }).length,
         completed: tasks.filter(t => { if (!t.completedAt) return false; const x=new Date(t.completedAt); return x>=ms&&x<=me; }).length });
     }
   }
 
-  const created   = tasks.filter(t => { const x=new Date(t.id); return x>=start&&x<=end; }).length;
+  const created   = tasks.filter(t => { const x=new Date(t.createdAt || t.id); return x>=start&&x<=end; }).length;
   const completed = tasks.filter(t => { if (!t.completedAt) return false; const x=new Date(t.completedAt); return x>=start&&x<=end; }).length;
   const rate = created > 0 ? Math.round(completed / created * 100) : 0;
 
