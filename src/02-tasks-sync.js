@@ -61,6 +61,7 @@ function rowToTask(r) {
     due:         r.due         || null,
     order:       r.order       || 0,
     completedAt: r.completed_at || null,
+    recur:       r.recur || null,
   };
 }
 
@@ -77,6 +78,7 @@ function taskToRow(t) {
     due:          t.due         || null,
     order:        t.order       || 0,
     completed_at: t.completedAt || null,
+    recur:        t.recur || null,
   };
 }
 

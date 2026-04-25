@@ -295,6 +295,7 @@
     <button class="pill" data-filter="overdue">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
     <button class="pill" data-filter="personal">Personal<span class="pill-count" id="pc-personal">0</span></button>
     <button class="pill" data-filter="biz">Work<span class="pill-count" id="pc-biz">0</span></button>
+    <button class="pill" data-filter="stats">Statistics</button>
   </div>
 </div>
 <div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
@@ -414,6 +415,7 @@
     <div class="add-note-wrap" id="dueDateWrap" style="padding: 0 0 4px;">
       <input type="date" id="newDueDate" class="auth-input" style="font-size:12px;padding:7px 10px;color:var(--ink-3);" formnovalidate>
     </div>
+    <div id="repeatWrap"></div>
     <div class="create-panel-footer">
       <div class="create-panel-tags">
         <button class="tag-btn biz" id="opt-biz" data-new-tag="biz">Work</button>
@@ -424,6 +426,7 @@
       <div class="create-panel-actions">
         <button class="btn-note" id="noteToggle">+ Note</button>
         <button class="btn-note" id="dueDateToggle">📅 Due</button>
+        <button class="btn-note" id="repeatToggle">↻ Repeat</button>
         <button class="btn-add" id="btnAddTask">Add</button>
       </div>
     </div>
@@ -705,6 +708,8 @@
       <label style="font-size:11px;color:var(--ink-3);display:block;margin-bottom:5px;">Due date (optional)</label>
       <input type="date" id="editDueDate" class="auth-input" style="font-size:12.5px;padding:8px 11px;" formnovalidate>
     </div>
+
+    <div id="editRepeatSection"></div>
 
     <div class="modal-footer-row">
       <div class="modal-tags" id="editTags"></div>
