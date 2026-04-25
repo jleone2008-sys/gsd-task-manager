@@ -255,7 +255,7 @@ async function handleBetaOAuthCallback() {
   ];
   const missing = REQUIRED_SCOPES.filter(s => !grantedScopes.includes(s));
   if (missing.length) {
-    showAuthError('Beta requires all permissions to work. Please try again and accept all permissions.');
+    showAuthError('Beta features require permissions to work. Please try again.');
     document.getElementById('authScreen').classList.remove('hidden');
     return true;
   }
