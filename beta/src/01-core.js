@@ -174,7 +174,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 
 // Set this after creating the beta Google Cloud project
-const BETA_GOOGLE_CLIENT_ID = 'REPLACE_WITH_BETA_CLIENT_ID';
+const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
 
 function showAuthError(msg) {
   const el = document.getElementById('authError');
