@@ -354,6 +354,16 @@ async function _signInUser(user) {
     db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id }).then(null, () => {});
   }
 
+  // Auto-grant any new core tabs that weren't in this user's tab_permissions yet.
+  // Admin can still revoke later; this only fills in tabs that exist in VALID_TABS but
+  // are missing from the row (e.g., when a new tab ships).
+  const existingPerms = currentUserProfile.tab_permissions || [];
+  const missingTabs = VALID_TABS.filter(t => !existingPerms.includes(t));
+  if (missingTabs.length) {
+    currentUserProfile.tab_permissions = Array.from(new Set([...existingPerms, ...missingTabs]));
+    db.rpc('ensure_default_tabs', { p_tabs: VALID_TABS }).then(null, e => console.warn('[ensure_default_tabs]', e));
+  }
+
   try { db.removeAllChannels(); } catch (_) {}
   currentUser = user;
   document.getElementById('authScreen').classList.add('hidden');
