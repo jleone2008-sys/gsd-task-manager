@@ -410,7 +410,7 @@ document.addEventListener('keydown', e => {
 
 /* ── HABIT CREATE PANEL HANDLERS ── */
 document.getElementById('habitCreatePanel').addEventListener('click', function(e) {
-  if (e.target === this) closeHabitCreatePanel();
+  if (isCleanBackdropClick(e, this)) closeHabitCreatePanel();
 });
 document.getElementById('habitEmojiBtn').addEventListener('click', () => {
   const g = document.getElementById('habitEmojiGrid');
@@ -425,7 +425,7 @@ document.getElementById('habitCreateAddBtn').addEventListener('click', addHabit)
 
 /* ── HABIT EDIT OVERLAY HANDLERS ── */
 document.getElementById('habitEditOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeHabitEdit();
+  if (isCleanBackdropClick(e, this)) closeHabitEdit();
 });
 document.getElementById('habitEditEmojiBtn').addEventListener('click', () => {
   const g = document.getElementById('habitEditEmojiGrid');
@@ -441,7 +441,7 @@ document.getElementById('habitEditSaveBtn').addEventListener('click', saveHabitE
 
 /* ── HABIT DRILL-IN HANDLERS ── */
 document.getElementById('habitDrillOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeDrillIn();
+  if (isCleanBackdropClick(e, this)) closeDrillIn();
 });
 document.getElementById('habitDrillBackBtn').addEventListener('click', closeDrillIn);
 document.querySelectorAll('.habit-drill-tabs [data-drill-tab]').forEach(btn => {

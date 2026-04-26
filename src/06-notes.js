@@ -1056,7 +1056,7 @@ function showInlineConfirm(title, message, onConfirm) {
   const close = () => overlay.remove();
   card.querySelector('#icCancel').onclick = close;
   card.querySelector('#icConfirm').onclick = () => { close(); onConfirm(); };
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.addEventListener('click', e => { if (isCleanBackdropClick(e, overlay)) close(); });
   document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
 }
 

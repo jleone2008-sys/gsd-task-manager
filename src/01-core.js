@@ -1,3 +1,11 @@
+/* Track mousedown target so modals can ignore clicks that started inside
+   (e.g. dragging text selection from a textarea out onto the backdrop). */
+let _gsdLastMouseDownTarget = null;
+document.addEventListener('mousedown', e => { _gsdLastMouseDownTarget = e.target; }, true);
+function isCleanBackdropClick(e, backdropEl) {
+  return e.target === backdropEl && _gsdLastMouseDownTarget === backdropEl;
+}
+
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false, sortBy = 'default';
 let taskStatsView = 'daily';
@@ -447,7 +455,7 @@ document.addEventListener('click', e => {
 });
 
 document.getElementById('deleteAccountModal').addEventListener('click', function(e) {
-  if (e.target === this) closeDeleteAccountModal();
+  if (isCleanBackdropClick(e, this)) closeDeleteAccountModal();
 });
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('deleteConfirmInput');

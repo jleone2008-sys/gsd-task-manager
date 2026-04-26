@@ -167,6 +167,14 @@ async function deleteSubtask(taskClientId, subClientId) {
 /* ════════════════════════════════════════
    SUPABASE CONFIG + REAL AUTH
 ════════════════════════════════════════ */
+/* Track mousedown target so modals can ignore clicks that started inside
+   (e.g. dragging text selection from a textarea out onto the backdrop). */
+let _gsdLastMouseDownTarget = null;
+document.addEventListener('mousedown', e => { _gsdLastMouseDownTarget = e.target; }, true);
+function isCleanBackdropClick(e, backdropEl) {
+  return e.target === backdropEl && _gsdLastMouseDownTarget === backdropEl;
+}
+
 const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;
@@ -551,7 +559,7 @@ document.addEventListener('click', e => {
 });
 
 document.getElementById('deleteAccountModal').addEventListener('click', function(e) {
-  if (e.target === this) closeDeleteAccountModal();
+  if (isCleanBackdropClick(e, this)) closeDeleteAccountModal();
 });
 document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('deleteConfirmInput');

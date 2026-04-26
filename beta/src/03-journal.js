@@ -1184,7 +1184,7 @@ document.addEventListener('click', async e => {
     navLightbox(parseInt(lightboxNav.dataset.jlightboxNav, 10));
     return;
   }
-  if (e.target.id === 'jLightbox') {
+  if (isCleanBackdropClick(e, document.getElementById('jLightbox'))) {
     closeLightbox();
     return;
   }
@@ -1201,7 +1201,7 @@ document.addEventListener('click', async e => {
     closeEditModal();
     return;
   }
-  if (e.target.id === 'jEditModal') {
+  if (isCleanBackdropClick(e, document.getElementById('jEditModal'))) {
     closeEditModal();
     return;
   }
@@ -1220,7 +1220,7 @@ document.addEventListener('click', async e => {
     document.getElementById(id)?.click();
     return;
   }
-  if (e.target.closest('[data-jphoto-cancel]') || e.target.classList.contains('j-photo-modal')) {
+  if (e.target.closest('[data-jphoto-cancel]') || isCleanBackdropClick(e, document.getElementById('jPhotoModal'))) {
     closePhotoSourceModal();
     return;
   }

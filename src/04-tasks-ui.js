@@ -628,7 +628,7 @@ document.getElementById('fsClear').addEventListener('click', e => {
 
 document.getElementById('fabBtn').addEventListener('click', openCreatePanel);
 document.getElementById('createPanel').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeCreatePanel();
+  if (isCleanBackdropClick(e, e.currentTarget)) closeCreatePanel();
 });
 
 /* ── TASK LIST DELEGATION ──
