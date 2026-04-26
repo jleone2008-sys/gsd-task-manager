@@ -131,6 +131,16 @@ async function loadJournalRange(startDate, endDate) {
   } catch (e) { console.warn('[journal] loadRange failed', e); }
 }
 
+async function loadCalendarCacheRange(startDate, endDate) {
+  try {
+    const { data, error } = await db.from('journal_calendar_cache')
+      .select('entry_date, events')
+      .gte('entry_date', startDate).lte('entry_date', endDate);
+    if (error) throw error;
+    (data || []).forEach(row => journalState.calendarEvents.set(row.entry_date, row.events || []));
+  } catch (e) { /* table may not exist yet — silent */ }
+}
+
 async function loadJournalEntry(dateStr) {
   if (journalState.entries.has(dateStr)) return journalState.entries.get(dateStr);
   try {
@@ -386,6 +396,8 @@ async function syncCalendarHistory() {
     for (const [date, events] of Object.entries(byDate)) {
       journalState.calendarEvents.set(date, events);
     }
+    // Re-render timeline so backfilled events show on cards
+    if (document.getElementById('jTimeline')) rerenderTimeline();
   } catch (e) { console.warn('[journal] history sync failed', e); }
 }
 
@@ -503,6 +515,13 @@ function ensureJournalStyles() {
     .j-card-edit:hover { background: var(--surface-2); color: var(--ink); }
     .j-card-edit svg { width: 12px; height: 12px; }
     .j-card-empty-prompt { color: var(--ink-3); font-style: italic; }
+    .j-card-auto { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
+    .j-card-body > .j-card-auto:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .j-card-auto-label { font-size: 9.5px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+    .j-card-auto-row { display: flex; gap: 6px; padding: 3px 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+    .j-card-auto-row .j-bullet { color: var(--guava-500); flex-shrink: 0; }
+    .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
+    .j-card-auto-more { font-size: 11px; color: var(--ink-4); font-style: italic; padding-top: 2px; }
 
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
 
@@ -654,43 +673,65 @@ function renderCardPhotos(dateStr, photos) {
 function renderDayCard(dateStr) {
   const entry = journalState.entries.get(dateStr);
   const isToday = jIsToday(dateStr);
-  const empty = isEntryEmpty(entry);
+  const hasReflection = !!(entry?.reflections && entry.reflections.trim());
+  const hasMood = !!entry?.mood;
+  const hasPhotos = !!entry?.photos?.length;
+  const hasManual = hasReflection || hasMood || hasPhotos;
 
-  // Past empty days: minimal placeholder
-  if (empty && !isToday) {
+  // Auto-collected: events + completed tasks
+  const events = journalState.calendarEvents.get(dateStr) || [];
+  const tasksDone = getCompletedTasksForDate(dateStr);
+  const hasAuto = events.length > 0 || tasksDone.length > 0;
+
+  // Past day with literally nothing: minimal clickable placeholder
+  if (!hasManual && !hasAuto && !isToday) {
     return `
       <div class="j-card j-card--placeholder" data-jcard-edit="${dateStr}">
-        <div class="j-card-placeholder-text">${jFormatCardDate(dateStr)} · No entry</div>
+        <div class="j-card-placeholder-text">${jFormatCardDate(dateStr)} · No activity</div>
       </div>`;
   }
 
-  // Filled card OR today (always entry-style card with edit button)
-  const photosHtml = entry?.photos ? renderCardPhotos(dateStr, entry.photos) : '';
+  // Card content
+  const photosHtml = hasPhotos ? renderCardPhotos(dateStr, entry.photos) : '';
   const reflection = (entry?.reflections || '').trim();
   const lines = reflection.split(/\n+/);
   const title = lines[0] || '';
   const body = lines.slice(1).join('\n').trim();
-  const moodIcon = entry?.mood ? `<span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>` : '';
+  const moodIcon = hasMood ? `<span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>` : '';
 
-  let bodyHtml = '';
-  if (empty && isToday) {
+  let manualHtml = '';
+  if (!hasManual && isToday) {
     const greeting = getTimeBasedGreeting(getFirstName());
-    bodyHtml = `
-      <div class="j-card-body">
-        <div class="j-card-text j-card-empty-prompt">${escapeHtml(greeting)}</div>
-      </div>`;
+    manualHtml = `<div class="j-card-text j-card-empty-prompt">${escapeHtml(greeting)}</div>`;
   } else if (title || body) {
-    bodyHtml = `
-      <div class="j-card-body">
-        ${title ? `<div class="j-card-title">${moodIcon}${escapeHtml(title)}</div>` : (moodIcon ? `<div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div>` : '')}
-        ${body ? `<div class="j-card-text j-card-text--clamped">${escapeHtml(body)}</div>` : ''}
-      </div>`;
-  } else if (entry?.mood) {
-    bodyHtml = `<div class="j-card-body"><div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div></div>`;
+    manualHtml = `
+      ${title ? `<div class="j-card-title">${moodIcon}${escapeHtml(title)}</div>` : (moodIcon ? `<div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div>` : '')}
+      ${body ? `<div class="j-card-text j-card-text--clamped">${escapeHtml(body)}</div>` : ''}`;
+  } else if (hasMood) {
+    manualHtml = `<div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div>`;
   }
 
+  let autoHtml = '';
+  if (events.length) {
+    const items = events.slice(0, 4).map(ev => {
+      const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+      return `<div class="j-card-auto-row"><span class="j-bullet">•</span><span>${escapeHtml(ev.summary)} · ${time}</span></div>`;
+    }).join('');
+    const more = events.length > 4 ? `<div class="j-card-auto-more">+${events.length - 4} more</div>` : '';
+    autoHtml += `<div class="j-card-auto"><div class="j-card-auto-label">What happened</div>${items}${more}</div>`;
+  }
+  if (tasksDone.length) {
+    const items = tasksDone.slice(0, 4).map(t => `<div class="j-card-auto-row"><span class="j-check">✓</span><span>${escapeHtml(t.text)}</span></div>`).join('');
+    const more = tasksDone.length > 4 ? `<div class="j-card-auto-more">+${tasksDone.length - 4} more</div>` : '';
+    autoHtml += `<div class="j-card-auto"><div class="j-card-auto-label">What you finished</div>${items}${more}</div>`;
+  }
+
+  const bodyHtml = (manualHtml || autoHtml)
+    ? `<div class="j-card-body">${manualHtml}${autoHtml}</div>`
+    : '';
+
   const todayLabel = isToday ? ' · Today' : '';
-  const editLabel = empty && isToday ? 'Start writing' : 'Edit';
+  const editLabel = !hasManual && isToday ? 'Start writing' : 'Edit';
 
   return `
     <div class="j-card" data-jcard-edit="${dateStr}">
@@ -742,7 +783,10 @@ async function loadInitialTimeline() {
   const today = jToday();
   const start = jShiftDays(today, -(journalState.timelineDays - 1));
   journalState.timelineLoadedThrough = start;
-  await loadJournalRange(start, today);
+  await Promise.all([
+    loadJournalRange(start, today),
+    loadCalendarCacheRange(start, today),
+  ]);
 }
 
 async function loadOlderTimelineDays(count = 30) {
@@ -751,7 +795,10 @@ async function loadOlderTimelineDays(count = 30) {
   const oldStart = journalState.timelineLoadedThrough || jToday();
   const newStart = jShiftDays(oldStart, -count);
   const newEnd = jShiftDays(oldStart, -1);
-  await loadJournalRange(newStart, newEnd);
+  await Promise.all([
+    loadJournalRange(newStart, newEnd),
+    loadCalendarCacheRange(newStart, newEnd),
+  ]);
   journalState.timelineLoadedThrough = newStart;
   journalState.timelineDays += count;
   journalState.timelineLoading = false;
