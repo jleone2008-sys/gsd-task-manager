@@ -805,9 +805,9 @@ function renderDayCard(dateStr) {
   const todayLabel = isToday ? ' · Today' : '';
   const isStartWriting = !hasManual && isToday;
   const addPhotoHtml = `
-        <button class="j-card-edit j-card-add-photo" data-jcard-add-photo="${dateStr}" title="Photos" type="button">
+        <button class="j-card-edit j-card-add-photo" data-jcard-add-photo="${dateStr}" title="Add photos" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span class="j-card-edit-label">Photos</span>
+          <span class="j-card-edit-label">Add photos</span>
         </button>`;
   const footerEditHtml = isStartWriting ? '' : `
         <button class="j-card-edit" data-jcard-edit="${dateStr}" title="Edit">
