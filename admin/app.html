@@ -643,14 +643,14 @@ async function loadGoogleTasks(area, token) {
 async function loadPhotos(area, token) {
   try {
     const res = await adminFetch('POST', { action: 'proxy-photos', google_access_token: token, page_size: 20 });
-    if (!res.ok) { const d = await res.json(); throw new Error((d.error || `HTTP ${res.status}`) + (d.token_scopes ? `\n\nToken scopes: ${d.token_scopes}` : '\n\n(no token scope info)')); }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || `HTTP ${res.status}`); }
     const data = await res.json();
     const items = data.mediaItems || [];
 
     if (!items.length) { area.innerHTML = '<div class="loading-msg">No photos found</div>'; return; }
 
     const thumbs = items.map(item => {
-      const thumb = item.baseUrl ? `${item.baseUrl}=w80-h80-c` : '';
+      const thumb = item.baseUrl || '';
       return `<div style="display:inline-block;margin:4px;border-radius:6px;overflow:hidden;width:80px;height:80px;background:#f0f2f6">
         ${thumb ? `<img src="${thumb}" alt="${escHtml(item.filename||'')}" style="width:80px;height:80px;object-fit:cover">` : '📷'}
       </div>`;

@@ -260,22 +260,25 @@ async function proxyPhotos(body) {
   const { google_access_token, page_size = 20 } = body;
   if (!google_access_token) return json(400, { error: 'google_access_token_required' });
 
+  // Photos Library API v1 deprecated May 2024 — blocked for unverified apps.
+  // Use Drive API to list image files instead (drive scope already granted).
+  const q      = encodeURIComponent("mimeType contains 'image/' and trashed = false");
+  const fields = encodeURIComponent('files(id,name,mimeType,thumbnailLink,createdTime)');
   const res = await fetch(
-    `https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=${page_size}`,
+    `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=${page_size}&orderBy=createdTime+desc&fields=${fields}`,
     { headers: { Authorization: `Bearer ${google_access_token}` } }
   );
   const data = await res.json();
-  if (!res.ok) {
-    // On scope error, check what scopes the token actually has
-    let tokenScopes = null;
-    try {
-      const infoRes = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${google_access_token}`);
-      const info = await infoRes.json();
-      tokenScopes = info.scope || null;
-    } catch (_) {}
-    return json(res.status, { error: data.error?.message || 'photos_api_error', token_scopes: tokenScopes });
-  }
-  return json(200, data);
+  if (!res.ok) return json(res.status, { error: data.error?.message || 'drive_photos_error' });
+
+  const mediaItems = (data.files || []).map(f => ({
+    id:        f.id,
+    filename:  f.name,
+    mimeType:  f.mimeType,
+    baseUrl:   f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+$/, '=s80') : null,
+    createdAt: f.createdTime,
+  }));
+  return json(200, { mediaItems });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
