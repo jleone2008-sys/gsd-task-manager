@@ -264,6 +264,11 @@ async function loadHabitSummariesForRange(startDate, endDate) {
     console.warn('[journal] habit summary fetch error', e);
     return;
   }
+  // Wait for habits-core to finish loading habitsArr + habitCompletions before
+  // computing any backfill rows — otherwise we'd freeze every past day at 0%.
+  if (typeof habitsLoaded !== 'undefined' && habitsLoaded && typeof habitsLoaded.then === 'function') {
+    await habitsLoaded;
+  }
   await backfillHabitSummaries(startDate, endDate);
 }
 
