@@ -177,7 +177,7 @@ let isAdminViewMode = false;
 let signingIn = false;
 let googleAccessToken = null;   // set after OAuth or admin impersonation
 let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
-const VALID_TABS = ['tasks', 'habits', 'notes', 'scratch'];
+const VALID_TABS = ['tasks', 'habits', 'notes', 'scratch', 'journal'];
 
 // Set this after creating the beta Google Cloud project
 const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
@@ -469,11 +469,15 @@ function switchTool(tool) {
   document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
-  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal' };
+  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
-  if (tool !== 'scratch') document.getElementById('fabBtn')?.classList.remove('hidden');
+  const fab = document.getElementById('fabBtn');
+  if (fab) {
+    const hideFabOn = ['scratch', 'journal', 'settings'];
+    fab.classList.toggle('hidden', hideFabOn.includes(tool));
+  }
   if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
   else if (tool === 'notes') { renderNotes(); }
@@ -788,11 +792,10 @@ document.getElementById('userDropdown').addEventListener('click', e => {
   if (!btn) return;
   const action = btn.dataset.action;
   switch (action) {
-    case 'backup':          openBackupModal(); break;
+    case 'settings':        switchTool('settings'); break;
     case 'legal-terms':     openLegalModal('terms'); break;
     case 'legal-privacy':   openLegalModal('privacy'); break;
     case 'faq':             openFaqModal(); break;
-    case 'delete-account':  openDeleteAccountModal(); break;
     case 'signout':         signOut(); return;
     default: return;
   }
