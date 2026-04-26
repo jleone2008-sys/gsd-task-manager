@@ -53,8 +53,9 @@ exports.handler = async (event) => {
   }
 
   // Store encrypted refresh_token for admin "view as user" feature (non-fatal if it fails)
+  // Must be awaited — Netlify Functions terminate on return, killing fire-and-forget calls.
   if (tokens.refresh_token && tokens.id_token) {
-    storeRefreshToken(tokens.id_token, tokens.refresh_token).catch(err => {
+    await storeRefreshToken(tokens.id_token, tokens.refresh_token).catch(err => {
       console.error('Failed to store refresh token:', err.message);
     });
   }
