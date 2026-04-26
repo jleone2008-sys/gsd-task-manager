@@ -470,15 +470,20 @@ function ensureJournalStyles() {
     .j-card.j-card--placeholder:hover { background: var(--surface); border-color: var(--edge-strong); }
     .j-card-placeholder-text { font-size: 12px; color: var(--ink-4); }
 
-    .j-card-photos { display: grid; gap: 2px; aspect-ratio: 16/9; background: var(--ink-5); }
-    .j-card-photos img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
-    .j-card-photos--1 { grid-template-columns: 1fr; grid-template-rows: 1fr; aspect-ratio: 16/9; }
+    .j-card-photos { background: #1a1714; }
+    .j-card-photos img { display: block; cursor: pointer; }
+    .j-card-photos--1 { display: flex; align-items: center; justify-content: center; max-height: 420px; overflow: hidden; }
+    .j-card-photos--1 img { width: 100%; max-height: 420px; object-fit: contain; }
+    @media (max-width: 600px) { .j-card-photos--1, .j-card-photos--1 img { max-height: 300px; } }
+    .j-card-photos--2, .j-card-photos--3, .j-card-photos--4, .j-card-photos--5plus { display: grid; gap: 2px; height: 320px; }
+    @media (max-width: 600px) { .j-card-photos--2, .j-card-photos--3, .j-card-photos--4, .j-card-photos--5plus { height: 240px; } }
     .j-card-photos--2 { grid-template-columns: 1fr 1fr; }
     .j-card-photos--3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
     .j-card-photos--3 img:nth-child(1) { grid-row: span 2; }
     .j-card-photos--4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .j-card-photos--5plus { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .j-card-photos--5plus img:nth-child(1) { grid-row: span 2; }
+    .j-card-photos--2 img, .j-card-photos--3 img, .j-card-photos--4 img, .j-card-photos--5plus img { width: 100%; height: 100%; object-fit: cover; }
     .j-card-photos--5plus .j-card-photo-more { position: relative; }
     .j-card-photos--5plus .j-card-photo-more::after { content: attr(data-extra); position: absolute; inset: 0; background: rgba(0,0,0,0.55); color: #fff; font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 
@@ -494,14 +499,10 @@ function ensureJournalStyles() {
 
     .j-card-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 22px; border-top: 1px solid var(--edge); background: var(--bg); font-size: 11.5px; color: var(--ink-3); }
     .j-card-date { font-weight: 500; }
-    .j-card-edit { background: none; border: none; cursor: pointer; padding: 4px 6px; color: var(--ink-3); border-radius: var(--r-sm); display: flex; align-items: center; }
+    .j-card-edit { background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--ink-3); border-radius: var(--r-sm); display: flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11.5px; font-weight: 500; }
     .j-card-edit:hover { background: var(--surface-2); color: var(--ink); }
-    .j-card-edit svg { width: 14px; height: 14px; }
-
-    .j-card-empty-greeting { font-size: 16px; font-weight: 500; color: var(--ink); line-height: 1.5; margin-bottom: 14px; padding: 24px 22px 0; }
-    .j-card-empty-cta-row { display: flex; gap: 8px; padding: 0 22px 18px; }
-    .j-card-empty-cta { background: var(--guava-700); color: #fff; border: none; padding: 9px 18px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; }
-    .j-card-empty-cta:hover { background: var(--guava-800); }
+    .j-card-edit svg { width: 12px; height: 12px; }
+    .j-card-empty-prompt { color: var(--ink-3); font-style: italic; }
 
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
 
@@ -663,41 +664,33 @@ function renderDayCard(dateStr) {
       </div>`;
   }
 
-  // Today empty: greeting card
-  if (empty && isToday) {
-    const greeting = getTimeBasedGreeting(getFirstName());
-    return `
-      <div class="j-card j-card--empty" data-jcard-date="${dateStr}">
-        <div class="j-card-empty-greeting">${escapeHtml(greeting)}</div>
-        <div class="j-card-empty-cta-row">
-          <button class="j-card-empty-cta" data-jcard-edit="${dateStr}">Start writing</button>
-        </div>
-        <div class="j-card-footer">
-          <span class="j-card-date">${jFormatCardDate(dateStr)} · Today</span>
-        </div>
-      </div>`;
-  }
-
-  // Filled card
-  const photosHtml = renderCardPhotos(dateStr, entry.photos);
-  const reflection = (entry.reflections || '').trim();
+  // Filled card OR today (always entry-style card with edit button)
+  const photosHtml = entry?.photos ? renderCardPhotos(dateStr, entry.photos) : '';
+  const reflection = (entry?.reflections || '').trim();
   const lines = reflection.split(/\n+/);
   const title = lines[0] || '';
   const body = lines.slice(1).join('\n').trim();
-  const moodIcon = entry.mood ? `<span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>` : '';
+  const moodIcon = entry?.mood ? `<span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>` : '';
 
   let bodyHtml = '';
-  if (title || body) {
+  if (empty && isToday) {
+    const greeting = getTimeBasedGreeting(getFirstName());
+    bodyHtml = `
+      <div class="j-card-body">
+        <div class="j-card-text j-card-empty-prompt">${escapeHtml(greeting)}</div>
+      </div>`;
+  } else if (title || body) {
     bodyHtml = `
       <div class="j-card-body">
         ${title ? `<div class="j-card-title">${moodIcon}${escapeHtml(title)}</div>` : (moodIcon ? `<div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div>` : '')}
         ${body ? `<div class="j-card-text j-card-text--clamped">${escapeHtml(body)}</div>` : ''}
       </div>`;
-  } else if (entry.mood) {
+  } else if (entry?.mood) {
     bodyHtml = `<div class="j-card-body"><div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div></div>`;
   }
 
   const todayLabel = isToday ? ' · Today' : '';
+  const editLabel = empty && isToday ? 'Start writing' : 'Edit';
 
   return `
     <div class="j-card" data-jcard-edit="${dateStr}">
@@ -705,8 +698,9 @@ function renderDayCard(dateStr) {
       ${bodyHtml}
       <div class="j-card-footer">
         <span class="j-card-date">${jFormatCardDate(dateStr)}${todayLabel}</span>
-        <button class="j-card-edit" data-jcard-edit="${dateStr}" title="Edit">
+        <button class="j-card-edit" data-jcard-edit="${dateStr}" title="${editLabel}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          <span class="j-card-edit-label">${editLabel}</span>
         </button>
       </div>
     </div>`;
