@@ -952,10 +952,6 @@ function openPhotoSourceModal() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Take photo</span><span class="j-photo-modal-opt-desc">Use your camera</span></div>
       </button>` : '';
-  const driveOpt = `<button class="j-photo-modal-opt" data-jphoto-source="drive" disabled title="Drive picker setup pending">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">From Google Drive</span><span class="j-photo-modal-opt-desc">Setup pending — coming soon</span></div>
-    </button>`;
   const html = `
     <div class="j-photo-modal" id="jPhotoModal">
       <div class="j-photo-modal-card" onclick="event.stopPropagation()">
@@ -965,7 +961,6 @@ function openPhotoSourceModal() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Upload from device</span><span class="j-photo-modal-opt-desc">Pick one or more files</span></div>
         </button>
-        ${driveOpt}
         <input type="file" id="jPhotoInputDevice" accept="image/*" multiple style="display:none" />
         <input type="file" id="jPhotoInputCamera" accept="image/*" capture="environment" style="display:none" />
         <button class="j-photo-modal-cancel" data-jphoto-cancel="1">Cancel</button>
