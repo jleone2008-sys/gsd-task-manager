@@ -643,7 +643,7 @@ async function loadGoogleTasks(area, token) {
 async function loadPhotos(area, token) {
   try {
     const res = await adminFetch('POST', { action: 'proxy-photos', google_access_token: token, page_size: 20 });
-    if (!res.ok) { const d = await res.json(); throw new Error(d.error || `HTTP ${res.status}`); }
+    if (!res.ok) { const d = await res.json(); throw new Error((d.error || `HTTP ${res.status}`) + (d.token_scopes ? `\n\nToken scopes: ${d.token_scopes}` : '\n\n(no token scope info)')); }
     const data = await res.json();
     const items = data.mediaItems || [];
 

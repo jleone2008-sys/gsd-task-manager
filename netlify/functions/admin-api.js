@@ -265,7 +265,16 @@ async function proxyPhotos(body) {
     { headers: { Authorization: `Bearer ${google_access_token}` } }
   );
   const data = await res.json();
-  if (!res.ok) return json(res.status, { error: data.error?.message || 'photos_api_error' });
+  if (!res.ok) {
+    // On scope error, check what scopes the token actually has
+    let tokenScopes = null;
+    try {
+      const infoRes = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${google_access_token}`);
+      const info = await infoRes.json();
+      tokenScopes = info.scope || null;
+    } catch (_) {}
+    return json(res.status, { error: data.error?.message || 'photos_api_error', token_scopes: tokenScopes });
+  }
   return json(200, data);
 }
 
