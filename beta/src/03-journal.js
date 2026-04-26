@@ -67,7 +67,7 @@ function getFirstName() {
 function getTimeBasedGreeting(name) {
   const hour = new Date().getHours();
   const n = name || 'there';
-  if (hour < 5)  return `Burning the midnight oil, ${n}? Capture today before it slips away.`;
+  if (hour < 5)  return `Hey ${n}, how's the day going?`;
   if (hour < 12) return `Good morning, ${n} — how's your day starting?`;
   if (hour < 17) return `Hey ${n}, how's the day going?`;
   if (hour < 21) return `Evening, ${n} — how was today?`;
