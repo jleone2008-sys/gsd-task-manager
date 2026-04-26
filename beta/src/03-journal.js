@@ -353,7 +353,7 @@ function ensureJournalStyles() {
   style.id = 'journalStyles';
   style.textContent = `
     .content[data-tool-view="journal"] { max-width: none; padding: 0; }
-    .j-shell { max-width: 760px; margin: 0 auto; padding: 28px 24px 80px; position: relative; }
+    .j-shell { max-width: 760px; margin: 0; padding: 28px 25px 80px; position: relative; }
     .j-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
     .j-date-h { font-size: 24px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
     .j-date-sub { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
