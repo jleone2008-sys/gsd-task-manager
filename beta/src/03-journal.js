@@ -1385,6 +1385,15 @@ async function performJournalSearch(q) {
   renderSearchResults();
 }
 
+function highlightSearchMatch(text, query) {
+  if (!text) return '';
+  const escaped = escapeHtml(text);
+  if (!query) return escaped;
+  const escapedQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!escapedQuery) return escaped;
+  return escaped.replace(new RegExp(`(${escapedQuery})`, 'gi'), '<mark>$1</mark>');
+}
+
 function renderSearchResults() {
   const slot = document.getElementById('jSearchResults');
   if (!slot) return;
@@ -1392,10 +1401,10 @@ function renderSearchResults() {
   const results = journalState.searchResults;
   if (!results.length) { slot.innerHTML = `<div class="j-search-results"><div class="j-sr-empty">No matches.</div></div>`; return; }
   const rows = results.map(r => {
-    const sources = (r.sources || []).map(s => s.charAt(0).toUpperCase()+s.slice(1)).join(' · ');
-    const snippet = r.snippet || '';
-    return `<button class="j-sr-item" data-jsr-date="${r.entry_date}">
-      <div class="j-sr-date">${jFormatShort(r.entry_date)}</div>
+    const sources = (r.sources || []).map(s => escapeHtml(s.charAt(0).toUpperCase()+s.slice(1))).join(' · ');
+    const snippet = highlightSearchMatch(r.snippet || '', journalState.searchQuery);
+    return `<button class="j-sr-item" data-jsr-date="${escapeHtml(r.entry_date)}">
+      <div class="j-sr-date">${escapeHtml(jFormatShort(r.entry_date))}</div>
       <div class="j-sr-meta">${sources}</div>
       <div class="j-sr-snippet">${snippet}</div>
     </button>`;
