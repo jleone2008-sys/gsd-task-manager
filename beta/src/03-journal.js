@@ -674,10 +674,6 @@ function rerenderJournalHeader() {
 function rerenderJournalCalendarPopover() {
   const existing = document.getElementById('jCalPop');
   if (existing) existing.outerHTML = renderJournalCalendar();
-  if (!journalState.calendarOpen) {
-    const el = document.getElementById('jCalPop');
-    if (el) el.style.display = 'none';
-  }
 }
 
 /* ── SAVE INDICATOR ──────────────────────────────────────── */
