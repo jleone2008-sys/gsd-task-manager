@@ -53,9 +53,12 @@ begin
 
     union all
 
-    -- Completed task text / note. completed_at::date approximates the entry day in UTC.
+    -- Completed task text / note. completed_at is a bigint of epoch
+    -- milliseconds (the client writes Date.now()), so we convert to a
+    -- timestamp before truncating to date. UTC is an approximation of
+    -- the user's local day; same-day boundary cases may shift one day.
     select
-      ((t.completed_at at time zone 'UTC')::date) as d,
+      (to_timestamp(t.completed_at::bigint / 1000.0) at time zone 'UTC')::date as d,
       'task'::text as src,
       coalesce(nullif(t.text, ''), t.note) as txt
     from public.tasks t
