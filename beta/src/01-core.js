@@ -497,6 +497,7 @@ function switchTool(tool) {
   else if (tool === 'notes') { renderNotes(); }
   else if (tool === 'scratch') { renderScratch(); }
   else if (tool === 'settings' && typeof renderSettingsPage === 'function') { renderSettingsPage(); }
+  else if (tool === 'journal' && typeof renderJournal === 'function') { renderJournal(); }
 }
 document.addEventListener('click', e => {
   const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
