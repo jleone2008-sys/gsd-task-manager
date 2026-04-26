@@ -37,7 +37,11 @@ const journalState = {
   searchResults: null,
 
   // Card-initiated photo upload (date whose card "Add photo" was clicked)
-  cardPhotoTargetDate: null
+  cardPhotoTargetDate: null,
+
+  // Frozen per-day habit summary {due, done} keyed by date. Backed by
+  // public.journal_habit_summary; only past days are stored — today is live.
+  habitSummaries: new Map()
 };
 
 const MOOD_EMOJI = ['🤩', '😊', '😐', '😔', '😢'];
@@ -204,34 +208,104 @@ function getCompletedTasksForDate(dateStr) {
   });
 }
 
-function getHabitCompletionForDate(dateStr) {
+/**
+ * Today's live habit completion. Uses the Habits tab's pace-aware
+ * isHabitDueToday so quota habits show up only when their deadline forces it.
+ */
+function computeTodayHabitStats(dateStr) {
   if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return null;
-  if (typeof isCompletedOn !== 'function') return null;
-  const isToday = (typeof jIsToday === 'function') && jIsToday(dateStr);
+  if (typeof isHabitDueToday !== 'function' || typeof isCompletedOn !== 'function') return null;
+  const due = habitsArr.filter(h => !h.archived && isHabitDueToday(h));
+  if (!due.length) return null;
+  const done = due.reduce((n, h) => n + (isCompletedOn(h.id, dateStr) ? 1 : 0), 0);
+  return { due: due.length, done };
+}
 
-  // Today: use the pace-aware "due today" filter the Habits tab uses (matches what
-  // the user sees there, including quota habits only when their deadline is near).
-  if (isToday && typeof isHabitDueToday === 'function') {
-    const due = habitsArr.filter(h => !h.archived && isHabitDueToday(h));
-    if (!due.length) return null;
-    const done = due.reduce((n, h) => n + (isCompletedOn(h.id, dateStr) ? 1 : 0), 0);
-    return { due: due.length, done, pct: Math.round((done / due.length) * 100) };
-  }
-
-  // Past days: strict cadence only (daily / weekdays / custom DoW). Quota habits
-  // (x_per_week / x_per_month) have no per-day due concept once the period ends,
-  // so they're excluded historically.
-  if (typeof isHabitDueOnDate !== 'function') return null;
+/**
+ * "Option 1" backfill: for any past day without a stored summary we compute
+ * one from current habit + completion data and freeze it. Strict-cadence
+ * habits use isHabitDueOnDate; quota habits count as 1/1 only on days they
+ * were actually completed (no per-day penalty for missed quotas).
+ */
+function computeHabitSummaryOption1(dateStr) {
+  if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return null;
+  if (typeof isHabitDueOnDate !== 'function' || typeof isCompletedOn !== 'function') return null;
   let due = 0, done = 0;
   for (const h of habitsArr) {
     if (h.archived) continue;
-    if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') continue;
-    if (!isHabitDueOnDate(h, dateStr)) continue;
-    due++;
-    if (isCompletedOn(h.id, dateStr)) done++;
+    if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') {
+      if (isCompletedOn(h.id, dateStr)) { due++; done++; }
+    } else {
+      if (!isHabitDueOnDate(h, dateStr)) continue;
+      due++;
+      if (isCompletedOn(h.id, dateStr)) done++;
+    }
   }
-  if (due === 0) return null;
-  return { due, done, pct: Math.round((done / due) * 100) };
+  return { due, done };
+}
+
+/**
+ * Read existing habit summaries in [startDate, endDate] into state,
+ * backfill any missing past dates with Option 1, and persist the new rows.
+ * Today is intentionally skipped — its value is always live.
+ */
+async function loadHabitSummariesForRange(startDate, endDate) {
+  try {
+    const { data, error } = await db.from('journal_habit_summary')
+      .select('entry_date, due_count, done_count')
+      .gte('entry_date', startDate).lte('entry_date', endDate);
+    if (error) { console.warn('[journal] habit summary fetch failed', error); return; }
+    if (data) {
+      for (const row of data) {
+        journalState.habitSummaries.set(row.entry_date, { due: row.due_count, done: row.done_count });
+      }
+    }
+  } catch (e) {
+    console.warn('[journal] habit summary fetch error', e);
+    return;
+  }
+  await backfillHabitSummaries(startDate, endDate);
+}
+
+async function backfillHabitSummaries(startDate, endDate) {
+  if (typeof habitsArr === 'undefined' || !habitsArr.length) return;
+  const today = (typeof jToday === 'function') ? jToday() : null;
+  const toWrite = [];
+  let d = startDate;
+  while (d <= endDate) {
+    if (today && d >= today) break; // skip today + future
+    if (!journalState.habitSummaries.has(d)) {
+      const stats = computeHabitSummaryOption1(d);
+      if (stats) {
+        journalState.habitSummaries.set(d, stats);
+        toWrite.push({ entry_date: d, due_count: stats.due, done_count: stats.done });
+      }
+    }
+    d = jShiftDays(d, 1);
+  }
+  if (!toWrite.length) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const rows = toWrite.map(r => ({ ...r, user_id: session.user.id, updated_at: new Date().toISOString() }));
+    const { error } = await db.from('journal_habit_summary')
+      .upsert(rows, { onConflict: 'user_id,entry_date', ignoreDuplicates: false });
+    if (error) console.warn('[journal] habit summary backfill upsert failed', error);
+  } catch (e) {
+    console.warn('[journal] habit summary backfill error', e);
+  }
+}
+
+function getHabitCompletionForDate(dateStr) {
+  const isToday = (typeof jIsToday === 'function') && jIsToday(dateStr);
+  if (isToday) {
+    const stats = computeTodayHabitStats(dateStr);
+    if (!stats || stats.due === 0) return null;
+    return { ...stats, pct: Math.round((stats.done / stats.due) * 100) };
+  }
+  const s = journalState.habitSummaries.get(dateStr);
+  if (!s || s.due === 0) return null;
+  return { due: s.due, done: s.done, pct: Math.round((s.done / s.due) * 100) };
 }
 
 function isJournalSectionEnabled(tool) {
@@ -873,6 +947,7 @@ async function loadInitialTimeline() {
   await Promise.all([
     loadJournalRange(start, today),
     loadCalendarCacheRange(start, today),
+    loadHabitSummariesForRange(start, today),
   ]);
 }
 
@@ -885,6 +960,7 @@ async function loadOlderTimelineDays(count = 30) {
   await Promise.all([
     loadJournalRange(newStart, newEnd),
     loadCalendarCacheRange(newStart, newEnd),
+    loadHabitSummariesForRange(newStart, newEnd),
   ]);
   journalState.timelineLoadedThrough = newStart;
   journalState.timelineDays += count;
@@ -899,7 +975,11 @@ async function ensureTimelineCovers(dateStr) {
   if (dateStr >= currentEarliest) return;
   // Need to extend back to dateStr (with a small buffer)
   const target = jShiftDays(dateStr, -7);
-  await loadJournalRange(target, jShiftDays(currentEarliest, -1));
+  const newEnd = jShiftDays(currentEarliest, -1);
+  await Promise.all([
+    loadJournalRange(target, newEnd),
+    loadHabitSummariesForRange(target, newEnd),
+  ]);
   // Update window
   const todayDate = jParseDate(today);
   const targetDate = jParseDate(target);
