@@ -597,11 +597,9 @@ async function loadDrive(area, token) {
     const icon = isFolder ? '📁' : '📄';
     const nameCell = isFolder
       ? `<a href="#" data-drive-folder="${escHtml(f.id)}" data-drive-name="${escHtml(f.name)}" style="color:#5b8def;text-decoration:none">${icon} ${escHtml(f.name)}</a>`
-      : (f.webViewLink
-          ? `<a href="${escHtml(f.webViewLink)}" target="_blank" rel="noopener">${icon} ${escHtml(f.name)}</a>`
-          : `${icon} ${escHtml(f.name)}`);
+      : `<a href="#" data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}" style="color:inherit;text-decoration:none">${icon} ${escHtml(f.name)}</a>`;
     const actionsCell = isFolder
-      ? `<a href="https://drive.google.com/drive/folders/${escHtml(f.id)}" target="_blank" rel="noopener" style="font-size:.75rem">Open in Drive ↗</a>`
+      ? ''
       : `<button class="btn-icon" data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}" title="Download" style="font-size:.85rem">⬇</button>`;
     return `<tr><td title="${escHtml(f.name)}">${nameCell}</td><td>${escHtml(typeLabel(f.mimeType))}</td><td>${size}</td><td>${mod}</td><td style="text-align:right">${actionsCell}</td></tr>`;
   }).join('');
@@ -630,9 +628,10 @@ function attachDriveHandlers(area) {
     });
   });
   area.querySelectorAll('[data-drive-download]').forEach(el => {
-    el.addEventListener('click', () =>
-      downloadDriveFile(el.dataset.driveDownload, el.dataset.driveMime, el.dataset.driveName, el)
-    );
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadDriveFile(el.dataset.driveDownload, el.dataset.driveMime, el.dataset.driveName, el);
+    });
   });
 }
 
