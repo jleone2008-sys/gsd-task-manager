@@ -210,9 +210,50 @@ async function writeCalendarCache(rows) {
   } catch (e) { console.warn('[journal] cache write failed', e); }
 }
 
+// In-memory cache of a refreshed Google access_token (Supabase doesn't auto-refresh provider_token)
+let _googleAccessTokenCache = { token: null, expiresAt: 0 };
+
+async function getGoogleAccessToken(forceRefresh) {
+  const now = Date.now();
+  if (!forceRefresh && _googleAccessTokenCache.token && now < _googleAccessTokenCache.expiresAt - 60000) {
+    return _googleAccessTokenCache.token;
+  }
+  // Try Supabase session first if cache is empty
+  if (!forceRefresh && !_googleAccessTokenCache.token) {
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      if (session?.provider_token) {
+        _googleAccessTokenCache = { token: session.provider_token, expiresAt: now + 30 * 60 * 1000 };
+        return session.provider_token;
+      }
+    } catch (_) {}
+  }
+  // Refresh via Netlify function
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return null;
+    const res = await fetch('/.netlify/functions/refresh-google-token', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      console.warn('[journal] google token refresh failed', res.status, detail);
+      return null;
+    }
+    const data = await res.json();
+    if (!data.access_token) return null;
+    const expiresMs = (data.expires_in || 3600) * 1000;
+    _googleAccessTokenCache = { token: data.access_token, expiresAt: now + expiresMs };
+    return data.access_token;
+  } catch (err) {
+    console.warn('[journal] refresh request failed', err);
+    return null;
+  }
+}
+
 async function fetchLiveCalendarEvents(dateStr) {
-  const { data: { session } } = await db.auth.getSession();
-  const token = session?.provider_token;
+  let token = await getGoogleAccessToken(false);
   if (!token) {
     journalState.eventsError.set(dateStr, 'expired');
     return null;
@@ -223,12 +264,22 @@ async function fetchLiveCalendarEvents(dateStr) {
     + `?timeMin=${encodeURIComponent(startISO)}&timeMax=${encodeURIComponent(endISO)}`
     + `&singleEvents=true&orderBy=startTime`;
   try {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401 || res.status === 403) {
+      // Cached/Supabase token is stale; force a refresh and retry once
+      token = await getGoogleAccessToken(true);
+      if (!token) {
+        journalState.eventsError.set(dateStr, 'expired');
+        return null;
+      }
+      res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    }
     if (res.status === 401 || res.status === 403) {
       journalState.eventsError.set(dateStr, 'expired');
       return null;
     }
     if (!res.ok) {
+      console.warn('[journal] calendar API error', res.status, await res.text().catch(()=>'(no body)'));
       journalState.eventsError.set(dateStr, 'api');
       return null;
     }
@@ -282,9 +333,10 @@ async function syncCalendarHistory() {
   if (journalState.historySynced) return;
   journalState.historySynced = true;
   try {
-    const { data: { session } } = await db.auth.getSession();
-    const token = session?.provider_token;
+    let token = await getGoogleAccessToken(false);
     if (!token) return;
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const signupAt = currentUser?.created_at ? new Date(currentUser.created_at) : oneYearAgo;
@@ -302,7 +354,12 @@ async function syncCalendarHistory() {
       url.searchParams.set('orderBy', 'startTime');
       url.searchParams.set('maxResults', '250');
       if (pageToken) url.searchParams.set('pageToken', pageToken);
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) {
+        token = await getGoogleAccessToken(true);
+        if (!token) return;
+        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      }
       if (!res.ok) return;
       const data = await res.json();
       allEvents.push(...(data.items || []));
