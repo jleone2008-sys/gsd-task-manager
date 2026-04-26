@@ -33,11 +33,14 @@ const journalState = {
 
   // Search
   searchQuery: '',
-  searchResults: null
+  searchResults: null,
+
+  // Card-initiated photo upload (date whose card "Add photo" was clicked)
+  cardPhotoTargetDate: null
 };
 
 const MOOD_EMOJI = ['🤩', '😊', '😐', '😔', '😢'];
-const MOOD_LABEL = ['Great', 'Good', 'Okay', 'Down', 'Hard'];
+const MOOD_LABEL = ['Great', 'Good', 'Okay', 'Low', 'Bad'];
 
 /* ── DATE HELPERS ─────────────────────────────────────────── */
 
@@ -198,6 +201,20 @@ function getCompletedTasksForDate(dateStr) {
     const local = `${c.getFullYear()}-${String(c.getMonth()+1).padStart(2,'0')}-${String(c.getDate()).padStart(2,'0')}`;
     return local === dateStr;
   });
+}
+
+function getHabitCompletionForDate(dateStr) {
+  if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return null;
+  if (typeof isHabitDueOnDate !== 'function' || typeof isCompletedOn !== 'function') return null;
+  let due = 0, done = 0;
+  for (const h of habitsArr) {
+    if (h.archived) continue;
+    if (!isHabitDueOnDate(h, dateStr)) continue;
+    due++;
+    if (isCompletedOn(h.id, dateStr)) done++;
+  }
+  if (due === 0) return null;
+  return { due, done, pct: Math.round((done / due) * 100) };
 }
 
 /* ── DATA: CALENDAR EVENTS ───────────────────────────────── */
@@ -437,7 +454,7 @@ function ensureJournalStyles() {
     .content[data-tool-view="journal"] { max-width: none; padding: 0; }
     .j-shell { max-width: 720px; margin: 0; padding: 28px 25px 80px; position: relative; }
     .j-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    .j-page-title { font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.1; }
+    .j-page-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.25; flex: 1; min-width: 0; }
     .j-actions { display: flex; gap: 6px; align-items: center; }
     .j-action-btn { width: 36px; height: 36px; border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: background 0.12s; }
     .j-action-btn:hover { background: var(--surface-2); color: var(--ink); }
@@ -484,12 +501,13 @@ function ensureJournalStyles() {
 
     .j-card-photos { background: #1a1714; }
     .j-card-photos img { display: block; cursor: pointer; }
-    .j-card-photos--1 { display: flex; align-items: center; justify-content: center; max-height: 420px; overflow: hidden; }
-    .j-card-photos--1 img { width: 100%; max-height: 420px; object-fit: contain; }
-    @media (max-width: 600px) { .j-card-photos--1, .j-card-photos--1 img { max-height: 300px; } }
-    .j-card-photos--2, .j-card-photos--3, .j-card-photos--4, .j-card-photos--5plus { display: grid; gap: 2px; height: 320px; }
+    .j-card-photos--1 { position: relative; display: flex; align-items: center; justify-content: center; height: 420px; overflow: hidden; }
+    .j-card-photos--1 .j-card-photo-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(28px) saturate(1.1); transform: scale(1.1); pointer-events: none; cursor: default; }
+    .j-card-photos--1 > img:not(.j-card-photo-bg) { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; }
+    @media (max-width: 600px) { .j-card-photos--1 { height: 300px; } }
+    .j-card-photos--2, .j-card-photos--3, .j-card-photos--4, .j-card-photos--5plus { display: grid; gap: 2px; height: 320px; overflow: hidden; }
     @media (max-width: 600px) { .j-card-photos--2, .j-card-photos--3, .j-card-photos--4, .j-card-photos--5plus { height: 240px; } }
-    .j-card-photos--2 { grid-template-columns: 1fr 1fr; }
+    .j-card-photos--2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
     .j-card-photos--3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
     .j-card-photos--3 img:nth-child(1) { grid-row: span 2; }
     .j-card-photos--4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
@@ -514,13 +532,20 @@ function ensureJournalStyles() {
     .j-card-edit { background: none; border: none; cursor: pointer; padding: 4px 8px; color: var(--ink-3); border-radius: var(--r-sm); display: flex; align-items: center; gap: 4px; font-family: inherit; font-size: 11.5px; font-weight: 500; }
     .j-card-edit:hover { background: var(--surface-2); color: var(--ink); }
     .j-card-edit svg { width: 12px; height: 12px; }
+    .j-card-footer-actions { display: flex; align-items: center; gap: 4px; }
+    .j-card-add-photo svg { width: 13px; height: 13px; }
     .j-card-empty-prompt { color: var(--ink-3); font-style: italic; }
+    .j-card-start-wrap { padding: 2px 0 4px; }
+    .j-card-start-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--guava-700); color: #fff; border: none; padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; transition: background 0.12s; }
+    .j-card-start-btn:hover { background: var(--guava-800); }
     .j-card-auto { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
     .j-card-body > .j-card-auto:first-child { margin-top: 0; padding-top: 0; border-top: none; }
     .j-card-auto-label { font-size: 9.5px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
     .j-card-auto-row { display: flex; gap: 6px; padding: 3px 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
     .j-card-auto-row .j-bullet { color: var(--guava-500); flex-shrink: 0; }
     .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
+    .j-card-habit-pct { color: var(--guava-700); font-weight: 700; min-width: 36px; flex-shrink: 0; }
+    .j-card-entry { font-size: 13px; margin-top: 4px; }
     .j-card-auto-more { font-size: 11px; color: var(--ink-4); font-style: italic; padding-top: 2px; }
 
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
@@ -647,7 +672,9 @@ function renderCardPhotos(dateStr, photos) {
   let cls, items;
   if (n === 1) {
     cls = 'j-card-photos--1';
-    items = photos.slice(0, 1).map((src, i) => `<img src="${src}" data-jlightbox="${dateStr}|${i}" alt="" />`).join('');
+    const src = photos[0];
+    items = `<img class="j-card-photo-bg" src="${src}" alt="" aria-hidden="true" />` +
+            `<img src="${src}" data-jlightbox="${dateStr}|0" alt="" />`;
   } else if (n === 2) {
     cls = 'j-card-photos--2';
     items = photos.slice(0, 2).map((src, i) => `<img src="${src}" data-jlightbox="${dateStr}|${i}" alt="" />`).join('');
@@ -701,17 +728,24 @@ function renderDayCard(dateStr) {
 
   let manualHtml = '';
   if (!hasManual && isToday) {
-    const greeting = getTimeBasedGreeting(getFirstName());
-    manualHtml = `<div class="j-card-text j-card-empty-prompt">${escapeHtml(greeting)}</div>`;
+    manualHtml = `<div class="j-card-start-wrap"><button class="j-card-start-btn" data-jcard-edit="${dateStr}" type="button">Start writing</button></div>`;
+  } else if (hasMood) {
+    const fullReflection = [title, body].filter(Boolean).join('\n').trim();
+    const entryHtml = fullReflection
+      ? `<div class="j-card-text j-card-text--clamped j-card-entry">${escapeHtml(fullReflection)}</div>`
+      : '';
+    manualHtml = `<div class="j-card-title">${moodIcon}Feeling ${MOOD_LABEL[entry.mood-1]}</div>${entryHtml}`;
   } else if (title || body) {
     manualHtml = `
-      ${title ? `<div class="j-card-title">${moodIcon}${escapeHtml(title)}</div>` : (moodIcon ? `<div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div>` : '')}
+      ${title ? `<div class="j-card-title">${escapeHtml(title)}</div>` : ''}
       ${body ? `<div class="j-card-text j-card-text--clamped">${escapeHtml(body)}</div>` : ''}`;
-  } else if (hasMood) {
-    manualHtml = `<div class="j-card-title">${moodIcon}${MOOD_LABEL[entry.mood-1]}</div>`;
   }
 
   let autoHtml = '';
+  const habitStats = getHabitCompletionForDate(dateStr);
+  if (habitStats) {
+    autoHtml += `<div class="j-card-auto"><div class="j-card-auto-label">Daily habits</div><div class="j-card-auto-row"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>${habitStats.done} of ${habitStats.due} completed</span></div></div>`;
+  }
   if (events.length) {
     const items = events.slice(0, 4).map(ev => {
       const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
@@ -731,7 +765,17 @@ function renderDayCard(dateStr) {
     : '';
 
   const todayLabel = isToday ? ' · Today' : '';
-  const editLabel = !hasManual && isToday ? 'Start writing' : 'Edit';
+  const isStartWriting = !hasManual && isToday;
+  const addPhotoHtml = `
+        <button class="j-card-edit j-card-add-photo" data-jcard-add-photo="${dateStr}" title="Add photo" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span class="j-card-edit-label">Add photo</span>
+        </button>`;
+  const footerEditHtml = isStartWriting ? '' : `
+        <button class="j-card-edit" data-jcard-edit="${dateStr}" title="Edit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          <span class="j-card-edit-label">Edit</span>
+        </button>`;
 
   return `
     <div class="j-card" data-jcard-edit="${dateStr}">
@@ -739,10 +783,10 @@ function renderDayCard(dateStr) {
       ${bodyHtml}
       <div class="j-card-footer">
         <span class="j-card-date">${jFormatCardDate(dateStr)}${todayLabel}</span>
-        <button class="j-card-edit" data-jcard-edit="${dateStr}" title="${editLabel}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-          <span class="j-card-edit-label">${editLabel}</span>
-        </button>
+        <div class="j-card-footer-actions">
+          ${addPhotoHtml}
+          ${footerEditHtml}
+        </div>
       </div>
     </div>`;
 }
@@ -844,9 +888,10 @@ function setupScrollObserver() {
 
 function renderJournalHeader() {
   const calOn = journalState.calendarOpen ? ' is-on' : '';
+  const greeting = getTimeBasedGreeting(getFirstName());
   return `
     <div class="j-header">
-      <div class="j-page-title">Journal</div>
+      <div class="j-page-title">${escapeHtml(greeting)}</div>
       <div class="j-actions">
         <button class="j-action-btn${calOn}" id="jCalToggle" title="Choose date" aria-pressed="${journalState.calendarOpen}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -1085,6 +1130,8 @@ async function renderJournal() {
       <div id="jHeaderSlot">${renderJournalHeader()}</div>
       <div id="jCalPopSlot" style="${journalState.calendarOpen ? '' : 'display:none'}">${renderJournalCalendar()}</div>
       ${renderTimeline()}
+      <input type="file" id="jCardPhotoInput" accept="image/*" multiple style="position:absolute;left:-9999px;opacity:0;" />
+      <input type="file" id="jCardCameraInput" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0;" />
     </div>`;
 
   setupScrollObserver();
@@ -1189,6 +1236,17 @@ document.addEventListener('click', async e => {
     return;
   }
 
+  // Card "Add photo" click → open file picker / source modal directly (no edit modal)
+  const addPhotoEl = e.target.closest('[data-jcard-add-photo]');
+  if (addPhotoEl) {
+    e.stopPropagation();
+    journalState.cardPhotoTargetDate = addPhotoEl.dataset.jcardAddPhoto;
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile) openPhotoSourceModal();
+    else document.getElementById('jCardPhotoInput')?.click();
+    return;
+  }
+
   // Card edit click → open edit modal
   const editBtn = e.target.closest('[data-jcard-edit]');
   if (editBtn) {
@@ -1216,7 +1274,10 @@ document.addEventListener('click', async e => {
   const photoSrc = e.target.closest('[data-jphoto-source]');
   if (photoSrc) {
     closePhotoSourceModal();
-    const id = photoSrc.dataset.jphotoSource === 'camera' ? 'jHiddenCameraInput' : 'jHiddenPhotoInput';
+    const isCard = !!journalState.cardPhotoTargetDate;
+    const cameraId = isCard ? 'jCardCameraInput' : 'jHiddenCameraInput';
+    const photoId = isCard ? 'jCardPhotoInput' : 'jHiddenPhotoInput';
+    const id = photoSrc.dataset.jphotoSource === 'camera' ? cameraId : photoId;
     document.getElementById(id)?.click();
     return;
   }
@@ -1322,6 +1383,13 @@ document.addEventListener('change', async e => {
     e.target.value = '';
     if (files.length) await addPhotosFromFiles(files);
   }
+  if (e.target.id === 'jCardPhotoInput' || e.target.id === 'jCardCameraInput') {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    const ds = journalState.cardPhotoTargetDate;
+    journalState.cardPhotoTargetDate = null;
+    if (files.length && ds) await addPhotosFromCardFiles(files, ds);
+  }
 });
 
 document.addEventListener('input', e => {
@@ -1383,5 +1451,17 @@ async function addPhotosFromFiles(files) {
   }
   journalState.entries.set(ds, { ...entry, photos });
   rerenderEditBody();
+  saveJournalEntry(ds, { photos });
+}
+
+async function addPhotosFromCardFiles(files, ds) {
+  const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[] };
+  const photos = [...(entry.photos || [])];
+  for (const f of files) {
+    try { photos.push(await resizeImageFile(f)); }
+    catch (err) { console.warn('[journal] image resize failed', err); }
+  }
+  journalState.entries.set(ds, { ...entry, photos });
+  rerenderTimeline();
   saveJournalEntry(ds, { photos });
 }
