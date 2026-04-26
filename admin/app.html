@@ -87,10 +87,13 @@ body { font-family: 'Inter', sans-serif; background: #f4f6f9; color: #1a1a2e; mi
   background: #4caf50; margin-right: 4px; }
 .token-dot.missing { background: #e0e0e0; }
 
-/* ── Detail panel ── */
-#detailPanel { width: 400px; background: #fff; border-left: 1px solid #e8ecf2;
-  display: none; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
-#detailPanel.open { display: flex; }
+/* ── Detail modal ── */
+#detailBackdrop { position: fixed; inset: 0; background: rgba(15, 25, 45, .55);
+  z-index: 500; display: none; align-items: center; justify-content: center; padding: 2rem; }
+#detailBackdrop.open { display: flex; }
+#detailPanel { width: 100%; max-width: 760px; max-height: 90vh; background: #fff;
+  border-radius: 12px; box-shadow: 0 20px 60px rgba(15,25,45,.35);
+  display: flex; flex-direction: column; overflow: hidden; }
 .detail-header { padding: 1.25rem; border-bottom: 1px solid #e8ecf2; display: flex;
   align-items: center; justify-content: space-between; }
 .detail-header h3 { font-size: .9rem; font-weight: 700; color: #1e3a5f; }
@@ -100,7 +103,7 @@ body { font-family: 'Inter', sans-serif; background: #f4f6f9; color: #1a1a2e; mi
 .detail-tab { flex: 1; padding: .75rem .5rem; text-align: center; font-size: .78rem; font-weight: 500;
   color: #9aaabb; cursor: pointer; border-bottom: 2px solid transparent; }
 .detail-tab.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
-.detail-body { padding: 1.25rem; flex: 1; }
+.detail-body { padding: 1.25rem; flex: 1; overflow-y: auto; }
 .field-row { margin-bottom: 1rem; }
 .field-label { font-size: .72rem; font-weight: 600; color: #9aaabb; text-transform: uppercase;
   letter-spacing: .06em; margin-bottom: .35rem; }
@@ -227,20 +230,23 @@ select.field-input:focus, input.field-input:focus { outline: none; border-color:
       </div>
     </div>
 
-    <!-- Detail panel -->
-    <div id="detailPanel">
-      <div class="detail-header">
-        <h3 id="detailTitle">User Details</h3>
-        <button class="btn-close-panel" id="btnClosePanel">✕</button>
-      </div>
-      <div class="detail-tabs">
-        <div class="detail-tab active" data-dtab="profile">Profile</div>
-        <div class="detail-tab" data-dtab="gsd">GSD Data</div>
-        <div class="detail-tab" data-dtab="google">Google Tools</div>
-      </div>
-      <div class="detail-body" id="detailBody">
-        <div class="loading-spinner">Select a user</div>
-      </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div id="detailBackdrop">
+  <div id="detailPanel">
+    <div class="detail-header">
+      <h3 id="detailTitle">User Details</h3>
+      <button class="btn-close-panel" id="btnClosePanel">✕</button>
+    </div>
+    <div class="detail-tabs">
+      <div class="detail-tab active" data-dtab="profile">Profile</div>
+      <div class="detail-tab" data-dtab="gsd">GSD Data</div>
+      <div class="detail-tab" data-dtab="google">Google Tools</div>
+    </div>
+    <div class="detail-body" id="detailBody">
+      <div class="loading-spinner">Select a user</div>
     </div>
   </div>
 </div>
@@ -415,9 +421,15 @@ function openDetailPanel(email) {
   renderUserTable(); // re-render to highlight selected row
   document.getElementById('detailTitle').textContent =
     selectedUser.display_name || selectedUser.email.split('@')[0];
-  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('detailBackdrop').classList.add('open');
   activeDetailTab = 'profile';
   setDetailTab('profile');
+}
+
+function closeDetailPanel() {
+  document.getElementById('detailBackdrop').classList.remove('open');
+  selectedUser = null;
+  renderUserTable();
 }
 
 function setDetailTab(tab) {
@@ -961,10 +973,12 @@ document.getElementById('btnSignOut').addEventListener('click', async () => {
 
 document.getElementById('btnRefresh').addEventListener('click', loadUsers);
 
-document.getElementById('btnClosePanel').addEventListener('click', () => {
-  document.getElementById('detailPanel').classList.remove('open');
-  selectedUser = null;
-  renderUserTable();
+document.getElementById('btnClosePanel').addEventListener('click', closeDetailPanel);
+document.getElementById('detailBackdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'detailBackdrop') closeDetailPanel();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('detailBackdrop').classList.contains('open')) closeDetailPanel();
 });
 
 document.querySelectorAll('.detail-tab').forEach(tab => {

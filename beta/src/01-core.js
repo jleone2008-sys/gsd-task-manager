@@ -633,21 +633,26 @@ async function checkAdminViewMode() {
   sessionStorage.setItem('_admin_auth', admin_auth_token || '');
   sessionStorage.setItem('_admin_view_email', target_email);
 
-  // Set Supabase session for target user
-  const { error } = await db.auth.setSession({ access_token: supabase_access_token, refresh_token: '' });
-  if (error) {
-    console.error('Admin view setSession failed:', error.message);
+  // Set Supabase session for target user.
+  // refresh_token must be non-empty (Supabase v2 throws AuthSessionMissingError on empty);
+  // placeholder is fine — access_token is fresh (24h) so refresh path is never taken,
+  // and the impersonation session SHOULD expire when access_token does.
+  const { data, error } = await db.auth.setSession({ access_token: supabase_access_token, refresh_token: 'admin-impersonation-no-refresh' });
+  if (error || !data?.session?.user) {
+    console.error('Admin view setSession failed:', error?.message || 'no session user');
     isAdminViewMode = false;
     return false;
   }
 
-  // Auth state change will fire signInUser; inject banner after brief delay
   setTimeout(() => injectAdminViewBanner(display_name || target_email), 300);
 
-  // Set up auth listener for impersonated user
+  // Set up listener for any future auth events, then sign in directly with the
+  // session user (the SIGNED_IN event from setSession already fired before we
+  // could attach the listener).
   db.auth.onAuthStateChange((_event, session) => {
     if (session?.user && !currentUser) signInUser(session.user);
   });
+  signInUser(data.session.user);
 
   return true;
 }
