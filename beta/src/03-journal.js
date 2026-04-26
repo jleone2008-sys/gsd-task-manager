@@ -25,6 +25,7 @@ const journalState = {
 
   // Edit modal state
   editingDate: null,
+  viewingDate: null,
   saveTimer: null,
   saveStatus: 'idle',
 
@@ -215,6 +216,13 @@ function getHabitCompletionForDate(dateStr) {
   }
   if (due === 0) return null;
   return { due, done, pct: Math.round((done / due) * 100) };
+}
+
+function isJournalSectionEnabled(tool) {
+  if (tool === 'tasks') return true;
+  if (typeof userSettings === 'undefined' || !userSettings) return true;
+  const enabled = userSettings.enabled_tools || [];
+  return enabled.includes(tool);
 }
 
 /* ── DATA: CALENDAR EVENTS ───────────────────────────────── */
@@ -461,6 +469,10 @@ function ensureJournalStyles() {
     .j-action-btn.is-on { background: var(--guava-700); border-color: var(--guava-700); color: #fff; }
     .j-action-btn svg { width: 16px; height: 16px; }
 
+    .j-search-row { position: sticky; top: var(--gsd-topbar-h, 60px); z-index: 5; display: flex; gap: 8px; align-items: center; background: var(--bg); padding: 10px 0; margin-bottom: 8px; }
+    .j-search-row .j-search-bar { flex: 1; margin-bottom: 0; min-width: 0; }
+    .j-cal-pop-slot { position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 26; width: 280px; }
+    @media (max-width: 600px) { .j-cal-pop-slot { left: 0; right: 0; width: auto; } }
     .j-search-bar { position: relative; margin-bottom: 14px; }
     .j-search-input { width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); font-family: inherit; font-size: 13px; color: var(--ink); background: var(--surface); outline: none; box-sizing: border-box; }
     .j-search-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
@@ -475,8 +487,7 @@ function ensureJournalStyles() {
     .j-sr-snippet mark { background: var(--guava-100); color: var(--guava-900); padding: 0 2px; border-radius: 2px; }
     .j-sr-empty { padding: 16px; font-size: 12px; color: var(--ink-4); text-align: center; }
 
-    .j-cal-pop { position: absolute; right: 24px; top: 80px; width: 280px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-raised); padding: 12px; z-index: 25; }
-    @media (max-width: 600px) { .j-cal-pop { right: 12px; left: 12px; width: auto; } }
+    .j-cal-pop { position: relative; width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-raised); padding: 12px; }
     .j-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
     .j-cal-month { font-size: 13px; font-weight: 600; color: var(--ink); }
     .j-cal-nav { background: none; border: none; padding: 4px 8px; cursor: pointer; color: var(--ink-3); border-radius: var(--r-sm); font-size: 16px; line-height: 1; }
@@ -545,6 +556,13 @@ function ensureJournalStyles() {
     .j-card-auto-row .j-bullet { color: var(--guava-500); flex-shrink: 0; }
     .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
     .j-card-habit-pct { color: var(--guava-700); font-weight: 700; min-width: 36px; flex-shrink: 0; }
+    .j-card-habit-trail { display: flex; gap: 8px; align-items: center; padding: 8px 0 0; font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+
+    .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-raised); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background 0.12s, opacity 0.15s; }
+    .j-back-to-top.is-visible { display: flex; }
+    .j-back-to-top:hover { background: var(--guava-800); }
+    .j-back-to-top svg { width: 18px; height: 18px; }
+    @media (max-width: 600px) { .j-back-to-top { bottom: 76px; right: 16px; } }
     .j-card-entry { font-size: 13px; margin-top: 4px; }
     .j-card-auto-more { font-size: 11px; color: var(--ink-4); font-style: italic; padding-top: 2px; }
 
@@ -566,6 +584,11 @@ function ensureJournalStyles() {
     .j-edit-footer { padding: 14px 22px 18px; border-top: 1px solid var(--edge); flex-shrink: 0; background: var(--surface); }
     .j-edit-submit { width: 100%; background: var(--guava-700); color: #fff; border: none; padding: 11px 18px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; }
     .j-edit-submit:hover { background: var(--guava-800); }
+
+    .j-view-photos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+    .j-view-photos img { width: 100%; max-height: 70vh; border-radius: var(--r-md); display: block; cursor: zoom-in; object-fit: contain; background: #1a1714; }
+    .j-view-mood-title { font-size: 18px; font-weight: 600; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.01em; line-height: 1.3; }
+    .j-view-text { font-size: 14px; color: var(--ink-2); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 
     .j-section { margin-bottom: 22px; }
     .j-section-h { font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
@@ -713,7 +736,7 @@ function renderDayCard(dateStr) {
   // Past day with literally nothing: minimal clickable placeholder
   if (!hasManual && !hasAuto && !isToday) {
     return `
-      <div class="j-card j-card--placeholder" data-jcard-edit="${dateStr}">
+      <div class="j-card j-card--placeholder" data-jcard-date="${dateStr}" data-jcard-edit="${dateStr}">
         <div class="j-card-placeholder-text">${jFormatCardDate(dateStr)} · No activity</div>
       </div>`;
   }
@@ -742,10 +765,6 @@ function renderDayCard(dateStr) {
   }
 
   let autoHtml = '';
-  const habitStats = getHabitCompletionForDate(dateStr);
-  if (habitStats) {
-    autoHtml += `<div class="j-card-auto"><div class="j-card-auto-label">Daily habits</div><div class="j-card-auto-row"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>${habitStats.done} of ${habitStats.due} completed</span></div></div>`;
-  }
   if (events.length) {
     const items = events.slice(0, 4).map(ev => {
       const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
@@ -758,6 +777,10 @@ function renderDayCard(dateStr) {
     const items = tasksDone.slice(0, 4).map(t => `<div class="j-card-auto-row"><span class="j-check">✓</span><span>${escapeHtml(t.text)}</span></div>`).join('');
     const more = tasksDone.length > 4 ? `<div class="j-card-auto-more">+${tasksDone.length - 4} more</div>` : '';
     autoHtml += `<div class="j-card-auto"><div class="j-card-auto-label">What you finished</div>${items}${more}</div>`;
+  }
+  const habitStats = isJournalSectionEnabled('habits') ? getHabitCompletionForDate(dateStr) : null;
+  if (habitStats) {
+    autoHtml += `<div class="j-card-habit-trail"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>Daily habits — ${habitStats.done}/${habitStats.due} completed</span></div>`;
   }
 
   const bodyHtml = (manualHtml || autoHtml)
@@ -777,8 +800,13 @@ function renderDayCard(dateStr) {
           <span class="j-card-edit-label">Edit</span>
         </button>`;
 
+  // Empty today (no manual, no auto) → tap card opens edit directly. Otherwise tap opens read-only view.
+  const cardActionAttr = (hasManual || hasAuto)
+    ? `data-jcard-view="${dateStr}"`
+    : `data-jcard-edit="${dateStr}"`;
+
   return `
-    <div class="j-card" data-jcard-edit="${dateStr}">
+    <div class="j-card" data-jcard-date="${dateStr}" ${cardActionAttr}>
       ${photosHtml}
       ${bodyHtml}
       <div class="j-card-footer">
@@ -867,7 +895,7 @@ async function ensureTimelineCovers(dateStr) {
 }
 
 function scrollTimelineToDate(dateStr) {
-  const card = document.querySelector(`[data-jcard-edit="${dateStr}"]`);
+  const card = document.querySelector(`[data-jcard-date="${dateStr}"]`);
   if (card) {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -887,22 +915,38 @@ function setupScrollObserver() {
 /* ── HEADER ──────────────────────────────────────────────── */
 
 function renderJournalHeader() {
-  const calOn = journalState.calendarOpen ? ' is-on' : '';
   const greeting = getTimeBasedGreeting(getFirstName());
   return `
     <div class="j-header">
       <div class="j-page-title">${escapeHtml(greeting)}</div>
-      <div class="j-actions">
-        <button class="j-action-btn${calOn}" id="jCalToggle" title="Choose date" aria-pressed="${journalState.calendarOpen}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </button>
-      </div>
     </div>`;
 }
 
-function rerenderJournalHeader() {
-  const slot = document.getElementById('jHeaderSlot');
-  if (slot) slot.innerHTML = renderJournalHeader();
+function renderJournalSearchRow() {
+  const calOn = journalState.calendarOpen ? ' is-on' : '';
+  return `
+    <div class="j-search-row" id="jSearchRow">
+      <div class="j-search-bar">
+        <svg class="j-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="j-search-input" id="jSearchInput" placeholder="Search entries, events, tasks…" value="${escapeHtml(journalState.searchQuery)}" />
+        <div id="jSearchResults"></div>
+      </div>
+      <button class="j-action-btn${calOn}" id="jCalToggle" title="Choose date" aria-pressed="${journalState.calendarOpen}" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
+      <div id="jCalPopSlot" class="j-cal-pop-slot" style="${journalState.calendarOpen ? '' : 'display:none'}">${renderJournalCalendar()}</div>
+    </div>`;
+}
+
+function setCalendarOpen(open) {
+  journalState.calendarOpen = open;
+  const btn = document.getElementById('jCalToggle');
+  if (btn) {
+    btn.classList.toggle('is-on', open);
+    btn.setAttribute('aria-pressed', String(open));
+  }
+  const popSlot = document.getElementById('jCalPopSlot');
+  if (popSlot) popSlot.style.display = open ? '' : 'none';
 }
 
 function rerenderJournalCalendarPopover() {
@@ -1024,6 +1068,89 @@ function closeEditModal(skipRerender) {
   if (!skipRerender) journalState.editingDate = null;
 }
 
+function renderViewModalBody(dateStr) {
+  const entry = journalState.entries.get(dateStr) || { reflections:'', mood:null, photos:[] };
+  const reflection = (entry.reflections || '').trim();
+  const moodTitle = entry.mood
+    ? `<div class="j-view-mood-title"><span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>Feeling ${MOOD_LABEL[entry.mood-1]}</div>`
+    : '';
+  const reflectionHtml = reflection ? `<div class="j-view-text">${escapeHtml(reflection)}</div>` : '';
+  const photosHtml = (entry.photos || []).length
+    ? `<div class="j-view-photos">${entry.photos.map((src, i) =>
+        `<img src="${src}" data-jlightbox="${dateStr}|${i}" alt="" />`).join('')}</div>`
+    : '';
+  const habitStats = isJournalSectionEnabled('habits') ? getHabitCompletionForDate(dateStr) : null;
+  const habitsTrail = habitStats
+    ? `<div class="j-card-habit-trail"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>Daily habits — ${habitStats.done}/${habitStats.due} completed</span></div>`
+    : '';
+  const manualBlock = (moodTitle || reflectionHtml)
+    ? `<div class="j-section">${moodTitle}${reflectionHtml}</div>`
+    : '';
+  return `
+    ${photosHtml}
+    ${manualBlock}
+    <div class="j-section">
+      <div class="j-section-h">What happened</div>
+      <div id="jViewEventsSlot">${renderEventsSection(dateStr)}</div>
+    </div>
+    <div class="j-section">
+      <div class="j-section-h">What you finished</div>
+      ${renderTasksSection(dateStr)}
+      ${habitsTrail}
+    </div>`;
+}
+
+function openViewModal(dateStr) {
+  closeViewModal(true);
+  journalState.viewingDate = dateStr;
+  const html = `
+    <div class="j-edit-modal j-view-modal" id="jViewModal">
+      <div class="j-edit-card">
+        <div class="j-edit-head">
+          <div>
+            <div class="j-edit-title">${jFormatLong(dateStr)}</div>
+          </div>
+          <button class="j-edit-close" id="jViewClose" title="Close" type="button">×</button>
+        </div>
+        <div class="j-edit-body" id="jViewBody">${renderViewModalBody(dateStr)}</div>
+        <div class="j-edit-footer">
+          <button class="j-edit-submit" data-jview-edit="${dateStr}" type="button">Edit</button>
+        </div>
+      </div>
+    </div>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+  document.body.style.overflow = 'hidden';
+  fetchCalendarEventsForDate(dateStr).then(() => {
+    if (journalState.viewingDate !== dateStr) return;
+    const slot = document.getElementById('jViewEventsSlot');
+    if (slot) slot.innerHTML = renderEventsSection(dateStr);
+  });
+  loadJournalEntry(dateStr).then(() => {
+    if (journalState.viewingDate !== dateStr) return;
+    const body = document.getElementById('jViewBody');
+    if (body) body.innerHTML = renderViewModalBody(dateStr);
+  });
+}
+
+function closeViewModal(skipBodyReset) {
+  const m = document.getElementById('jViewModal');
+  if (m) m.remove();
+  journalState.viewingDate = null;
+  if (!skipBodyReset && !document.getElementById('jEditModal')) {
+    document.body.style.overflow = '';
+  }
+}
+
+function closeViewModal(skipBodyReset) {
+  const m = document.getElementById('jViewModal');
+  if (m) m.remove();
+  if (!skipBodyReset && !document.getElementById('jEditModal')) {
+    document.body.style.overflow = '';
+  }
+}
+
 function rerenderEditBody() {
   if (!journalState.editingDate) return;
   const body = document.getElementById('jEditBody');
@@ -1032,7 +1159,7 @@ function rerenderEditBody() {
 
 function rerenderTimelineCard(dateStr) {
   // Find and replace the card
-  const oldCard = document.querySelector(`.j-card[data-jcard-edit="${dateStr}"]`);
+  const oldCard = document.querySelector(`.j-card[data-jcard-date="${dateStr}"]`);
   if (!oldCard) return;
   const wrap = document.createElement('div');
   wrap.innerHTML = renderDayCard(dateStr);
@@ -1122,20 +1249,19 @@ async function renderJournal() {
 
   root.innerHTML = `
     <div class="j-shell">
-      <div class="j-search-bar">
-        <svg class="j-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="j-search-input" id="jSearchInput" placeholder="Search entries, events, tasks…" value="${escapeHtml(journalState.searchQuery)}" />
-        <div id="jSearchResults"></div>
-      </div>
       <div id="jHeaderSlot">${renderJournalHeader()}</div>
-      <div id="jCalPopSlot" style="${journalState.calendarOpen ? '' : 'display:none'}">${renderJournalCalendar()}</div>
+      ${renderJournalSearchRow()}
       ${renderTimeline()}
       <input type="file" id="jCardPhotoInput" accept="image/*" multiple style="position:absolute;left:-9999px;opacity:0;" />
       <input type="file" id="jCardCameraInput" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0;" />
-    </div>`;
+    </div>
+    <button class="j-back-to-top" id="jBackToTop" type="button" title="Back to top" aria-label="Back to top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>`;
 
   setupScrollObserver();
   syncCalendarHistory();
+  updateTopbarHeightVar();
 }
 
 /* ── SEARCH ───────────────────────────────────────────────── */
@@ -1181,9 +1307,7 @@ document.addEventListener('click', async e => {
   const dateBtn = e.target.closest('[data-jcal-date]');
   if (dateBtn && !dateBtn.disabled) {
     const newDate = dateBtn.dataset.jcalDate;
-    journalState.calendarOpen = false;
-    document.getElementById('jCalPopSlot').style.display = 'none';
-    rerenderJournalHeader();
+    setCalendarOpen(false);
     await ensureTimelineCovers(newDate);
     scrollTimelineToDate(newDate);
     return;
@@ -1206,10 +1330,13 @@ document.addEventListener('click', async e => {
 
   // Toggle calendar popover
   if (e.target.closest('#jCalToggle')) {
-    journalState.calendarOpen = !journalState.calendarOpen;
-    const popSlot = document.getElementById('jCalPopSlot');
-    if (popSlot) popSlot.style.display = journalState.calendarOpen ? '' : 'none';
-    rerenderJournalHeader();
+    setCalendarOpen(!journalState.calendarOpen);
+    return;
+  }
+
+  // Back-to-top
+  if (e.target.closest('#jBackToTop')) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
 
@@ -1247,10 +1374,28 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Card edit click → open edit modal
+  // Card edit click → open edit modal (Edit button or empty-today card)
   const editBtn = e.target.closest('[data-jcard-edit]');
   if (editBtn) {
     openEditModal(editBtn.dataset.jcardEdit);
+    return;
+  }
+
+  // View modal close / backdrop / "Edit" footer button
+  if (e.target.closest('#jViewClose')) { closeViewModal(); return; }
+  if (isCleanBackdropClick(e, document.getElementById('jViewModal'))) { closeViewModal(); return; }
+  const viewEditBtn = e.target.closest('[data-jview-edit]');
+  if (viewEditBtn) {
+    const ds = viewEditBtn.dataset.jviewEdit;
+    closeViewModal(true);
+    openEditModal(ds);
+    return;
+  }
+
+  // Card view tap (anywhere on a card with content) → read-only modal
+  const viewBtn = e.target.closest('[data-jcard-view]');
+  if (viewBtn) {
+    openViewModal(viewBtn.dataset.jcardView);
     return;
   }
 
@@ -1357,10 +1502,7 @@ document.addEventListener('click', async e => {
 
   // Close calendar popover when clicking outside
   if (journalState.calendarOpen && !e.target.closest('#jCalToggle') && !e.target.closest('#jCalPop')) {
-    journalState.calendarOpen = false;
-    const popSlot = document.getElementById('jCalPopSlot');
-    if (popSlot) popSlot.style.display = 'none';
-    rerenderJournalHeader();
+    setCalendarOpen(false);
   }
 });
 
@@ -1376,6 +1518,21 @@ document.addEventListener('keydown', e => {
     closeEditModal();
   }
 });
+
+function updateTopbarHeightVar() {
+  const tb = document.querySelector('.topbar');
+  if (!tb) return;
+  document.documentElement.style.setProperty('--gsd-topbar-h', tb.offsetHeight + 'px');
+}
+
+window.addEventListener('resize', updateTopbarHeightVar);
+
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('jBackToTop');
+  if (!btn) return;
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  btn.classList.toggle('is-visible', y > 200);
+}, { passive: true });
 
 document.addEventListener('change', async e => {
   if (e.target.id === 'jHiddenPhotoInput' || e.target.id === 'jHiddenCameraInput') {
