@@ -266,6 +266,7 @@ let allUsers    = [];
 let selectedUser = null;
 let activeDetailTab = 'profile';
 let googleTokenCache = {}; // email → { token, expires }
+let driveFolderStack = [{ id: 'root', name: 'My Drive' }];
 
 /* ════════════════════════════════════════
    INIT
@@ -516,6 +517,7 @@ function renderGoogleTab(body) {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.google-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      if (btn.dataset.gtab === 'drive') driveFolderStack = [{ id: 'root', name: 'My Drive' }];
       loadGoogleData(btn.dataset.gtab);
     });
   });
@@ -566,25 +568,122 @@ async function loadCalendar(area, token) {
 }
 
 async function loadDrive(area, token) {
-  const url  = `https://www.googleapis.com/drive/v3/files?pageSize=30&orderBy=modifiedTime+desc&fields=files(id,name,mimeType,size,modifiedTime,webViewLink)`;
-  const data = await googleFetch(url, token, selectedUser.email);
-  const files = data.files || [];
+  const folder = driveFolderStack[driveFolderStack.length - 1];
+  const q      = encodeURIComponent(`'${folder.id}' in parents and trashed = false`);
+  const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,webViewLink)');
+  const url    = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&orderBy=folder,name&fields=${fields}`;
+  const data   = await googleFetch(url, token, selectedUser.email);
+  const files  = data.files || [];
 
-  if (!files.length) { area.innerHTML = '<div class="loading-msg">No Drive files found</div>'; return; }
+  const crumbs = driveFolderStack.map((f, i) => {
+    const isLast = i === driveFolderStack.length - 1;
+    return isLast
+      ? `<span style="font-weight:600">${escHtml(f.name)}</span>`
+      : `<a href="#" data-drive-crumb="${i}" style="color:#5b8def;text-decoration:none">${escHtml(f.name)}</a>`;
+  }).join(' <span style="color:#9aaabb">/</span> ');
+
+  const header = `<div style="margin-bottom:.75rem;font-size:.85rem">${crumbs}</div>`;
+
+  if (!files.length) {
+    area.innerHTML = `${header}<div class="loading-msg">Folder is empty</div>`;
+    attachDriveHandlers(area);
+    return;
+  }
 
   const rows = files.map(f => {
-    const mod = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—';
-    const type = f.mimeType?.replace('application/vnd.google-apps.', '') || f.mimeType?.split('/').pop() || '—';
-    const nameHtml = f.webViewLink
-      ? `<a href="${escHtml(f.webViewLink)}" target="_blank" rel="noopener">${escHtml(f.name)}</a>`
-      : escHtml(f.name);
-    return `<tr><td title="${escHtml(f.name)}">${nameHtml}</td><td>${escHtml(type)}</td><td>${mod}</td></tr>`;
+    const isFolder = f.mimeType === 'application/vnd.google-apps.folder';
+    const mod  = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—';
+    const size = f.size ? formatBytes(+f.size) : '—';
+    const icon = isFolder ? '📁' : '📄';
+    const nameCell = isFolder
+      ? `<a href="#" data-drive-folder="${escHtml(f.id)}" data-drive-name="${escHtml(f.name)}" style="color:#5b8def;text-decoration:none">${icon} ${escHtml(f.name)}</a>`
+      : (f.webViewLink
+          ? `<a href="${escHtml(f.webViewLink)}" target="_blank" rel="noopener">${icon} ${escHtml(f.name)}</a>`
+          : `${icon} ${escHtml(f.name)}`);
+    const actionsCell = isFolder
+      ? `<a href="https://drive.google.com/drive/folders/${escHtml(f.id)}" target="_blank" rel="noopener" style="font-size:.75rem">Open in Drive ↗</a>`
+      : `<button class="btn-icon" data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}" title="Download" style="font-size:.85rem">⬇</button>`;
+    return `<tr><td title="${escHtml(f.name)}">${nameCell}</td><td>${escHtml(typeLabel(f.mimeType))}</td><td>${size}</td><td>${mod}</td><td style="text-align:right">${actionsCell}</td></tr>`;
   }).join('');
 
-  area.innerHTML = `<table class="google-data-table">
-    <thead><tr><th>Name</th><th>Type</th><th>Modified</th></tr></thead>
+  area.innerHTML = `${header}<table class="google-data-table">
+    <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
+  attachDriveHandlers(area);
+}
+
+function attachDriveHandlers(area) {
+  area.querySelectorAll('[data-drive-folder]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      driveFolderStack.push({ id: el.dataset.driveFolder, name: el.dataset.driveName });
+      loadGoogleData('drive');
+    });
+  });
+  area.querySelectorAll('[data-drive-crumb]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = +el.dataset.driveCrumb;
+      driveFolderStack = driveFolderStack.slice(0, idx + 1);
+      loadGoogleData('drive');
+    });
+  });
+  area.querySelectorAll('[data-drive-download]').forEach(el => {
+    el.addEventListener('click', () =>
+      downloadDriveFile(el.dataset.driveDownload, el.dataset.driveMime, el.dataset.driveName, el)
+    );
+  });
+}
+
+async function downloadDriveFile(fileId, mimeType, fileName, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: fileId, mime_type: mimeType });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    const { download_url, access_token } = await res.json();
+    const fileRes = await fetch(download_url, { headers: { Authorization: `Bearer ${access_token}` } });
+    if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+    const blob = await fileRes.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fileName + (mimeType?.startsWith('application/vnd.google-apps.') ? exportExtension(mimeType) : '');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    alert('Download failed: ' + err.message);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function typeLabel(mime) {
+  if (!mime) return '—';
+  if (mime === 'application/vnd.google-apps.folder') return 'folder';
+  return mime.replace('application/vnd.google-apps.', '').split('/').pop();
+}
+
+function exportExtension(mime) {
+  switch (mime) {
+    case 'application/vnd.google-apps.document':     return '.pdf';
+    case 'application/vnd.google-apps.spreadsheet':  return '.xlsx';
+    case 'application/vnd.google-apps.presentation': return '.pdf';
+    case 'application/vnd.google-apps.drawing':      return '.png';
+    default:                                          return '.pdf';
+  }
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB';
 }
 
 async function loadGoogleTasks(area, token) {

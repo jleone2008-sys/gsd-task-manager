@@ -66,6 +66,7 @@ exports.handler = async (event) => {
       case 'view-as-user':      return cors(await viewAsUser(JSON.parse(event.body), serviceKey));
       case 'get-google-token':  return cors(await getGoogleToken(JSON.parse(event.body), serviceKey));
       case 'get-gsd-data':      return cors(await getGsdData(JSON.parse(event.body), serviceKey));
+      case 'get-drive-download-info': return cors(await getDriveDownloadInfo(JSON.parse(event.body), serviceKey));
       default:                  return cors(json(400, { error: 'unknown_action' }));
     }
   } catch (err) {
@@ -253,6 +254,41 @@ async function getGsdData(body, serviceKey) {
   ]);
 
   return json(200, { task_count: tasks, habit_count: habits, note_count: notes, last_backup: backups });
+}
+
+async function getDriveDownloadInfo(body, serviceKey) {
+  const { target_email, file_id, mime_type } = body;
+  if (!target_email || !file_id) return json(400, { error: 'target_email_and_file_id_required' });
+
+  const profileRes = await supabaseFetch(
+    `/rest/v1/user_profiles?email=eq.${encodeURIComponent(target_email)}&select=google_refresh_token_enc`,
+    'GET', null, null, serviceKey
+  );
+  const profiles = await profileRes.json();
+  const profile = profiles?.[0];
+  if (!profile?.google_refresh_token_enc) return json(400, { error: 'no_refresh_token' });
+
+  const accessToken = await exchangeRefreshToken(profile.google_refresh_token_enc);
+
+  let download_url;
+  if (mime_type && mime_type.startsWith('application/vnd.google-apps.')) {
+    const exportMime = pickExportMime(mime_type);
+    download_url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file_id)}/export?mimeType=${encodeURIComponent(exportMime)}`;
+  } else {
+    download_url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file_id)}?alt=media`;
+  }
+
+  return json(200, { download_url, access_token: accessToken });
+}
+
+function pickExportMime(googleMime) {
+  switch (googleMime) {
+    case 'application/vnd.google-apps.document':     return 'application/pdf';
+    case 'application/vnd.google-apps.spreadsheet':  return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'application/vnd.google-apps.presentation': return 'application/pdf';
+    case 'application/vnd.google-apps.drawing':      return 'image/png';
+    default:                                          return 'application/pdf';
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
