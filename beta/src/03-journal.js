@@ -460,7 +460,7 @@ function ensureJournalStyles() {
   style.id = 'journalStyles';
   style.textContent = `
     .content[data-tool-view="journal"] { max-width: none; padding: 0; }
-    .j-shell { max-width: 720px; margin: 0; padding: 28px 25px 80px; position: relative; }
+    .j-shell { max-width: 720px; margin: 0; padding: 0 25px 80px; position: relative; }
     .j-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
     .j-page-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.25; flex: 1; min-width: 0; }
     .j-actions { display: flex; gap: 6px; align-items: center; }
