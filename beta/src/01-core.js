@@ -469,7 +469,7 @@ function switchTool(tool) {
   document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
-  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch' };
+  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
