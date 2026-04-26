@@ -66,7 +66,6 @@ exports.handler = async (event) => {
       case 'view-as-user':      return cors(await viewAsUser(JSON.parse(event.body), serviceKey));
       case 'get-google-token':  return cors(await getGoogleToken(JSON.parse(event.body), serviceKey));
       case 'get-gsd-data':      return cors(await getGsdData(JSON.parse(event.body), serviceKey));
-      case 'proxy-photos':      return cors(await proxyPhotos(JSON.parse(event.body)));
       default:                  return cors(json(400, { error: 'unknown_action' }));
     }
   } catch (err) {
@@ -254,31 +253,6 @@ async function getGsdData(body, serviceKey) {
   ]);
 
   return json(200, { task_count: tasks, habit_count: habits, note_count: notes, last_backup: backups });
-}
-
-async function proxyPhotos(body) {
-  const { google_access_token, page_size = 20 } = body;
-  if (!google_access_token) return json(400, { error: 'google_access_token_required' });
-
-  // Photos Library API v1 deprecated May 2024 — blocked for unverified apps.
-  // Use Drive API to list image files instead (drive scope already granted).
-  const q      = encodeURIComponent("mimeType contains 'image/' and trashed = false");
-  const fields = encodeURIComponent('files(id,name,mimeType,thumbnailLink,createdTime)');
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=${page_size}&orderBy=createdTime+desc&fields=${fields}`,
-    { headers: { Authorization: `Bearer ${google_access_token}` } }
-  );
-  const data = await res.json();
-  if (!res.ok) return json(res.status, { error: data.error?.message || 'drive_photos_error' });
-
-  const mediaItems = (data.files || []).map(f => ({
-    id:        f.id,
-    filename:  f.name,
-    mimeType:  f.mimeType,
-    baseUrl:   f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+$/, '=s80') : null,
-    createdAt: f.createdTime,
-  }));
-  return json(200, { mediaItems });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

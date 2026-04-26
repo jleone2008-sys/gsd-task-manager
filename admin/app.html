@@ -509,7 +509,6 @@ function renderGoogleTab(body) {
       <button class="google-tab active" data-gtab="calendar">📅 Calendar</button>
       <button class="google-tab" data-gtab="drive">📁 Drive</button>
       <button class="google-tab" data-gtab="tasks">✅ Tasks</button>
-      <button class="google-tab" data-gtab="photos">🖼 Photos</button>
     </div>
     <div id="googleDataArea"><div class="loading-msg">Select a service above</div></div>`;
 
@@ -536,7 +535,6 @@ async function loadGoogleData(service) {
     if (service === 'calendar')  await loadCalendar(area, token);
     else if (service === 'drive') await loadDrive(area, token);
     else if (service === 'tasks') await loadGoogleTasks(area, token);
-    else if (service === 'photos') await loadPhotos(area, token);
   } catch (err) {
     area.innerHTML = `<div class="error-msg">Error: ${escHtml(err.message)}</div>`;
   }
@@ -638,28 +636,6 @@ async function loadGoogleTasks(area, token) {
         : '<tr><td colspan="3" style="text-align:center;color:#9aaabb">No tasks</td></tr>';
     } catch { /* ignore */ }
   });
-}
-
-async function loadPhotos(area, token) {
-  try {
-    const res = await adminFetch('POST', { action: 'proxy-photos', google_access_token: token, page_size: 20 });
-    if (!res.ok) { const d = await res.json(); throw new Error(d.error || `HTTP ${res.status}`); }
-    const data = await res.json();
-    const items = data.mediaItems || [];
-
-    if (!items.length) { area.innerHTML = '<div class="loading-msg">No photos found</div>'; return; }
-
-    const thumbs = items.map(item => {
-      const thumb = item.baseUrl || '';
-      return `<div style="display:inline-block;margin:4px;border-radius:6px;overflow:hidden;width:80px;height:80px;background:#f0f2f6">
-        ${thumb ? `<img src="${thumb}" alt="${escHtml(item.filename||'')}" style="width:80px;height:80px;object-fit:cover">` : '📷'}
-      </div>`;
-    }).join('');
-
-    area.innerHTML = `<div style="font-size:.75rem;color:#9aaabb;margin-bottom:.5rem">Showing ${items.length} recent items</div>${thumbs}`;
-  } catch (err) {
-    area.innerHTML = `<div class="error-msg">Photos API error: ${escHtml(err.message)}</div>`;
-  }
 }
 
 /* ════════════════════════════════════════

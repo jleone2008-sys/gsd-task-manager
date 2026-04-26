@@ -210,7 +210,6 @@ function signInWithGoogle() {
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events.owned',
       'https://www.googleapis.com/auth/calendar.events.owned.readonly',
-      'https://www.googleapis.com/auth/photoslibrary',
       'https://www.googleapis.com/auth/tasks',
       'https://www.googleapis.com/auth/drive',
     ].join(' '),
@@ -255,7 +254,6 @@ async function handleBetaOAuthCallback() {
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/calendar.events.owned',
     'https://www.googleapis.com/auth/calendar.events.owned.readonly',
-    'https://www.googleapis.com/auth/photoslibrary',
     'https://www.googleapis.com/auth/tasks',
     'https://www.googleapis.com/auth/drive',
   ];
