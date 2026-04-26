@@ -78,8 +78,7 @@ function getEmptyStatePrompt(dateStr) {
   const name = getFirstName();
   if (jIsToday(dateStr)) return getTimeBasedGreeting(name);
   if (jIsPast(dateStr)) {
-    const n = name || 'you';
-    return `No entry for ${jFormatShort(dateStr)} yet. ${n.charAt(0).toUpperCase() + n.slice(1)} can capture it now if it still feels worth it.`;
+    return `No entry for ${jFormatShort(dateStr)} yet. You can capture it now if it still feels worth it.`;
   }
   return `${name ? name + ', this' : 'This'} day is still ahead. Anything you're looking forward to?`;
 }
@@ -909,6 +908,14 @@ document.addEventListener('click', async e => {
     refreshEventsSlot();
     fetchCalendarEventsForDate(journalState.selectedDate).then(refreshEventsSlot);
     return;
+  }
+
+  // Close calendar popover when clicking outside the toggle or popover
+  if (journalState.calendarOpen && !e.target.closest('#jCalToggle') && !e.target.closest('#jCalPop')) {
+    journalState.calendarOpen = false;
+    const popSlot = document.getElementById('jCalPopSlot');
+    if (popSlot) popSlot.style.display = 'none';
+    rerenderJournalHeader();
   }
 });
 
