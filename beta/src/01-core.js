@@ -364,6 +364,10 @@ async function _signInUser(user) {
   loadHabits();
   loadNotes();
   loadSubtasks();
+  if (typeof loadUserSettings === 'function') {
+    await loadUserSettings();
+    if (typeof applyEffectiveTabs === 'function') applyEffectiveTabs();
+  }
   if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
 }
 
@@ -482,6 +486,7 @@ function switchTool(tool) {
   else if (tool === 'tasks') { render(); }
   else if (tool === 'notes') { renderNotes(); }
   else if (tool === 'scratch') { renderScratch(); }
+  else if (tool === 'settings' && typeof renderSettingsPage === 'function') { renderSettingsPage(); }
 }
 document.addEventListener('click', e => {
   const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
