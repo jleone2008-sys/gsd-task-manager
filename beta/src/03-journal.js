@@ -449,18 +449,21 @@ function ensureJournalStyles() {
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
 
     /* Edit modal */
-    .j-edit-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.55); display: flex; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 40px 16px; }
-    @media (max-width: 600px) { .j-edit-modal { padding: 0; } }
-    .j-edit-card { background: var(--surface); border-radius: var(--r-md); max-width: 680px; width: 100%; box-shadow: var(--shadow-raised); margin-bottom: 40px; }
-    @media (max-width: 600px) { .j-edit-card { border-radius: 0; min-height: 100vh; margin-bottom: 0; } }
-    .j-edit-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 26px 14px; border-bottom: 1px solid var(--edge); }
-    .j-edit-title { font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
-    .j-edit-save-ind { font-size: 11px; color: var(--ink-4); }
+    .j-edit-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 40px 16px; }
+    @media (max-width: 600px) { .j-edit-modal { padding: 24px 14px; align-items: center; } }
+    .j-edit-card { background: var(--surface); border-radius: var(--r-md); max-width: 680px; width: 100%; box-shadow: var(--shadow-raised); margin-bottom: 40px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow: hidden; }
+    @media (max-width: 600px) { .j-edit-card { max-height: calc(100vh - 48px); margin-bottom: 0; } }
+    .j-edit-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 22px 14px; border-bottom: 1px solid var(--edge); flex-shrink: 0; }
+    .j-edit-title { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
+    .j-edit-save-ind { font-size: 11px; color: var(--ink-4); margin-top: 4px; }
     .j-edit-save-ind.saved { color: var(--moss-fg); }
     .j-edit-save-ind.error { color: var(--guava-700); }
-    .j-edit-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 4px 8px; font-size: 18px; line-height: 1; border-radius: var(--r-sm); }
+    .j-edit-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 4px 8px; font-size: 22px; line-height: 1; border-radius: var(--r-sm); }
     .j-edit-close:hover { background: var(--surface-2); color: var(--ink); }
-    .j-edit-body { padding: 18px 26px 26px; }
+    .j-edit-body { padding: 18px 22px 8px; overflow-y: auto; flex: 1; min-height: 0; }
+    .j-edit-footer { padding: 14px 22px 18px; border-top: 1px solid var(--edge); flex-shrink: 0; background: var(--surface); }
+    .j-edit-submit { width: 100%; background: var(--guava-700); color: #fff; border: none; padding: 11px 18px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; }
+    .j-edit-submit:hover { background: var(--guava-800); }
 
     .j-section { margin-bottom: 22px; }
     .j-section-h { font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
@@ -824,8 +827,13 @@ function renderEditModalBody(ds) {
 
 function openEditModal(dateStr) {
   if (jIsFuture(dateStr)) return;
+  closeEditModal(true);  // close any existing first; skip card rerender
   journalState.editingDate = dateStr;
-  closeEditModal();
+  const isToday = jIsToday(dateStr);
+  const existing = journalState.entries.get(dateStr);
+  const submitLabel = isEntryEmpty(existing)
+    ? (isToday ? 'Submit My Day' : 'Save Entry')
+    : (isToday ? 'Update My Day' : 'Update Entry');
   const html = `
     <div class="j-edit-modal" id="jEditModal">
       <div class="j-edit-card">
@@ -837,6 +845,11 @@ function openEditModal(dateStr) {
           <button class="j-edit-close" id="jEditClose" title="Close">×</button>
         </div>
         <div class="j-edit-body" id="jEditBody">${renderEditModalBody(dateStr)}</div>
+        <div class="j-edit-footer">
+          <button class="j-edit-submit" id="jEditSubmit">${submitLabel}</button>
+        </div>
+        <input type="file" id="jHiddenPhotoInput" accept="image/*" multiple style="position:absolute;left:-9999px;opacity:0;" />
+        <input type="file" id="jHiddenCameraInput" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0;" />
       </div>
     </div>`;
   const wrap = document.createElement('div');
@@ -857,15 +870,15 @@ function openEditModal(dateStr) {
   });
 }
 
-function closeEditModal() {
+function closeEditModal(skipRerender) {
   const m = document.getElementById('jEditModal');
   if (m) m.remove();
   document.body.style.overflow = '';
-  if (journalState.editingDate) {
+  if (!skipRerender && journalState.editingDate) {
     rerenderTimelineCard(journalState.editingDate);
     rerenderJournalCalendarPopover();
   }
-  journalState.editingDate = null;
+  if (!skipRerender) journalState.editingDate = null;
 }
 
 function rerenderEditBody() {
@@ -1095,20 +1108,28 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Add photo
+  // Add photo — uses persistent inputs inside the edit modal
   if (e.target.closest('#jPhotoAdd')) {
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
     if (isMobile) openPhotoSourceModal();
-    else openFilePicker(false);
+    else document.getElementById('jHiddenPhotoInput')?.click();
     return;
   }
   const photoSrc = e.target.closest('[data-jphoto-source]');
   if (photoSrc) {
-    handlePhotoSource(photoSrc.dataset.jphotoSource);
+    closePhotoSourceModal();
+    const id = photoSrc.dataset.jphotoSource === 'camera' ? 'jHiddenCameraInput' : 'jHiddenPhotoInput';
+    document.getElementById(id)?.click();
     return;
   }
   if (e.target.closest('[data-jphoto-cancel]') || e.target.classList.contains('j-photo-modal')) {
     closePhotoSourceModal();
+    return;
+  }
+
+  // Submit/Update button just closes the modal (changes are auto-saved on input)
+  if (e.target.closest('#jEditSubmit')) {
+    closeEditModal();
     return;
   }
 
@@ -1197,6 +1218,14 @@ document.addEventListener('keydown', e => {
   }
 });
 
+document.addEventListener('change', async e => {
+  if (e.target.id === 'jHiddenPhotoInput' || e.target.id === 'jHiddenCameraInput') {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length) await addPhotosFromFiles(files);
+  }
+});
+
 document.addEventListener('input', e => {
   if (e.target.id === 'jReflections') {
     const ds = journalState.editingDate;
@@ -1241,27 +1270,6 @@ function openPhotoSourceModal() {
 function closePhotoSourceModal() {
   const m = document.getElementById('jPhotoModal');
   if (m) m.remove();
-}
-
-function handlePhotoSource(source) {
-  closePhotoSourceModal();
-  openFilePicker(source === 'camera');
-}
-
-function openFilePicker(useCamera) {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  if (useCamera) input.capture = 'environment';
-  else input.multiple = true;
-  input.style.display = 'none';
-  input.addEventListener('change', async () => {
-    const files = Array.from(input.files || []);
-    if (files.length) await addPhotosFromFiles(files);
-    input.remove();
-  });
-  document.body.appendChild(input);
-  input.click();
 }
 
 async function addPhotosFromFiles(files) {
