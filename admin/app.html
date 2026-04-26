@@ -595,9 +595,14 @@ async function loadDrive(area, token) {
     const mod  = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—';
     const size = f.size ? formatBytes(+f.size) : '—';
     const icon = isFolder ? '📁' : '📄';
-    const nameCell = isFolder
-      ? `<a href="#" data-drive-folder="${escHtml(f.id)}" data-drive-name="${escHtml(f.name)}" style="color:#5b8def;text-decoration:none">${icon} ${escHtml(f.name)}</a>`
-      : `<a href="#" data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}" style="color:inherit;text-decoration:none">${icon} ${escHtml(f.name)}</a>`;
+    const isImage = !isFolder && f.mimeType && f.mimeType.startsWith('image/');
+    const nameAttr = isFolder
+      ? `data-drive-folder="${escHtml(f.id)}" data-drive-name="${escHtml(f.name)}"`
+      : isImage
+        ? `data-drive-preview="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}"`
+        : `data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}"`;
+    const nameStyle = isFolder ? 'color:#5b8def;text-decoration:none' : 'color:inherit;text-decoration:none';
+    const nameCell = `<a href="#" ${nameAttr} style="${nameStyle}">${icon} ${escHtml(f.name)}</a>`;
     const actionsCell = isFolder
       ? ''
       : `<button class="btn-icon" data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}" title="Download" style="font-size:.85rem">⬇</button>`;
@@ -633,6 +638,56 @@ function attachDriveHandlers(area) {
       downloadDriveFile(el.dataset.driveDownload, el.dataset.driveMime, el.dataset.driveName, el);
     });
   });
+  area.querySelectorAll('[data-drive-preview]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      previewDriveImage(el.dataset.drivePreview, el.dataset.driveMime, el.dataset.driveName);
+    });
+  });
+}
+
+async function previewDriveImage(fileId, mimeType, fileName) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;cursor:zoom-out';
+  overlay.innerHTML = `<div style="color:#fff;font-size:.875rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
+      <span>${escHtml(fileName)}</span>
+      <button id="previewDownloadBtn" style="background:#fff;color:#1e3a5f;border:none;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">⬇ Download</button>
+      <button id="previewCloseBtn" style="background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">Close (Esc)</button>
+    </div>
+    <div id="previewBody" style="color:#fff;font-size:.875rem;flex:1;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:80vh">Loading…</div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    document.removeEventListener('keydown', onKey);
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    overlay.remove();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#previewCloseBtn').addEventListener('click', close);
+
+  let currentBlobUrl = null;
+  try {
+    const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: fileId, mime_type: mimeType });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    const { download_url, access_token } = await res.json();
+    const fileRes = await fetch(download_url, { headers: { Authorization: `Bearer ${access_token}` } });
+    if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+    const blob = await fileRes.blob();
+    currentBlobUrl = URL.createObjectURL(blob);
+    overlay.querySelector('#previewBody').innerHTML = `<img src="${currentBlobUrl}" alt="${escHtml(fileName)}" style="max-width:100%;max-height:80vh;object-fit:contain;cursor:default" onclick="event.stopPropagation()">`;
+    overlay.querySelector('#previewDownloadBtn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = currentBlobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  } catch (err) {
+    overlay.querySelector('#previewBody').textContent = 'Preview failed: ' + err.message;
+  }
 }
 
 async function downloadDriveFile(fileId, mimeType, fileName, btn) {
