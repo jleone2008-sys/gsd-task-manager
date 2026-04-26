@@ -65,18 +65,31 @@ function getEffectiveTabs() {
   );
 }
 
-function applyEffectiveTabs() {
+function getOrderedEffectiveTabs() {
   const effective = getEffectiveTabs();
+  const userOrder = userSettings?.enabled_tools || VALID_TABS;
+  // Tasks first; then user's order; then any remaining effective tabs not in user's order
+  const result = ['tasks'].filter(t => effective.includes(t));
+  for (const t of userOrder) if (effective.includes(t) && !result.includes(t)) result.push(t);
+  for (const t of effective) if (!result.includes(t)) result.push(t);
+  return result;
+}
+
+function applyEffectiveTabs() {
+  const ordered = getOrderedEffectiveTabs();
   VALID_TABS.forEach(tool => {
-    const allowed = effective.includes(tool);
+    const allowed = ordered.includes(tool);
+    const idx = ordered.indexOf(tool);
     document.querySelectorAll(`.mobile-nav-btn[data-tool="${tool}"]`).forEach(el => {
       el.style.display = allowed ? '' : 'none';
+      el.style.order = idx >= 0 ? String(idx) : '';
     });
     document.querySelectorAll(`.sidebar-btn[data-tool="${tool}"]`).forEach(el => {
       el.style.display = allowed ? '' : 'none';
+      el.style.order = idx >= 0 ? String(idx) : '';
     });
   });
-  if (typeof activeTool !== 'undefined' && activeTool !== 'settings' && !effective.includes(activeTool)) {
+  if (typeof activeTool !== 'undefined' && activeTool !== 'settings' && !ordered.includes(activeTool)) {
     if (typeof switchTool === 'function') switchTool('tasks');
   }
 }
@@ -98,6 +111,10 @@ function ensureSettingsStyles() {
     .settings-tab-row--locked input { cursor: not-allowed; }
     .settings-tab-label { font-size: 13px; font-weight: 600; color: var(--ink); min-width: 80px; }
     .settings-tab-desc { font-size: 12px; color: var(--ink-3); line-height: 1.5; flex: 1; }
+    .settings-reorder { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+    .settings-reorder button { width: 22px; height: 16px; border: 1px solid var(--edge); background: var(--surface); border-radius: var(--r-sm); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 9px; line-height: 1; }
+    .settings-reorder button:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
+    .settings-reorder button[disabled] { opacity: 0.3; cursor: not-allowed; }
     .settings-int-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     .settings-int-card { background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 14px 16px; }
     .settings-int-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -124,12 +141,30 @@ function renderSettingsPage() {
   const enabled = userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools;
   const integrations = userSettings?.integrations || {};
 
-  const tabsHtml = Object.entries(TAB_META).map(([id, meta]) => `
-    <label class="settings-tab-row">
-      <input type="checkbox" data-settings-tab="${id}" ${enabled.includes(id) ? 'checked' : ''} />
+  // Build the order: enabled tabs in user order, then disabled tabs at the end
+  const tabIds = Object.keys(TAB_META);
+  const enabledOrdered = (enabled || []).filter(t => tabIds.includes(t));
+  const disabledTabs = tabIds.filter(t => !enabledOrdered.includes(t));
+  const orderedForRender = [...enabledOrdered, ...disabledTabs];
+
+  const tabsHtml = orderedForRender.map((id, displayIdx) => {
+    const meta = TAB_META[id];
+    if (!meta) return '';
+    const isEnabled = enabledOrdered.includes(id);
+    const orderPos = enabledOrdered.indexOf(id);
+    const canMoveUp = isEnabled && orderPos > 0;
+    const canMoveDown = isEnabled && orderPos >= 0 && orderPos < enabledOrdered.length - 1;
+    return `
+    <div class="settings-tab-row">
+      <div class="settings-reorder">
+        <button data-settings-reorder="up" data-tab="${id}" ${canMoveUp ? '' : 'disabled'} title="Move up">▲</button>
+        <button data-settings-reorder="down" data-tab="${id}" ${canMoveDown ? '' : 'disabled'} title="Move down">▼</button>
+      </div>
+      <input type="checkbox" data-settings-tab="${id}" ${isEnabled ? 'checked' : ''} />
       <span class="settings-tab-label">${meta.label}</span>
       <span class="settings-tab-desc">${meta.desc}</span>
-    </label>`).join('');
+    </div>`;
+  }).join('');
 
   const integrationsHtml = INTEGRATIONS_META.map(i => {
     const conn = !!integrations[i.id]?.connected;
@@ -189,17 +224,39 @@ document.addEventListener('change', e => {
   const cb = e.target.closest('input[data-settings-tab]');
   if (!cb) return;
   const tab = cb.dataset.settingsTab;
-  const set = new Set(userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools);
-  if (cb.checked) set.add(tab); else set.delete(tab);
-  set.add('tasks');
-  const list = VALID_TABS.filter(t => set.has(t));
-  saveUserSettings({ enabled_tools: list }).then(() => {
+  const current = (userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools).slice();
+  if (cb.checked) {
+    if (!current.includes(tab)) current.push(tab);
+  } else {
+    const idx = current.indexOf(tab);
+    if (idx >= 0) current.splice(idx, 1);
+  }
+  if (!current.includes('tasks')) current.unshift('tasks');
+  saveUserSettings({ enabled_tools: current }).then(() => {
     applyEffectiveTabs();
     flashSettingsSaved();
+    if (activeTool === 'settings') renderSettingsPage();
   });
 });
 
 document.addEventListener('click', e => {
+  const reorderBtn = e.target.closest('[data-settings-reorder]');
+  if (reorderBtn) {
+    const tab = reorderBtn.dataset.tab;
+    const direction = reorderBtn.dataset.settingsReorder;
+    const current = (userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools).slice();
+    const idx = current.indexOf(tab);
+    if (idx < 0) return;
+    const swap = direction === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= current.length) return;
+    [current[idx], current[swap]] = [current[swap], current[idx]];
+    saveUserSettings({ enabled_tools: current }).then(() => {
+      applyEffectiveTabs();
+      flashSettingsSaved();
+      if (activeTool === 'settings') renderSettingsPage();
+    });
+    return;
+  }
   const action = e.target.closest('[data-settings-action]')?.dataset.settingsAction;
   if (!action) return;
   if (action === 'backup' && typeof openBackupModal === 'function') openBackupModal();
