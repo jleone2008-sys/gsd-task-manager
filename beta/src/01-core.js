@@ -471,6 +471,7 @@ function switchTool(tool) {
   if (!_navFromPop) {
     const route = { tool };
     if (tool === 'habits' && typeof activeHabitView === 'string' && activeHabitView !== 'today') route.view = activeHabitView;
+    if (tool === 'journal' && typeof journalState !== 'undefined' && journalState.selectedDate) route.date = journalState.selectedDate;
     if (typeof routerSyncUrl === 'function') routerSyncUrl(route);
     else history.pushState({tool, note: null, drill: false}, '');
   }

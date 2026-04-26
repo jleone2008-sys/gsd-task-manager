@@ -27,6 +27,10 @@ function parseAppRoute() {
     const view = seg2 && GSD_HABIT_VIEWS.includes(seg2) ? seg2 : 'today';
     return { tool: 'habits', view };
   }
+  if (seg1 === 'journal') {
+    const date = seg2 && /^\d{4}-\d{2}-\d{2}$/.test(seg2) ? seg2 : null;
+    return { tool: 'journal', date };
+  }
   return { tool: seg1 };
 }
 
@@ -37,6 +41,9 @@ function buildAppRoute(r) {
   }
   if (r.tool === 'habits') {
     return r.view && r.view !== 'today' ? `/beta/app/habits/${r.view}` : '/beta/app/habits';
+  }
+  if (r.tool === 'journal') {
+    return r.date ? `/beta/app/journal/${r.date}` : '/beta/app/journal';
   }
   return `/beta/app/${r.tool}`;
 }
@@ -55,9 +62,18 @@ function routerSyncUrl(route, opts) {
 
 function routerApplyRoute(r) {
   if (!r || !r.tool) return;
+  const journalDateChanged = r.tool === 'journal' && r.date && typeof journalState !== 'undefined' && journalState.selectedDate !== r.date;
+  if (journalDateChanged) {
+    journalState.selectedDate = r.date;
+    const d = new Date(r.date + 'T00:00:00');
+    journalState.viewMonth = { year: d.getFullYear(), month: d.getMonth() };
+  }
+  const wasOnJournal = activeTool === 'journal';
   if (typeof activeTool === 'string' && activeTool !== r.tool && typeof switchTool === 'function') {
     _navFromPop = true;
     try { switchTool(r.tool); } finally { _navFromPop = false; }
+  } else if (journalDateChanged && wasOnJournal && typeof renderJournal === 'function') {
+    renderJournal();
   }
   if (r.tool === 'tasks' && r.filter) {
     const pill = document.querySelector(`[data-tool-view="tasks"].pill-bar .pill[data-filter="${r.filter}"]`);

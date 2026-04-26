@@ -183,7 +183,7 @@ function ensureJournalStyles() {
     .content[data-tool-view="journal"] { max-width: none; padding: 0; }
     .j-shell { display: grid; grid-template-columns: 280px 1fr; gap: 24px; max-width: 1100px; margin: 0 auto; padding: 24px 24px 80px; }
     .j-side { display: flex; flex-direction: column; gap: 16px; }
-    .j-cal { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 12px; box-shadow: var(--shadow-card); }
+    .j-cal { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 12px; box-shadow: var(--shadow-card); }
     .j-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
     .j-cal-month { font-size: 13px; font-weight: 600; color: var(--ink); }
     .j-cal-nav { background: none; border: none; padding: 4px 8px; cursor: pointer; color: var(--ink-3); border-radius: var(--r-sm); }
@@ -197,12 +197,12 @@ function ensureJournalStyles() {
     .j-cal-cell.has-entry::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--guava-500); }
     .j-cal-cell.is-selected.has-entry::after { background: #fff; }
     .j-cal-cell.is-other { color: var(--ink-5); }
-    .j-list { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 6px; box-shadow: var(--shadow-card); max-height: 380px; overflow-y: auto; }
+    .j-list { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 6px; box-shadow: var(--shadow-card); max-height: 380px; overflow-y: auto; }
     .j-list-empty { padding: 16px 12px; font-size: 11.5px; color: var(--ink-4); text-align: center; }
     .j-list-item { width: 100%; text-align: left; background: none; border: none; padding: 8px 12px; font-family: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer; border-radius: var(--r-sm); }
     .j-list-item:hover { background: var(--surface-2); }
     .j-list-item.is-active { background: var(--guava-100); color: var(--guava-900); font-weight: 600; }
-    .j-main { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 28px 32px 32px; box-shadow: var(--shadow-card); min-width: 0; }
+    .j-main { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 28px 32px 32px; box-shadow: var(--shadow-card); min-width: 0; }
     .j-date-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--edge); }
     .j-date-h { font-size: 22px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; }
     .j-save-ind { font-size: 11px; color: var(--ink-4); }
@@ -276,32 +276,34 @@ function renderJournalCalendar() {
     </div>`;
 }
 
-function renderJournalList() {
-  const items = [...journalState.entries.values()]
-    .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
-    .slice(0, 30);
-  if (!items.length) {
-    return `<div class="j-list"><div class="j-list-empty">No entries yet — pick a date and start writing.</div></div>`;
-  }
-  const rows = items.map(e => {
-    const cls = e.entry_date === journalState.selectedDate ? 'j-list-item is-active' : 'j-list-item';
-    return `<button class="${cls}" data-jlist-date="${e.entry_date}">${jFormatShort(e.entry_date)}</button>`;
-  }).join('');
-  return `<div class="j-list">${rows}</div>`;
-}
-
 /* ── EDITOR RENDER ────────────────────────────────────────── */
 
-async function renderJournalEditor() {
+function renderEventsSection(ds) {
+  if (!journalState.calendarEvents.has(ds)) {
+    return `<div class="j-empty">Loading…</div>`;
+  }
+  const events = journalState.calendarEvents.get(ds);
+  if (!events.length) return `<div class="j-empty">No calendar events.</div>`;
+  return events.map(ev => {
+    const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+    return `<div class="j-list-row"><span class="j-bullet">•</span><span>${escapeHtml(ev.summary)} · ${time}</span></div>`;
+  }).join('');
+}
+
+function refreshCalendarEventsAsync(ds) {
+  fetchCalendarEventsForDate(ds).then(() => {
+    if (ds !== journalState.selectedDate) return;
+    const slot = document.getElementById('jEventsSlot');
+    if (slot) slot.innerHTML = renderEventsSection(ds);
+  });
+}
+
+function renderJournalEditor() {
   const ds = journalState.selectedDate;
   const entry = journalState.entries.get(ds) || { reflections: '', mood: null, photos: [] };
   const tasksDone = getCompletedTasksForDate(ds);
-  const events = await fetchCalendarEventsForDate(ds);
 
-  const eventsHtml = events.length ? events.map(ev => {
-    const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
-    return `<div class="j-list-row"><span class="j-bullet">•</span><span>${escapeHtml(ev.summary)} · ${time}</span></div>`;
-  }).join('') : `<div class="j-empty">No calendar events.</div>`;
+  const eventsHtml = renderEventsSection(ds);
 
   const tasksHtml = tasksDone.length ? tasksDone.map(t =>
     `<div class="j-list-row"><span class="j-check">✓</span><span>${escapeHtml(t.text)}</span></div>`
@@ -325,7 +327,7 @@ async function renderJournalEditor() {
 
       <div class="j-section">
         <div class="j-section-h">What happened today</div>
-        ${eventsHtml}
+        <div id="jEventsSlot">${eventsHtml}</div>
       </div>
 
       <div class="j-section">
@@ -381,34 +383,31 @@ async function renderJournal() {
     journalState.viewMonth = { year: d.getFullYear(), month: d.getMonth() };
   }
 
-  await loadJournalMonth(journalState.viewMonth.year, journalState.viewMonth.month);
-  await loadJournalEntry(journalState.selectedDate);
+  if (typeof routerSyncUrl === 'function') {
+    routerSyncUrl({ tool: 'journal', date: journalState.selectedDate }, { replace: true });
+  }
 
   root.innerHTML = `
     <div class="j-shell">
-      <div class="j-side">
-        ${renderJournalCalendar()}
-        ${renderJournalList()}
-      </div>
-      <div id="jMainSlot"></div>
+      <div class="j-side">${renderJournalCalendar()}</div>
+      ${renderJournalEditor()}
     </div>`;
 
-  const main = await renderJournalEditor();
-  document.getElementById('jMainSlot').outerHTML = main;
+  refreshCalendarEventsAsync(journalState.selectedDate);
+  loadJournalMonth(journalState.viewMonth.year, journalState.viewMonth.month).then(rerenderJournalSidebar);
+  loadJournalEntry(journalState.selectedDate).then(() => rerenderJournalEditorOnly());
 }
 
-async function rerenderJournalEditorOnly() {
+function rerenderJournalEditorOnly() {
   const slot = document.querySelector('.j-main');
   if (!slot) return;
-  const html = await renderJournalEditor();
-  slot.outerHTML = html;
+  slot.outerHTML = renderJournalEditor();
+  refreshCalendarEventsAsync(journalState.selectedDate);
 }
 
 function rerenderJournalSidebar() {
   const cal = document.querySelector('.j-cal');
-  const list = document.querySelector('.j-list');
   if (cal) cal.outerHTML = renderJournalCalendar();
-  if (list) list.outerHTML = renderJournalList();
 }
 
 /* ── EVENT HANDLERS ───────────────────────────────────────── */
@@ -417,9 +416,12 @@ document.addEventListener('click', async e => {
   const dateBtn = e.target.closest('[data-jcal-date]');
   if (dateBtn) {
     journalState.selectedDate = dateBtn.dataset.jcalDate;
-    await loadJournalEntry(journalState.selectedDate);
     rerenderJournalSidebar();
-    await rerenderJournalEditorOnly();
+    rerenderJournalEditorOnly();
+    if (typeof routerSyncUrl === 'function') routerSyncUrl({ tool: 'journal', date: journalState.selectedDate });
+    loadJournalEntry(journalState.selectedDate).then(() => {
+      if (journalState.selectedDate === dateBtn.dataset.jcalDate) rerenderJournalEditorOnly();
+    });
     return;
   }
   const navBtn = e.target.closest('[data-jcal-nav]');
@@ -430,21 +432,8 @@ document.addEventListener('click', async e => {
     if (month < 0) { month = 11; year--; }
     if (month > 11) { month = 0; year++; }
     journalState.viewMonth = { year, month };
-    await loadJournalMonth(year, month);
     rerenderJournalSidebar();
-    return;
-  }
-  const listBtn = e.target.closest('[data-jlist-date]');
-  if (listBtn) {
-    journalState.selectedDate = listBtn.dataset.jlistDate;
-    const d = jParseDate(journalState.selectedDate);
-    if (d.getFullYear() !== journalState.viewMonth.year || d.getMonth() !== journalState.viewMonth.month) {
-      journalState.viewMonth = { year: d.getFullYear(), month: d.getMonth() };
-      await loadJournalMonth(journalState.viewMonth.year, journalState.viewMonth.month);
-    }
-    await loadJournalEntry(journalState.selectedDate);
-    rerenderJournalSidebar();
-    await rerenderJournalEditorOnly();
+    loadJournalMonth(year, month).then(rerenderJournalSidebar);
     return;
   }
   if (e.target.closest('#jPhotoAdd')) {
@@ -459,7 +448,7 @@ document.addEventListener('click', async e => {
     const photos = [...(entry.photos || [])];
     photos.splice(idx, 1);
     journalState.entries.set(ds, { ...entry, photos });
-    await rerenderJournalEditorOnly();
+    rerenderJournalEditorOnly();
     saveJournalEntry(ds, { photos });
     return;
   }
@@ -493,7 +482,7 @@ document.addEventListener('change', async e => {
     }
     journalState.entries.set(ds, { ...entry, photos });
     e.target.value = '';
-    await rerenderJournalEditorOnly();
+    rerenderJournalEditorOnly();
     saveJournalEntry(ds, { photos });
   }
 });
