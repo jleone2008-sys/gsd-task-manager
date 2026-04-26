@@ -206,10 +206,26 @@ function getCompletedTasksForDate(dateStr) {
 
 function getHabitCompletionForDate(dateStr) {
   if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return null;
-  if (typeof isHabitDueOnDate !== 'function' || typeof isCompletedOn !== 'function') return null;
+  if (typeof isCompletedOn !== 'function') return null;
+  const isToday = (typeof jIsToday === 'function') && jIsToday(dateStr);
+
+  // Today: use the pace-aware "due today" filter the Habits tab uses (matches what
+  // the user sees there, including quota habits only when their deadline is near).
+  if (isToday && typeof isHabitDueToday === 'function') {
+    const due = habitsArr.filter(h => !h.archived && isHabitDueToday(h));
+    if (!due.length) return null;
+    const done = due.reduce((n, h) => n + (isCompletedOn(h.id, dateStr) ? 1 : 0), 0);
+    return { due: due.length, done, pct: Math.round((done / due.length) * 100) };
+  }
+
+  // Past days: strict cadence only (daily / weekdays / custom DoW). Quota habits
+  // (x_per_week / x_per_month) have no per-day due concept once the period ends,
+  // so they're excluded historically.
+  if (typeof isHabitDueOnDate !== 'function') return null;
   let due = 0, done = 0;
   for (const h of habitsArr) {
     if (h.archived) continue;
+    if (h.frequency === 'x_per_week' || h.frequency === 'x_per_month') continue;
     if (!isHabitDueOnDate(h, dateStr)) continue;
     due++;
     if (isCompletedOn(h.id, dateStr)) done++;
@@ -555,8 +571,7 @@ function ensureJournalStyles() {
     .j-card-auto-row { display: flex; gap: 6px; padding: 3px 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
     .j-card-auto-row .j-bullet { color: var(--guava-500); flex-shrink: 0; }
     .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
-    .j-card-habit-pct { color: var(--guava-700); font-weight: 700; min-width: 36px; flex-shrink: 0; }
-    .j-card-habit-trail { display: flex; gap: 8px; align-items: center; padding: 8px 0 0; font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+    .j-card-habit-pct { color: var(--guava-700); font-weight: 700; flex-shrink: 0; }
 
     .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-raised); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background 0.12s, opacity 0.15s; }
     .j-back-to-top.is-visible { display: flex; }
@@ -780,7 +795,7 @@ function renderDayCard(dateStr) {
   }
   const habitStats = isJournalSectionEnabled('habits') ? getHabitCompletionForDate(dateStr) : null;
   if (habitStats) {
-    autoHtml += `<div class="j-card-habit-trail"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>Daily habits — ${habitStats.done}/${habitStats.due} completed</span></div>`;
+    autoHtml += `<div class="j-card-auto"><div class="j-card-auto-label">Daily habits</div><div class="j-card-auto-row"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>- ${habitStats.done}/${habitStats.due} completed</span></div></div>`;
   }
 
   const bodyHtml = (manualHtml || autoHtml)
@@ -790,9 +805,9 @@ function renderDayCard(dateStr) {
   const todayLabel = isToday ? ' · Today' : '';
   const isStartWriting = !hasManual && isToday;
   const addPhotoHtml = `
-        <button class="j-card-edit j-card-add-photo" data-jcard-add-photo="${dateStr}" title="Add photo" type="button">
+        <button class="j-card-edit j-card-add-photo" data-jcard-add-photo="${dateStr}" title="Photos" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span class="j-card-edit-label">Add photo</span>
+          <span class="j-card-edit-label">Photos</span>
         </button>`;
   const footerEditHtml = isStartWriting ? '' : `
         <button class="j-card-edit" data-jcard-edit="${dateStr}" title="Edit">
@@ -1080,8 +1095,11 @@ function renderViewModalBody(dateStr) {
         `<img src="${src}" data-jlightbox="${dateStr}|${i}" alt="" />`).join('')}</div>`
     : '';
   const habitStats = isJournalSectionEnabled('habits') ? getHabitCompletionForDate(dateStr) : null;
-  const habitsTrail = habitStats
-    ? `<div class="j-card-habit-trail"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>Daily habits — ${habitStats.done}/${habitStats.due} completed</span></div>`
+  const habitsBlock = habitStats
+    ? `<div class="j-section">
+         <div class="j-section-h">Daily habits</div>
+         <div class="j-list-row"><span class="j-card-habit-pct">${habitStats.pct}%</span><span>- ${habitStats.done}/${habitStats.due} completed</span></div>
+       </div>`
     : '';
   const manualBlock = (moodTitle || reflectionHtml)
     ? `<div class="j-section">${moodTitle}${reflectionHtml}</div>`
@@ -1096,8 +1114,8 @@ function renderViewModalBody(dateStr) {
     <div class="j-section">
       <div class="j-section-h">What you finished</div>
       ${renderTasksSection(dateStr)}
-      ${habitsTrail}
-    </div>`;
+    </div>
+    ${habitsBlock}`;
 }
 
 function openViewModal(dateStr) {
