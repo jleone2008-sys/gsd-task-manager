@@ -837,9 +837,11 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Add photo → open source modal
+  // Add photo → mobile shows modal, desktop opens file picker directly
   if (e.target.closest('#jPhotoAdd')) {
-    openPhotoSourceModal();
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile) openPhotoSourceModal();
+    else openFilePicker(false);
     return;
   }
   const photoSrc = e.target.closest('[data-jphoto-source]');
@@ -949,23 +951,18 @@ document.addEventListener('input', e => {
 
 function openPhotoSourceModal() {
   if (document.getElementById('jPhotoModal')) return;
-  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const cameraOpt = isMobile
-    ? `<button class="j-photo-modal-opt" data-jphoto-source="camera">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Take photo</span><span class="j-photo-modal-opt-desc">Use your camera</span></div>
-      </button>` : '';
   const html = `
     <div class="j-photo-modal" id="jPhotoModal">
-      <div class="j-photo-modal-card" onclick="event.stopPropagation()">
+      <div class="j-photo-modal-card">
         <div class="j-photo-modal-h">Add photo</div>
-        ${cameraOpt}
+        <button class="j-photo-modal-opt" data-jphoto-source="camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Take photo</span><span class="j-photo-modal-opt-desc">Use your camera</span></div>
+        </button>
         <button class="j-photo-modal-opt" data-jphoto-source="device">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Upload from device</span><span class="j-photo-modal-opt-desc">Pick one or more files</span></div>
         </button>
-        <input type="file" id="jPhotoInputDevice" accept="image/*" multiple style="display:none" />
-        <input type="file" id="jPhotoInputCamera" accept="image/*" capture="environment" style="display:none" />
         <button class="j-photo-modal-cancel" data-jphoto-cancel="1">Cancel</button>
       </div>
     </div>`;
@@ -980,8 +977,24 @@ function closePhotoSourceModal() {
 }
 
 function handlePhotoSource(source) {
-  if (source === 'device') document.getElementById('jPhotoInputDevice')?.click();
-  else if (source === 'camera') document.getElementById('jPhotoInputCamera')?.click();
+  closePhotoSourceModal();
+  openFilePicker(source === 'camera');
+}
+
+function openFilePicker(useCamera) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  if (useCamera) input.capture = 'environment';
+  else input.multiple = true;
+  input.style.display = 'none';
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files || []);
+    if (files.length) await addPhotosFromFiles(files);
+    input.remove();
+  });
+  document.body.appendChild(input);
+  input.click();
 }
 
 async function addPhotosFromFiles(files) {
