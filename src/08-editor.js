@@ -255,13 +255,13 @@ function delTask(id) {
 }
 function toggleDone() { showDone=!showDone; render(); }
 
-function toggleSortDropdown(e) {
+function toggleSortDropdown(e, btn) {
   e.stopPropagation();
   const dd = document.getElementById('sortDropdown');
   if (!dd) return;
   const isOpen = dd.classList.toggle('open');
   if (isOpen) {
-    const r = e.currentTarget.getBoundingClientRect();
+    const r = (btn || e.currentTarget).getBoundingClientRect();
     dd.style.top = (r.bottom + 4) + 'px';
     dd.style.right = (window.innerWidth - r.right) + 'px';
   }

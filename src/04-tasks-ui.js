@@ -672,7 +672,7 @@ document.getElementById('taskContainer').addEventListener('click', e => {
   switch (action) {
     case 'open-create':         openCreatePanel(); break;
     case 'toggle-done-section': toggleDone(); break;
-    case 'toggle-sort':         toggleSortDropdown(e); break;
+    case 'toggle-sort':         toggleSortDropdown(e, actionEl); break;
     case 'toggle-top3':         toggleTop3(tid); break;
     case 'toggle-done':         toggleDone_t(tid); break;
     case 'toggle-expand':       toggleTaskExpand(tid); break;
