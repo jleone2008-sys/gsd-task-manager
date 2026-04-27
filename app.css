@@ -2712,19 +2712,13 @@
   .tb-btn.ql-active .ql-fill { fill: #fff; }
   .tb-btn svg { width: 15px; height: 15px; }
   .tb-select {
-    padding: var(--space-1) 24px var(--space-1) var(--space-1-5);
-    min-width: 90px;
+    padding: 5px 8px;
+    min-width: 100px;
+    height: 30px;
     border-radius: var(--r-md); border: 1px solid var(--edge);
-    background-color: var(--surface); color: var(--ink-2);
+    background: var(--surface); color: var(--ink-2);
     font-family: inherit; font-size: var(--fs-meta);
     cursor: pointer; outline: none;
-    /* Custom chevron — keeps the dropdown looking the same across browsers
-       since OS-native select chrome was getting cropped by the toolbar gap. */
-    -webkit-appearance: none; -moz-appearance: none; appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 5 6 8 9 5'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 10px;
   }
   .tb-select:hover { border-color: var(--edge-strong); }
   /* Quill strips the .ql-snow toolbar styling because we don't add that
