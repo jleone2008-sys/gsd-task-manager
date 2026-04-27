@@ -84,7 +84,7 @@ function toggleFaq(btn) {
 
 /* ── FAQ MODAL HANDLERS ── */
 document.getElementById('faqModal').addEventListener('click', function(e) {
-  if (e.target === this) closeFaqModal();
+  if (isCleanBackdropClick(e, this)) closeFaqModal();
 });
 document.getElementById('faqModalClose').addEventListener('click', closeFaqModal);
 document.getElementById('faqModal').querySelector('.modal-body').addEventListener('click', e => {

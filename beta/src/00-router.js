@@ -1,33 +1,22 @@
 /* ══════════════════════════════════════════════════════════════
-   ROUTER — bookmarkable URLs for /app/*
-   Classic script (no type=module). Loads first so helpers are
-   in the global scope before any other script references them.
-
-   Supported routes:
-     /app                       → redirect to last-visited tool (default /app/tasks)
-     /app/tasks                 → tasks tool
-     /app/tasks?filter=<name>   → tasks tool with filter active (all|overdue|personal|biz)
-     /app/habits                → habits tool, today view
-     /app/habits/<view>         → habits tool (today|all|stats)
-     /app/notes                 → notes tool
-     /app/scratch               → scratch tool
-
-   Netlify fallthrough (_redirects + netlify.toml) sends every /app/*
-   path to /app.html, so paste-and-refresh works.
+   ROUTER — bookmarkable URLs for /beta/app/*
+   Identical to prod 00-router.js except:
+     - All routes use /beta/app/* prefix
+     - localStorage key is gsd_beta_last_tool (isolated from prod)
 ═══════════════════════════════════════════════════════════════ */
-const GSD_LAST_TOOL_KEY = 'gsd_last_tool';
+const GSD_LAST_TOOL_KEY = 'gsd_beta_last_tool';
 const GSD_HABIT_VIEWS = ['today', 'all', 'stats'];
-const GSD_TOOLS = ['tasks', 'habits', 'notes', 'scratch'];
+const GSD_TOOLS = ['tasks', 'habits', 'notes', 'scratch', 'journal', 'settings'];
 
 function parseAppRoute() {
   const path = location.pathname;
   const q = new URLSearchParams(location.search);
-  const m = path.match(/^\/app(?:\/([^/?#]+))?(?:\/([^/?#]+))?\/?$/);
+  const m = path.match(/^\/beta\/app(?:\/([^/?#]+))?(?:\/([^/?#]+))?\/?$/);
   if (!m) return null;
   const [, seg1, seg2] = m;
   if (!seg1) {
-    // Bare /app URL always lands on Tasks. We still write GSD_LAST_TOOL_KEY
-    // on navigation so deep-links restore correctly, but the bare URL is
+    // Bare /beta/app URL always lands on Tasks. GSD_LAST_TOOL_KEY is still
+    // written on navigation so deep-links round-trip, but the bare URL is
     // intentionally anchored to a single home tab.
     return { tool: 'tasks', _bare: true };
   }
@@ -39,18 +28,25 @@ function parseAppRoute() {
     const view = seg2 && GSD_HABIT_VIEWS.includes(seg2) ? seg2 : 'today';
     return { tool: 'habits', view };
   }
+  if (seg1 === 'journal') {
+    const date = seg2 && /^\d{4}-\d{2}-\d{2}$/.test(seg2) ? seg2 : null;
+    return { tool: 'journal', date };
+  }
   return { tool: seg1 };
 }
 
 function buildAppRoute(r) {
-  if (!r || !r.tool) return '/app';
+  if (!r || !r.tool) return '/beta/app';
   if (r.tool === 'tasks') {
-    return r.filter ? `/app/tasks?filter=${encodeURIComponent(r.filter)}` : '/app/tasks';
+    return r.filter ? `/beta/app/tasks?filter=${encodeURIComponent(r.filter)}` : '/beta/app/tasks';
   }
   if (r.tool === 'habits') {
-    return r.view && r.view !== 'today' ? `/app/habits/${r.view}` : '/app/habits';
+    return r.view && r.view !== 'today' ? `/beta/app/habits/${r.view}` : '/beta/app/habits';
   }
-  return `/app/${r.tool}`;
+  if (r.tool === 'journal') {
+    return r.date ? `/beta/app/journal/${r.date}` : '/beta/app/journal';
+  }
+  return `/beta/app/${r.tool}`;
 }
 
 function routerSyncUrl(route, opts) {
@@ -58,7 +54,6 @@ function routerSyncUrl(route, opts) {
   const path = buildAppRoute(route);
   const state = { ...route };
   const method = opts.replace ? 'replaceState' : 'pushState';
-  // Avoid pushing a duplicate state if nothing changed.
   if (path === location.pathname + location.search && method === 'pushState') return;
   try { history[method](state, '', path); } catch (_) { /* security errors on file:// */ }
   if (route.tool) {
@@ -66,12 +61,20 @@ function routerSyncUrl(route, opts) {
   }
 }
 
-// Apply a parsed route to the UI. Safe to call when handlers are globals.
 function routerApplyRoute(r) {
   if (!r || !r.tool) return;
+  const journalDateChanged = r.tool === 'journal' && r.date && typeof journalState !== 'undefined' && journalState.selectedDate !== r.date;
+  if (journalDateChanged) {
+    journalState.selectedDate = r.date;
+    const d = new Date(r.date + 'T00:00:00');
+    journalState.viewMonth = { year: d.getFullYear(), month: d.getMonth() };
+  }
+  const wasOnJournal = activeTool === 'journal';
   if (typeof activeTool === 'string' && activeTool !== r.tool && typeof switchTool === 'function') {
     _navFromPop = true;
     try { switchTool(r.tool); } finally { _navFromPop = false; }
+  } else if (journalDateChanged && wasOnJournal && typeof renderJournal === 'function') {
+    renderJournal();
   }
   if (r.tool === 'tasks' && r.filter) {
     const pill = document.querySelector(`[data-tool-view="tasks"].pill-bar .pill[data-filter="${r.filter}"]`);
@@ -89,7 +92,6 @@ function routerApplyRoute(r) {
   }
 }
 
-// Called once from 11-init.js after session restore runs.
 function routerInitFromUrl() {
   const r = parseAppRoute();
   if (!r) return;

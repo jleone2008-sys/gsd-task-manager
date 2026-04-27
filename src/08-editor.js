@@ -208,22 +208,28 @@ function addTask() {
   const newEl = document.getElementById('ti-' + newTask.id);
   if (newEl) { newEl.classList.add('new-task'); setTimeout(()=>newEl.classList.remove('new-task'), 400); }
 }
+// Tri-state cycle: todo → in_progress → done → todo. Kept under the same
+// name as the legacy binary toggle so existing data-task-action="toggle-done"
+// click handlers keep working without callsite changes.
 function toggleDone_t(id) {
   const t = tasks.find(t=>t.id===id);
   if (!t) return;
-  t.done = !t.done;
-  t.completedAt = t.done ? Date.now() : null;
-  if (t.done && t.recur && t.recur.end === 'never') {
-    const next = {
-      ...t, id: Date.now(), done: false, completedAt: null,
-      due: nextDueDate(t.due, t.recur), order: -1,
-    };
-    tasks.unshift(next);
-    tasks.filter(x => !x.done).sort((a,b) => (a.order??0)-(b.order??0)).forEach((x,i) => x.order = i);
-    saveTask(next);
-  }
+  const cur = t.status || (t.done ? 'done' : 'todo');
+  const next = cur === 'todo' ? 'in_progress'
+            : cur === 'in_progress' ? 'done'
+            : 'todo';
+  t.status = next;
+  t.done = next === 'done';
+  t.completedAt = next === 'done' ? Date.now() : null;
+  // Re-uncheck (or step back to todo/in-progress) clears spawned so a
+  // future re-completion re-evaluates the recurrence.
+  if (next !== 'done') t.spawned = false;
   render();
   saveTask(t);
+  // Lazy-spawn handles recurrence: if the parent was overdue and the next
+  // due date is already today/past, spawn now; otherwise wait for the
+  // load-time / day-change check.
+  if (next === 'done' && t.recur) ensureRecurringSpawns();
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);
@@ -255,13 +261,13 @@ function delTask(id) {
 }
 function toggleDone() { showDone=!showDone; render(); }
 
-function toggleSortDropdown(e) {
+function toggleSortDropdown(e, btn) {
   e.stopPropagation();
   const dd = document.getElementById('sortDropdown');
   if (!dd) return;
   const isOpen = dd.classList.toggle('open');
   if (isOpen) {
-    const r = e.currentTarget.getBoundingClientRect();
+    const r = (btn || e.currentTarget).getBoundingClientRect();
     dd.style.top = (r.bottom + 4) + 'px';
     dd.style.right = (window.innerWidth - r.right) + 'px';
   }
@@ -539,6 +545,76 @@ function nextDueDate(due, recur) {
   if (recur.freq === 'yearly')  d.setFullYear(d.getFullYear() + 1);
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Lazy spawning for recurring tasks. Replaces the old eager spawn that
+ * fired inside toggleDone — that approach made completion feel
+ * unacknowledged because an identical row reappeared in the same spot.
+ *
+ * Rules:
+ *   - Skip unless the task is done + recurring + recur.end === 'never'
+ *     + not yet spawned.
+ *   - Compute the next due date from the parent's due date.
+ *   - If the next due date is in the future → leave alone, wait for the
+ *     next load / day-change pass to revisit.
+ *   - If the next due date has arrived (today) or is in the past
+ *     (overdue parent), create one new instance dated max(nextDue, today)
+ *     and mark the parent as spawned. We deliberately do NOT spawn one
+ *     row per missed period — it'd be noise.
+ */
+function ensureRecurringSpawns() {
+  if (typeof tasks === 'undefined' || !Array.isArray(tasks)) return;
+  const today = (typeof todayStr === 'function')
+    ? todayStr()
+    : new Date().toISOString().slice(0, 10);
+  let changed = false;
+  // Snapshot to avoid iterating into newly-pushed spawns
+  for (const t of tasks.slice()) {
+    if (!t.done || !t.recur || t.spawned) continue;
+    if (t.recur.end !== 'never') continue;
+    const next = nextDueDate(t.due, t.recur);
+    if (!next) continue;
+    if (next > today) continue; // future — wait
+    const dueStr = next < today ? today : next;
+    const spawn = {
+      ...t,
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      done: false,
+      completedAt: null,
+      spawned: false,
+      due: dueStr,
+      order: -1,
+    };
+    tasks.unshift(spawn);
+    saveTask(spawn);
+    t.spawned = true;
+    saveTask(t);
+    changed = true;
+  }
+  if (changed) {
+    tasks.filter(x => !x.done).sort((a,b)=>(a.order??0)-(b.order??0)).forEach((x,i) => x.order = i);
+    render();
+  }
+}
+
+// Day-change watcher: ensures recurring tasks spawn even when the user
+// keeps the tab open across midnight or returns to it the next day.
+let _gsdLastSpawnCheckDate = (typeof todayStr === 'function')
+  ? todayStr()
+  : new Date().toISOString().slice(0, 10);
+function _gsdMaybeSpawnOnDayChange() {
+  const now = (typeof todayStr === 'function')
+    ? todayStr()
+    : new Date().toISOString().slice(0, 10);
+  if (now !== _gsdLastSpawnCheckDate) {
+    _gsdLastSpawnCheckDate = now;
+    ensureRecurringSpawns();
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _gsdMaybeSpawnOnDayChange();
+});
+setInterval(_gsdMaybeSpawnOnDayChange, 5 * 60 * 1000);
 
 /* ── CREATE-PANEL FORM & SORT DROPDOWN ── */
 document.getElementById('newTaskInput').addEventListener('keydown', e => {

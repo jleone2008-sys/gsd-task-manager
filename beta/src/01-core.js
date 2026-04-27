@@ -1,11 +1,3 @@
-/* Track mousedown target so modals can ignore clicks that started inside
-   (e.g. dragging text selection from a textarea out onto the backdrop). */
-let _gsdLastMouseDownTarget = null;
-document.addEventListener('mousedown', e => { _gsdLastMouseDownTarget = e.target; }, true);
-function isCleanBackdropClick(e, backdropEl) {
-  return e.target === backdropEl && _gsdLastMouseDownTarget === backdropEl;
-}
-
 const KEY = 'gsd_v3';
 let tasks = [], filter = 'all', filterStarred = false, newTags = new Set(), editId = null, showDone = false, sortBy = 'default';
 let taskStatsView = 'daily';
@@ -52,7 +44,6 @@ function rebuildSubtasksIndex() {
 /* ── Subtask UI handlers (Supabase-backed via pushSubtask / dbDeleteSubtask) ── */
 function startNewSubtask(taskClientId) {
   taskClientId = String(taskClientId);
-  // If already a tmp draft for this task, just refocus it
   const existingTmp = subtasks.find(s => s.task_client_id === taskClientId && s.isNew);
   if (existingTmp) {
     focusSubtaskInput(existingTmp.client_id);
@@ -69,7 +60,6 @@ function startNewSubtask(taskClientId) {
     isNew: true,
   });
   rebuildSubtasksIndex();
-  // Ensure card is expanded so the new input is visible
   const numId = Number(taskClientId);
   if (!isNaN(numId)) expandedTaskIds.add(numId);
   render();
@@ -88,13 +78,11 @@ function commitNewSubtask(taskClientId, tmpId, text) {
   const idx = subtasks.findIndex(s => s.client_id === tmpId);
   if (idx < 0) return;
   if (!trimmed) {
-    // Cancel — drop the tmp row
     subtasks.splice(idx, 1);
     rebuildSubtasksIndex();
     render();
     return;
   }
-  // Promote tmp → real
   const realId = String(Date.now()) + '-' + Math.random().toString(36).slice(2,8);
   const promoted = {
     id: realId,
@@ -114,12 +102,9 @@ function handleSubtaskInputKey(e, taskClientId, tmpId) {
     e.preventDefault();
     const value = e.target.value;
     if (value.trim()) {
-      // Save this subtask, then immediately start a new one so the user
-      // can keep typing a list in a single uninterrupted flow.
       commitNewSubtask(taskClientId, tmpId, value);
       startNewSubtask(taskClientId);
     } else {
-      // Empty Enter exits the flow (cancel the blank draft).
       commitNewSubtask(taskClientId, tmpId, '');
     }
   } else if (e.key === 'Escape') {
@@ -163,8 +148,6 @@ function commitEditSubtask(taskClientId, subClientId, text) {
   const s = subtasks.find(x => x.client_id === subClientId);
   if (!s || s.isNew) return;
   const trimmed = (text || '').trim();
-  // Blank edit or unchanged text: just re-render to restore the span view.
-  // Deletion is reserved for the × button so a stray blur can't drop a row.
   if (!trimmed || trimmed === s.text) { render(); return; }
   s.text = trimmed;
   rebuildSubtasksIndex();
@@ -184,6 +167,14 @@ async function deleteSubtask(taskClientId, subClientId) {
 /* ════════════════════════════════════════
    SUPABASE CONFIG + REAL AUTH
 ════════════════════════════════════════ */
+/* Track mousedown target so modals can ignore clicks that started inside
+   (e.g. dragging text selection from a textarea out onto the backdrop). */
+let _gsdLastMouseDownTarget = null;
+document.addEventListener('mousedown', e => { _gsdLastMouseDownTarget = e.target; }, true);
+function isCleanBackdropClick(e, backdropEl) {
+  return e.target === backdropEl && _gsdLastMouseDownTarget === backdropEl;
+}
+
 const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;
@@ -210,18 +201,15 @@ try {
   });
 } catch (_) {}
 let currentUser = null;
-let authMode = 'signin';
+let currentUserProfile = null;
+let isAdminViewMode = false;
+let signingIn = false;
+let googleAccessToken = null;   // set after OAuth or admin impersonation
+let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
+const VALID_TABS = ['tasks', 'habits', 'notes', 'scratch', 'journal'];
 
-
-function toggleAuthMode() {
-  authMode = authMode === 'signin' ? 'signup' : 'signin';
-  document.getElementById('authSubmitBtn').textContent =
-    authMode === 'signin' ? 'Sign In' : 'Create Account';
-  document.getElementById('authToggle').innerHTML = authMode === 'signin'
-    ? 'No account? <a id="authToggleLink">Sign up free</a>'
-    : 'Already have an account? <a id="authToggleLink">Sign in</a>';
-  clearAuthError();
-}
+// Set this after creating the beta Google Cloud project
+const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
 
 function showAuthError(msg) {
   const el = document.getElementById('authError');
@@ -231,87 +219,194 @@ function clearAuthError() {
   document.getElementById('authError').classList.remove('show');
 }
 
-// Shared status callback for all Supabase realtime channels.
-// Logs CHANNEL_ERROR/TIMED_OUT so silent subscription failures become visible.
 function onChannelStatus(status, err) {
   if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
     console.warn('realtime channel', status, err || '');
   }
 }
 
-async function signInWithGoogle() {
-  const { error } = await db.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: window.location.origin + '/app' }
+/* ── BETA: Custom OAuth flow via Netlify function proxy ── */
+function signInWithGoogle() {
+  const state = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  sessionStorage.setItem('beta_oauth_state', state);
+
+  const params = new URLSearchParams({
+    client_id:     BETA_GOOGLE_CLIENT_ID,
+    redirect_uri:  window.location.origin + '/.netlify/functions/beta-auth',
+    response_type: 'code',
+    scope: [
+      'openid', 'email', 'profile',
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events.owned',
+      'https://www.googleapis.com/auth/calendar.events.owned.readonly',
+      'https://www.googleapis.com/auth/tasks',
+      'https://www.googleapis.com/auth/drive',
+    ].join(' '),
+    access_type: 'offline',
+    prompt: 'consent',
+    state,
   });
-  if (error) showAuthError('Google sign-in failed: ' + error.message);
+
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
 }
 
-async function handleEmailAuth() {
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  if (!email) { showAuthError('Please enter your email address.'); return; }
-  if (!password || password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+/* ── BETA: Handle redirect back from Netlify function ── */
+async function handleBetaOAuthCallback() {
+  if (!location.hash.includes('id_token=')) return false;
 
-  const btn = document.getElementById('authSubmitBtn');
-  btn.textContent = 'Please wait…';
-  btn.disabled = true;
-  let result;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const idToken     = params.get('id_token');
+  const accessToken = params.get('access_token');
+  const state       = params.get('state');
+  const error       = params.get('error');
 
-  if (authMode === 'signin') {
-    result = await db.auth.signInWithPassword({ email, password });
-  } else {
-    result = await db.auth.signUp({ email, password });
+  // Clear hash from URL immediately
+  history.replaceState(null, '', location.pathname);
+
+  if (error) {
+    showAuthError('Google sign-in failed: ' + error);
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
   }
 
-  btn.disabled = false;
-  btn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+  // CSRF check
+  const expectedState = sessionStorage.getItem('beta_oauth_state');
+  sessionStorage.removeItem('beta_oauth_state');
+  if (!state || state !== expectedState) {
+    showAuthError('Sign-in failed: invalid state. Please try again.');
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
+  }
 
-  if (result.error) {
-    showAuthError(result.error.message);
-    return;
+  const grantedScopes = (params.get('granted_scope') || '').split(' ');
+  const REQUIRED_SCOPES = [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events.owned',
+    'https://www.googleapis.com/auth/calendar.events.owned.readonly',
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/drive',
+  ];
+  const missing = REQUIRED_SCOPES.filter(s => !grantedScopes.includes(s));
+  if (missing.length) {
+    showAuthError('Beta features require permissions to work. Please try again.');
+    document.getElementById('authScreen').classList.remove('hidden');
+    return true;
   }
-  if (authMode === 'signup' && result.data && !result.data.session) {
-    showAuthError('Check your email to confirm your account, then sign in.');
-    return;
+
+  const { error: authError } = await db.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken,
+    access_token: accessToken,
+  });
+
+  if (authError) {
+    showAuthError('Sign-in failed: ' + authError.message);
+    document.getElementById('authScreen').classList.remove('hidden');
   }
+
+  return true;
 }
 
-async function maybeRedirectToBeta(user) {
-  // Bypass via ?prod=1 — for the rare time we want to test prod despite
-  // having beta_enabled flipped on.
-  try {
-    if (new URL(location.href).searchParams.has('prod')) return false;
-  } catch (_) { return false; }
-  try {
-    const [{ data: profile }, { data: settings }] = await Promise.all([
-      db.from('user_profiles').select('role').eq('supabase_user_id', user.id).maybeSingle(),
-      db.from('user_settings').select('beta_enabled').maybeSingle(),
-    ]);
-    // Defense in depth: redirect only when the user is admin AND has the
-    // flag set. A non-admin who somehow flips the row stays on prod.
-    if (profile?.role === 'admin' && settings?.beta_enabled === true) {
-      location.replace('/beta/app' + location.search);
-      return true;
-    }
-  } catch (_) { /* fall through and sign in to prod normally */ }
-  return false;
+/* ── BETA: Show not-invited screen ── */
+function showBetaNotInvitedScreen() {
+  const authCard = document.querySelector('.auth-card');
+  if (authCard) {
+    authCard.innerHTML = `
+      <div style="text-align:center;padding:2.5rem 1.5rem;">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">🔒</div>
+        <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;">Beta Access Required</div>
+        <p style="color:#888;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.5;">
+          Your account hasn't been invited to the GSD beta yet.
+        </p>
+        <a href="https://gsdtasks.com/app" style="display:inline-block;color:#1e3a5f;font-weight:600;font-size:0.9rem;text-decoration:none;border:1px solid #1e3a5f;padding:0.5rem 1.25rem;border-radius:8px;">
+          ← Back to GSD Tasks
+        </a>
+      </div>
+    `;
+  }
+  document.getElementById('authScreen').classList.remove('hidden');
 }
 
+/* ── BETA: Check whitelist before loading user data ── */
 async function signInUser(user) {
-  // Clear any stale realtime channels from a prior session before re-subscribing.
+  if (signingIn || currentUser) return;
+  signingIn = true;
+  try {
+    await _signInUser(user);
+  } finally {
+    signingIn = false;
+  }
+}
+
+async function _signInUser(user) {
+  // In admin impersonation mode the session is already set; skip whitelist + profile checks
+  if (isAdminViewMode) {
+    try { db.removeAllChannels(); } catch (_) {}
+    currentUser = user;
+    document.getElementById('authScreen').classList.add('hidden');
+    setUserUI(user);
+    load();
+    loadHabits();
+    loadNotes();
+    loadSubtasks();
+    if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
+    return;
+  }
+
+  const { data } = await db.from('beta_users')
+    .select('email')
+    .eq('email', user.email)
+    .maybeSingle();
+
+  if (!data) {
+    showBetaNotInvitedScreen();
+    db.auth.signOut();
+    return;
+  }
+
+  // Check user profile for role/status/tab permissions
+  const { data: profile } = await db.from('user_profiles')
+    .select('role, status, tab_permissions, supabase_user_id')
+    .eq('email', user.email)
+    .maybeSingle();
+
+  if (profile?.status === 'disabled') {
+    showAccountDisabledScreen();
+    db.auth.signOut();
+    return;
+  }
+
+  currentUserProfile = profile || { role: 'standard', status: 'active', tab_permissions: VALID_TABS };
+
+  // Populate supabase_user_id in user_profiles if not already set
+  if (!profile?.supabase_user_id) {
+    db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id }).then(null, () => {});
+  }
+
+  // Auto-grant any new core tabs that weren't in this user's tab_permissions yet.
+  // Admin can still revoke later; this only fills in tabs that exist in VALID_TABS but
+  // are missing from the row (e.g., when a new tab ships).
+  const existingPerms = currentUserProfile.tab_permissions || [];
+  const missingTabs = VALID_TABS.filter(t => !existingPerms.includes(t));
+  if (missingTabs.length) {
+    currentUserProfile.tab_permissions = Array.from(new Set([...existingPerms, ...missingTabs]));
+    db.rpc('ensure_default_tabs', { p_tabs: VALID_TABS }).then(null, e => console.warn('[ensure_default_tabs]', e));
+  }
+
   try { db.removeAllChannels(); } catch (_) {}
   currentUser = user;
-  // Beta opt-in (admins only). Run before kicking off data loads so we
-  // don't waste a network round-trip on a session we're about to abandon.
-  if (await maybeRedirectToBeta(user)) return;
   document.getElementById('authScreen').classList.add('hidden');
   setUserUI(user);
+  applyTabPermissions(currentUserProfile.tab_permissions);
+  if (currentUserProfile.role === 'admin') injectAdminLink();
   load();
   loadHabits();
   loadNotes();
   loadSubtasks();
-  // Apply URL-driven routing now that the app shell is visible.
+  if (typeof loadUserSettings === 'function') {
+    await loadUserSettings();
+    if (typeof applyEffectiveTabs === 'function') applyEffectiveTabs();
+  }
   if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
 }
 
@@ -320,6 +415,7 @@ async function signOut() {
   db.removeAllChannels();
   await db.auth.signOut();
   currentUser = null;
+  signingIn = false;
   tasks = [];
   subtasks = []; subtasksByTask.clear(); subtaskRowIdMap.clear(); expandedTaskIds.clear();
   habitsArr = []; habitCompletions = [];
@@ -327,11 +423,9 @@ async function signOut() {
   toggleUserDropdown(false);
   document.getElementById('userMenu').style.display = 'none';
   document.getElementById('authScreen').classList.remove('hidden');
-  // Reset auth form
   document.getElementById('authEmail').value = '';
   document.getElementById('authPassword').value = '';
   clearAuthError();
-  // Clear task container and stats
   document.getElementById('taskContainer').innerHTML = '';
 }
 
@@ -352,7 +446,6 @@ function setUserUI(user) {
   document.getElementById('userMenu').style.display = 'flex';
   document.getElementById('dropdownName').textContent = name;
   document.getElementById('dropdownEmail').textContent = user.email;
-  // Sidebar footer (desktop ≥900px)
   const sbName = document.getElementById('sidebarUserName');
   const sbEmail = document.getElementById('sidebarUserEmail');
   const sbAv = document.getElementById('sidebarAvatar');
@@ -377,11 +470,6 @@ function toggleUserDropdown(force) {
   dd.classList.toggle('open', open);
 }
 
-// Close dropdown on outside click. "Outside" must also exclude the sidebar
-// footer — it is a dropdown trigger on desktop (the mobile header avatar is
-// the trigger on small screens). Without this check the click that opens
-// the dropdown bubbles to document and is then treated as outside, closing
-// the dropdown again on the same tick.
 document.addEventListener('click', e => {
   const menu = document.getElementById('userMenu');
   if (!menu || menu.style.display === 'none') return;
@@ -403,7 +491,7 @@ function closeDeleteAccountModal() {
 }
 // ── Tool switching ──────────────────────────────────────
 let activeTool = 'tasks';
-let _navFromPop = false; // flag to prevent pushState during popstate handling
+let _navFromPop = false;
 function switchTool(tool) {
   if (tool === activeTool) return;
   if (activeTool === 'tasks' && searchQuery) { searchQuery = ''; }
@@ -412,36 +500,35 @@ function switchTool(tool) {
   if (!_navFromPop) {
     const route = { tool };
     if (tool === 'habits' && typeof activeHabitView === 'string' && activeHabitView !== 'today') route.view = activeHabitView;
+    if (tool === 'journal' && typeof journalState !== 'undefined' && journalState.selectedDate) route.date = journalState.selectedDate;
     if (typeof routerSyncUrl === 'function') routerSyncUrl(route);
     else history.pushState({tool, note: null, drill: false}, '');
   }
-  // Show/hide tool views
   document.querySelectorAll('[data-tool-view]').forEach(el => {
     el.style.display = el.dataset.toolView === tool ? '' : 'none';
   });
-  // Sync mobile bottom nav
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
   });
-  // Sync desktop sidebar
   document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
-  // Update page title (mobile header + desktop header)
-  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch' };
+  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
-  // Update floating search
   updateFloatingSearch();
-  // Update stats bar and render for the active tool
-  // Restore FAB unless scratch hides it
-  if (tool !== 'scratch') document.getElementById('fabBtn')?.classList.remove('hidden');
+  const fab = document.getElementById('fabBtn');
+  if (fab) {
+    const hideFabOn = ['scratch', 'journal', 'settings'];
+    fab.classList.toggle('hidden', hideFabOn.includes(tool));
+  }
   if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
   else if (tool === 'notes') { renderNotes(); }
   else if (tool === 'scratch') { renderScratch(); }
+  else if (tool === 'settings' && typeof renderSettingsPage === 'function') { renderSettingsPage(); }
+  else if (tool === 'journal' && typeof renderJournal === 'function') { renderJournal(); }
 }
-// Wire click handlers for tool tabs, mobile nav, and sidebar
 document.addEventListener('click', e => {
   const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
   if (tab && tab.dataset.tool) switchTool(tab.dataset.tool);
@@ -452,7 +539,6 @@ document.addEventListener('click', e => {
     if (typeof switchTool === 'function') switchTool('tasks');
   }
 });
-// Tool keyboard shortcuts — Shift+T/H/N/S, only when not in a typeable context
 document.addEventListener('keydown', e => {
   if (!e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
   const tag = document.activeElement?.tagName;
@@ -462,14 +548,10 @@ document.addEventListener('keydown', e => {
   const tool = map[e.key.toUpperCase()];
   if (tool) { e.preventDefault(); switchTool(tool); }
 });
-// Handle browser back/forward (swipe gestures on mobile). Re-parse the URL so
-// path-based state (tool + habit view + task filter) is restored on every nav.
 window.addEventListener('popstate', e => {
   _navFromPop = true;
-  // Close any open overlay first
   const drillOverlay = document.getElementById('habitDrillOverlay');
   if (drillOverlay && drillOverlay.classList.contains('open')) { closeDrillIn(); _navFromPop = false; return; }
-  // Close open note on mobile
   if (activeNoteId && activeTool === 'notes') { deselectNote(); _navFromPop = false; return; }
   try {
     if (typeof routerApplyRoute === 'function' && typeof parseAppRoute === 'function') {
@@ -481,7 +563,6 @@ window.addEventListener('popstate', e => {
     }
   } finally { _navFromPop = false; }
 });
-// Habit sub-pill switching
 document.addEventListener('click', e => {
   const pill = e.target.closest('.habit-sub-pills .pill');
   if (!pill || !pill.dataset.habitView) return;
@@ -494,7 +575,6 @@ document.addEventListener('click', e => {
   if (typeof routerSyncUrl === 'function') routerSyncUrl({ tool: 'habits', view: activeHabitView });
 });
 
-// Notes pill-bar (All / Pinned) — routes to the existing notes sidebar-view state
 document.addEventListener('click', e => {
   const pill = e.target.closest('[data-tool-view="notes"].pill-bar .pill[data-notes-filter]');
   if (!pill) return;
@@ -519,11 +599,19 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.style.cursor = valid ? 'pointer' : 'not-allowed';
     });
   }
+
+  /* ── BETA: Show version label in profile dropdown ── */
+  const dropdownEmail = document.getElementById('dropdownEmail');
+  if (dropdownEmail) {
+    const betaLabel = document.createElement('div');
+    betaLabel.textContent = 'Version: Beta Mode';
+    betaLabel.style.cssText = 'font-size:11px;color:#f59e0b;font-weight:600;margin-top:4px;';
+    dropdownEmail.after(betaLabel);
+  }
 });
 async function confirmDeleteAccount() {
   if (document.getElementById('deleteConfirmInput').value !== 'DELETE') return;
   if (currentUser) {
-    // delete_user() deletes the auth record; cascade removes their tasks
     const { error } = await db.rpc('delete_user');
     if (error) { console.error('delete_user:', error.message); return; }
     await db.auth.signOut();
@@ -559,32 +647,186 @@ function exportCSV() {
 
 /* ── RESTORE SESSION ON LOAD ── */
 async function restoreSession() {
+  // Admin "view as user" mode: inject impersonation session before normal auth
+  if (await checkAdminViewMode()) return;
+
+  // Auth state listener must be set up before the callback handler fires signInWithIdToken
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user && !currentUser) {
+      signInUser(session.user);
+    }
+  });
+
+  // Handle redirect back from Netlify OAuth proxy
+  if (await handleBetaOAuthCallback()) return;
+
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) {
     signInUser(session.user);
   } else {
     document.getElementById('authScreen').classList.remove('hidden');
   }
-  // Listen for auth state changes (e.g. OAuth redirect)
+}
+
+/* ── ADMIN VIEW MODE ── */
+async function checkAdminViewMode() {
+  if (!location.search.includes('admin_view=1')) return false;
+  const stored = localStorage.getItem('gsd_admin_impersonate');
+  if (!stored) return false;
+
+  let payload;
+  try { payload = JSON.parse(stored); } catch { return false; }
+
+  const { supabase_access_token, google_access_token, target_email, display_name, admin_auth_token } = payload;
+  if (!supabase_access_token || !google_access_token || !target_email) return false;
+
+  localStorage.removeItem('gsd_admin_impersonate');
+  isAdminViewMode = true;
+  googleAccessToken  = google_access_token;
+  googleTokenExpiry  = Date.now() + 3500000; // treat as ~58 min; auto-refresh via ensureGoogleToken
+
+  // Store admin token for mid-session Google token refresh
+  sessionStorage.setItem('_admin_auth', admin_auth_token || '');
+  sessionStorage.setItem('_admin_view_email', target_email);
+
+  // Set Supabase session for target user.
+  // refresh_token must be non-empty (Supabase v2 throws AuthSessionMissingError on empty);
+  // placeholder is fine — access_token is fresh (24h) so refresh path is never taken,
+  // and the impersonation session SHOULD expire when access_token does.
+  const { data, error } = await db.auth.setSession({ access_token: supabase_access_token, refresh_token: 'admin-impersonation-no-refresh' });
+  if (error || !data?.session?.user) {
+    console.error('Admin view setSession failed:', error?.message || 'no session user');
+    isAdminViewMode = false;
+    return false;
+  }
+
+  setTimeout(() => injectAdminViewBanner(display_name || target_email), 300);
+
+  // Set up listener for any future auth events, then sign in directly with the
+  // session user (the SIGNED_IN event from setSession already fired before we
+  // could attach the listener).
   db.auth.onAuthStateChange((_event, session) => {
-    if (session?.user && !currentUser) {
-      signInUser(session.user);
-    }
+    if (session?.user && !currentUser) signInUser(session.user);
   });
+  signInUser(data.session.user);
+
+  return true;
+}
+
+function injectAdminViewBanner(label) {
+  if (document.getElementById('adminViewBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'adminViewBanner';
+  banner.style.cssText = [
+    'position:fixed;top:0;left:0;right:0;z-index:9999',
+    'background:#d97706;color:#fff;font-family:Inter,sans-serif',
+    'padding:.5rem 1rem;display:flex;align-items:center;justify-content:space-between',
+    'font-size:.8rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.2)',
+  ].join(';');
+  banner.innerHTML = `<span>👁 Viewing as: ${escapeHTML(label)}</span>
+    <button id="exitAdminView" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:.25rem .75rem;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit;font-weight:600">Exit</button>`;
+  document.body.prepend(banner);
+
+  // Offset the app content so it doesn't sit under the banner
+  document.body.style.paddingTop = '36px';
+
+  document.getElementById('exitAdminView').addEventListener('click', async () => {
+    isAdminViewMode = false;
+    googleAccessToken = null;
+    sessionStorage.removeItem('_admin_auth');
+    sessionStorage.removeItem('_admin_view_email');
+    await db.auth.signOut();
+    location.href = '/admin/app.html';
+  });
+}
+
+/* ── TAB PERMISSIONS ── */
+function applyTabPermissions(perms) {
+  if (!perms || perms.length === 0) return;
+  VALID_TABS.forEach(tool => {
+    const allowed = perms.includes(tool);
+    // Mobile nav buttons
+    document.querySelectorAll(`.mobile-nav-btn[data-tool="${tool}"]`).forEach(el => {
+      el.style.display = allowed ? '' : 'none';
+    });
+    // Sidebar buttons
+    document.querySelectorAll(`.sidebar-btn[data-tool="${tool}"]`).forEach(el => {
+      el.style.display = allowed ? '' : 'none';
+    });
+    // Tool views
+    document.querySelectorAll(`[data-tool-view="${tool}"]`).forEach(el => {
+      if (!allowed) el.style.display = 'none';
+    });
+  });
+  // If current active tool is now disabled, switch to first allowed tab
+  if (typeof activeTool !== 'undefined' && !perms.includes(activeTool)) {
+    const first = VALID_TABS.find(t => perms.includes(t));
+    if (first && typeof switchTool === 'function') switchTool(first);
+  }
+}
+
+/* ── ADMIN LINK IN DROPDOWN ── */
+function injectAdminLink() {
+  const dropdown = document.getElementById('userDropdown');
+  if (!dropdown || dropdown.querySelector('[data-action="admin"]')) return;
+  const link = document.createElement('a');
+  link.href = '/admin/app.html';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.dataset.action = 'admin';
+  link.style.cssText = 'display:flex;align-items:center;gap:.5rem;padding:.625rem .875rem;color:#1e3a5f;font-size:.825rem;font-weight:600;text-decoration:none;border-top:1px solid #f0f0f0;margin-top:.25rem;';
+  link.innerHTML = '⚙️ Admin Panel';
+  dropdown.appendChild(link);
+}
+
+/* ── ACCOUNT DISABLED SCREEN ── */
+function showAccountDisabledScreen() {
+  const authCard = document.querySelector('.auth-card');
+  if (authCard) {
+    authCard.innerHTML = `
+      <div style="text-align:center;padding:2.5rem 1.5rem;">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">🚫</div>
+        <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;">Account Disabled</div>
+        <p style="color:#888;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.5;">
+          Your beta access has been disabled. Please contact the GSD team for assistance.
+        </p>
+        <a href="https://gsdtasks.com/app" style="display:inline-block;color:#1e3a5f;font-weight:600;font-size:0.9rem;text-decoration:none;border:1px solid #1e3a5f;padding:0.5rem 1.25rem;border-radius:8px;">
+          ← Back to GSD Tasks
+        </a>
+      </div>`;
+  }
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+/* ── GOOGLE TOKEN MANAGEMENT ── */
+async function ensureGoogleToken() {
+  if (!isAdminViewMode) return googleAccessToken; // normal users: token from Supabase session
+  if (googleAccessToken && googleTokenExpiry > Date.now() + 60000) return googleAccessToken;
+
+  // Refresh via admin-api using the admin's auth token
+  const adminAuthToken = sessionStorage.getItem('_admin_auth');
+  const targetEmail    = sessionStorage.getItem('_admin_view_email');
+  if (!adminAuthToken || !targetEmail) return googleAccessToken; // best effort
+
+  try {
+    const res = await fetch('/.netlify/functions/admin-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminAuthToken}` },
+      body: JSON.stringify({ action: 'get-google-token', target_email: targetEmail }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      googleAccessToken = data.google_access_token;
+      googleTokenExpiry = Date.now() + 3500000;
+    }
+  } catch (err) {
+    console.warn('Google token refresh failed:', err.message);
+  }
+  return googleAccessToken;
 }
 
 /* ── AUTH SCREEN HANDLERS ── */
 document.getElementById('btnGoogleSignIn').addEventListener('click', signInWithGoogle);
-document.getElementById('authSubmitBtn').addEventListener('click', handleEmailAuth);
-// Delegated because toggleAuthMode replaces #authToggle innerHTML, losing the id binding
-document.getElementById('authToggle').addEventListener('click', e => {
-  if (e.target.closest('#authToggleLink')) toggleAuthMode();
-});
-['authEmail', 'authPassword'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter') handleEmailAuth();
-  });
-});
 document.getElementById('authLegalTermsBtn').addEventListener('click', e => {
   e.stopPropagation();
   openLegalModal('terms');
@@ -602,11 +844,10 @@ document.getElementById('userDropdown').addEventListener('click', e => {
   if (!btn) return;
   const action = btn.dataset.action;
   switch (action) {
-    case 'backup':          openBackupModal(); break;
+    case 'settings':        switchTool('settings'); break;
     case 'legal-terms':     openLegalModal('terms'); break;
     case 'legal-privacy':   openLegalModal('privacy'); break;
     case 'faq':             openFaqModal(); break;
-    case 'delete-account':  openDeleteAccountModal(); break;
     case 'signout':         signOut(); return;
     default: return;
   }
@@ -620,4 +861,3 @@ document.getElementById('deleteConfirmBtn').addEventListener('click', confirmDel
 document.getElementById('deleteConfirmInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDeleteAccount();
 });
-

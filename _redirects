@@ -1,4 +1,7 @@
-/app/*    /app.html      200
-/app      /app.html      200
-/terms    /terms.html    200
-/privacy  /privacy.html  200
+/app/*         /app.html          200
+/app           /app.html          200
+/beta/app/*    /beta/app.html     200
+/beta/app      /beta/app.html     200
+/beta          /beta/app.html     200
+/terms         /terms.html        200
+/privacy       /privacy.html      200

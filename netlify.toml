@@ -7,3 +7,23 @@
   from = "/app"
   to = "/app.html"
   status = 200
+
+[[redirects]]
+  from = "/beta/app/*"
+  to = "/beta/app.html"
+  status = 200
+
+[[redirects]]
+  from = "/beta/app"
+  to = "/beta/app.html"
+  status = 200
+
+[[redirects]]
+  from = "/beta"
+  to = "/beta/app.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin/app.html"
+  status = 200

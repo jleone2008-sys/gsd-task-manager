@@ -164,7 +164,10 @@ function render() {
     document.getElementById('fabBtn')?.classList.add('hidden');
     return;
   }
-  let active = tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0));
+  // Active list ordering (Phase 4.1): top3 priority first regardless of
+  // status; within non-priority, in_progress before todo; within each
+  // bucket the user's chosen sort applies (default = drag order).
+  let active = tasks.filter(t => !t.done);
   let done = tasks.filter(t=>t.done).sort((a,b) => (b.completedAt||b.id) - (a.completedAt||a.id));
   let view = [...active];
   // Tasks filter set: all · overdue · personal · biz (Work).
@@ -185,18 +188,24 @@ function render() {
     done = applySearch(done);
   }
 
-  // Apply sort (default = drag order already applied above)
-  if (sortBy === 'recent') {
-    view.sort((a,b) => b.id - a.id);
-  } else if (sortBy === 'due') {
-    view.sort((a,b) => {
+  // Three-tier sort: priority → status → user's chosen sort.
+  view.sort((a, b) => {
+    if (a.top3 !== b.top3) return a.top3 ? -1 : 1;
+    if (!a.top3 && !b.top3) {
+      const aIP = a.status === 'in_progress' ? 0 : 1;
+      const bIP = b.status === 'in_progress' ? 0 : 1;
+      if (aIP !== bIP) return aIP - bIP;
+    }
+    if (sortBy === 'recent') return b.id - a.id;
+    if (sortBy === 'due') {
       const da = a.due || '', db = b.due || '';
       if (da && db) return da.localeCompare(db);
       if (da) return -1;
       if (db) return 1;
-      return b.id - a.id; // no due date: newest first
-    });
-  }
+      return b.id - a.id;
+    }
+    return (a.order ?? 0) - (b.order ?? 0);
+  });
 
   let html = '';
 
@@ -294,9 +303,14 @@ function tHTMLsearch(t, query) {
   const dueHtml = dueBadgeHTML(t.due);
   const recurHtml = recurChipHTML(t.recur);
   const hasMeta = t.tags.length||t.someday||t.due||t.note||subsTag||t.recur;
+  const status = t.status || (t.done ? 'done' : 'todo');
   const cardCls = ['card','task-item'];
   if (t.top3) cardCls.push('top3','is-priority');
-  if (t.done) cardCls.push('done','is-done');
+  if (status === 'done') cardCls.push('done','is-done');
+  if (status === 'in_progress') cardCls.push('is-in-progress');
+  const checkAria = status === 'done' ? 'Reopen'
+                  : status === 'in_progress' ? 'Mark complete'
+                  : 'Mark in progress';
   return `<div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
@@ -306,7 +320,7 @@ function tHTMLsearch(t, query) {
         <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
         ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}${recurHtml}</div>` : ''}
       </div>
-      <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done?'Reopen':'Complete'}">
+      <button class="check checkbox" data-task-action="toggle-done" data-status="${status}" aria-label="${checkAria}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -430,10 +444,15 @@ function tHTML(t) {
   const subsListHtml = (isExpanded && subs.length)
     ? `<div class="subtask-list" id="subs-${tcid}" data-tcid="${tcid}">${subs.map(s=>subtaskRowHTML(tcid, s)).join('')}</div>`
     : '';
+  const status = t.status || (t.done ? 'done' : 'todo');
   const cardCls = ['card','task-item'];
   if (t.top3)  cardCls.push('top3','is-priority');
-  if (t.done)  cardCls.push('done','is-done');
+  if (status === 'done') cardCls.push('done','is-done');
+  if (status === 'in_progress') cardCls.push('is-in-progress');
   if (isExpanded) cardCls.push('is-expanded');
+  const checkAria = status === 'done' ? 'Reopen'
+                  : status === 'in_progress' ? 'Mark complete'
+                  : 'Mark in progress';
   return `<div class="task-group">
     <div class="${cardCls.join(' ')}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
       <div class="swipe-delete-bg">🗑</div>
@@ -444,7 +463,7 @@ function tHTML(t) {
           <div class="card__title task-text">${linkify(t.text)}</div>
           ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}${recurHtml}</div>` : ''}
         </div>
-        <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done?'Reopen':'Complete'}">
+        <button class="check checkbox" data-task-action="toggle-done" data-status="${status}" aria-label="${checkAria}">
           <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
       </div>
@@ -628,7 +647,7 @@ document.getElementById('fsClear').addEventListener('click', e => {
 
 document.getElementById('fabBtn').addEventListener('click', openCreatePanel);
 document.getElementById('createPanel').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeCreatePanel();
+  if (isCleanBackdropClick(e, e.currentTarget)) closeCreatePanel();
 });
 
 /* ── TASK LIST DELEGATION ──
@@ -672,7 +691,7 @@ document.getElementById('taskContainer').addEventListener('click', e => {
   switch (action) {
     case 'open-create':         openCreatePanel(); break;
     case 'toggle-done-section': toggleDone(); break;
-    case 'toggle-sort':         toggleSortDropdown(e); break;
+    case 'toggle-sort':         toggleSortDropdown(e, actionEl); break;
     case 'toggle-top3':         toggleTop3(tid); break;
     case 'toggle-done':         toggleDone_t(tid); break;
     case 'toggle-expand':       toggleTaskExpand(tid); break;

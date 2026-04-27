@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSD Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: #f4f6f9; color: #1a1a2e; min-height: 100vh; }
+
+/* ── Auth screen ── */
+#authScreen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.auth-card { background: #fff; border-radius: 16px; padding: 2.5rem 2rem; width: 360px;
+  box-shadow: 0 4px 24px rgba(30,58,95,.10); text-align: center; }
+.auth-logo { font-size: 2rem; font-weight: 700; color: #1e3a5f; margin-bottom: .25rem; }
+.auth-sub { color: #666; font-size: .875rem; margin-bottom: 2rem; }
+.btn-google { display: flex; align-items: center; justify-content: center; gap: .625rem;
+  width: 100%; padding: .75rem 1rem; border: 1.5px solid #dde3ed; border-radius: 10px;
+  background: #fff; font-size: .9rem; font-weight: 500; cursor: pointer; color: #1a1a2e;
+  transition: background .15s, border-color .15s; }
+.btn-google:hover { background: #f4f6f9; border-color: #bbc5d4; }
+.btn-google svg { flex-shrink: 0; }
+#authError { margin-top: 1rem; color: #c0392b; font-size: .8rem; display: none; }
+#authError.show { display: block; }
+
+/* ── App shell ── */
+#appShell { display: none; flex-direction: column; min-height: 100vh; }
+#appShell.visible { display: flex; }
+.topbar { background: #1e3a5f; color: #fff; padding: .875rem 1.5rem; display: flex;
+  align-items: center; justify-content: space-between; gap: 1rem; }
+.topbar-brand { font-size: 1rem; font-weight: 700; letter-spacing: .02em; }
+.topbar-brand span { color: #7ec8e3; }
+.topbar-user { display: flex; align-items: center; gap: .625rem; font-size: .8rem; }
+.topbar-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7ec8e3;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .75rem;
+  color: #1e3a5f; overflow: hidden; flex-shrink: 0; }
+.topbar-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.btn-signout { background: rgba(255,255,255,.12); border: none; color: #fff; padding: .35rem .75rem;
+  border-radius: 6px; font-size: .75rem; cursor: pointer; font-family: inherit; }
+.btn-signout:hover { background: rgba(255,255,255,.22); }
+
+/* ── Layout ── */
+.main { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 260px; background: #fff; border-right: 1px solid #e8ecf2; padding: 1.25rem;
+  flex-shrink: 0; overflow-y: auto; }
+.content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+/* ── Section headers ── */
+.section-label { font-size: .7rem; font-weight: 600; color: #9aaabb; text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: .625rem; }
+
+/* ── User list ── */
+.user-table-wrap { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(30,58,95,.06);
+  overflow: hidden; }
+.user-table { width: 100%; border-collapse: collapse; font-size: .825rem; }
+.user-table th { text-align: left; padding: .75rem 1rem; border-bottom: 1.5px solid #e8ecf2;
+  font-size: .72rem; font-weight: 600; color: #9aaabb; text-transform: uppercase; letter-spacing: .06em;
+  background: #fafbfc; }
+.user-table td { padding: .75rem 1rem; border-bottom: 1px solid #f0f2f6; vertical-align: middle; }
+.user-table tr:last-child td { border-bottom: none; }
+.user-table tr:hover td { background: #f8faff; cursor: pointer; }
+.user-table tr.selected td { background: #edf3ff; }
+.user-avatar-sm { width: 28px; height: 28px; border-radius: 50%; background: #dde3ed;
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700;
+  font-size: .65rem; color: #1e3a5f; overflow: hidden; flex-shrink: 0; }
+.user-avatar-sm img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.badge { display: inline-block; padding: .2rem .5rem; border-radius: 5px; font-size: .7rem;
+  font-weight: 600; }
+.badge-admin    { background: #fff3e0; color: #b45309; }
+.badge-standard { background: #e8f5e9; color: #2e7d32; }
+.badge-restricted { background: #fce4ec; color: #c62828; }
+.badge-active   { background: #e8f5e9; color: #2e7d32; }
+.badge-disabled { background: #f5f5f5; color: #9e9e9e; }
+.tab-icons { display: flex; gap: 3px; }
+.tab-dot { width: 7px; height: 7px; border-radius: 50%; background: #c8d6e5; }
+.tab-dot.on { background: #1e3a5f; }
+.action-btns { display: flex; gap: .375rem; }
+.btn-icon { background: none; border: 1px solid #e0e6f0; border-radius: 7px; padding: .35rem .5rem;
+  cursor: pointer; color: #5a6a7e; font-size: .8rem; line-height: 1; }
+.btn-icon:hover { background: #f0f4ff; border-color: #1e3a5f; color: #1e3a5f; }
+.btn-icon.danger:hover { background: #fff0f0; border-color: #e53935; color: #e53935; }
+.token-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #4caf50; margin-right: 4px; }
+.token-dot.missing { background: #e0e0e0; }
+
+/* ── Detail modal ── */
+#detailBackdrop { position: fixed; inset: 0; background: rgba(15, 25, 45, .55);
+  z-index: 500; display: none; align-items: center; justify-content: center; padding: 2rem; }
+#detailBackdrop.open { display: flex; }
+#detailPanel { width: 100%; max-width: 760px; max-height: 90vh; background: #fff;
+  border-radius: 12px; box-shadow: 0 20px 60px rgba(15,25,45,.35);
+  display: flex; flex-direction: column; overflow: hidden; }
+.detail-header { padding: 1.25rem; border-bottom: 1px solid #e8ecf2; display: flex;
+  align-items: center; justify-content: space-between; }
+.detail-header h3 { font-size: .9rem; font-weight: 700; color: #1e3a5f; }
+.btn-close-panel { background: none; border: none; cursor: pointer; color: #9aaabb; font-size: 1.1rem;
+  line-height: 1; padding: .2rem; }
+.detail-tabs { display: flex; border-bottom: 1px solid #e8ecf2; }
+.detail-tab { flex: 1; padding: .75rem .5rem; text-align: center; font-size: .78rem; font-weight: 500;
+  color: #9aaabb; cursor: pointer; border-bottom: 2px solid transparent; }
+.detail-tab.active { color: #1e3a5f; border-bottom-color: #1e3a5f; }
+.detail-body { padding: 1.25rem; flex: 1; overflow-y: auto; }
+.field-row { margin-bottom: 1rem; }
+.field-label { font-size: .72rem; font-weight: 600; color: #9aaabb; text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: .35rem; }
+.field-value { font-size: .85rem; color: #1a1a2e; }
+select.field-input, input.field-input { width: 100%; padding: .5rem .75rem; border: 1.5px solid #dde3ed;
+  border-radius: 8px; font-size: .85rem; font-family: inherit; color: #1a1a2e;
+  background: #fff; appearance: none; cursor: pointer; }
+select.field-input:focus, input.field-input:focus { outline: none; border-color: #1e3a5f; }
+.tab-perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tab-perm-item { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
+  border: 1.5px solid #e8ecf2; border-radius: 8px; cursor: pointer; }
+.tab-perm-item input { width: 14px; height: 14px; accent-color: #1e3a5f; cursor: pointer; }
+.tab-perm-item label { font-size: .82rem; font-weight: 500; cursor: pointer; }
+.detail-actions { display: flex; flex-direction: column; gap: .625rem; margin-top: 1.25rem; }
+.btn-primary { background: #1e3a5f; color: #fff; border: none; border-radius: 9px;
+  padding: .65rem 1.25rem; font-size: .875rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; width: 100%; }
+.btn-primary:hover { background: #16304f; }
+.btn-secondary { background: #f0f4ff; color: #1e3a5f; border: 1.5px solid #c8d6e5;
+  border-radius: 9px; padding: .65rem 1.25rem; font-size: .875rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; width: 100%; }
+.btn-secondary:hover { background: #e2eaff; }
+.btn-warning { background: #fff8e1; color: #b45309; border: 1.5px solid #ffe0b2;
+  border-radius: 9px; padding: .65rem 1.25rem; font-size: .875rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; width: 100%; }
+.btn-warning:hover { background: #fff3cd; }
+.btn-danger { background: #fff0f0; color: #c62828; border: 1.5px solid #ffcdd2;
+  border-radius: 9px; padding: .65rem 1.25rem; font-size: .875rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; width: 100%; }
+.btn-danger:hover { background: #ffe0e0; }
+.view-as-note { font-size: .75rem; color: #9aaabb; margin-top: .5rem; text-align: center; }
+
+/* ── GSD Data tab ── */
+.data-stat { display: flex; align-items: center; justify-content: space-between;
+  padding: .75rem 1rem; border: 1px solid #e8ecf2; border-radius: 9px; margin-bottom: .5rem; }
+.data-stat-label { font-size: .82rem; color: #5a6a7e; }
+.data-stat-val { font-size: 1.1rem; font-weight: 700; color: #1e3a5f; }
+
+/* ── Google Tools tab ── */
+.google-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.google-tab { padding: .4rem .875rem; border: 1.5px solid #e0e6f0; border-radius: 20px;
+  font-size: .78rem; font-weight: 500; color: #5a6a7e; cursor: pointer; background: #fff; }
+.google-tab.active { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
+.google-data-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.google-data-table th { text-align: left; padding: .5rem .625rem; background: #fafbfc;
+  border-bottom: 1.5px solid #e8ecf2; color: #9aaabb; font-size: .7rem;
+  text-transform: uppercase; letter-spacing: .05em; }
+.google-data-table td { padding: .5rem .625rem; border-bottom: 1px solid #f0f2f6;
+  vertical-align: top; word-break: break-word; max-width: 220px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.google-data-table tr:last-child td { border-bottom: none; }
+.google-data-table a { color: #1e3a5f; text-decoration: none; }
+.google-data-table a:hover { text-decoration: underline; }
+.loading-msg { color: #9aaabb; font-size: .82rem; text-align: center; padding: 2rem; }
+.error-msg { color: #c62828; font-size: .82rem; padding: 1rem; background: #fff0f0;
+  border-radius: 8px; }
+.no-token-msg { background: #fffde7; border: 1px solid #ffe082; border-radius: 8px;
+  padding: 1rem; font-size: .82rem; color: #795548; }
+
+/* ── Toast ── */
+#toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: #1e3a5f; color: #fff; padding: .625rem 1.25rem; border-radius: 8px;
+  font-size: .825rem; opacity: 0; transition: all .25s; pointer-events: none; z-index: 999; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Utility ── */
+.hidden { display: none !important; }
+.loading-spinner { text-align: center; padding: 3rem; color: #9aaabb; font-size: .875rem; }
+.empty-state { text-align: center; padding: 3rem; color: #9aaabb; font-size: .875rem; }
+</style>
+</head>
+<body>
+
+<!-- Auth screen -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">GSD <span style="color:#7ec8e3;font-weight:400">Admin</span></div>
+    <p class="auth-sub">Beta program management</p>
+    <button class="btn-google" id="btnGoogleSignIn">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="authError"></div>
+  </div>
+</div>
+
+<!-- App shell -->
+<div id="appShell">
+  <div class="topbar">
+    <div class="topbar-brand">GSD <span>Admin</span></div>
+    <div class="topbar-user">
+      <div class="topbar-avatar" id="topbarAvatar"></div>
+      <span id="topbarEmail"></span>
+      <button class="btn-signout" id="btnSignOut">Sign out</button>
+    </div>
+  </div>
+  <div class="main">
+    <!-- Left sidebar: stats summary -->
+    <div class="sidebar">
+      <div class="section-label">Overview</div>
+      <div style="font-size:.82rem;color:#5a6a7e;line-height:1.6;margin-bottom:1.5rem;">
+        <div>Total users: <strong id="statTotal">—</strong></div>
+        <div>Active: <strong id="statActive">—</strong></div>
+        <div>Disabled: <strong id="statDisabled">—</strong></div>
+        <div>Admins: <strong id="statAdmins">—</strong></div>
+        <div>Tokens stored: <strong id="statTokens">—</strong></div>
+      </div>
+      <div class="section-label" style="margin-top:1rem;">Help</div>
+      <p style="font-size:.75rem;color:#9aaabb;line-height:1.6;">
+        Click any user row to open their detail panel. Use "View as User" to open the beta app with their full session.
+      </p>
+    </div>
+
+    <!-- Main content: user table -->
+    <div class="content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-size:1rem;font-weight:700;color:#1e3a5f;">Beta Users</h2>
+        <button class="btn-secondary" id="btnRefresh" style="width:auto;padding:.45rem 1rem;font-size:.8rem;">
+          ↻ Refresh
+        </button>
+      </div>
+      <div id="userTableWrap" class="user-table-wrap">
+        <div class="loading-spinner">Loading users…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div id="detailBackdrop">
+  <div id="detailPanel">
+    <div class="detail-header">
+      <h3 id="detailTitle">User Details</h3>
+      <button class="btn-close-panel" id="btnClosePanel">✕</button>
+    </div>
+    <div class="detail-tabs">
+      <div class="detail-tab active" data-dtab="profile">Profile</div>
+      <div class="detail-tab" data-dtab="gsd">GSD Data</div>
+      <div class="detail-tab" data-dtab="google">Google Tools</div>
+    </div>
+    <div class="detail-body" id="detailBody">
+      <div class="loading-spinner">Select a user</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════
+   CONSTANTS + SUPABASE
+════════════════════════════════════════ */
+const SUPABASE_URL  = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
+const ADMIN_API_URL = '/.netlify/functions/admin-api';
+const VALID_TABS    = ['tasks', 'habits', 'notes', 'scratch'];
+const TAB_LABELS    = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch' };
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let adminUser   = null;
+let adminToken  = null;
+let allUsers    = [];
+let selectedUser = null;
+let activeDetailTab = 'profile';
+let googleTokenCache = {}; // email → { token, expires }
+let driveFolderStack = [{ id: 'root', name: 'My Drive' }];
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+async function init() {
+  db.auth.onAuthStateChange((_event, session) => {
+    if (session?.user && !adminUser) {
+      onSignedIn(session);
+    } else if (!session && adminUser) {
+      location.reload();
+    }
+  });
+
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) {
+    await onSignedIn(session);
+  } else {
+    document.getElementById('authScreen').style.display = 'flex';
+  }
+}
+
+async function onSignedIn(session) {
+  adminUser  = session.user;
+  adminToken = session.access_token;
+
+  // Verify admin role via server
+  try {
+    const res = await adminFetch('GET', { action: 'verify-admin' });
+    if (!res.ok) {
+      const data = await res.json();
+      showAuthError(data.error === 'not_admin'
+        ? 'Your account does not have admin access.'
+        : 'Admin verification failed.');
+      await db.auth.signOut();
+      return;
+    }
+  } catch {
+    showAuthError('Could not connect to admin API. Try again.');
+    return;
+  }
+
+  // Show app
+  document.getElementById('authScreen').style.display = 'none';
+  const shell = document.getElementById('appShell');
+  shell.classList.add('visible');
+
+  // Set topbar
+  const av = document.getElementById('topbarAvatar');
+  const pic = adminUser.user_metadata?.picture || adminUser.user_metadata?.avatar_url;
+  if (pic) {
+    av.innerHTML = `<img src="${pic}" alt="">`;
+  } else {
+    av.textContent = (adminUser.user_metadata?.name || adminUser.email || 'A').charAt(0).toUpperCase();
+  }
+  document.getElementById('topbarEmail').textContent = adminUser.email;
+
+  await loadUsers();
+}
+
+/* ════════════════════════════════════════
+   USER LIST
+════════════════════════════════════════ */
+async function loadUsers() {
+  document.getElementById('userTableWrap').innerHTML = '<div class="loading-spinner">Loading users…</div>';
+  try {
+    const res  = await adminFetch('GET', { action: 'list-users' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load users');
+    allUsers = Array.isArray(data) ? data : [];
+    renderUserTable();
+    updateSidebar();
+  } catch (err) {
+    document.getElementById('userTableWrap').innerHTML =
+      `<div class="error-msg">Failed to load users: ${err.message}</div>`;
+  }
+}
+
+function renderUserTable() {
+  if (!allUsers.length) {
+    document.getElementById('userTableWrap').innerHTML = '<div class="empty-state">No users yet.</div>';
+    return;
+  }
+
+  const rows = allUsers.map(u => {
+    const initials = (u.display_name || u.email || '?').charAt(0).toUpperCase();
+    const tabs = (u.tab_permissions || VALID_TABS).map(t =>
+      `<div class="tab-dot on" title="${TAB_LABELS[t] || t}"></div>`
+    );
+    // Show grey dots for missing tabs
+    VALID_TABS.filter(t => !(u.tab_permissions || VALID_TABS).includes(t)).forEach(t => {
+      tabs.push(`<div class="tab-dot" title="${TAB_LABELS[t]} (disabled)"></div>`);
+    });
+    const lastSeen = u.last_sign_in_at
+      ? new Date(u.last_sign_in_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+      : '—';
+
+    return `<tr data-email="${escHtml(u.email)}" class="${selectedUser?.email === u.email ? 'selected' : ''}">
+      <td><div class="user-avatar-sm">${initials}</div></td>
+      <td>
+        <div style="font-weight:500">${escHtml(u.display_name || u.email.split('@')[0])}</div>
+        <div style="color:#9aaabb;font-size:.72rem">${escHtml(u.email)}</div>
+      </td>
+      <td><span class="badge badge-${u.role}">${u.role}</span></td>
+      <td><span class="badge badge-${u.status}">${u.status}</span></td>
+      <td><div class="tab-icons">${tabs.join('')}</div></td>
+      <td style="color:#9aaabb">${lastSeen}</td>
+      <td>
+        <div class="action-btns">
+          <span title="${u.has_refresh_token ? 'Google token stored' : 'No Google token'}">
+            <span class="token-dot ${u.has_refresh_token ? '' : 'missing'}"></span>
+          </span>
+          <button class="btn-icon" title="View as user" onclick="event.stopPropagation();handleViewAsUser('${escHtml(u.email)}')">👁</button>
+          <button class="btn-icon danger" title="Revoke Google token" onclick="event.stopPropagation();handleRevokeToken('${escHtml(u.email)}')">⊗</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('userTableWrap').innerHTML = `
+    <table class="user-table">
+      <thead><tr>
+        <th></th><th>User</th><th>Role</th><th>Status</th><th>Tabs</th><th>Last Sign-in</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  document.querySelectorAll('.user-table tbody tr').forEach(tr => {
+    tr.addEventListener('click', () => openDetailPanel(tr.dataset.email));
+  });
+}
+
+function updateSidebar() {
+  document.getElementById('statTotal').textContent    = allUsers.length;
+  document.getElementById('statActive').textContent   = allUsers.filter(u => u.status === 'active').length;
+  document.getElementById('statDisabled').textContent = allUsers.filter(u => u.status === 'disabled').length;
+  document.getElementById('statAdmins').textContent   = allUsers.filter(u => u.role === 'admin').length;
+  document.getElementById('statTokens').textContent   = allUsers.filter(u => u.has_refresh_token).length;
+}
+
+/* ════════════════════════════════════════
+   DETAIL PANEL
+════════════════════════════════════════ */
+function openDetailPanel(email) {
+  selectedUser = allUsers.find(u => u.email === email);
+  if (!selectedUser) return;
+  renderUserTable(); // re-render to highlight selected row
+  document.getElementById('detailTitle').textContent =
+    selectedUser.display_name || selectedUser.email.split('@')[0];
+  document.getElementById('detailBackdrop').classList.add('open');
+  activeDetailTab = 'profile';
+  setDetailTab('profile');
+}
+
+function closeDetailPanel() {
+  document.getElementById('detailBackdrop').classList.remove('open');
+  selectedUser = null;
+  renderUserTable();
+}
+
+function setDetailTab(tab) {
+  activeDetailTab = tab;
+  document.querySelectorAll('.detail-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.dtab === tab);
+  });
+  const body = document.getElementById('detailBody');
+
+  if (tab === 'profile') renderProfileTab(body);
+  else if (tab === 'gsd') renderGsdTab(body);
+  else if (tab === 'google') renderGoogleTab(body);
+}
+
+function renderProfileTab(body) {
+  if (!selectedUser) return;
+  const u = selectedUser;
+  const perms = u.tab_permissions || VALID_TABS;
+  const tabChecks = VALID_TABS.map(t => `
+    <div class="tab-perm-item">
+      <input type="checkbox" id="perm-${t}" value="${t}" ${perms.includes(t) ? 'checked' : ''}>
+      <label for="perm-${t}">${TAB_LABELS[t]}</label>
+    </div>`).join('');
+
+  body.innerHTML = `
+    <div class="field-row">
+      <div class="field-label">Email</div>
+      <div class="field-value">${escHtml(u.email)}</div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Role</div>
+      <select class="field-input" id="editRole">
+        <option value="standard" ${u.role==='standard'?'selected':''}>Standard</option>
+        <option value="admin"    ${u.role==='admin'?'selected':''}>Admin</option>
+        <option value="restricted" ${u.role==='restricted'?'selected':''}>Restricted</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Status</div>
+      <select class="field-input" id="editStatus">
+        <option value="active"   ${u.status==='active'?'selected':''}>Active</option>
+        <option value="disabled" ${u.status==='disabled'?'selected':''}>Disabled</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Tab Permissions</div>
+      <div class="tab-perm-grid">${tabChecks}</div>
+    </div>
+    <div class="detail-actions">
+      <button class="btn-primary" id="btnSaveProfile">Save Changes</button>
+      <button class="btn-secondary" id="btnViewAsUser">👁 View as User</button>
+      <div class="view-as-note">Opens beta app with this user's full session</div>
+      ${u.has_refresh_token
+        ? `<button class="btn-danger" id="btnRevokeToken">Revoke Google Token</button>`
+        : `<div style="font-size:.75rem;color:#9aaabb;text-align:center;">No Google token stored yet</div>`}
+    </div>`;
+
+  document.getElementById('btnSaveProfile').addEventListener('click', () => saveProfile(u.email));
+  document.getElementById('btnViewAsUser').addEventListener('click', () => handleViewAsUser(u.email));
+  if (u.has_refresh_token) {
+    document.getElementById('btnRevokeToken').addEventListener('click', () => handleRevokeToken(u.email));
+  }
+}
+
+async function renderGsdTab(body) {
+  body.innerHTML = '<div class="loading-spinner">Loading…</div>';
+  try {
+    const res  = await adminFetch('POST', { action: 'get-gsd-data', target_email: selectedUser.email });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    body.innerHTML = `
+      <div class="data-stat"><span class="data-stat-label">📋 Tasks</span><span class="data-stat-val">${data.task_count ?? '—'}</span></div>
+      <div class="data-stat"><span class="data-stat-label">✅ Habits</span><span class="data-stat-val">${data.habit_count ?? '—'}</span></div>
+      <div class="data-stat"><span class="data-stat-label">📝 Notes</span><span class="data-stat-val">${data.note_count ?? '—'}</span></div>
+      <div class="data-stat"><span class="data-stat-label">💾 Last Backup</span><span class="data-stat-val" style="font-size:.875rem">${data.last_backup || 'Never'}</span></div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error-msg">Could not load GSD data: ${err.message}</div>`;
+  }
+}
+
+function renderGoogleTab(body) {
+  if (!selectedUser?.has_refresh_token) {
+    body.innerHTML = `<div class="no-token-msg">No Google token stored for this user. They need to sign out and sign back in to the beta app to capture their token.</div>`;
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="google-tabs">
+      <button class="google-tab active" data-gtab="calendar">📅 Calendar</button>
+      <button class="google-tab" data-gtab="drive">📁 Drive</button>
+      <button class="google-tab" data-gtab="tasks">✅ Tasks</button>
+    </div>
+    <div id="googleDataArea"><div class="loading-msg">Select a service above</div></div>`;
+
+  document.querySelectorAll('.google-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.google-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (btn.dataset.gtab === 'drive') driveFolderStack = [{ id: 'root', name: 'My Drive' }];
+      loadGoogleData(btn.dataset.gtab);
+    });
+  });
+
+  // Auto-load calendar on open
+  loadGoogleData('calendar');
+}
+
+async function loadGoogleData(service) {
+  const area = document.getElementById('googleDataArea');
+  if (!area) return;
+  area.innerHTML = '<div class="loading-msg">Loading…</div>';
+
+  try {
+    const token = await getGoogleTokenForUser(selectedUser.email);
+
+    if (service === 'calendar')  await loadCalendar(area, token);
+    else if (service === 'drive') await loadDrive(area, token);
+    else if (service === 'tasks') await loadGoogleTasks(area, token);
+  } catch (err) {
+    area.innerHTML = `<div class="error-msg">Error: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function loadCalendar(area, token) {
+  const now  = new Date().toISOString();
+  const end  = new Date(Date.now() + 30 * 86400000).toISOString();
+  const url  = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now)}&timeMax=${encodeURIComponent(end)}&singleEvents=true&orderBy=startTime&maxResults=50`;
+  const data = await googleFetch(url, token, selectedUser.email);
+  const items = data.items || [];
+
+  if (!items.length) { area.innerHTML = '<div class="loading-msg">No upcoming events (30 days)</div>'; return; }
+
+  const rows = items.map(ev => {
+    const start = ev.start?.dateTime || ev.start?.date || '';
+    const startFmt = start ? new Date(start).toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '—';
+    return `<tr>
+      <td title="${escHtml(ev.summary || '')}">${escHtml((ev.summary || 'No title').substring(0, 40))}</td>
+      <td>${escHtml(startFmt)}</td>
+      <td>${escHtml(ev.status || '')}</td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML = `<table class="google-data-table">
+    <thead><tr><th>Event</th><th>Start</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function loadDrive(area, token) {
+  const folder = driveFolderStack[driveFolderStack.length - 1];
+  const q      = encodeURIComponent(`'${folder.id}' in parents and trashed = false`);
+  const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,webViewLink)');
+  const url    = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&orderBy=folder,name&fields=${fields}`;
+  const data   = await googleFetch(url, token, selectedUser.email);
+  const files  = data.files || [];
+
+  const crumbs = driveFolderStack.map((f, i) => {
+    const isLast = i === driveFolderStack.length - 1;
+    return isLast
+      ? `<span style="font-weight:600">${escHtml(f.name)}</span>`
+      : `<a href="#" data-drive-crumb="${i}" style="color:#5b8def;text-decoration:none">${escHtml(f.name)}</a>`;
+  }).join(' <span style="color:#9aaabb">/</span> ');
+
+  const header = `<div style="margin-bottom:.75rem;font-size:.85rem">${crumbs}</div>`;
+
+  if (!files.length) {
+    area.innerHTML = `${header}<div class="loading-msg">Folder is empty</div>`;
+    attachDriveHandlers(area);
+    return;
+  }
+
+  const rows = files.map(f => {
+    const isFolder = f.mimeType === 'application/vnd.google-apps.folder';
+    const mod  = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—';
+    const size = f.size ? formatBytes(+f.size) : '—';
+    const icon = isFolder ? '📁' : '📄';
+    const isImage = !isFolder && f.mimeType && f.mimeType.startsWith('image/');
+    const nameAttr = isFolder
+      ? `data-drive-folder="${escHtml(f.id)}" data-drive-name="${escHtml(f.name)}"`
+      : isImage
+        ? `data-drive-preview="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}"`
+        : `data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}"`;
+    const nameStyle = isFolder ? 'color:#5b8def;text-decoration:none' : 'color:inherit;text-decoration:none';
+    const nameCell = `<a href="#" ${nameAttr} style="${nameStyle}">${icon} ${escHtml(f.name)}</a>`;
+    const actionsCell = isFolder
+      ? ''
+      : `<button class="btn-icon" data-drive-download="${escHtml(f.id)}" data-drive-mime="${escHtml(f.mimeType||'')}" data-drive-name="${escHtml(f.name)}" title="Download" style="font-size:.85rem">⬇</button>`;
+    return `<tr><td title="${escHtml(f.name)}">${nameCell}</td><td>${escHtml(typeLabel(f.mimeType))}</td><td>${size}</td><td>${mod}</td><td style="text-align:right">${actionsCell}</td></tr>`;
+  }).join('');
+
+  area.innerHTML = `${header}<table class="google-data-table">
+    <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  attachDriveHandlers(area);
+}
+
+function attachDriveHandlers(area) {
+  area.querySelectorAll('[data-drive-folder]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      driveFolderStack.push({ id: el.dataset.driveFolder, name: el.dataset.driveName });
+      loadGoogleData('drive');
+    });
+  });
+  area.querySelectorAll('[data-drive-crumb]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = +el.dataset.driveCrumb;
+      driveFolderStack = driveFolderStack.slice(0, idx + 1);
+      loadGoogleData('drive');
+    });
+  });
+  area.querySelectorAll('[data-drive-download]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadDriveFile(el.dataset.driveDownload, el.dataset.driveMime, el.dataset.driveName, el);
+    });
+  });
+  area.querySelectorAll('[data-drive-preview]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      previewDriveImage(el.dataset.drivePreview, el.dataset.driveMime, el.dataset.driveName);
+    });
+  });
+}
+
+async function previewDriveImage(fileId, mimeType, fileName) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;cursor:zoom-out';
+  overlay.innerHTML = `<div style="color:#fff;font-size:.875rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
+      <span>${escHtml(fileName)}</span>
+      <button id="previewDownloadBtn" style="background:#fff;color:#1e3a5f;border:none;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">⬇ Download</button>
+      <button id="previewCloseBtn" style="background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">Close (Esc)</button>
+    </div>
+    <div id="previewBody" style="color:#fff;font-size:.875rem;flex:1;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:80vh">Loading…</div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    document.removeEventListener('keydown', onKey);
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    overlay.remove();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#previewCloseBtn').addEventListener('click', close);
+
+  let currentBlobUrl = null;
+  try {
+    const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: fileId, mime_type: mimeType });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    const { download_url, access_token } = await res.json();
+    const fileRes = await fetch(download_url, { headers: { Authorization: `Bearer ${access_token}` } });
+    if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+    const blob = await fileRes.blob();
+    currentBlobUrl = URL.createObjectURL(blob);
+    overlay.querySelector('#previewBody').innerHTML = `<img src="${currentBlobUrl}" alt="${escHtml(fileName)}" style="max-width:100%;max-height:80vh;object-fit:contain;cursor:default" onclick="event.stopPropagation()">`;
+    overlay.querySelector('#previewDownloadBtn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = currentBlobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  } catch (err) {
+    overlay.querySelector('#previewBody').textContent = 'Preview failed: ' + err.message;
+  }
+}
+
+async function downloadDriveFile(fileId, mimeType, fileName, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: fileId, mime_type: mimeType });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    const { download_url, access_token } = await res.json();
+    const fileRes = await fetch(download_url, { headers: { Authorization: `Bearer ${access_token}` } });
+    if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+    const blob = await fileRes.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fileName + (mimeType?.startsWith('application/vnd.google-apps.') ? exportExtension(mimeType) : '');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    alert('Download failed: ' + err.message);
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function typeLabel(mime) {
+  if (!mime) return '—';
+  if (mime === 'application/vnd.google-apps.folder') return 'folder';
+  return mime.replace('application/vnd.google-apps.', '').split('/').pop();
+}
+
+function exportExtension(mime) {
+  switch (mime) {
+    case 'application/vnd.google-apps.document':     return '.pdf';
+    case 'application/vnd.google-apps.spreadsheet':  return '.xlsx';
+    case 'application/vnd.google-apps.presentation': return '.pdf';
+    case 'application/vnd.google-apps.drawing':      return '.png';
+    default:                                          return '.pdf';
+  }
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB';
+}
+
+async function loadGoogleTasks(area, token) {
+  const listsData = await googleFetch('https://tasks.googleapis.com/tasks/v1/users/@me/lists', token, selectedUser.email);
+  const lists = listsData.items || [];
+
+  if (!lists.length) { area.innerHTML = '<div class="loading-msg">No task lists found</div>'; return; }
+
+  // Load tasks for first list
+  const firstList = lists[0];
+  const tasksUrl = `https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(firstList.id)}/tasks?showCompleted=false&maxResults=50`;
+  const tasksData = await googleFetch(tasksUrl, token, selectedUser.email);
+  const items = tasksData.items || [];
+
+  const listSelect = lists.map((l, i) =>
+    `<option value="${escHtml(l.id)}" ${i===0?'selected':''}>${escHtml(l.title)}</option>`
+  ).join('');
+
+  const rows = items.length
+    ? items.map(t => `<tr>
+        <td title="${escHtml(t.title || '')}">${escHtml((t.title || '').substring(0, 50))}</td>
+        <td>${t.due ? new Date(t.due).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—'}</td>
+        <td><span class="badge badge-${t.status==='completed'?'active':'standard'}">${t.status || 'needsAction'}</span></td>
+      </tr>`).join('')
+    : `<tr><td colspan="3" style="text-align:center;color:#9aaabb">No tasks in this list</td></tr>`;
+
+  area.innerHTML = `
+    <div style="margin-bottom:.75rem">
+      <select class="field-input" id="taskListSelect">${listSelect}</select>
+    </div>
+    <table class="google-data-table">
+      <thead><tr><th>Task</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody id="googleTaskRows">${rows}</tbody>
+    </table>`;
+
+  document.getElementById('taskListSelect').addEventListener('change', async (e) => {
+    const sel = e.target.value;
+    document.getElementById('googleTaskRows').innerHTML = '<tr><td colspan="3" style="text-align:center;color:#9aaabb">Loading…</td></tr>';
+    try {
+      const tok = await getGoogleTokenForUser(selectedUser.email);
+      const td  = await googleFetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(sel)}/tasks?showCompleted=false&maxResults=50`, tok, selectedUser.email);
+      const its = td.items || [];
+      document.getElementById('googleTaskRows').innerHTML = its.length
+        ? its.map(t => `<tr>
+            <td>${escHtml((t.title||'').substring(0,50))}</td>
+            <td>${t.due ? new Date(t.due).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</td>
+            <td><span class="badge badge-${t.status==='completed'?'active':'standard'}">${t.status||'needsAction'}</span></td>
+          </tr>`).join('')
+        : '<tr><td colspan="3" style="text-align:center;color:#9aaabb">No tasks</td></tr>';
+    } catch { /* ignore */ }
+  });
+}
+
+/* ════════════════════════════════════════
+   ACTIONS
+════════════════════════════════════════ */
+async function saveProfile(email) {
+  const role   = document.getElementById('editRole').value;
+  const status = document.getElementById('editStatus').value;
+  const perms  = VALID_TABS.filter(t => document.getElementById(`perm-${t}`)?.checked);
+
+  const btn = document.getElementById('btnSaveProfile');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+
+  try {
+    const res = await adminFetch('POST', { action: 'update-user', email, role, status, tab_permissions: perms });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    // Update local cache
+    const u = allUsers.find(u => u.email === email);
+    if (u) { u.role = role; u.status = status; u.tab_permissions = perms; }
+    if (selectedUser?.email === email) { selectedUser = { ...selectedUser, role, status, tab_permissions: perms }; }
+    renderUserTable();
+    updateSidebar();
+    showToast('Changes saved');
+  } catch (err) {
+    showToast(`Save failed: ${err.message}`);
+  } finally {
+    btn.textContent = 'Save Changes';
+    btn.disabled = false;
+  }
+}
+
+async function handleViewAsUser(email) {
+  const u = allUsers.find(u => u.email === email);
+  if (!u?.has_refresh_token) {
+    showToast('No Google token — user must sign in to beta again first');
+    return;
+  }
+
+  showToast('Preparing session…');
+  try {
+    const res  = await adminFetch('POST', { action: 'view-as-user', target_email: email });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error);
+
+    // Store impersonation payload with admin's own token for mid-session Google token refresh
+    localStorage.setItem('gsd_admin_impersonate', JSON.stringify({
+      supabase_access_token: data.supabase_access_token,
+      google_access_token:   data.google_access_token,
+      target_email:          data.target_email,
+      display_name:          data.display_name,
+      admin_auth_token:      adminToken,
+    }));
+
+    window.open('/beta/app?admin_view=1', '_blank');
+  } catch (err) {
+    showToast(`View as user failed: ${err.message}`);
+  }
+}
+
+async function handleRevokeToken(email) {
+  if (!confirm(`Revoke stored Google token for ${email}? They will need to sign in again.`)) return;
+  try {
+    const res  = await adminFetch('POST', { action: 'revoke-token', target_email: email });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    const u = allUsers.find(u => u.email === email);
+    if (u) u.has_refresh_token = false;
+    if (selectedUser?.email === email) {
+      selectedUser = { ...selectedUser, has_refresh_token: false };
+      if (activeDetailTab === 'profile') renderProfileTab(document.getElementById('detailBody'));
+    }
+    renderUserTable();
+    showToast('Token revoked');
+  } catch (err) {
+    showToast(`Revoke failed: ${err.message}`);
+  }
+}
+
+/* ════════════════════════════════════════
+   GOOGLE TOKEN CACHE + FETCH
+════════════════════════════════════════ */
+async function getGoogleTokenForUser(email) {
+  const cached = googleTokenCache[email];
+  if (cached && cached.expires > Date.now() + 60000) return cached.token;
+
+  const res  = await adminFetch('POST', { action: 'get-google-token', target_email: email });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to get Google token');
+
+  googleTokenCache[email] = { token: data.google_access_token, expires: Date.now() + 3500000 }; // ~58 min
+  return data.google_access_token;
+}
+
+async function googleFetch(url, token, email) {
+  let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+
+  if (res.status === 401) {
+    // Token expired — refresh and retry once
+    delete googleTokenCache[email];
+    const newToken = await getGoogleTokenForUser(email);
+    res = await fetch(url, { headers: { Authorization: `Bearer ${newToken}` } });
+  }
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ════════════════════════════════════════
+   ADMIN API HELPER
+════════════════════════════════════════ */
+async function adminFetch(method, params) {
+  const url = method === 'GET'
+    ? `${ADMIN_API_URL}?action=${params.action}`
+    : ADMIN_API_URL;
+
+  return fetch(url, {
+    method,
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${adminToken}`,
+    },
+    body: method === 'POST' ? JSON.stringify(params) : undefined,
+  });
+}
+
+/* ════════════════════════════════════════
+   UTILITIES
+════════════════════════════════════════ */
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+/* ════════════════════════════════════════
+   EVENT LISTENERS
+════════════════════════════════════════ */
+document.getElementById('btnGoogleSignIn').addEventListener('click', async () => {
+  const { error } = await db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + '/admin/app.html' },
+  });
+  if (error) showAuthError('Sign-in failed: ' + error.message);
+});
+
+document.getElementById('btnSignOut').addEventListener('click', async () => {
+  await db.auth.signOut();
+  location.reload();
+});
+
+document.getElementById('btnRefresh').addEventListener('click', loadUsers);
+
+document.getElementById('btnClosePanel').addEventListener('click', closeDetailPanel);
+document.getElementById('detailBackdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'detailBackdrop') closeDetailPanel();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('detailBackdrop').classList.contains('open')) closeDetailPanel();
+});
+
+document.querySelectorAll('.detail-tab').forEach(tab => {
+  tab.addEventListener('click', () => setDetailTab(tab.dataset.dtab));
+});
+
+// Start
+init();
+</script>
+</body>
+</html>

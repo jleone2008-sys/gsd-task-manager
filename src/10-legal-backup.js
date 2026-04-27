@@ -150,7 +150,7 @@ function closeBackupModal() {
   document.getElementById('backupModal').classList.remove('open');
 }
 document.getElementById('backupModal').addEventListener('click', function(e) {
-  if (e.target === this) closeBackupModal();
+  if (isCleanBackdropClick(e, this)) closeBackupModal();
 });
 function exportJSON() {
   if (!tasks.length && !habitsArr.length && !notesArr.length) { alert('No data to export.'); return; }
@@ -351,7 +351,7 @@ document.getElementById('confirmDialog').addEventListener('click', function(e) {
 
 /* ── LEGAL MODAL HANDLERS ── */
 document.getElementById('legalModal').addEventListener('click', function(e) {
-  if (e.target === this) closeLegalModal();
+  if (isCleanBackdropClick(e, this)) closeLegalModal();
 });
 document.getElementById('legalModalClose').addEventListener('click', closeLegalModal);
 document.getElementById('legalGotItBtn').addEventListener('click', closeLegalModal);

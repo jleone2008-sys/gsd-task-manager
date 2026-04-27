@@ -2,6 +2,12 @@
 let habitsArr = [], habitCompletions = [];
 const habitRowIdMap = new Map();
 const completionRowIdMap = new Map();
+
+// Resolved once loadHabits has populated both habitsArr and habitCompletions
+// from the DB. Other modules (journal) await this before reading completion
+// state, so they don't see a half-loaded view.
+let _habitsLoadedResolve;
+const habitsLoaded = new Promise(r => { _habitsLoadedResolve = r; });
 let activeHabitView = 'today';
 let editingHabitId = null;
 let newHabitTags = new Set();
@@ -228,20 +234,24 @@ function subscribeToHabitChanges() {
 }
 
 async function loadHabits() {
-  const { data: hData, error: hErr } = await db.from('habits')
-    .select('*').eq('user_id', currentUser.id).order('order', { ascending: true });
-  if (hErr) { console.error('loadHabits:', hErr.message); return; }
-  habitsArr = hData.map(rowToHabit);
-  hData.forEach(r => habitRowIdMap.set(r.id, r.client_id));
+  try {
+    const { data: hData, error: hErr } = await db.from('habits')
+      .select('*').eq('user_id', currentUser.id).order('order', { ascending: true });
+    if (hErr) { console.error('loadHabits:', hErr.message); return; }
+    habitsArr = hData.map(rowToHabit);
+    hData.forEach(r => habitRowIdMap.set(r.id, r.client_id));
 
-  const { data: cData, error: cErr } = await db.from('habit_completions')
-    .select('*').eq('user_id', currentUser.id);
-  if (cErr) { console.error('loadCompletions:', cErr.message); return; }
-  habitCompletions = cData.map(rowToCompletion);
-  cData.forEach(r => completionRowIdMap.set(r.id, r.id));
+    const { data: cData, error: cErr } = await db.from('habit_completions')
+      .select('*').eq('user_id', currentUser.id);
+    if (cErr) { console.error('loadCompletions:', cErr.message); return; }
+    habitCompletions = cData.map(rowToCompletion);
+    cData.forEach(r => completionRowIdMap.set(r.id, r.id));
 
-  subscribeToHabitChanges();
-  renderHabits();
+    subscribeToHabitChanges();
+    renderHabits();
+  } finally {
+    if (_habitsLoadedResolve) { _habitsLoadedResolve(); _habitsLoadedResolve = null; }
+  }
 }
 
 /* ══════ HABITS RENDERING ══════ */
