@@ -2836,12 +2836,38 @@
     .nl-item { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-2); }
     .nl-item.active { border-color: var(--guava-700); box-shadow: var(--shadow-card-hover); }
     .notes-editor { display: none; }
+    /* On mobile a selected note opens as a modal: blurred backdrop with the
+       editor as a centered surface card. Tapping the backdrop (or the back
+       button in .mobile-note-header) closes it via deselectNote(). Same
+       padding pattern as .modal-overlay for visual consistency. */
     .notes-editor.mobile-open {
-      display: flex; position: fixed;
-      top: 0; left: 0; right: 0;
-      bottom: calc(68px + env(safe-area-inset-bottom, 0px));   /* clear the tabbar */
-      z-index: var(--z-editor-mobile); flex-direction: column;
+      display: flex;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 15, 10, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: var(--z-editor-mobile);
+      align-items: stretch;
+      justify-content: center;
+      padding: 16px;
+      padding-bottom: calc(16px + 68px + env(safe-area-inset-bottom, 0px));
+      box-sizing: border-box;
+      animation: fadeIn var(--dur-quick) ease both;
+    }
+    .notes-editor.mobile-open > #notesEditorContent {
       background: var(--surface);
+      border: 1px solid var(--edge);
+      border-radius: var(--r-md);
+      width: 100%;
+      max-width: var(--max-modal);
+      box-shadow: var(--shadow-raised);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      animation: fadeUp var(--dur-mid) var(--ease-spring) both;
     }
     .ne-page { padding: var(--space-5) var(--space-4) 80px; border-radius: 0; border-left: none; border-right: none; box-shadow: none; min-height: auto; }
     .ne-toolbar { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }

@@ -1196,6 +1196,19 @@ document.getElementById('mobileNbToggle').addEventListener('click', () => {
   document.getElementById('mobileNbDrawer').classList.toggle('open');
 });
 
+// On mobile the note editor opens as a modal-style overlay. Tapping the
+// backdrop (the padding area outside #notesEditorContent) deselects the
+// active note, dismissing the modal. Desktop is unaffected because
+// .notes-editor.mobile-open never gets the modal styles outside the
+// max-width:899.98px media query.
+document.addEventListener('click', e => {
+  const editor = document.getElementById('notesEditor');
+  if (!editor || !editor.classList.contains('mobile-open')) return;
+  if (typeof isCleanBackdropClick === 'function' && isCleanBackdropClick(e, editor)) {
+    deselectNote();
+  }
+});
+
 /* ── NOTES DOM DELEGATION ──
  * Notes UI is rendered into multiple dynamic containers (sidebar, mobile
  * drawer, notes list, editor). Document-level delegation keyed on
