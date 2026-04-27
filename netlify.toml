@@ -1,3 +1,11 @@
+[build.environment]
+  # SUPABASE_URL is the public project endpoint and is intentionally
+  # hardcoded in src/01-core.js / beta/src/01-core.js — every browser
+  # request needs it. RLS + the JWT enforce auth; the URL alone is not
+  # sensitive. Same for SUPABASE_KEY which is the publishable/anon key.
+  # Skip Netlify's secret scanner for these so prod deploys don't fail.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_KEY"
+
 [[redirects]]
   from = "/app/*"
   to = "/app.html"
