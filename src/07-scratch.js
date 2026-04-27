@@ -18,16 +18,21 @@ function renderScratch() {
   document.getElementById('scratchEditor')?.classList.remove('mobile-open');
   el.innerHTML = `
     <div class="ne-body">
-      <div class="ne-page">
-        <div id="scratchEditorQuill" class="ne-quill"></div>
+      <div class="ne-page ne-quill">
+        ${renderCustomToolbar('scratchToolbar', 'scratchHeadingSelect')}
+        <div id="scratchEditorQuill"></div>
       </div>
     </div>
   `;
 
   const editorContainer = document.getElementById('scratchEditorQuill');
   if (editorContainer && typeof createQuillEditor === 'function') {
-    _scratchQuill = createQuillEditor(editorContainer, { placeholder: 'Brain dump here...' });
+    _scratchQuill = createQuillEditor(editorContainer, {
+      placeholder: 'Brain dump here...',
+      toolbarContainer: '#scratchToolbar',
+    });
     if (_scratchQuill) {
+      wireQuillHeadingSelect(document.getElementById('scratchHeadingSelect'), _scratchQuill);
       const saved = scratchNote.content || localStorage.getItem('gsd-scratch') || '';
       if (saved) {
         const migrated = migrateLegacyChecklistHTML(saved);

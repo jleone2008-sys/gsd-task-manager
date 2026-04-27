@@ -2687,21 +2687,40 @@
   .notes-editor > div { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
   /* ──────────────────────────────────────────────────────────────
-     Quill 2.x — Snow theme overrides for the Notes + Scratch editors.
-     Quill renders its own .ql-toolbar above .ql-container/.ql-editor,
-     so the page just needs a host container (#noteEditor / #scratchEditorQuill)
-     and theme tweaks for the guava palette.
+     Quill 2.x integration — uses our hand-rolled toolbar (.ne-toolbar
+     with .tb-btn buttons styled to match the rest of the app). Quill's
+     snow theme is loaded for the link-tooltip popover only; we strip the
+     chrome it adds to the toolbar/container so the editor reads as a
+     clean writing surface inside the .ne-page card.
   ────────────────────────────────────────────────────────────── */
   .ne-quill { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-  .ne-quill .ql-toolbar.ql-snow {
-    border: none;
-    border-bottom: 1px solid var(--edge);
-    background: var(--surface);
-    padding: var(--space-1-5) var(--space-1);
-    position: sticky; top: 0; z-index: 5;
+  .ne-toolbar {
+    display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1-5) 0;
+    background: transparent; border: none; flex-wrap: wrap;
     margin-bottom: var(--space-3-5);
-    flex-wrap: wrap;
   }
+  .tb-group { display: flex; align-items: center; gap: var(--space-0-5); padding-right: var(--space-2); border-right: 1px solid var(--edge); margin-right: var(--space-1-5); }
+  .tb-group:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+  .tb-btn {
+    width: 28px; height: 28px; border-radius: var(--r-md); border: none; background: transparent;
+    color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .tb-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .tb-btn.ql-active { background: var(--guava-700); color: #fff; }
+  .tb-btn.ql-active .ql-stroke { stroke: #fff; }
+  .tb-btn.ql-active .ql-fill { fill: #fff; }
+  .tb-btn svg { width: 15px; height: 15px; }
+  .tb-select {
+    padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); border: 1px solid var(--edge);
+    background: var(--surface); color: var(--ink-2); font-family: inherit; font-size: var(--fs-meta);
+    cursor: pointer; outline: none;
+  }
+  /* Quill strips the .ql-snow toolbar styling because we don't add that
+     class to .ne-toolbar (it's our own container). Just neutralize any
+     stray default rules the library might still target. */
+  .ne-toolbar.ql-toolbar { padding: var(--space-1-5) 0; border: none; }
+
   .ne-quill .ql-container.ql-snow { border: none; font-family: inherit; flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .ne-quill .ql-editor {
     font-family: inherit; font-size: var(--fs-body); color: var(--ink); line-height: 1.7;
@@ -2715,20 +2734,7 @@
   .ne-quill .ql-editor p { margin-bottom: var(--space-2-5); }
   .ne-quill .ql-editor blockquote { border-left: 3px solid var(--guava-700); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
   .ne-quill .ql-editor a { color: var(--guava-700); text-decoration: underline; cursor: pointer; }
-  .ne-quill .ql-editor ul[data-checked] li::before { color: var(--guava-700); }
-  .ne-quill .ql-editor ol > li[data-list="checked"] > .ql-ui::before,
-  .ne-quill .ql-editor ol > li[data-list="unchecked"] > .ql-ui::before { color: var(--guava-700); }
-  .ne-quill .ql-toolbar.ql-snow .ql-active,
-  .ne-quill .ql-toolbar.ql-snow button:hover,
-  .ne-quill .ql-toolbar.ql-snow .ql-picker-label:hover,
-  .ne-quill .ql-toolbar.ql-snow .ql-picker-label.ql-active,
-  .ne-quill .ql-toolbar.ql-snow .ql-picker-item:hover,
-  .ne-quill .ql-toolbar.ql-snow .ql-picker-item.ql-selected { color: var(--guava-700); }
-  .ne-quill .ql-toolbar.ql-snow .ql-active .ql-stroke,
-  .ne-quill .ql-toolbar.ql-snow button:hover .ql-stroke { stroke: var(--guava-700); }
-  .ne-quill .ql-toolbar.ql-snow .ql-active .ql-fill,
-  .ne-quill .ql-toolbar.ql-snow button:hover .ql-fill { fill: var(--guava-700); }
-  /* Link tooltip popover */
+  /* Link tooltip popover (kept from Snow theme; just colorize). */
   .ne-quill .ql-snow .ql-tooltip { box-shadow: 0 4px 16px rgba(0,0,0,0.12); border-color: var(--edge); border-radius: var(--r-md); }
   .ne-quill .ql-snow .ql-tooltip a.ql-action,
   .ne-quill .ql-snow .ql-tooltip a.ql-remove { color: var(--guava-700); }
@@ -2778,14 +2784,11 @@
     min-width: 0;
     background: transparent;
   }
-  /* Quill toolbar inside Scratch — flush with the page, not sticky. */
-  .scratch-view .ne-quill .ql-toolbar.ql-snow {
-    background: transparent;
-    border: none;
+  /* Toolbar inside Scratch — same shape as Notes; the .ne-page card
+     provides the surrounding visual chrome. */
+  .scratch-view .ne-toolbar {
     padding: 0 0 12px;
     margin: 0 0 16px;
-    position: static;
-    box-shadow: none;
   }
   .nl-item.dragging { opacity: 0.4; }
   .nl-item.drag-target { border-color: var(--guava-700); background: rgba(45,95,166,0.06); }
@@ -2846,7 +2849,8 @@
       background: var(--surface);
     }
     .ne-page { padding: var(--space-5) var(--space-4) 80px; border-radius: 0; border-left: none; border-right: none; box-shadow: none; min-height: auto; }
-    .ne-quill .ql-toolbar.ql-snow { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
+    .ne-toolbar { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
+    .tb-desktop-only { display: none; }
     .ne-body { padding: 0 0 var(--space-8); }
     .ne-title { font-size: var(--fs-title-mobile); }
     .ne-meta { gap: var(--space-2); font-size: var(--fs-meta); }

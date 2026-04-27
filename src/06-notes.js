@@ -640,7 +640,10 @@ function renderNoteEditor() {
             </button>
           </div>
         </div>
-        <div id="noteEditor" class="ne-quill"></div>
+        <div class="ne-quill">
+          ${renderCustomToolbar('noteToolbar', 'noteHeadingSelect')}
+          <div id="noteEditor"></div>
+        </div>
       </div>
     </div>
   `;
@@ -650,8 +653,12 @@ function renderNoteEditor() {
   // and keyboard shortcuts so most of the old code paths are gone.
   const editorContainer = document.getElementById('noteEditor');
   if (editorContainer && typeof createQuillEditor === 'function') {
-    _noteQuill = createQuillEditor(editorContainer, { placeholder: 'Start writing...' });
+    _noteQuill = createQuillEditor(editorContainer, {
+      placeholder: 'Start writing...',
+      toolbarContainer: '#noteToolbar',
+    });
     if (_noteQuill) {
+      wireQuillHeadingSelect(document.getElementById('noteHeadingSelect'), _noteQuill);
       if (note.content) {
         const migrated = migrateLegacyChecklistHTML(note.content);
         _noteQuill.clipboard.dangerouslyPasteHTML(migrated, 'silent');
