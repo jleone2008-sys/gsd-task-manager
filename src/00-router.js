@@ -26,9 +26,10 @@ function parseAppRoute() {
   if (!m) return null;
   const [, seg1, seg2] = m;
   if (!seg1) {
-    const stored = localStorage.getItem(GSD_LAST_TOOL_KEY);
-    const tool = GSD_TOOLS.includes(stored) ? stored : 'tasks';
-    return { tool, _bare: true };
+    // Bare /app URL always lands on Tasks. We still write GSD_LAST_TOOL_KEY
+    // on navigation so deep-links restore correctly, but the bare URL is
+    // intentionally anchored to a single home tab.
+    return { tool: 'tasks', _bare: true };
   }
   if (!GSD_TOOLS.includes(seg1)) return null;
   if (seg1 === 'tasks') {

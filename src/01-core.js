@@ -400,6 +400,12 @@ function switchTool(tool) {
 document.addEventListener('click', e => {
   const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
   if (tab && tab.dataset.tool) switchTool(tab.dataset.tool);
+  // Wordmark logo click → home (Tasks) without a full reload
+  const logo = e.target.closest('#headerLogo');
+  if (logo) {
+    e.preventDefault();
+    if (typeof switchTool === 'function') switchTool('tasks');
+  }
 });
 // Tool keyboard shortcuts — Shift+T/H/N/S, only when not in a typeable context
 document.addEventListener('keydown', e => {

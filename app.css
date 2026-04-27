@@ -924,8 +924,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    width: 80%;
-    margin: 0 auto;
+    margin-left: 32px;
+    max-width: 95%;
     animation: expandIn var(--dur) var(--ease);
   }
   .subtask-wrap { position: relative; }
