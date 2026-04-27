@@ -9,7 +9,8 @@ let userSettings = null;
 
 const SETTINGS_DEFAULTS = {
   enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal'],
-  integrations: {}
+  integrations: {},
+  beta_enabled: false
 };
 
 const TAB_META = {
@@ -30,7 +31,8 @@ async function loadUserSettings() {
     if (error) throw error;
     userSettings = data ? {
       enabled_tools: data.enabled_tools || SETTINGS_DEFAULTS.enabled_tools,
-      integrations: data.integrations || {}
+      integrations: data.integrations || {},
+      beta_enabled: data.beta_enabled === true
     } : { ...SETTINGS_DEFAULTS };
   } catch (e) {
     console.warn('[settings] load failed', e);
@@ -48,6 +50,7 @@ async function saveUserSettings(patch) {
       user_id: session.user.id,
       enabled_tools: userSettings.enabled_tools,
       integrations: userSettings.integrations,
+      beta_enabled: userSettings.beta_enabled === true,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (error) throw error;
@@ -204,6 +207,17 @@ function renderSettingsPage() {
         <button class="settings-btn-secondary" data-settings-action="backup">Open Backup &amp; Restore</button>
       </div>
 
+      ${(typeof currentUserProfile !== 'undefined' && currentUserProfile?.role === 'admin') ? `
+      <div class="settings-section">
+        <div class="settings-h">Beta access</div>
+        <div class="settings-sub">When enabled, signing in to gsdtasks.com/app auto-redirects you to the beta app. Visit <code>/app?prod=1</code> to bypass for one session.</div>
+        <label class="settings-tab-row">
+          <input type="checkbox" id="settingsBetaEnabled" ${userSettings?.beta_enabled ? 'checked' : ''} />
+          <span class="settings-tab-label">Use beta app</span>
+          <span class="settings-tab-desc">Auto-redirect on prod sign-in.</span>
+        </label>
+      </div>` : ''}
+
       <div class="settings-section settings-danger">
         <div class="settings-h">Danger zone</div>
         <div class="settings-sub">This action is permanent and cannot be undone.</div>
@@ -221,6 +235,11 @@ function flashSettingsSaved() {
 }
 
 document.addEventListener('change', e => {
+  const betaCb = e.target.closest('#settingsBetaEnabled');
+  if (betaCb) {
+    saveUserSettings({ beta_enabled: betaCb.checked }).then(() => flashSettingsSaved());
+    return;
+  }
   const cb = e.target.closest('input[data-settings-tab]');
   if (!cb) return;
   const tab = cb.dataset.settingsTab;
