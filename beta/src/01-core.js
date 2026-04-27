@@ -178,7 +178,28 @@ function isCleanBackdropClick(e, backdropEl) {
 const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Auth defaults are already on by default in supabase-js v2, but pinning
+// them explicitly makes our intent obvious and survives any future
+// upstream default changes. Storage is forced to localStorage so a
+// session in one tab is recoverable from another.
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  },
+});
+
+// Temporary diagnostic for the sporadic forced-sign-in bug. Logs every
+// auth state transition with a timestamp so we can correlate it with
+// what the user was doing right before. Remove once the cause is found.
+try {
+  db.auth.onAuthStateChange((event, session) => {
+    const expISO = session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null;
+    console.info('[auth]', new Date().toISOString(), event, { expires_at: expISO, hasSession: !!session });
+  });
+} catch (_) {}
 let currentUser = null;
 let currentUserProfile = null;
 let isAdminViewMode = false;
