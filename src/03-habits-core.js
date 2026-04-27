@@ -403,7 +403,13 @@ function isQuotaMet(habit, dateStr) {
   return false;
 }
 
-function freqLabel(h) {
+// Renamed from freqLabel to habitCadenceLabel — src/04-tasks-ui.js also
+// defines a global freqLabel (taking a string for recurring task chips),
+// and since both files load as plain <script>s into the global scope
+// the tasks version was overwriting this one. The collision made every
+// habit render "Yearly" because freqLabel(habitObject) fell through to
+// the tasks fallback. Rename keeps both behaviors intact.
+function habitCadenceLabel(h) {
   if (h.frequency === 'daily') return 'Every day';
   if (h.frequency === 'weekdays') return '5 days per week';
   if (h.frequency === 'custom') {
@@ -664,7 +670,7 @@ function habitTodayCardHTML(h, today) {
       <div class="habit-card-top">
         <span class="habit-name">${escHTML(h.name || '')}</span>
       </div>
-      <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${freqLabel(h)}</div>
+      <div class="habit-card-meta"><span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span> · ${habitCadenceLabel(h)}</div>
     </div>
     <div class="habit-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}"><svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
   </div>`;
@@ -754,7 +760,7 @@ function renderHabitAll(active) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div class="habit-name" style="font-size:15px;font-weight:600">${escHTML(h.name || '')}</div>
-          <div style="font-size:12px;color:var(--guava-700);margin-top:2px">${freqLabel(h)}</div>
+          <div style="font-size:12px;color:var(--guava-700);margin-top:2px">${habitCadenceLabel(h)}</div>
         </div>
         <span style="font-size:28px;line-height:1">${escHTML(h.emoji || '')}</span>
       </div>
