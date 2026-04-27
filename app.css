@@ -820,6 +820,24 @@
     border-color: var(--guava-700);
   }
   .checkbox svg { display: none; }
+  /* Phase 4.1 — in-progress: dashed ring + soft fill so a click on todo
+     visibly transitions to "started" before the second click marks done. */
+  .task-item.is-in-progress .checkbox,
+  .checkbox[data-status="in_progress"] {
+    border-style: dashed;
+    border-color: var(--guava-500);
+    background: var(--guava-50);
+  }
+  .task-item.is-in-progress .checkbox::after,
+  .checkbox[data-status="in_progress"]::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 8px; height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--guava-700);
+  }
 
   /* ──────────────────────────────────────────────────────────────
      CHIPS — 6 earth tones + guava (overdue only) + ghost

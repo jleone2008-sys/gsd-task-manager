@@ -208,19 +208,28 @@ function addTask() {
   const newEl = document.getElementById('ti-' + newTask.id);
   if (newEl) { newEl.classList.add('new-task'); setTimeout(()=>newEl.classList.remove('new-task'), 400); }
 }
+// Tri-state cycle: todo → in_progress → done → todo. Kept under the same
+// name as the legacy binary toggle so existing data-task-action="toggle-done"
+// click handlers keep working without callsite changes.
 function toggleDone_t(id) {
   const t = tasks.find(t=>t.id===id);
   if (!t) return;
-  t.done = !t.done;
-  t.completedAt = t.done ? Date.now() : null;
-  // Re-uncheck clears spawned so a future re-completion re-evaluates.
-  if (!t.done) t.spawned = false;
+  const cur = t.status || (t.done ? 'done' : 'todo');
+  const next = cur === 'todo' ? 'in_progress'
+            : cur === 'in_progress' ? 'done'
+            : 'todo';
+  t.status = next;
+  t.done = next === 'done';
+  t.completedAt = next === 'done' ? Date.now() : null;
+  // Re-uncheck (or step back to todo/in-progress) clears spawned so a
+  // future re-completion re-evaluates the recurrence.
+  if (next !== 'done') t.spawned = false;
   render();
   saveTask(t);
   // Lazy-spawn handles recurrence: if the parent was overdue and the next
   // due date is already today/past, spawn now; otherwise wait for the
   // load-time / day-change check.
-  if (t.done && t.recur) ensureRecurringSpawns();
+  if (next === 'done' && t.recur) ensureRecurringSpawns();
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);

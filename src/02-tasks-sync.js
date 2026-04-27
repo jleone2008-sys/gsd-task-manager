@@ -50,6 +50,9 @@ window.addEventListener('offline', () => {
 ════════════════════════════════════════ */
 
 function rowToTask(r) {
+  // status takes precedence; fall back to done for older rows that haven't
+  // been touched since the migration backfill.
+  const status = r.status || (r.done ? 'done' : 'todo');
   return {
     id:          r.client_id,
     text:        r.text        || '',
@@ -57,7 +60,8 @@ function rowToTask(r) {
     tags:        r.tags        || [],
     top3:        r.top3        || false,
     someday:     r.someday     || false,
-    done:        r.done        || false,
+    done:        status === 'done',
+    status:      status,
     due:         r.due         || null,
     order:       r.order       || 0,
     completedAt: r.completed_at || null,
@@ -68,6 +72,9 @@ function rowToTask(r) {
 }
 
 function taskToRow(t) {
+  // Keep done and status in sync. status is the source of truth going
+  // forward; done remains for any legacy code path still reading it.
+  const status = t.status || (t.done ? 'done' : 'todo');
   return {
     user_id:      currentUser.id,
     client_id:    t.id,
@@ -76,7 +83,8 @@ function taskToRow(t) {
     tags:         t.tags        || [],
     top3:         t.top3        || false,
     someday:      t.someday     || false,
-    done:         t.done        || false,
+    done:         status === 'done',
+    status:       status,
     due:          t.due         || null,
     order:        t.order       || 0,
     completed_at: t.completedAt || null,
