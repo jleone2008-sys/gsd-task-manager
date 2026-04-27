@@ -1591,6 +1591,7 @@ document.addEventListener('click', async e => {
     renderSearchResults();
     await ensureTimelineCovers(date);
     scrollTimelineToDate(date);
+    openViewModal(date);
     return;
   }
 
