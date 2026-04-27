@@ -63,6 +63,7 @@ function rowToTask(r) {
     completedAt: r.completed_at || null,
     createdAt:   r.created_at ? new Date(r.created_at).getTime() : r.client_id,
     recur:       r.recur || null,
+    spawned:     r.spawned || false,
   };
 }
 
@@ -80,6 +81,7 @@ function taskToRow(t) {
     order:        t.order       || 0,
     completed_at: t.completedAt || null,
     recur:        t.recur || null,
+    spawned:      t.spawned || false,
   };
 }
 
@@ -183,6 +185,11 @@ async function load() {
   data.forEach(r => rowIdMap.set(r.id, r.client_id));
   render();
   setStatus('saved');
+
+  // Lazy-spawn any recurring tasks whose next due date has arrived while the
+  // app was closed. Idempotent — completed-recurring rows track a `spawned`
+  // flag so we never create duplicates.
+  if (typeof ensureRecurringSpawns === 'function') ensureRecurringSpawns();
 
   subscribeToChanges();
   autoBackup();
