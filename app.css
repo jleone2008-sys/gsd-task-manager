@@ -2711,16 +2711,6 @@
   .tb-btn.ql-active .ql-stroke { stroke: #fff; }
   .tb-btn.ql-active .ql-fill { fill: #fff; }
   .tb-btn svg { width: 15px; height: 15px; }
-  .tb-select {
-    padding: 5px 8px;
-    min-width: 100px;
-    height: 30px;
-    border-radius: var(--r-md); border: 1px solid var(--edge);
-    background: var(--surface); color: var(--ink-2);
-    font-family: inherit; font-size: var(--fs-meta);
-    cursor: pointer; outline: none;
-  }
-  .tb-select:hover { border-color: var(--edge-strong); }
   /* Quill strips the .ql-snow toolbar styling because we don't add that
      class to .ne-toolbar (it's our own container). Just neutralize any
      stray default rules the library might still target. */

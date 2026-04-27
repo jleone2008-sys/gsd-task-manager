@@ -641,7 +641,7 @@ function renderNoteEditor() {
           </div>
         </div>
         <div class="ne-quill">
-          ${renderCustomToolbar('noteToolbar', 'noteHeadingSelect')}
+          ${renderCustomToolbar('noteToolbar')}
           <div id="noteEditor"></div>
         </div>
       </div>
@@ -658,7 +658,6 @@ function renderNoteEditor() {
       toolbarContainer: '#noteToolbar',
     });
     if (_noteQuill) {
-      wireQuillHeadingSelect(document.getElementById('noteHeadingSelect'), _noteQuill);
       if (note.content) {
         const migrated = migrateLegacyChecklistHTML(note.content);
         _noteQuill.clipboard.dangerouslyPasteHTML(migrated, 'silent');

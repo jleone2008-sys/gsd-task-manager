@@ -4,13 +4,11 @@
    `window.Quill` is the global. This module exposes:
 
    - renderCustomToolbar(toolbarId) — HTML string for the in-house toolbar
-       (custom SVG icons + native heading <select>; Quill drives behavior
-       via .ql-bold / .ql-italic / .ql-list etc. classes on the buttons).
+       (custom SVG icons; Quill drives behavior via .ql-bold / .ql-italic /
+       .ql-list etc. classes on the buttons).
    - createQuillEditor(container, opts) — instantiate Quill on a div, wire
        it up to a custom toolbar element if `opts.toolbarContainer` is set,
-       and register handlers for highlight + undo + redo. Heading is wired
-       per-call by callers because the native <select> isn't a Quill format
-       button (it's a normal dropdown that fires `format('header', n)`).
+       and register handlers for highlight + undo + redo.
    - migrateLegacyChecklistHTML(html) — one-time transform for old
        <div class="note-checklist-item"> markup so existing notes render
        correctly under Quill's TaskList format. Transform-on-read; the
@@ -47,28 +45,7 @@ function createQuillEditor(editorContainer, opts = {}) {
   });
 }
 
-/**
- * Wire a native heading <select> to a Quill instance. Native select is
- * preferred over Quill's `ql-header` picker so the dropdown matches the
- * rest of the app's UI tokens (the picker would inherit Quill snow styles).
- */
-function wireQuillHeadingSelect(selectEl, quill) {
-  if (!selectEl || !quill) return;
-  selectEl.addEventListener('change', e => {
-    const val = e.target.value;
-    quill.focus();
-    quill.format('header', val ? parseInt(val, 10) : false, 'user');
-  });
-  // Reflect the current cursor's heading level in the select on selection change.
-  quill.on('editor-change', () => {
-    const range = quill.getSelection();
-    if (!range) return;
-    const fmt = quill.getFormat(range);
-    selectEl.value = fmt.header ? String(fmt.header) : '';
-  });
-}
-
-function renderCustomToolbar(toolbarId, headingSelectId) {
+function renderCustomToolbar(toolbarId) {
   const undoSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
   const redoSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>';
   const boldSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>';
@@ -86,13 +63,6 @@ function renderCustomToolbar(toolbarId, headingSelectId) {
       <div class="tb-group tb-desktop-only">
         <button class="tb-btn ql-undo" type="button" title="Undo">${undoSvg}</button>
         <button class="tb-btn ql-redo" type="button" title="Redo">${redoSvg}</button>
-      </div>
-      <div class="tb-group">
-        <select class="tb-select" id="${headingSelectId}">
-          <option value="">Normal</option>
-          <option value="1">Heading 1</option>
-          <option value="2">Heading 2</option>
-        </select>
       </div>
       <div class="tb-group">
         <button class="tb-btn ql-bold" type="button" title="Bold">${boldSvg}</button>

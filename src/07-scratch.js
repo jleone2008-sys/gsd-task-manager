@@ -19,7 +19,7 @@ function renderScratch() {
   el.innerHTML = `
     <div class="ne-body">
       <div class="ne-page ne-quill">
-        ${renderCustomToolbar('scratchToolbar', 'scratchHeadingSelect')}
+        ${renderCustomToolbar('scratchToolbar')}
         <div id="scratchEditorQuill"></div>
       </div>
     </div>
@@ -32,7 +32,6 @@ function renderScratch() {
       toolbarContainer: '#scratchToolbar',
     });
     if (_scratchQuill) {
-      wireQuillHeadingSelect(document.getElementById('scratchHeadingSelect'), _scratchQuill);
       const saved = scratchNote.content || localStorage.getItem('gsd-scratch') || '';
       if (saved) {
         const migrated = migrateLegacyChecklistHTML(saved);
