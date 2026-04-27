@@ -7,6 +7,9 @@ let activeNoteId = null;
 let noteSearchQuery = '';
 let noteSortOrder = 'updated'; // 'updated' | 'created' | 'alpha'
 let _noteSaveTimer = null;
+// Active Quill instance for the notes editor. Recreated on every
+// renderNoteEditor() call (which rebuilds the DOM via innerHTML).
+let _noteQuill = null;
 
 // Scratch uses reserved client_id -1 in the notes table
 const SCRATCH_ID = -1;
@@ -85,9 +88,13 @@ function debouncedRenderNotes() {
   if (_noteRenderTimer) clearTimeout(_noteRenderTimer);
   _noteRenderTimer = setTimeout(() => {
     _noteRenderTimer = null;
-    // If user is actively editing, only update sidebar/list, not the editor
-    const ce = document.getElementById('noteContentEditable');
-    if (ce && document.activeElement === ce) {
+    // If user is actively editing, only update sidebar/list, not the editor.
+    // Quill renders the editable area as .ql-editor inside #noteEditor.
+    const editor = document.querySelector('#noteEditor .ql-editor');
+    const titleInput = document.getElementById('noteTitleInput');
+    const isEditing = editor && document.activeElement === editor
+                   || titleInput && document.activeElement === titleInput;
+    if (isEditing) {
       renderNotesSidebar(); renderNoteList(); updateNotesBadge();
     } else {
       renderNotes();
@@ -109,10 +116,15 @@ function subscribeToNoteChanges() {
         if (incoming.id === SCRATCH_ID) {
           scratchNote = incoming;
           localStorage.setItem('gsd-scratch', scratchNote.content);
-          if (activeTool === 'scratch') {
-            const ce = document.getElementById('scratchContentEditable');
-            // Only patch DOM if user isn't actively typing
-            if (ce && document.activeElement !== ce) ce.innerHTML = scratchNote.content;
+          if (activeTool === 'scratch' && typeof _scratchQuill !== 'undefined' && _scratchQuill) {
+            // Only patch DOM if user isn't actively typing in the Quill editor
+            const editor = _scratchQuill.root;
+            if (editor && document.activeElement !== editor) {
+              const migrated = (typeof migrateLegacyChecklistHTML === 'function')
+                ? migrateLegacyChecklistHTML(scratchNote.content || '')
+                : (scratchNote.content || '');
+              _scratchQuill.clipboard.dangerouslyPasteHTML(migrated, 'silent');
+            }
           }
           return;
         }
@@ -590,10 +602,10 @@ function renderNoteEditor() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <div class="mobile-note-actions">
-        <button class="mobile-note-action" data-notes-mousedown="exec-undo" title="Undo">
+        <button class="mobile-note-action" data-notes-action="quill-undo" title="Undo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         </button>
-        <button class="mobile-note-action" data-notes-mousedown="exec-redo" title="Redo">
+        <button class="mobile-note-action" data-notes-action="quill-redo" title="Redo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
         </button>
         <button class="mobile-note-action" data-notes-action="confirm-trash" title="Trash" style="color:var(--guava-700)">
@@ -628,119 +640,33 @@ function renderNoteEditor() {
             </button>
           </div>
         </div>
-        <div class="ne-toolbar">
-          <div class="tb-group tb-desktop-only">
-            <button class="tb-btn" data-notes-mousedown="exec-undo" title="Undo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            </button>
-            <button class="tb-btn" data-notes-mousedown="exec-redo" title="Redo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
-            </button>
-          </div>
-          <div class="tb-group">
-            <select class="tb-select" data-notes-change="note-heading">
-              <option value="p">Normal</option>
-              <option value="h1">Heading 1</option>
-              <option value="h2">Heading 2</option>
-            </select>
-          </div>
-          <div class="tb-group">
-            <button class="tb-btn" data-notes-cmd="bold" title="Bold">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
-            </button>
-            <button class="tb-btn" data-notes-cmd="italic" title="Italic">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
-            </button>
-            <button class="tb-btn" data-notes-cmd="underline" title="Underline">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
-            </button>
-          </div>
-          <div class="tb-group">
-            <button class="tb-btn" data-notes-mousedown="checklist" title="Checklist">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M5 8l1.5 1.5L9 6"/><line x1="12" y1="8" x2="21" y2="8"/><rect x="3" y="14" width="6" height="6" rx="1"/><line x1="12" y1="17" x2="21" y2="17"/></svg>
-            </button>
-            <button class="tb-btn" data-notes-cmd="insertUnorderedList" title="Bullet list">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
-            </button>
-            <button class="tb-btn" data-notes-cmd="insertOrderedList" title="Numbered list">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="4" y="7.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">1</text><text x="4" y="13.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">2</text><text x="4" y="19.5" font-size="7" font-weight="600" fill="currentColor" stroke="none" font-family="system-ui">3</text></svg>
-            </button>
-            <button class="tb-btn" data-notes-mousedown="link" title="Insert link">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            </button>
-            <button class="tb-btn tb-highlight" data-notes-mousedown="highlight" title="Highlight" style="background:var(--highlight-yellow);border-radius:var(--r-sm)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            </button>
-          </div>
-          <div class="tb-group">
-            <button class="tb-btn" data-notes-cmd="indent" title="Indent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="3 12 6 14 3 16"/></svg>
-            </button>
-            <button class="tb-btn" data-notes-cmd="outdent" title="Outdent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="8" x2="21" y2="8"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="16" x2="21" y2="16"/><polyline points="6 12 3 14 6 16"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="ne-text" id="noteContentEditable" contenteditable="true" data-placeholder="Start writing...">${note.content}</div>
+        <div id="noteEditor" class="ne-quill"></div>
       </div>
     </div>
   `;
-  // Make links clickable — open in new tab on click
-  const ce = document.getElementById('noteContentEditable');
-  if (ce) {
-    ce.addEventListener('click', e => {
-      const a = e.target.closest('a');
-      if (a && a.href) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
-    });
-    // Sanitize pasted content — strip external formatting, keep only safe tags
-    ce.addEventListener('paste', e => {
-      e.preventDefault();
-      const html = e.clipboardData.getData('text/html');
-      const plain = e.clipboardData.getData('text/plain').trim();
-      // Auto-link bare URLs
-      if (/^https?:\/\/\S+$/.test(plain)) {
-        document.execCommand('insertHTML', false, `<a href="${escAttr(plain)}" target="_blank" rel="noopener">${escHTML(plain)}</a>`);
-        onNoteContentChange();
-        return;
+  // Instantiate Quill on the freshly-rendered container, paste in the
+  // existing content (with the legacy checklist migration), and wire
+  // change/click handlers. Quill owns its own toolbar, paste sanitization,
+  // and keyboard shortcuts so most of the old code paths are gone.
+  const editorContainer = document.getElementById('noteEditor');
+  if (editorContainer && typeof createQuillEditor === 'function') {
+    _noteQuill = createQuillEditor(editorContainer, { placeholder: 'Start writing...' });
+    if (_noteQuill) {
+      if (note.content) {
+        const migrated = migrateLegacyChecklistHTML(note.content);
+        _noteQuill.clipboard.dangerouslyPasteHTML(migrated, 'silent');
       }
-      if (html) {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        // Remove script, style, iframe, object, embed, form, svg, link, meta tags
-        tmp.querySelectorAll('script,style,iframe,object,embed,form,link,meta,noscript').forEach(el => el.remove());
-        // Remove all event handler attributes and dangerous attrs
-        tmp.querySelectorAll('*').forEach(el => {
-          [...el.attributes].forEach(attr => {
-            if (attr.name.startsWith('on') || attr.name === 'style' || attr.name === 'class' || attr.name === 'id') el.removeAttribute(attr.name);
-          });
-          // Only keep safe tags
-          const safe = ['P','DIV','BR','B','STRONG','I','EM','U','A','H1','H2','H3','UL','OL','LI','BLOCKQUOTE','SPAN','SUB','SUP'];
-          if (!safe.includes(el.tagName)) {
-            el.replaceWith(...el.childNodes);
-          }
-        });
-        // Clean up links
-        tmp.querySelectorAll('a').forEach(a => { a.setAttribute('target','_blank'); a.setAttribute('rel','noopener'); });
-        document.execCommand('insertHTML', false, tmp.innerHTML);
-      } else {
-        document.execCommand('insertText', false, plain);
-      }
-      onNoteContentChange();
-    });
+      _noteQuill.on('text-change', (_delta, _old, source) => {
+        if (source === 'user') onNoteContentChange();
+      });
+      // Quill renders <a> tags but doesn't navigate when clicked in editor mode.
+      _noteQuill.root.addEventListener('click', e => {
+        const a = e.target.closest('a');
+        if (a && a.href) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
+      });
+    }
   }
 }
-function noteHeading(tag) {
-  const ce = document.getElementById('noteContentEditable');
-  if (!ce) return;
-  ce.focus();
-  // Always reset to <p> first to prevent nested headings
-  document.execCommand('formatBlock', false, '<p>');
-  if (tag !== 'p') {
-    document.execCommand('formatBlock', false, '<' + tag + '>');
-  }
-  onNoteContentChange();
-}
-
 function updateNotesBadge() {
   const count = notesArr.filter(n => !n.trashed).length;
   paintBadge('notesBadgeMobile', count);
@@ -802,13 +728,11 @@ function onNoteTitleChange(val) {
 
 function onNoteContentChange() {
   const note = notesArr.find(n => n.id === activeNoteId);
-  if (!note) return;
-  const el = document.getElementById('noteContentEditable');
-  if (!el) return;
-  note.content = el.innerHTML;
+  if (!note || !_noteQuill) return;
+  note.content = _noteQuill.root.innerHTML;
   note.updatedAt = new Date().toISOString();
   if (_noteSaveTimer) clearTimeout(_noteSaveTimer);
-  _noteSaveTimer = setTimeout(() => { saveNoteToDB(note); renderNoteList(); updateNoteToolbarState(); }, 1000);
+  _noteSaveTimer = setTimeout(() => { saveNoteToDB(note); renderNoteList(); }, 1000);
 }
 
 function toggleNoteStar() {
@@ -1269,8 +1193,8 @@ document.getElementById('mobileNbToggle').addEventListener('click', () => {
 /* ── NOTES DOM DELEGATION ──
  * Notes UI is rendered into multiple dynamic containers (sidebar, mobile
  * drawer, notes list, editor). Document-level delegation keyed on
- * [data-notes-action] + [data-notes-cmd] + [data-notes-mousedown] +
- * [data-notes-change] binds once and survives every re-render.
+ * [data-notes-action] + [data-notes-change] binds once and survives every
+ * re-render. (Toolbar markup is gone — Quill renders its own.)
  */
 
 // Click dispatcher
@@ -1312,6 +1236,8 @@ document.addEventListener('click', e => {
     case 'deselect-note':   deselectNote(); return;
     case 'confirm-trash':   confirmTrashNote(); return;
     case 'toggle-star':     toggleNoteStar(); return;
+    case 'quill-undo':      e.preventDefault(); _noteQuill && _noteQuill.history.undo(); return;
+    case 'quill-redo':      e.preventDefault(); _noteQuill && _noteQuill.history.redo(); return;
     case 'nb-rename':       e.stopPropagation(); if (nbCtxMenu) nbCtxMenu.remove(); renameNotebook(nbIdNum); return;
     case 'nb-delete':       e.stopPropagation(); if (nbCtxMenu) nbCtxMenu.remove(); deleteNotebook(nbIdNum); return;
     case 'close-inline-prompt': document.getElementById('inlinePromptOverlay').style.display = 'none'; return;
@@ -1343,33 +1269,19 @@ document.addEventListener('click', e => {
   btn.dataset.selected = 'true';
 });
 
-// Rich toolbar — mousedown (preserves selection)
-document.addEventListener('mousedown', e => {
-  const cmdBtn = e.target.closest('[data-notes-cmd]');
-  if (cmdBtn) { noteCmd(e, cmdBtn.dataset.notesCmd); return; }
-  const actBtn = e.target.closest('[data-notes-mousedown]');
-  if (!actBtn) return;
-  const action = actBtn.dataset.notesMousedown;
-  if (action === 'exec-undo') { e.preventDefault(); document.execCommand('undo'); return; }
-  if (action === 'exec-redo') { e.preventDefault(); document.execCommand('redo'); return; }
-  if (action === 'checklist') { noteInsertChecklist(e); return; }
-  if (action === 'link')      { noteInsertLink(e); return; }
-  if (action === 'highlight') { noteHighlight(e); return; }
-});
-
-// Change dispatcher (note heading <select>, notebook <select>)
+// Change dispatcher — only the notebook <select> remains; the heading
+// <select> moved into the Quill toolbar.
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-notes-change]');
   if (!el) return;
   const kind = el.dataset.notesChange;
-  if (kind === 'note-heading') return noteHeading(el.value);
   if (kind === 'note-nb') return handleNoteNbChange(el, parseInt(el.dataset.noteId));
 });
 
-// Input dispatcher for note title + content (dynamically rendered)
+// Input dispatcher for the note title input (Quill manages the content
+// editor via its text-change event — not via document input bubbling).
 document.addEventListener('input', e => {
   if (e.target.id === 'noteTitleInput') return onNoteTitleChange(e.target.value);
-  if (e.target.id === 'noteContentEditable') return onNoteContentChange();
 });
 
 // Context menu dispatcher (right-click on notes / notebooks)

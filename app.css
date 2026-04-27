@@ -2685,22 +2685,55 @@
 
   .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex var(--dur-slower) ease; min-width: 480px; min-height: 0; position: relative; }
   .notes-editor > div { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-  .ne-toolbar {
-    display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1-5) 0;
-    border-bottom: 1px solid var(--edge); background: var(--surface); flex-wrap: wrap;
-    position: sticky; top: 0; z-index: 5; margin-bottom: var(--space-3-5);
+
+  /* ──────────────────────────────────────────────────────────────
+     Quill 2.x — Snow theme overrides for the Notes + Scratch editors.
+     Quill renders its own .ql-toolbar above .ql-container/.ql-editor,
+     so the page just needs a host container (#noteEditor / #scratchEditorQuill)
+     and theme tweaks for the guava palette.
+  ────────────────────────────────────────────────────────────── */
+  .ne-quill { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+  .ne-quill .ql-toolbar.ql-snow {
+    border: none;
+    border-bottom: 1px solid var(--edge);
+    background: var(--surface);
+    padding: var(--space-1-5) var(--space-1);
+    position: sticky; top: 0; z-index: 5;
+    margin-bottom: var(--space-3-5);
+    flex-wrap: wrap;
   }
-  .tb-group { display: flex; align-items: center; gap: var(--space-0-5); padding-right: var(--space-2); border-right: 1px solid var(--edge); margin-right: var(--space-1-5); }
-  .tb-group:last-child { border-right: none; margin-right: 0; padding-right: 0; }
-  .tb-btn {
-    width: 28px; height: 28px; border-radius: var(--r-md); border: none; background: transparent;
-    color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  .ne-quill .ql-container.ql-snow { border: none; font-family: inherit; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .ne-quill .ql-editor {
+    font-family: inherit; font-size: var(--fs-body); color: var(--ink); line-height: 1.7;
+    padding: 0; min-height: 300px; flex: 1;
   }
-  .tb-btn:hover { background: var(--surface-2); }
-  .tb-btn.tb-active { background: var(--guava-700); color: #fff; }
-  .tb-btn svg { width: 15px; height: 15px; }
-  .tb-select { padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); font-family: inherit; font-size: var(--fs-meta); cursor: pointer; outline: none; }
-  .ne-body { flex: 1; overflow-y: auto; padding: 20px 28px 40px; }
+  .ne-quill .ql-editor.ql-blank::before {
+    color: var(--ink-3); font-style: normal; left: 0; right: 0;
+  }
+  .ne-quill .ql-editor h1 { font-size: var(--fs-title); font-weight: var(--fw-black); margin: var(--space-5) 0 var(--space-2); letter-spacing: -0.3px; }
+  .ne-quill .ql-editor h2 { font-size: var(--fs-card); font-weight: var(--fw-bold); margin: var(--space-5) 0 var(--space-1-5); letter-spacing: -0.2px; }
+  .ne-quill .ql-editor p { margin-bottom: var(--space-2-5); }
+  .ne-quill .ql-editor blockquote { border-left: 3px solid var(--guava-700); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
+  .ne-quill .ql-editor a { color: var(--guava-700); text-decoration: underline; cursor: pointer; }
+  .ne-quill .ql-editor ul[data-checked] li::before { color: var(--guava-700); }
+  .ne-quill .ql-editor ol > li[data-list="checked"] > .ql-ui::before,
+  .ne-quill .ql-editor ol > li[data-list="unchecked"] > .ql-ui::before { color: var(--guava-700); }
+  .ne-quill .ql-toolbar.ql-snow .ql-active,
+  .ne-quill .ql-toolbar.ql-snow button:hover,
+  .ne-quill .ql-toolbar.ql-snow .ql-picker-label:hover,
+  .ne-quill .ql-toolbar.ql-snow .ql-picker-label.ql-active,
+  .ne-quill .ql-toolbar.ql-snow .ql-picker-item:hover,
+  .ne-quill .ql-toolbar.ql-snow .ql-picker-item.ql-selected { color: var(--guava-700); }
+  .ne-quill .ql-toolbar.ql-snow .ql-active .ql-stroke,
+  .ne-quill .ql-toolbar.ql-snow button:hover .ql-stroke { stroke: var(--guava-700); }
+  .ne-quill .ql-toolbar.ql-snow .ql-active .ql-fill,
+  .ne-quill .ql-toolbar.ql-snow button:hover .ql-fill { fill: var(--guava-700); }
+  /* Link tooltip popover */
+  .ne-quill .ql-snow .ql-tooltip { box-shadow: 0 4px 16px rgba(0,0,0,0.12); border-color: var(--edge); border-radius: var(--r-md); }
+  .ne-quill .ql-snow .ql-tooltip a.ql-action,
+  .ne-quill .ql-snow .ql-tooltip a.ql-remove { color: var(--guava-700); }
+
+  .ne-body { flex: 1; overflow-y: auto; padding: 20px 28px 40px; display: flex; flex-direction: column; min-height: 0; }
   /* .ne-page is a pure content container — the card shell lives on
      .notes-layout so we don't render a card-inside-a-card. No bg, no
      border, no radius, no shadow. */
@@ -2730,19 +2763,9 @@
   .ne-meta-item { display: flex; align-items: center; gap: var(--space-1); }
   .ne-meta-item svg { width: 13px; height: 13px; }
   .ne-meta select { border: 1px solid var(--edge); border-radius: var(--r-sm); padding: var(--space-0-5) var(--space-1-5); font-size: var(--fs-label); font-family: inherit; background: var(--surface); color: var(--ink-2); cursor: pointer; outline: none; }
-  .ne-text { font-size: var(--fs-body); color: var(--ink); line-height: 1.7; outline: none; min-height: 300px; }
-  .ne-text:empty::before { content: attr(data-placeholder); color: var(--ink-3); pointer-events: none; }
-  .ne-text p { margin-bottom: var(--space-2-5); }
-  .ne-text h1 { font-size: var(--fs-title); font-weight: var(--fw-black); margin: var(--space-5) 0 var(--space-2); letter-spacing: -0.3px; }
-  .ne-text h2 { font-size: var(--fs-card); font-weight: var(--fw-bold); margin: var(--space-5) 0 var(--space-1-5); letter-spacing: -0.2px; }
-  .ne-text ul, .ne-text ol { margin: var(--space-1-5) 0 var(--space-2-5) var(--space-4-5); }
-  .ne-text li { margin-bottom: var(--space-0-5); }
-  .ne-text blockquote { border-left: 3px solid var(--guava-700); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
-  .ne-text a { color: var(--guava-700); text-decoration: underline; cursor: pointer; }
-  .ne-text .note-checklist-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-0-5) 0; margin: var(--space-0-5) 0; }
-  .ne-text .note-checklist-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--guava-700); cursor: pointer; flex-shrink: 0; border-radius: var(--r-sm); }
-  .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
-  .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--ink-3); }
+  /* Legacy .ne-text + .note-checklist-item styles removed — content now
+     lives inside Quill's .ql-editor; see the .ne-quill block above for
+     overrides that match this design. */
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: var(--fs-body); position: absolute; inset: 0; }
   /* Scratch overrides — the card shell lives on .notes-layout now, so
      .ne-page doesn't need one and .scratch-view doesn't need to add one. */
@@ -2755,9 +2778,8 @@
     min-width: 0;
     background: transparent;
   }
-  /* Base .ne-toolbar is sticky with a surface fill + border-bottom. On
-     scratch we want it flush inside the notes-layout card, no sticky. */
-  .scratch-view .ne-toolbar {
+  /* Quill toolbar inside Scratch — flush with the page, not sticky. */
+  .scratch-view .ne-quill .ql-toolbar.ql-snow {
     background: transparent;
     border: none;
     padding: 0 0 12px;
@@ -2824,7 +2846,7 @@
       background: var(--surface);
     }
     .ne-page { padding: var(--space-5) var(--space-4) 80px; border-radius: 0; border-left: none; border-right: none; box-shadow: none; min-height: auto; }
-    .ne-toolbar { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
+    .ne-quill .ql-toolbar.ql-snow { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
     .ne-body { padding: 0 0 var(--space-8); }
     .ne-title { font-size: var(--fs-title-mobile); }
     .ne-meta { gap: var(--space-2); font-size: var(--fs-meta); }

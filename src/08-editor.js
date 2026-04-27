@@ -1,49 +1,10 @@
 
-function noteCmd(e, cmd) {
-  e.preventDefault();
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand(cmd, false, null);
-  setTimeout(updateNoteToolbarState, 10);
-}
-function noteInsertChecklist(e) {
-  e.preventDefault();
-  const editor = document.getElementById('noteContentEditable');
-  if (!editor) return;
-  editor.focus();
-  const sel = window.getSelection();
-  const text = sel.rangeCount ? sel.toString().trim() : '';
-  const label = text || 'Item';
-  document.execCommand('insertHTML', false, '<div class="note-checklist-item"><input type="checkbox"> <span>' + label.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>');
-}
-function noteHighlight(e) {
-  e.preventDefault();
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand('hiliteColor', false, '#fef08a');
-}
-function noteFontSize(size) {
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand('fontSize', false, size);
-}
-function noteInsertLink(e) {
-  e.preventDefault();
-  // Save selection before opening modal
-  const sel = window.getSelection();
-  const range = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
-  showInlinePrompt('Insert link', 'https://', url => {
-    if (!url) return;
-    const editor = document.getElementById('noteContentEditable');
-    if (!editor) return;
-    editor.focus();
-    if (range) { sel.removeAllRanges(); sel.addRange(range); }
-    document.execCommand('createLink', false, url);
-    setTimeout(() => {
-      document.querySelectorAll('#noteContentEditable a').forEach(a => {
-        a.setAttribute('target', '_blank');
-        a.setAttribute('rel', 'noopener');
-      });
-    }, 50);
-  });
-}
+// Notes/Scratch rich-text editing migrated to Quill 2.x — see
+// src/12-quill-init.js. The legacy contenteditable + execCommand toolbar
+// helpers (noteCmd / noteInsertChecklist / noteHighlight / noteFontSize /
+// noteInsertLink / updateNoteToolbarState) and the supporting
+// keydown/selectionchange listeners that targeted #noteContentEditable
+// are gone. Quill provides equivalents internally.
 
 function showNoteMenu(e) {
   e.preventDefault(); e.stopPropagation();
@@ -85,46 +46,6 @@ function showNoteMenu(e) {
     document.addEventListener('click', close);
   }, 10);
 }
-
-// Toolbar active state tracking
-function updateNoteToolbarState() {
-  const btns = document.querySelectorAll('.ne-toolbar .tb-btn');
-  btns.forEach(btn => {
-    const title = btn.getAttribute('title');
-    let active = false;
-    if (title === 'Bold') active = document.queryCommandState('bold');
-    else if (title === 'Italic') active = document.queryCommandState('italic');
-    else if (title === 'Underline') active = document.queryCommandState('underline');
-    btn.classList.toggle('tb-active', active);
-  });
-  // Update heading dropdown
-  const sel = document.querySelector('.ne-toolbar .tb-select');
-  if (sel) {
-    const block = document.queryCommandValue('formatBlock');
-    if (block === 'h1') sel.value = 'h1';
-    else if (block === 'h2') sel.value = 'h2';
-    else sel.value = 'p';
-  }
-}
-
-// Tab indent/outdent in note editor + Enter to break out of indent
-document.addEventListener('keydown', e => {
-  const editor = document.getElementById('noteContentEditable');
-  if (!editor || !editor.contains(e.target)) return;
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null);
-  }
-  // Ctrl+Z / Ctrl+Y for undo/redo
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); document.execCommand('undo'); }
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); document.execCommand('redo'); }
-});
-
-// Track selection changes for toolbar state
-document.addEventListener('selectionchange', () => {
-  const editor = document.getElementById('noteContentEditable');
-  if (editor && editor.contains(document.activeElement)) updateNoteToolbarState();
-});
 
 // Helper functions
 function stripHTML(html) {
@@ -364,13 +285,9 @@ document.getElementById('editTags').addEventListener('click', e => {
   const btn = e.target.closest('.tag-btn');
   if (btn) btn.classList.toggle('selected');
 });
-// Checklist item toggle inside any note contenteditable
-document.addEventListener('click', e => {
-  const cb = e.target;
-  if (cb && cb.matches && cb.matches('.note-checklist-item > input[type="checkbox"]')) {
-    cb.parentElement.classList.toggle('checked', cb.checked);
-  }
-});
+// Legacy .note-checklist-item click handler removed; Quill renders checkable
+// list items as <ol><li data-list="checked|unchecked"> and handles the
+// click-to-toggle behavior internally.
 document.getElementById('editNoteRich').addEventListener('paste', e => {
   const plain = e.clipboardData.getData('text/plain').trim();
   if (/^https?:\/\/\S+$/.test(plain)) {
