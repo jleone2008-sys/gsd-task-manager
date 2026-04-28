@@ -493,32 +493,47 @@
   .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .add-row input[type=text]::placeholder { color: var(--ink-3); }
 
-  .btn-note {
-    padding: var(--space-2) var(--space-2-5);
+  /* Create-panel field-toggle button (+ Note / Due / Repeat). Squared
+     corners + uniform height so the three buttons share a single shape
+     system, distinct from the pill-shaped tag chips. */
+  .btn-field {
+    height: 32px;
+    padding: 0 12px;
     border-radius: var(--r-md);
-    border: 1px solid var(--edge-strong);
+    border: 1px solid var(--edge);
     background: var(--surface);
-    color: var(--ink-3);
+    color: var(--ink-2);
     font-family: inherit;
     font-size: var(--fs-pill);
     font-weight: var(--fw-medium);
     cursor: pointer;
     white-space: nowrap;
-    transition: all var(--dur-fast);
     line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     flex-shrink: 0;
+    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
   }
-  .btn-note:hover { border-color: var(--guava-500); color: var(--guava-700); }
-  .btn-note.active { border-color: var(--guava-700); color: var(--guava-700); background: var(--plum-bg); }
+  .btn-field:hover { background: var(--surface-2); }
+  .btn-field.active {
+    background: var(--guava-50);
+    border-color: var(--guava-500);
+    color: var(--guava-700);
+  }
 
+  /* Primary submit button — fixed dimensions on desktop so it doesn't
+     drift relative to the field-toggle row. Mobile media query stretches
+     it to full-width for thumb reach. */
   .btn-add {
-    padding: var(--space-2) var(--space-4);
+    height: 36px;
+    padding: 0 24px;
     border-radius: var(--r-md);
     border: none;
     background: var(--guava-700);
     color: #fff;
     font-family: inherit;
-    font-size: var(--fs-search);
+    font-size: var(--fs-body);
     font-weight: var(--fw-semibold);
     cursor: pointer;
     transition: background var(--dur-fast);
@@ -550,28 +565,51 @@
   }
   .add-note-wrap textarea:focus { border-color: var(--guava-500); }
   .add-note-wrap textarea::placeholder { color: var(--ink-3); }
-
-  .add-tags { display: flex; gap: var(--space-1-5); flex-wrap: wrap; padding-bottom: var(--space-2-5); }
-  .tag-btn {
-    padding: var(--space-0-5) var(--space-2);
-    border-radius: var(--r-lg);
+  .add-note-wrap input[type="date"] {
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
     border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
     background: var(--surface);
+    color: var(--ink-2);
     font-family: inherit;
     font-size: var(--fs-meta);
-    cursor: pointer;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .add-note-wrap input[type="date"]:focus { border-color: var(--guava-500); }
+
+  .add-tags { display: flex; gap: var(--space-1-5); flex-wrap: wrap; padding-bottom: var(--space-2-5); }
+  /* Tag chip — full-pill shape, identical box dimensions for all four
+     variants so the create-panel tags row reads as a uniform set of
+     toggles. Per-variant rules only override border + selected fill. */
+  .tag-btn {
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--edge-strong);
+    background: var(--surface);
     color: var(--ink-3);
-    transition: all var(--dur-fast);
+    font-family: inherit;
+    font-size: var(--fs-meta);
+    line-height: 1;
+    cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
   }
-  .tag-btn.biz { border-color: var(--slate-fg); color: var(--slate-fg); }
-  .tag-btn.personal { border-color: var(--ochre-fg); color: var(--ochre-fg); }
-  .tag-btn.t3 { border-color: var(--guava-700); color: var(--guava-700); padding: var(--space-0-5) var(--space-2); font-size: var(--fs-search); }
+  .tag-btn.biz      { border-color: var(--slate-fg);  color: var(--slate-fg); }
+  .tag-btn.personal { border-color: var(--ochre-fg);  color: var(--ochre-fg); }
+  .tag-btn.t3       { border-color: var(--guava-700); color: var(--guava-700); }
+  .tag-btn.later    { border-color: var(--edge-strong); color: var(--ink-3); }
   .tag-btn.selected { font-weight: var(--fw-semibold); }
-  .tag-btn.biz.selected { background: var(--slate-bg); }
+  .tag-btn.biz.selected      { background: var(--slate-bg); }
   .tag-btn.personal.selected { background: var(--ochre-bg); }
-  .tag-btn.t3.selected { background: var(--guava-100); }
+  .tag-btn.t3.selected       { background: var(--guava-100); }
+  .tag-btn.later.selected    { background: var(--surface-2); color: var(--ink); }
 
   /* CONTENT — main column scrollable area.
      padding-top is 0 so the gap from header title → first card is driven
@@ -1306,44 +1344,70 @@
   /* Hide the badge when the count is 0 so idle tabs stay clean. */
   .mobile-nav-badge[data-empty="true"] { display: none; }
 
-  /* FLOATING CREATE PANEL */
+  /* FLOATING CREATE PANEL — full-screen scrim + centered surface card.
+     One coherent design system: every chip the same size, every action
+     button the same size, one card border-radius, one consistent rhythm. */
   .create-panel {
     display: none;
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
-    background: rgba(20,30,80,0.45);
+    background: rgba(20,15,10,0.45);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     align-items: center;
     justify-content: center;
     padding: var(--space-4);
   }
-  .create-panel.open {
-    display: flex;
-  }
+  .create-panel.open { display: flex; }
+
   .create-panel-inner {
     width: 100%;
-    max-width: var(--max-create);
+    max-width: var(--max-modal);
     background: var(--surface);
     border: 1px solid var(--edge);
-    border-radius: var(--r-lg);
+    border-radius: var(--r-md);
     box-shadow: var(--shadow-raised);
-    padding: var(--space-4-5);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     animation: fadeUp var(--dur-mid) var(--ease-spring) both;
+    box-sizing: border-box;
   }
-  .create-panel-inner .add-row { display: flex; gap: var(--space-1-5); align-items: stretch; margin-bottom: var(--space-2); }
-  .create-panel-inner .add-row input[type=text] {
-    flex: 1; padding: var(--space-2) var(--space-3); border-radius: var(--r-md);
-    border: 1px solid var(--edge-strong); font-size: var(--fs-task);
-    font-family: inherit; color: var(--ink); background: var(--surface);
-    outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+
+  .create-panel-input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
+    font-size: var(--fs-body);
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
-  .create-panel-inner .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
-  .create-panel-inner .add-row input[type=text]::placeholder { color: var(--ink-3); }
-  .create-panel-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-  .create-panel-tags { display: flex; gap: var(--space-1); flex-wrap: wrap; }
-  .create-panel-actions { display: flex; gap: var(--space-1-5); align-items: center; flex-shrink: 0; }
+  .create-panel-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
+  .create-panel-input::placeholder { color: var(--ink-3); }
+
+  .create-panel-tags,
+  .create-panel-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .create-panel-reveals { display: flex; flex-direction: column; gap: var(--space-2); }
+  .create-panel-reveals:empty { display: none; }
+
+  .create-panel-submit {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-1);
+  }
 
   /* REPEAT SECTION */
   .repeat-row { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) 0; }
@@ -1468,10 +1532,13 @@
        file are already mobile-first. */
     .user-menu { flex-shrink: 0; }
     .add-section { padding: var(--space-3) var(--space-3) 0; }
-    .add-row { gap: var(--space-1); }
-    .add-row input[type=text] { font-size: var(--fs-search); padding: var(--space-2) var(--space-2-5); }
-    .btn-note { font-size: var(--fs-meta); padding: var(--space-2) var(--space-2); }
-    .btn-add { font-size: var(--fs-pill); padding: var(--space-2) var(--space-3); }
+    /* Mobile create panel — anchored near the top so the on-screen keyboard
+       doesn't hide the input, and Add button stretches full-width for thumb
+       reach. Tag/field rows wrap onto multiple lines as needed. */
+    .create-panel { align-items: flex-start; padding: 80px 16px 16px; }
+    .create-panel-inner { padding: var(--space-4); }
+    .create-panel-submit { justify-content: stretch; }
+    .btn-add { width: 100%; height: 44px; }
     .task-actions { opacity: 1; }
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--ink-3); }
