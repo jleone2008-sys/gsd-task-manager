@@ -9,7 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
 <link rel="stylesheet" href="/app.css">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -408,29 +410,27 @@
 <!-- FLOATING CREATE PANEL -->
 <div class="create-panel" id="createPanel">
   <div class="create-panel-inner">
-    <div class="add-row">
-      <input type="text" id="newTaskInput" placeholder="Add a task...">
+    <input type="text" id="newTaskInput" class="create-panel-input" placeholder="Add a task...">
+
+    <div class="create-panel-tags">
+      <button class="tag-btn t3" id="opt-top3" data-new-tag="top3" type="button" title="Priority" aria-label="Priority">&#9733;</button>
+      <button class="tag-btn biz" id="opt-biz" data-new-tag="biz" type="button">Work</button>
+      <button class="tag-btn personal" id="opt-personal" data-new-tag="personal" type="button">Personal</button>
+      <button class="tag-btn later" id="opt-someday" data-new-tag="someday" type="button">Later</button>
     </div>
-    <div class="add-note-wrap" id="noteWrap">
-      <textarea id="newNoteInput" placeholder="Add a note or paste a URL..."></textarea>
+
+    <div class="create-panel-fields-stack">
+      <label class="create-panel-label">Note</label>
+      <textarea id="newNoteInput" class="create-panel-textarea" placeholder="Optional note or URL"></textarea>
+
+      <label class="create-panel-label">Due date</label>
+      <input type="date" id="newDueDate" class="create-panel-date" formnovalidate>
+
+      <div id="repeatWrap" class="create-panel-repeat"></div>
     </div>
-    <div class="add-note-wrap" id="dueDateWrap" style="padding: 0 0 4px;">
-      <input type="date" id="newDueDate" class="auth-input" style="font-size:12px;padding:7px 10px;color:var(--ink-3);" formnovalidate>
-    </div>
-    <div id="repeatWrap"></div>
-    <div class="create-panel-footer">
-      <div class="create-panel-tags">
-        <button class="tag-btn biz" id="opt-biz" data-new-tag="biz">Work</button>
-        <button class="tag-btn personal" id="opt-personal" data-new-tag="personal">Personal</button>
-        <button class="tag-btn t3" id="opt-top3" data-new-tag="top3">&#9733; Priority</button>
-        <button class="tag-btn" id="opt-someday" data-new-tag="someday">Later</button>
-      </div>
-      <div class="create-panel-actions">
-        <button class="btn-note" id="noteToggle">+ Note</button>
-        <button class="btn-note" id="dueDateToggle">📅 Due</button>
-        <button class="btn-note" id="repeatToggle">↻ Repeat</button>
-        <button class="btn-add" id="btnAddTask">Add</button>
-      </div>
+
+    <div class="create-panel-submit">
+      <button class="btn-add" id="btnAddTask" type="button">Add</button>
     </div>
   </div>
 </div>
@@ -732,6 +732,7 @@
 <script src="/src/03-habits-core.js" defer></script>
 <script src="/src/04-tasks-ui.js" defer></script>
 <script src="/src/05-habits-editor.js" defer></script>
+<script src="/src/12-quill-init.js" defer></script>
 <script src="/src/06-notes.js" defer></script>
 <script src="/src/07-scratch.js" defer></script>
 <script src="/src/08-editor.js" defer></script>

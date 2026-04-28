@@ -493,32 +493,18 @@
   .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .add-row input[type=text]::placeholder { color: var(--ink-3); }
 
-  .btn-note {
-    padding: var(--space-2) var(--space-2-5);
-    border-radius: var(--r-md);
-    border: 1px solid var(--edge-strong);
-    background: var(--surface);
-    color: var(--ink-3);
-    font-family: inherit;
-    font-size: var(--fs-pill);
-    font-weight: var(--fw-medium);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all var(--dur-fast);
-    line-height: 1;
-    flex-shrink: 0;
-  }
-  .btn-note:hover { border-color: var(--guava-500); color: var(--guava-700); }
-  .btn-note.active { border-color: var(--guava-700); color: var(--guava-700); background: var(--plum-bg); }
-
+  /* Primary submit button — fixed dimensions on desktop so it doesn't
+     drift inside the modal. Mobile media query stretches it to full-width
+     for thumb reach. */
   .btn-add {
-    padding: var(--space-2) var(--space-4);
+    height: 36px;
+    padding: 0 24px;
     border-radius: var(--r-md);
     border: none;
     background: var(--guava-700);
     color: #fff;
     font-family: inherit;
-    font-size: var(--fs-search);
+    font-size: var(--fs-body);
     font-weight: var(--fw-semibold);
     cursor: pointer;
     transition: background var(--dur-fast);
@@ -527,14 +513,10 @@
   }
   .btn-add:hover { background: var(--guava-800); }
 
-  .add-note-wrap {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height var(--dur-calm) ease, opacity var(--dur-base);
-    opacity: 0;
-    margin-bottom: 0;
-  }
-  .add-note-wrap.open { max-height: 80px; opacity: 1; margin-bottom: var(--space-1-5); }
+  /* Legacy .add-note-wrap collapse styles removed — Note + Due fields
+     are now always visible inside .create-panel-fields-stack. Edit
+     modal still uses .add-note-wrap so the old textarea rule survives
+     under the renamed selector below. */
   .add-note-wrap textarea {
     width: 100%;
     background: var(--surface);
@@ -546,32 +528,41 @@
     font-size: var(--fs-search);
     outline: none;
     resize: none;
-    height: 60px;
+    min-height: 60px;
   }
   .add-note-wrap textarea:focus { border-color: var(--guava-500); }
   .add-note-wrap textarea::placeholder { color: var(--ink-3); }
 
   .add-tags { display: flex; gap: var(--space-1-5); flex-wrap: wrap; padding-bottom: var(--space-2-5); }
+  /* Tag chip — full-pill shape, identical box dimensions for all four
+     variants so the create-panel tags row reads as a uniform set of
+     toggles. Per-variant rules only override border + selected fill. */
   .tag-btn {
-    padding: var(--space-0-5) var(--space-2);
-    border-radius: var(--r-lg);
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 999px;
     border: 1px solid var(--edge-strong);
     background: var(--surface);
+    color: var(--ink-3);
     font-family: inherit;
     font-size: var(--fs-meta);
+    line-height: 1;
     cursor: pointer;
-    color: var(--ink-3);
-    transition: all var(--dur-fast);
     white-space: nowrap;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
   }
-  .tag-btn.biz { border-color: var(--slate-fg); color: var(--slate-fg); }
-  .tag-btn.personal { border-color: var(--ochre-fg); color: var(--ochre-fg); }
-  .tag-btn.t3 { border-color: var(--guava-700); color: var(--guava-700); padding: var(--space-0-5) var(--space-2); font-size: var(--fs-search); }
+  .tag-btn.biz      { border-color: var(--slate-fg);  color: var(--slate-fg); }
+  .tag-btn.personal { border-color: var(--ochre-fg);  color: var(--ochre-fg); }
+  .tag-btn.t3       { border-color: var(--guava-700); color: var(--guava-700); padding: 0; min-width: 32px; justify-content: center; font-size: 14px; }
+  .tag-btn.later    { border-color: var(--edge-strong); color: var(--ink-3); }
   .tag-btn.selected { font-weight: var(--fw-semibold); }
-  .tag-btn.biz.selected { background: var(--slate-bg); }
+  .tag-btn.biz.selected      { background: var(--slate-bg); }
   .tag-btn.personal.selected { background: var(--ochre-bg); }
-  .tag-btn.t3.selected { background: var(--guava-100); }
+  .tag-btn.t3.selected       { background: var(--guava-100); }
+  .tag-btn.later.selected    { background: var(--surface-2); color: var(--ink); }
 
   /* CONTENT — main column scrollable area.
      padding-top is 0 so the gap from header title → first card is driven
@@ -1306,44 +1297,121 @@
   /* Hide the badge when the count is 0 so idle tabs stay clean. */
   .mobile-nav-badge[data-empty="true"] { display: none; }
 
-  /* FLOATING CREATE PANEL */
+  /* FLOATING CREATE PANEL — full-screen scrim + centered surface card.
+     One coherent design system: every chip the same size, every action
+     button the same size, one card border-radius, one consistent rhythm. */
   .create-panel {
     display: none;
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
-    background: rgba(20,30,80,0.45);
+    background: rgba(20,15,10,0.45);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     align-items: center;
     justify-content: center;
     padding: var(--space-4);
   }
-  .create-panel.open {
-    display: flex;
-  }
+  .create-panel.open { display: flex; }
+
   .create-panel-inner {
     width: 100%;
-    max-width: var(--max-create);
+    max-width: var(--max-modal);
     background: var(--surface);
     border: 1px solid var(--edge);
-    border-radius: var(--r-lg);
+    border-radius: var(--r-md);
     box-shadow: var(--shadow-raised);
-    padding: var(--space-4-5);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     animation: fadeUp var(--dur-mid) var(--ease-spring) both;
+    box-sizing: border-box;
   }
-  .create-panel-inner .add-row { display: flex; gap: var(--space-1-5); align-items: stretch; margin-bottom: var(--space-2); }
-  .create-panel-inner .add-row input[type=text] {
-    flex: 1; padding: var(--space-2) var(--space-3); border-radius: var(--r-md);
-    border: 1px solid var(--edge-strong); font-size: var(--fs-task);
-    font-family: inherit; color: var(--ink); background: var(--surface);
-    outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+
+  .create-panel-input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
+    font-size: var(--fs-body);
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
-  .create-panel-inner .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
-  .create-panel-inner .add-row input[type=text]::placeholder { color: var(--ink-3); }
-  .create-panel-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-  .create-panel-tags { display: flex; gap: var(--space-1); flex-wrap: wrap; }
-  .create-panel-actions { display: flex; gap: var(--space-1-5); align-items: center; flex-shrink: 0; }
+  .create-panel-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
+  .create-panel-input::placeholder { color: var(--ink-3); }
+
+  /* Tag pills row — centered. The four chips share identical box
+     dimensions; only the priority star (.t3) shrinks its horizontal
+     padding so a single character doesn't look stretched. */
+  .create-panel-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: center;
+  }
+
+  /* Always-visible optional fields stack (Note / Due / Repeat). User
+     fills them or leaves them blank; on submit, only populated fields
+     are attached to the new task. */
+  .create-panel-fields-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+  }
+  .create-panel-label {
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: var(--space-1);
+  }
+  .create-panel-label:first-child { margin-top: 0; }
+  .create-panel-textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--fs-search);
+    outline: none;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast);
+  }
+  .create-panel-textarea:focus { border-color: var(--guava-500); }
+  .create-panel-textarea::placeholder { color: var(--ink-3); }
+  .create-panel-date {
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: var(--fs-meta);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast);
+  }
+  .create-panel-date:focus { border-color: var(--guava-500); }
+  .create-panel-repeat { margin-top: var(--space-2); }
+
+  .create-panel-submit {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-1);
+  }
 
   /* REPEAT SECTION */
   .repeat-row { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) 0; }
@@ -1468,10 +1536,13 @@
        file are already mobile-first. */
     .user-menu { flex-shrink: 0; }
     .add-section { padding: var(--space-3) var(--space-3) 0; }
-    .add-row { gap: var(--space-1); }
-    .add-row input[type=text] { font-size: var(--fs-search); padding: var(--space-2) var(--space-2-5); }
-    .btn-note { font-size: var(--fs-meta); padding: var(--space-2) var(--space-2); }
-    .btn-add { font-size: var(--fs-pill); padding: var(--space-2) var(--space-3); }
+    /* Mobile create panel — anchored near the top so the on-screen keyboard
+       doesn't hide the input, and Add button stretches full-width for thumb
+       reach. Tag/field rows wrap onto multiple lines as needed. */
+    .create-panel { align-items: flex-start; padding: 80px 16px 16px; }
+    .create-panel-inner { padding: var(--space-4); }
+    .create-panel-submit { justify-content: stretch; }
+    .btn-add { width: 100%; height: 44px; }
     .task-actions { opacity: 1; }
     .task-text { font-size: var(--fs-search); }
     .drag-handle { opacity: 0.35; display: flex; color: var(--ink-3); }
@@ -2685,22 +2756,56 @@
 
   .notes-editor { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); transition: flex var(--dur-slower) ease; min-width: 480px; min-height: 0; position: relative; }
   .notes-editor > div { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+
+  /* ──────────────────────────────────────────────────────────────
+     Quill 2.x integration — uses our hand-rolled toolbar (.ne-toolbar
+     with .tb-btn buttons styled to match the rest of the app). Quill's
+     snow theme is loaded for the link-tooltip popover only; we strip the
+     chrome it adds to the toolbar/container so the editor reads as a
+     clean writing surface inside the .ne-page card.
+  ────────────────────────────────────────────────────────────── */
+  .ne-quill { display: flex; flex-direction: column; min-height: 0; flex: 1; }
   .ne-toolbar {
     display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1-5) 0;
-    border-bottom: 1px solid var(--edge); background: var(--surface); flex-wrap: wrap;
-    position: sticky; top: 0; z-index: 5; margin-bottom: var(--space-3-5);
+    background: transparent; border: none; flex-wrap: wrap;
+    margin-bottom: var(--space-3-5);
   }
   .tb-group { display: flex; align-items: center; gap: var(--space-0-5); padding-right: var(--space-2); border-right: 1px solid var(--edge); margin-right: var(--space-1-5); }
   .tb-group:last-child { border-right: none; margin-right: 0; padding-right: 0; }
   .tb-btn {
     width: 28px; height: 28px; border-radius: var(--r-md); border: none; background: transparent;
     color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    padding: 0;
   }
-  .tb-btn:hover { background: var(--surface-2); }
-  .tb-btn.tb-active { background: var(--guava-700); color: #fff; }
+  .tb-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .tb-btn.ql-active { background: var(--guava-700); color: #fff; }
+  .tb-btn.ql-active .ql-stroke { stroke: #fff; }
+  .tb-btn.ql-active .ql-fill { fill: #fff; }
   .tb-btn svg { width: 15px; height: 15px; }
-  .tb-select { padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); font-family: inherit; font-size: var(--fs-meta); cursor: pointer; outline: none; }
-  .ne-body { flex: 1; overflow-y: auto; padding: 20px 28px 40px; }
+  /* Quill strips the .ql-snow toolbar styling because we don't add that
+     class to .ne-toolbar (it's our own container). Just neutralize any
+     stray default rules the library might still target. */
+  .ne-toolbar.ql-toolbar { padding: var(--space-1-5) 0; border: none; }
+
+  .ne-quill .ql-container.ql-snow { border: none; font-family: inherit; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .ne-quill .ql-editor {
+    font-family: inherit; font-size: var(--fs-body); color: var(--ink); line-height: 1.7;
+    padding: 0; min-height: 300px; flex: 1;
+  }
+  .ne-quill .ql-editor.ql-blank::before {
+    color: var(--ink-3); font-style: normal; left: 0; right: 0;
+  }
+  .ne-quill .ql-editor h1 { font-size: var(--fs-title); font-weight: var(--fw-black); margin: var(--space-5) 0 var(--space-2); letter-spacing: -0.3px; }
+  .ne-quill .ql-editor h2 { font-size: var(--fs-card); font-weight: var(--fw-bold); margin: var(--space-5) 0 var(--space-1-5); letter-spacing: -0.2px; }
+  .ne-quill .ql-editor p { margin-bottom: var(--space-2-5); }
+  .ne-quill .ql-editor blockquote { border-left: 3px solid var(--guava-700); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
+  .ne-quill .ql-editor a { color: var(--guava-700); text-decoration: underline; cursor: pointer; }
+  /* Link tooltip popover (kept from Snow theme; just colorize). */
+  .ne-quill .ql-snow .ql-tooltip { box-shadow: 0 4px 16px rgba(0,0,0,0.12); border-color: var(--edge); border-radius: var(--r-md); }
+  .ne-quill .ql-snow .ql-tooltip a.ql-action,
+  .ne-quill .ql-snow .ql-tooltip a.ql-remove { color: var(--guava-700); }
+
+  .ne-body { flex: 1; overflow-y: auto; padding: 20px 28px 40px; display: flex; flex-direction: column; min-height: 0; }
   /* .ne-page is a pure content container — the card shell lives on
      .notes-layout so we don't render a card-inside-a-card. No bg, no
      border, no radius, no shadow. */
@@ -2730,19 +2835,9 @@
   .ne-meta-item { display: flex; align-items: center; gap: var(--space-1); }
   .ne-meta-item svg { width: 13px; height: 13px; }
   .ne-meta select { border: 1px solid var(--edge); border-radius: var(--r-sm); padding: var(--space-0-5) var(--space-1-5); font-size: var(--fs-label); font-family: inherit; background: var(--surface); color: var(--ink-2); cursor: pointer; outline: none; }
-  .ne-text { font-size: var(--fs-body); color: var(--ink); line-height: 1.7; outline: none; min-height: 300px; }
-  .ne-text:empty::before { content: attr(data-placeholder); color: var(--ink-3); pointer-events: none; }
-  .ne-text p { margin-bottom: var(--space-2-5); }
-  .ne-text h1 { font-size: var(--fs-title); font-weight: var(--fw-black); margin: var(--space-5) 0 var(--space-2); letter-spacing: -0.3px; }
-  .ne-text h2 { font-size: var(--fs-card); font-weight: var(--fw-bold); margin: var(--space-5) 0 var(--space-1-5); letter-spacing: -0.2px; }
-  .ne-text ul, .ne-text ol { margin: var(--space-1-5) 0 var(--space-2-5) var(--space-4-5); }
-  .ne-text li { margin-bottom: var(--space-0-5); }
-  .ne-text blockquote { border-left: 3px solid var(--guava-700); padding: var(--space-0-5) 0 var(--space-0-5) var(--space-3-5); margin: var(--space-2-5) 0; color: var(--ink-2); font-style: italic; }
-  .ne-text a { color: var(--guava-700); text-decoration: underline; cursor: pointer; }
-  .ne-text .note-checklist-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-0-5) 0; margin: var(--space-0-5) 0; }
-  .ne-text .note-checklist-item input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--guava-700); cursor: pointer; flex-shrink: 0; border-radius: var(--r-sm); }
-  .ne-text .note-checklist-item span { flex: 1; min-width: 0; line-height: 1.5; }
-  .ne-text .note-checklist-item.checked span { text-decoration: line-through; color: var(--ink-3); }
+  /* Legacy .ne-text + .note-checklist-item styles removed — content now
+     lives inside Quill's .ql-editor; see the .ne-quill block above for
+     overrides that match this design. */
   .notes-editor-empty { display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: var(--fs-body); position: absolute; inset: 0; }
   /* Scratch overrides — the card shell lives on .notes-layout now, so
      .ne-page doesn't need one and .scratch-view doesn't need to add one. */
@@ -2755,15 +2850,11 @@
     min-width: 0;
     background: transparent;
   }
-  /* Base .ne-toolbar is sticky with a surface fill + border-bottom. On
-     scratch we want it flush inside the notes-layout card, no sticky. */
+  /* Toolbar inside Scratch — same shape as Notes; the .ne-page card
+     provides the surrounding visual chrome. */
   .scratch-view .ne-toolbar {
-    background: transparent;
-    border: none;
     padding: 0 0 12px;
     margin: 0 0 16px;
-    position: static;
-    box-shadow: none;
   }
   .nl-item.dragging { opacity: 0.4; }
   .nl-item.drag-target { border-color: var(--guava-700); background: rgba(45,95,166,0.06); }
@@ -2816,20 +2907,47 @@
     .nl-item { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-2); }
     .nl-item.active { border-color: var(--guava-700); box-shadow: var(--shadow-card-hover); }
     .notes-editor { display: none; }
+    /* On mobile a selected note opens as a modal: blurred backdrop with the
+       editor as a centered surface card. Tapping the backdrop (or the back
+       button in .mobile-note-header) closes it via deselectNote(). Same
+       padding pattern as .modal-overlay for visual consistency. */
     .notes-editor.mobile-open {
-      display: flex; position: fixed;
-      top: 0; left: 0; right: 0;
-      bottom: calc(68px + env(safe-area-inset-bottom, 0px));   /* clear the tabbar */
-      z-index: var(--z-editor-mobile); flex-direction: column;
+      display: flex;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 15, 10, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: var(--z-editor-mobile);
+      align-items: stretch;
+      justify-content: center;
+      padding: 16px;
+      padding-bottom: calc(16px + 68px + env(safe-area-inset-bottom, 0px));
+      box-sizing: border-box;
+      animation: fadeIn var(--dur-quick) ease both;
+    }
+    .notes-editor.mobile-open > #notesEditorContent {
       background: var(--surface);
+      border: 1px solid var(--edge);
+      border-radius: var(--r-md);
+      width: 100%;
+      max-width: var(--max-modal);
+      box-shadow: var(--shadow-raised);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      animation: fadeUp var(--dur-mid) var(--ease-spring) both;
     }
     .ne-page { padding: var(--space-5) var(--space-4) 80px; border-radius: 0; border-left: none; border-right: none; box-shadow: none; min-height: auto; }
     .ne-toolbar { padding: var(--space-1-5) 0; overflow-x: auto; flex-wrap: nowrap; margin: 0; }
+    .tb-desktop-only { display: none; }
     .ne-body { padding: 0 0 var(--space-8); }
     .ne-title { font-size: var(--fs-title-mobile); }
     .ne-meta { gap: var(--space-2); font-size: var(--fs-meta); }
-    /* Mobile-only tweak: tighten padding vs the shared desktop rule. */
-    .mobile-note-header { padding: var(--space-2) var(--space-3); }
+    /* Show the mobile header (back button + actions) and tighten padding. */
+    .mobile-note-header { display: flex; padding: var(--space-2) var(--space-3); }
     .mobile-nb-toggle {
       display: flex; align-items: center; gap: var(--space-1-5);
       padding: var(--space-2-5) var(--space-3-5); background: var(--surface);
@@ -2844,11 +2962,11 @@
     .tb-desktop-only { display: none; }
     .note-action-btn { display: none; }
   }
-  /* Note-editor header + back button + inline actions.
-     Defined unscoped so they render correctly at every width (desktop AND
-     mobile). A mobile @media tweak above just tightens the padding. */
+  /* Note-editor mobile header (back button + undo/redo + trash + star).
+     Hidden on desktop because the desktop layout already shows trash +
+     star inside .ne-meta — without this gate, users saw duplicate icons. */
   .mobile-note-header {
-    display: flex;
+    display: none;
     align-items: center;
     gap: 10px;
     padding: 12px 20px;

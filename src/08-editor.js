@@ -1,49 +1,10 @@
 
-function noteCmd(e, cmd) {
-  e.preventDefault();
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand(cmd, false, null);
-  setTimeout(updateNoteToolbarState, 10);
-}
-function noteInsertChecklist(e) {
-  e.preventDefault();
-  const editor = document.getElementById('noteContentEditable');
-  if (!editor) return;
-  editor.focus();
-  const sel = window.getSelection();
-  const text = sel.rangeCount ? sel.toString().trim() : '';
-  const label = text || 'Item';
-  document.execCommand('insertHTML', false, '<div class="note-checklist-item"><input type="checkbox"> <span>' + label.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>');
-}
-function noteHighlight(e) {
-  e.preventDefault();
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand('hiliteColor', false, '#fef08a');
-}
-function noteFontSize(size) {
-  document.getElementById('noteContentEditable')?.focus();
-  document.execCommand('fontSize', false, size);
-}
-function noteInsertLink(e) {
-  e.preventDefault();
-  // Save selection before opening modal
-  const sel = window.getSelection();
-  const range = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
-  showInlinePrompt('Insert link', 'https://', url => {
-    if (!url) return;
-    const editor = document.getElementById('noteContentEditable');
-    if (!editor) return;
-    editor.focus();
-    if (range) { sel.removeAllRanges(); sel.addRange(range); }
-    document.execCommand('createLink', false, url);
-    setTimeout(() => {
-      document.querySelectorAll('#noteContentEditable a').forEach(a => {
-        a.setAttribute('target', '_blank');
-        a.setAttribute('rel', 'noopener');
-      });
-    }, 50);
-  });
-}
+// Notes/Scratch rich-text editing migrated to Quill 2.x — see
+// src/12-quill-init.js. The legacy contenteditable + execCommand toolbar
+// helpers (noteCmd / noteInsertChecklist / noteHighlight / noteFontSize /
+// noteInsertLink / updateNoteToolbarState) and the supporting
+// keydown/selectionchange listeners that targeted #noteContentEditable
+// are gone. Quill provides equivalents internally.
 
 function showNoteMenu(e) {
   e.preventDefault(); e.stopPropagation();
@@ -86,46 +47,6 @@ function showNoteMenu(e) {
   }, 10);
 }
 
-// Toolbar active state tracking
-function updateNoteToolbarState() {
-  const btns = document.querySelectorAll('.ne-toolbar .tb-btn');
-  btns.forEach(btn => {
-    const title = btn.getAttribute('title');
-    let active = false;
-    if (title === 'Bold') active = document.queryCommandState('bold');
-    else if (title === 'Italic') active = document.queryCommandState('italic');
-    else if (title === 'Underline') active = document.queryCommandState('underline');
-    btn.classList.toggle('tb-active', active);
-  });
-  // Update heading dropdown
-  const sel = document.querySelector('.ne-toolbar .tb-select');
-  if (sel) {
-    const block = document.queryCommandValue('formatBlock');
-    if (block === 'h1') sel.value = 'h1';
-    else if (block === 'h2') sel.value = 'h2';
-    else sel.value = 'p';
-  }
-}
-
-// Tab indent/outdent in note editor + Enter to break out of indent
-document.addEventListener('keydown', e => {
-  const editor = document.getElementById('noteContentEditable');
-  if (!editor || !editor.contains(e.target)) return;
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null);
-  }
-  // Ctrl+Z / Ctrl+Y for undo/redo
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); document.execCommand('undo'); }
-  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); document.execCommand('redo'); }
-});
-
-// Track selection changes for toolbar state
-document.addEventListener('selectionchange', () => {
-  const editor = document.getElementById('noteContentEditable');
-  if (editor && editor.contains(document.activeElement)) updateNoteToolbarState();
-});
-
 // Helper functions
 function stripHTML(html) {
   const tmp = document.createElement('div');
@@ -157,18 +78,9 @@ function formatNoteDateFull(iso) {
 }
 
 
-function toggleNoteField() {
-  noteOpen = !noteOpen;
-  document.getElementById('noteWrap').classList.toggle('open', noteOpen);
-  document.getElementById('noteToggle').classList.toggle('active', noteOpen);
-  if (noteOpen) document.getElementById('newNoteInput').focus();
-}
-function toggleDueDateField() {
-  dueDateOpen = !dueDateOpen;
-  document.getElementById('dueDateWrap').classList.toggle('open', dueDateOpen);
-  document.getElementById('dueDateToggle').classList.toggle('active', dueDateOpen);
-  if (dueDateOpen) document.getElementById('newDueDate').focus();
-}
+// Note + due-date fields are always visible inside the create panel now;
+// the toggleNoteField / toggleDueDateField / toggleRepeatField helpers
+// (and their click listeners at the bottom of this file) were removed.
 function toggleNewTag(tag) {
   const btn = document.getElementById('opt-'+tag);
   if (newTags.has(tag)) { newTags.delete(tag); btn.classList.remove('selected'); }
@@ -192,14 +104,13 @@ function addTask() {
   document.getElementById('newTaskInput').value = '';
   document.getElementById('newNoteInput').value = '';
   document.getElementById('newDueDate').value = '';
-  noteOpen = false; dueDateOpen = false; repeatOpen = false;
-  document.getElementById('noteWrap').classList.remove('open');
-  document.getElementById('noteToggle').classList.remove('active');
-  document.getElementById('dueDateWrap').classList.remove('open');
-  document.getElementById('dueDateToggle').classList.remove('active');
-  document.getElementById('repeatWrap').innerHTML = '';
-  document.getElementById('repeatToggle').classList.remove('active');
+  // Reset the always-visible repeat picker back to its off-state row.
   newRecur = null;
+  const _repeatWrap = document.getElementById('repeatWrap');
+  if (_repeatWrap) {
+    _repeatWrap.innerHTML = repeatSectionHTML(null);
+    initRepeatListeners(_repeatWrap, false);
+  }
   newTags.clear();
   document.querySelectorAll('.create-panel-tags .tag-btn').forEach(b=>b.classList.remove('selected'));
   closeCreatePanel();
@@ -364,13 +275,9 @@ document.getElementById('editTags').addEventListener('click', e => {
   const btn = e.target.closest('.tag-btn');
   if (btn) btn.classList.toggle('selected');
 });
-// Checklist item toggle inside any note contenteditable
-document.addEventListener('click', e => {
-  const cb = e.target;
-  if (cb && cb.matches && cb.matches('.note-checklist-item > input[type="checkbox"]')) {
-    cb.parentElement.classList.toggle('checked', cb.checked);
-  }
-});
+// Legacy .note-checklist-item click handler removed; Quill renders checkable
+// list items as <ol><li data-list="checked|unchecked"> and handles the
+// click-to-toggle behavior internally.
 document.getElementById('editNoteRich').addEventListener('paste', e => {
   const plain = e.clipboardData.getData('text/plain').trim();
   if (/^https?:\/\/\S+$/.test(plain)) {
@@ -429,7 +336,6 @@ function initNoteClamps() {
 ═══════════════════════════════════════════════ */
 let newRecur = null;
 let editRecur = null;
-let repeatOpen = false;
 
 const _RECUR_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
 
@@ -523,18 +429,9 @@ function initRepeatListeners(wrapEl, isEdit) {
   });
 }
 
-function toggleRepeatField() {
-  repeatOpen = !repeatOpen;
-  const wrap = document.getElementById('repeatWrap');
-  document.getElementById('repeatToggle').classList.toggle('active', repeatOpen);
-  if (repeatOpen) {
-    wrap.innerHTML = repeatSectionHTML(newRecur);
-    initRepeatListeners(wrap, false);
-  } else {
-    wrap.innerHTML = '';
-    newRecur = null;
-  }
-}
+// Repeat picker is always visible inside the create panel now (rendered
+// at app init below). The internal toggle switch in repeatSectionHTML
+// drives whether the task is recurring; toggleRepeatField is gone.
 
 function nextDueDate(due, recur) {
   if (!due) return null;
@@ -627,10 +524,17 @@ document.getElementById('newDueDate').addEventListener('keydown', e => {
 document.querySelectorAll('.create-panel-tags .tag-btn[data-new-tag]').forEach(btn => {
   btn.addEventListener('click', () => toggleNewTag(btn.dataset.newTag));
 });
-document.getElementById('noteToggle').addEventListener('click', toggleNoteField);
-document.getElementById('dueDateToggle').addEventListener('click', toggleDueDateField);
-document.getElementById('repeatToggle').addEventListener('click', toggleRepeatField);
 document.getElementById('btnAddTask').addEventListener('click', addTask);
+
+// Repeat picker is always visible inside the create panel — render the
+// off-state once at boot and wire its internal toggle switch + freq/days
+// controls. Resets after each addTask via repeatSectionHTML(null).
+(function initCreatePanelRepeat() {
+  const wrap = document.getElementById('repeatWrap');
+  if (!wrap) return;
+  wrap.innerHTML = repeatSectionHTML(null);
+  initRepeatListeners(wrap, false);
+})();
 
 document.getElementById('sortDropdown').addEventListener('click', e => {
   e.stopPropagation();
