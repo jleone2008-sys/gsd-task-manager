@@ -188,14 +188,9 @@ function render() {
     done = applySearch(done);
   }
 
-  // Three-tier sort: priority → status → user's chosen sort.
+  // Two-tier sort: priority first, then user's chosen sort.
   view.sort((a, b) => {
     if (a.top3 !== b.top3) return a.top3 ? -1 : 1;
-    if (!a.top3 && !b.top3) {
-      const aIP = a.status === 'in_progress' ? 0 : 1;
-      const bIP = b.status === 'in_progress' ? 0 : 1;
-      if (aIP !== bIP) return aIP - bIP;
-    }
     if (sortBy === 'recent') return b.id - a.id;
     if (sortBy === 'due') {
       const da = a.due || '', db = b.due || '';
@@ -303,14 +298,9 @@ function tHTMLsearch(t, query) {
   const dueHtml = dueBadgeHTML(t.due);
   const recurHtml = recurChipHTML(t.recur);
   const hasMeta = t.tags.length||t.someday||t.due||t.note||subsTag||t.recur;
-  const status = t.status || (t.done ? 'done' : 'todo');
   const cardCls = ['card','task-item'];
   if (t.top3) cardCls.push('top3','is-priority');
-  if (status === 'done') cardCls.push('done','is-done');
-  if (status === 'in_progress') cardCls.push('is-in-progress');
-  const checkAria = status === 'done' ? 'Reopen'
-                  : status === 'in_progress' ? 'Mark complete'
-                  : 'Mark in progress';
+  if (t.done) cardCls.push('done','is-done');
   return `<div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
     <div class="swipe-delete-bg">🗑</div>
     <div class="swipe-complete-bg">✓</div>
@@ -320,7 +310,7 @@ function tHTMLsearch(t, query) {
         <div class="card__title task-text">${highlight(linkify(t.text), query)}</div>
         ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}${recurHtml}</div>` : ''}
       </div>
-      <button class="check checkbox" data-task-action="toggle-done" data-status="${status}" aria-label="${checkAria}">
+      <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done ? 'Reopen' : 'Complete'}">
         <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -444,15 +434,10 @@ function tHTML(t) {
   const subsListHtml = (isExpanded && subs.length)
     ? `<div class="subtask-list" id="subs-${tcid}" data-tcid="${tcid}">${subs.map(s=>subtaskRowHTML(tcid, s)).join('')}</div>`
     : '';
-  const status = t.status || (t.done ? 'done' : 'todo');
   const cardCls = ['card','task-item'];
   if (t.top3)  cardCls.push('top3','is-priority');
-  if (status === 'done') cardCls.push('done','is-done');
-  if (status === 'in_progress') cardCls.push('is-in-progress');
+  if (t.done) cardCls.push('done','is-done');
   if (isExpanded) cardCls.push('is-expanded');
-  const checkAria = status === 'done' ? 'Reopen'
-                  : status === 'in_progress' ? 'Mark complete'
-                  : 'Mark in progress';
   return `<div class="task-group">
     <div class="${cardCls.join(' ')}" id="ti-${t.id}" draggable="true" data-id="${t.id}">
       <div class="swipe-delete-bg">🗑</div>
@@ -463,7 +448,7 @@ function tHTML(t) {
           <div class="card__title task-text">${linkify(t.text)}</div>
           ${hasMeta ? `<div class="card__meta task-meta">${tagHtml}${sdTag}${noteTag}${subsTag}${dueHtml}${recurHtml}</div>` : ''}
         </div>
-        <button class="check checkbox" data-task-action="toggle-done" data-status="${status}" aria-label="${checkAria}">
+        <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done ? 'Reopen' : 'Complete'}">
           <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
       </div>
