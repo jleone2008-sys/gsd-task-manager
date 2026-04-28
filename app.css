@@ -493,38 +493,9 @@
   .add-row input[type=text]:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .add-row input[type=text]::placeholder { color: var(--ink-3); }
 
-  /* Create-panel field-toggle button (+ Note / Due / Repeat). Squared
-     corners + uniform height so the three buttons share a single shape
-     system, distinct from the pill-shaped tag chips. */
-  .btn-field {
-    height: 32px;
-    padding: 0 12px;
-    border-radius: var(--r-md);
-    border: 1px solid var(--edge);
-    background: var(--surface);
-    color: var(--ink-2);
-    font-family: inherit;
-    font-size: var(--fs-pill);
-    font-weight: var(--fw-medium);
-    cursor: pointer;
-    white-space: nowrap;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
-  }
-  .btn-field:hover { background: var(--surface-2); }
-  .btn-field.active {
-    background: var(--guava-50);
-    border-color: var(--guava-500);
-    color: var(--guava-700);
-  }
-
   /* Primary submit button — fixed dimensions on desktop so it doesn't
-     drift relative to the field-toggle row. Mobile media query stretches
-     it to full-width for thumb reach. */
+     drift inside the modal. Mobile media query stretches it to full-width
+     for thumb reach. */
   .btn-add {
     height: 36px;
     padding: 0 24px;
@@ -542,14 +513,10 @@
   }
   .btn-add:hover { background: var(--guava-800); }
 
-  .add-note-wrap {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height var(--dur-calm) ease, opacity var(--dur-base);
-    opacity: 0;
-    margin-bottom: 0;
-  }
-  .add-note-wrap.open { max-height: 80px; opacity: 1; margin-bottom: var(--space-1-5); }
+  /* Legacy .add-note-wrap collapse styles removed — Note + Due fields
+     are now always visible inside .create-panel-fields-stack. Edit
+     modal still uses .add-note-wrap so the old textarea rule survives
+     under the renamed selector below. */
   .add-note-wrap textarea {
     width: 100%;
     background: var(--surface);
@@ -561,24 +528,10 @@
     font-size: var(--fs-search);
     outline: none;
     resize: none;
-    height: 60px;
+    min-height: 60px;
   }
   .add-note-wrap textarea:focus { border-color: var(--guava-500); }
   .add-note-wrap textarea::placeholder { color: var(--ink-3); }
-  .add-note-wrap input[type="date"] {
-    width: 100%;
-    height: 36px;
-    padding: 0 var(--space-3);
-    border: 1px solid var(--edge-strong);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    color: var(--ink-2);
-    font-family: inherit;
-    font-size: var(--fs-meta);
-    outline: none;
-    box-sizing: border-box;
-  }
-  .add-note-wrap input[type="date"]:focus { border-color: var(--guava-500); }
 
   .add-tags { display: flex; gap: var(--space-1-5); flex-wrap: wrap; padding-bottom: var(--space-2-5); }
   /* Tag chip — full-pill shape, identical box dimensions for all four
@@ -603,7 +556,7 @@
   }
   .tag-btn.biz      { border-color: var(--slate-fg);  color: var(--slate-fg); }
   .tag-btn.personal { border-color: var(--ochre-fg);  color: var(--ochre-fg); }
-  .tag-btn.t3       { border-color: var(--guava-700); color: var(--guava-700); }
+  .tag-btn.t3       { border-color: var(--guava-700); color: var(--guava-700); padding: 0; min-width: 32px; justify-content: center; font-size: 14px; }
   .tag-btn.later    { border-color: var(--edge-strong); color: var(--ink-3); }
   .tag-btn.selected { font-weight: var(--fw-semibold); }
   .tag-btn.biz.selected      { background: var(--slate-bg); }
@@ -1393,15 +1346,66 @@
   .create-panel-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .create-panel-input::placeholder { color: var(--ink-3); }
 
-  .create-panel-tags,
-  .create-panel-fields {
+  /* Tag pills row — centered. The four chips share identical box
+     dimensions; only the priority star (.t3) shrinks its horizontal
+     padding so a single character doesn't look stretched. */
+  .create-panel-tags {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
+    justify-content: center;
   }
 
-  .create-panel-reveals { display: flex; flex-direction: column; gap: var(--space-2); }
-  .create-panel-reveals:empty { display: none; }
+  /* Always-visible optional fields stack (Note / Due / Repeat). User
+     fills them or leaves them blank; on submit, only populated fields
+     are attached to the new task. */
+  .create-panel-fields-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1-5);
+  }
+  .create-panel-label {
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: var(--space-1);
+  }
+  .create-panel-label:first-child { margin-top: 0; }
+  .create-panel-textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--fs-search);
+    outline: none;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast);
+  }
+  .create-panel-textarea:focus { border-color: var(--guava-500); }
+  .create-panel-textarea::placeholder { color: var(--ink-3); }
+  .create-panel-date {
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: var(--fs-meta);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast);
+  }
+  .create-panel-date:focus { border-color: var(--guava-500); }
+  .create-panel-repeat { margin-top: var(--space-2); }
 
   .create-panel-submit {
     display: flex;

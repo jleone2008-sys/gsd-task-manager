@@ -413,26 +413,20 @@
     <input type="text" id="newTaskInput" class="create-panel-input" placeholder="Add a task...">
 
     <div class="create-panel-tags">
+      <button class="tag-btn t3" id="opt-top3" data-new-tag="top3" type="button" title="Priority" aria-label="Priority">&#9733;</button>
       <button class="tag-btn biz" id="opt-biz" data-new-tag="biz" type="button">Work</button>
       <button class="tag-btn personal" id="opt-personal" data-new-tag="personal" type="button">Personal</button>
-      <button class="tag-btn t3" id="opt-top3" data-new-tag="top3" type="button">&#9733; Priority</button>
       <button class="tag-btn later" id="opt-someday" data-new-tag="someday" type="button">Later</button>
     </div>
 
-    <div class="create-panel-fields">
-      <button class="btn-field" id="noteToggle" type="button">+ Note</button>
-      <button class="btn-field" id="dueDateToggle" type="button">📅 Due</button>
-      <button class="btn-field" id="repeatToggle" type="button">↻ Repeat</button>
-    </div>
+    <div class="create-panel-fields-stack">
+      <label class="create-panel-label">Note</label>
+      <textarea id="newNoteInput" class="create-panel-textarea" placeholder="Optional note or URL"></textarea>
 
-    <div class="create-panel-reveals">
-      <div class="add-note-wrap" id="noteWrap">
-        <textarea id="newNoteInput" placeholder="Add a note or paste a URL..."></textarea>
-      </div>
-      <div class="add-note-wrap" id="dueDateWrap">
-        <input type="date" id="newDueDate" formnovalidate>
-      </div>
-      <div id="repeatWrap"></div>
+      <label class="create-panel-label">Due date</label>
+      <input type="date" id="newDueDate" class="create-panel-date" formnovalidate>
+
+      <div id="repeatWrap" class="create-panel-repeat"></div>
     </div>
 
     <div class="create-panel-submit">
