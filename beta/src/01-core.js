@@ -548,6 +548,37 @@ document.addEventListener('keydown', e => {
   const tool = map[e.key.toUpperCase()];
   if (tool) { e.preventDefault(); switchTool(tool); }
 });
+
+// "F" — focus the floating search bar on Tasks / Notes tabs. Desktop
+// only, no modifiers, never when the user is typing or has any modal
+// open. Beta also checks the journal modals (#jEditModal / #jViewModal)
+// in addition to the prod modal set.
+function _isAnyModalOpen() {
+  const openIds = ['createPanel','editModal','habitCreatePanel','habitEditOverlay','habitDrillOverlay'];
+  for (const id of openIds) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains('open')) return true;
+  }
+  if (document.querySelector('.modal-overlay.open')) return true;
+  if (document.querySelector('.confirm-overlay.visible, .confirm-overlay.open')) return true;
+  // Beta-only modal markers — journal edit/view modals attach to body
+  // when opened and disappear on close.
+  if (document.getElementById('jEditModal')) return true;
+  if (document.getElementById('jViewModal')) return true;
+  return false;
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'f') return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+  if (window.innerWidth < 900) return;
+  if (typeof activeTool !== 'string' || (activeTool !== 'tasks' && activeTool !== 'notes')) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
+  if (_isAnyModalOpen()) return;
+  if (typeof expandFloatingSearch !== 'function') return;
+  e.preventDefault();
+  expandFloatingSearch();
+});
 window.addEventListener('popstate', e => {
   _navFromPop = true;
   const drillOverlay = document.getElementById('habitDrillOverlay');

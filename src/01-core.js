@@ -462,6 +462,33 @@ document.addEventListener('keydown', e => {
   const tool = map[e.key.toUpperCase()];
   if (tool) { e.preventDefault(); switchTool(tool); }
 });
+
+// "F" — focus the floating search bar on Tasks / Notes tabs. Desktop only,
+// no modifiers, never when the user is typing into a field or has any
+// modal open. Skipped on mobile because the floating search expand
+// pushes the layout in a way that's noisy without a keyboard.
+function _isAnyModalOpen() {
+  const openIds = ['createPanel','editModal','habitCreatePanel','habitEditOverlay','habitDrillOverlay'];
+  for (const id of openIds) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains('open')) return true;
+  }
+  if (document.querySelector('.modal-overlay.open')) return true;
+  if (document.querySelector('.confirm-overlay.visible, .confirm-overlay.open')) return true;
+  return false;
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'f') return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+  if (window.innerWidth < 900) return;
+  if (typeof activeTool !== 'string' || (activeTool !== 'tasks' && activeTool !== 'notes')) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
+  if (_isAnyModalOpen()) return;
+  if (typeof expandFloatingSearch !== 'function') return;
+  e.preventDefault();
+  expandFloatingSearch();
+});
 // Handle browser back/forward (swipe gestures on mobile). Re-parse the URL so
 // path-based state (tool + habit view + task filter) is restored on every nav.
 window.addEventListener('popstate', e => {
