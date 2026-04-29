@@ -463,10 +463,11 @@ document.addEventListener('keydown', e => {
   if (tool) { e.preventDefault(); switchTool(tool); }
 });
 
-// "F" — focus the floating search bar on Tasks / Notes tabs. Desktop only,
-// no modifiers, never when the user is typing into a field or has any
-// modal open. Skipped on mobile because the floating search expand
-// pushes the layout in a way that's noisy without a keyboard.
+// "F" — focus the floating search bar on Tasks / Notes tabs. No modifiers,
+// never when the user is typing into a field or has any modal open. Works
+// at any viewport width (the existing guards keep it from firing where it
+// shouldn't); a narrow desktop window with a physical keyboard still gets
+// the shortcut.
 function _isAnyModalOpen() {
   const openIds = ['createPanel','editModal','habitCreatePanel','habitEditOverlay','habitDrillOverlay'];
   for (const id of openIds) {
@@ -480,7 +481,6 @@ function _isAnyModalOpen() {
 document.addEventListener('keydown', e => {
   if (e.key !== 'f') return;
   if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-  if (window.innerWidth < 900) return;
   if (typeof activeTool !== 'string' || (activeTool !== 'tasks' && activeTool !== 'notes')) return;
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
