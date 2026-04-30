@@ -2895,6 +2895,7 @@
        padding pattern as .modal-overlay for visual consistency. */
     .notes-editor.mobile-open {
       display: flex;
+      flex-direction: row;
       position: fixed;
       inset: 0;
       background: rgba(20, 15, 10, 0.45);
@@ -2945,10 +2946,14 @@
     .note-action-btn { display: none; }
   }
   /* Note-editor mobile header (back button + undo/redo + trash + star).
-     Hidden on desktop because the desktop layout already shows trash +
-     star inside .ne-meta — without this gate, users saw duplicate icons. */
+     The mobile media query above sets display:flex; the desktop default
+     here hides it because the desktop layout already shows trash + star
+     inside .ne-meta — without this gate, users saw duplicate icons.
+     Gated to (min-width: 900px) so it doesn't override the mobile rule. */
+  @media (min-width: 900px) {
+    .mobile-note-header { display: none; }
+  }
   .mobile-note-header {
-    display: none;
     align-items: center;
     gap: 10px;
     padding: 12px 20px;
