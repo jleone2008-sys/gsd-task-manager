@@ -273,6 +273,7 @@ let selectedUser = null;
 let activeDetailTab = 'profile';
 let googleTokenCache = {}; // email → { token, expires }
 let driveFolderStack = [{ id: 'root', name: 'My Drive' }];
+let driveImageList = []; // {id, mimeType, name}[] — image files in current folder, used for preview nav
 
 /* ════════════════════════════════════════
    INIT
@@ -586,6 +587,9 @@ async function loadDrive(area, token) {
   const url    = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&orderBy=folder,name&fields=${fields}`;
   const data   = await googleFetch(url, token, selectedUser.email);
   const files  = data.files || [];
+  driveImageList = files
+    .filter(f => f.mimeType && f.mimeType.startsWith('image/') && f.mimeType !== 'application/vnd.google-apps.folder')
+    .map(f => ({ id: f.id, mimeType: f.mimeType, name: f.name }));
 
   const crumbs = driveFolderStack.map((f, i) => {
     const isLast = i === driveFolderStack.length - 1;
@@ -659,65 +663,114 @@ function attachDriveHandlers(area) {
 }
 
 async function previewDriveImage(fileId, mimeType, fileName) {
+  // Resolve starting index from the folder's image list (fallback if list missing)
+  let currentIndex = driveImageList.findIndex(f => f.id === fileId);
+  if (currentIndex === -1) {
+    driveImageList = [{ id: fileId, mimeType, name: fileName }];
+    currentIndex = 0;
+  }
+  const hasMultiple = driveImageList.length > 1;
+
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;cursor:zoom-out';
+  const navBtnStyle = 'position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:none;width:3rem;height:3rem;border-radius:50%;font-size:1.5rem;cursor:pointer;z-index:1;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = `<div style="color:#fff;font-size:.875rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
-      <span>${escHtml(fileName)}</span>
+      <span id="previewFileName">${escHtml(fileName)}</span>
+      <span id="previewCounter" style="color:#9aaabb;font-size:.75rem"></span>
       <button id="previewDownloadBtn" style="background:#fff;color:#1e3a5f;border:none;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">⬇ Download</button>
       <button id="previewCloseBtn" style="background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">Close (Esc)</button>
     </div>
-    <div id="previewBody" style="color:#fff;font-size:.875rem;flex:1;width:100%;max-height:calc(100vh - 7rem);overflow:auto;text-align:center;display:flex;align-items:center;justify-content:center">Loading…</div>`;
+    <div id="previewBody" style="color:#fff;font-size:.875rem;flex:1;width:100%;display:flex;align-items:center;justify-content:center">Loading…</div>
+    ${hasMultiple ? `<button id="previewPrevBtn" style="${navBtnStyle};left:1rem" title="Previous (←)">‹</button><button id="previewNextBtn" style="${navBtnStyle};right:1rem" title="Next (→)">›</button>` : ''}`;
   document.body.appendChild(overlay);
+
+  let currentBlobUrl = null;
+  let loadToken = 0; // guards against out-of-order loads when navigating quickly
 
   const close = () => {
     document.removeEventListener('keydown', onKey, true);
     if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
     overlay.remove();
   };
+
+  const triggerDownload = () => {
+    if (!currentBlobUrl) return;
+    const file = driveImageList[currentIndex];
+    const a = document.createElement('a');
+    a.href = currentBlobUrl;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const loadImage = async () => {
+    const myToken = ++loadToken;
+    const file = driveImageList[currentIndex];
+    overlay.querySelector('#previewFileName').textContent = file.name;
+    overlay.querySelector('#previewCounter').textContent = hasMultiple ? `${currentIndex + 1} / ${driveImageList.length}` : '';
+    const body = overlay.querySelector('#previewBody');
+    body.style.display = 'flex';
+    body.textContent = 'Loading…';
+
+    if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+
+    try {
+      const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: file.id, mime_type: file.mimeType });
+      if (myToken !== loadToken) return; // user navigated away
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+      const { download_url, access_token } = await res.json();
+      const fileRes = await fetch(download_url, { headers: { Authorization: `Bearer ${access_token}` } });
+      if (myToken !== loadToken) return;
+      if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+      const blob = await fileRes.blob();
+      if (myToken !== loadToken) return;
+      currentBlobUrl = URL.createObjectURL(blob);
+      body.innerHTML = `<img src="${currentBlobUrl}" alt="${escHtml(file.name)}" id="previewImg" style="display:inline-block;cursor:default;max-width:500px;max-height:500px;object-fit:contain">`;
+      const img = body.querySelector('#previewImg');
+      img.addEventListener('click', e => e.stopPropagation());
+      img.addEventListener('contextmenu', (e) => { e.preventDefault(); triggerDownload(); });
+    } catch (err) {
+      if (myToken !== loadToken) return;
+      body.textContent = 'Preview failed: ' + err.message;
+    }
+  };
+
+  const navigate = (delta) => {
+    if (!hasMultiple) return;
+    currentIndex = (currentIndex + delta + driveImageList.length) % driveImageList.length;
+    loadImage();
+  };
+
   const onKey = (e) => {
     if (e.key === 'Escape') {
       e.stopPropagation();
       e.stopImmediatePropagation();
       e.preventDefault();
       close();
+    } else if (e.key === 'ArrowLeft' && hasMultiple) {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      navigate(-1);
+    } else if (e.key === 'ArrowRight' && hasMultiple) {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      navigate(1);
     }
   };
+
   document.addEventListener('keydown', onKey, true);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   overlay.querySelector('#previewCloseBtn').addEventListener('click', close);
-
-  let currentBlobUrl = null;
-  const triggerDownload = () => {
-    if (!currentBlobUrl) return;
-    const a = document.createElement('a');
-    a.href = currentBlobUrl;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  try {
-    const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: fileId, mime_type: mimeType });
-    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
-    const { download_url, access_token } = await res.json();
-    const fileRes = await fetch(download_url, { headers: { Authorization: `Bearer ${access_token}` } });
-    if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
-    const blob = await fileRes.blob();
-    currentBlobUrl = URL.createObjectURL(blob);
-    const body = overlay.querySelector('#previewBody');
-    body.style.display = 'block';
-    body.innerHTML = `<img src="${currentBlobUrl}" alt="${escHtml(fileName)}" id="previewImg" style="display:inline-block;cursor:default;max-width:none;max-height:none">`;
-    const img = overlay.querySelector('#previewImg');
-    img.addEventListener('click', e => e.stopPropagation());
-    img.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      triggerDownload();
-    });
-    overlay.querySelector('#previewDownloadBtn').addEventListener('click', triggerDownload);
-  } catch (err) {
-    overlay.querySelector('#previewBody').textContent = 'Preview failed: ' + err.message;
+  overlay.querySelector('#previewDownloadBtn').addEventListener('click', triggerDownload);
+  if (hasMultiple) {
+    overlay.querySelector('#previewPrevBtn').addEventListener('click', (e) => { e.stopPropagation(); navigate(-1); });
+    overlay.querySelector('#previewNextBtn').addEventListener('click', (e) => { e.stopPropagation(); navigate(1); });
   }
+
+  await loadImage();
 }
 
 async function downloadDriveFile(fileId, mimeType, fileName, btn) {
