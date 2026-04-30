@@ -666,20 +666,37 @@ async function previewDriveImage(fileId, mimeType, fileName) {
       <button id="previewDownloadBtn" style="background:#fff;color:#1e3a5f;border:none;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">⬇ Download</button>
       <button id="previewCloseBtn" style="background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:.35rem .75rem;font-size:.8rem;cursor:pointer">Close (Esc)</button>
     </div>
-    <div id="previewBody" style="color:#fff;font-size:.875rem;flex:1;display:flex;align-items:center;justify-content:center;max-width:100%;max-height:80vh">Loading…</div>`;
+    <div id="previewBody" style="color:#fff;font-size:.875rem;flex:1;width:100%;max-height:calc(100vh - 7rem);overflow:auto;text-align:center;display:flex;align-items:center;justify-content:center">Loading…</div>`;
   document.body.appendChild(overlay);
 
   const close = () => {
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
     if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
     overlay.remove();
   };
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', onKey);
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      close();
+    }
+  };
+  document.addEventListener('keydown', onKey, true);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   overlay.querySelector('#previewCloseBtn').addEventListener('click', close);
 
   let currentBlobUrl = null;
+  const triggerDownload = () => {
+    if (!currentBlobUrl) return;
+    const a = document.createElement('a');
+    a.href = currentBlobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   try {
     const res = await adminFetch('POST', { action: 'get-drive-download-info', target_email: selectedUser.email, file_id: fileId, mime_type: mimeType });
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
@@ -688,15 +705,16 @@ async function previewDriveImage(fileId, mimeType, fileName) {
     if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
     const blob = await fileRes.blob();
     currentBlobUrl = URL.createObjectURL(blob);
-    overlay.querySelector('#previewBody').innerHTML = `<img src="${currentBlobUrl}" alt="${escHtml(fileName)}" style="max-width:100%;max-height:80vh;object-fit:contain;cursor:default" onclick="event.stopPropagation()">`;
-    overlay.querySelector('#previewDownloadBtn').addEventListener('click', () => {
-      const a = document.createElement('a');
-      a.href = currentBlobUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+    const body = overlay.querySelector('#previewBody');
+    body.style.display = 'block';
+    body.innerHTML = `<img src="${currentBlobUrl}" alt="${escHtml(fileName)}" id="previewImg" style="display:inline-block;cursor:default;max-width:none;max-height:none">`;
+    const img = overlay.querySelector('#previewImg');
+    img.addEventListener('click', e => e.stopPropagation());
+    img.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      triggerDownload();
     });
+    overlay.querySelector('#previewDownloadBtn').addEventListener('click', triggerDownload);
   } catch (err) {
     overlay.querySelector('#previewBody').textContent = 'Preview failed: ' + err.message;
   }
