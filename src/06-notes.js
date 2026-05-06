@@ -618,7 +618,7 @@ function renderNoteEditor() {
     </div>
     <div class="ne-body">
       <div class="ne-page">
-        <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" autocomplete="off" autocorrect="off" spellcheck="false">
+        <input class="ne-title" id="noteTitleInput" type="text" placeholder="Untitled" value="${escAttr(note.title)}" autocomplete="off" spellcheck="true">
         <div class="ne-meta">
           <div class="ne-meta-item">
             ${noteNbTag}
@@ -839,7 +839,7 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
   overlay.style.display = 'flex';
   overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px 24px;width:90%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.15)">
     <div style="font-size:15px;font-weight:700;margin-bottom:12px">${title}</div>
-    <input id="inlinePromptInput" type="text" value="${escAttr(defaultVal || '')}" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
+    <input id="inlinePromptInput" type="text" value="${escAttr(defaultVal || '')}" spellcheck="true" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button data-notes-action="close-inline-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
       <button id="inlinePromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
@@ -899,7 +899,7 @@ function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onCon
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <button class="emoji-pick-btn" id="nbEmojiBtn" title="Tap to pick icon">${defaultIcon || '📓'}</button>
       <div style="flex:1">
-        <input id="nbPromptInput" type="text" value="${escAttr(defaultName || '')}" placeholder="Notebook name..." style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
+        <input id="nbPromptInput" type="text" value="${escAttr(defaultName || '')}" placeholder="Notebook name..." spellcheck="true" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
       </div>
     </div>
     <div class="emoji-grid" id="nbEmojiGrid" style="display:none">

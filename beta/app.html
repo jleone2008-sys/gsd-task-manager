@@ -410,7 +410,7 @@
 <!-- FLOATING CREATE PANEL -->
 <div class="create-panel" id="createPanel">
   <div class="create-panel-inner">
-    <input type="text" id="newTaskInput" class="create-panel-input" placeholder="Add a task...">
+    <input type="text" id="newTaskInput" class="create-panel-input" placeholder="Add a task..." spellcheck="true">
 
     <div class="create-panel-tags">
       <button class="tag-btn t3" id="opt-top3" data-new-tag="top3" type="button" title="Priority" aria-label="Priority">&#9733;</button>
@@ -421,7 +421,7 @@
 
     <div class="create-panel-fields-stack">
       <label class="create-panel-label">Note</label>
-      <textarea id="newNoteInput" class="create-panel-textarea" placeholder="Optional note or URL"></textarea>
+      <textarea id="newNoteInput" class="create-panel-textarea" placeholder="Optional note or URL" spellcheck="true"></textarea>
 
       <label class="create-panel-label">Due date</label>
       <input type="date" id="newDueDate" class="create-panel-date" formnovalidate>
@@ -443,7 +443,7 @@
         <button class="emoji-pick-btn" id="habitEmojiBtn" title="Tap to change icon">✅</button>
         <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
       </div>
-      <input type="text" id="habitNameInput" placeholder="Habit name...">
+      <input type="text" id="habitNameInput" placeholder="Habit name..." spellcheck="true">
     </div>
     <div class="emoji-grid" id="habitEmojiGrid" style="display:none">
       <button data-emoji-target="create" data-emoji="🏃">🏃</button><button data-emoji-target="create" data-emoji="💪">💪</button>
@@ -510,7 +510,7 @@
         <button class="emoji-pick-btn" id="habitEditEmojiBtn" title="Tap to change icon">✅</button>
         <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
       </div>
-      <input type="text" id="habitEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
+      <input type="text" id="habitEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
     </div>
     <div class="emoji-grid" id="habitEditEmojiGrid" style="display:none">
       <button data-emoji-target="edit" data-emoji="🏃">🏃</button><button data-emoji-target="edit" data-emoji="💪">💪</button>
@@ -613,7 +613,7 @@
               <button class="emoji-pick-btn" id="drillEditEmojiBtn" title="Tap to change icon">✅</button>
               <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
             </div>
-            <input type="text" id="drillEditName" placeholder="Habit name..." style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
+            <input type="text" id="drillEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
           </div>
           <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
             <button data-emoji-target="drill" data-emoji="🏃">🏃</button><button data-emoji-target="drill" data-emoji="💪">💪</button>
@@ -688,7 +688,7 @@
       <span class="modal-title">Edit Task</span>
       <button class="modal-close" id="editModalClose">&#x2715;</button>
     </div>
-    <textarea class="modal-textarea" id="editText" rows="2" placeholder="Task..."></textarea>
+    <textarea class="modal-textarea" id="editText" rows="2" placeholder="Task..." spellcheck="true"></textarea>
 
     <!-- Rich text note -->
     <div style="margin-bottom:12px;">
@@ -700,7 +700,7 @@
         <div class="rich-btn-sep"></div>
         <button class="rich-btn" id="richLinkBtn" title="Link">🔗</button>
       </div>
-      <div class="rich-editor" id="editNoteRich" contenteditable="true"
+      <div class="rich-editor" id="editNoteRich" contenteditable="true" spellcheck="true"
         data-placeholder="Add a note…">
       </div>
     </div>
