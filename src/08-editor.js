@@ -89,7 +89,13 @@ function toggleNewTag(tag) {
 function addTask() {
   const text = document.getElementById('newTaskInput').value.trim();
   if (!text) return;
-  const note = document.getElementById('newNoteInput').value.trim();
+  const noteRaw = document.getElementById('newNoteInput').value.trim();
+  // Textarea stores plain text with \n; the rest of the app renders notes as
+  // HTML via DOMPurify, where \n doesn't produce a line break. Wrap each line
+  // in <p> to match the format Quill emits when editing existing notes.
+  const note = noteRaw
+    ? noteRaw.split(/\r?\n/).map(line => `<p>${escHTML(line) || '<br>'}</p>`).join('')
+    : '';
   const due = document.getElementById('newDueDate').value || null;
   const newTask = {
     id: Date.now(), text,
