@@ -38,11 +38,22 @@ function createQuillEditor(editorContainer, opts = {}) {
   const toolbar = opts.toolbarContainer
     ? { container: opts.toolbarContainer, handlers: quillToolbarHandlers() }
     : false;
-  return new Quill(editorContainer, {
+  const quill = new Quill(editorContainer, {
     theme: 'snow',
     placeholder: opts.placeholder || '',
     modules: { toolbar },
   });
+  // Quill's selection module hooks mousedown/selectionchange and resyncs its
+  // internal range, which races with the browser's "select misspelled word
+  // for spellcheck" step on right-click — the suggestions submenu never
+  // appears. Swallow right-click mousedowns in the capture phase so Quill
+  // doesn't see them; the browser still gets to select the word and show
+  // its native context menu with spell suggestions. Left-click cursor
+  // positioning is unaffected.
+  quill.root.addEventListener('mousedown', e => {
+    if (e.button === 2) e.stopImmediatePropagation();
+  }, true);
+  return quill;
 }
 
 function renderCustomToolbar(toolbarId) {

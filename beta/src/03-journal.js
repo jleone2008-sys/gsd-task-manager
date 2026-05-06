@@ -1089,7 +1089,7 @@ function renderEditModalBody(ds) {
   return `
     <div class="j-section">
       <div class="j-section-h">Reflection</div>
-      <textarea class="j-textarea" id="jReflections" placeholder="How did today go? What's on your mind?">${escapeHtml(entry.reflections || '')}</textarea>
+      <textarea class="j-textarea" id="jReflections" placeholder="How did today go? What's on your mind?" spellcheck="true">${escapeHtml(entry.reflections || '')}</textarea>
     </div>
     <div class="j-section">
       <div class="j-section-h">Mood</div>
