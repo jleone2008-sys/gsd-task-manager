@@ -2,11 +2,10 @@
 // server-side so the Dropbox app secret never touches the browser, and encrypts
 // the refresh token before storing it in user_profiles.dropbox_refresh_token_enc.
 //
-// Identifies the GSD user by validating the Supabase JWT passed back in the
-// OAuth `state` param (the client puts it there before kicking off authorize).
-// This prevents cross-user token planting / CSRF.
+// Identifies the GSD user by validating the Supabase access_token passed back
+// in the OAuth `state` param via Supabase's /auth/v1/user endpoint.
 
-const { createCipheriv, randomBytes, createHmac } = require('crypto');
+const { createCipheriv, randomBytes } = require('crypto');
 
 const DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
 const SUPABASE_URL      = 'https://dmuwncwptvnnlizuxhta.supabase.co';
@@ -25,10 +24,34 @@ exports.handler = async (event) => {
     return redirect('/beta/app#dropbox_error=missing_code_or_state');
   }
 
-  // Validate the state JWT to identify the caller
-  const claims = verifySupabaseJwt(state);
-  if (!claims?.email || !claims?.sub) {
-    return redirect('/beta/app#dropbox_error=invalid_state');
+  // Identify the GSD user by asking Supabase to validate the access_token
+  // we tucked into the OAuth state param.
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!serviceKey) {
+    console.error('Missing SUPABASE_SERVICE_KEY env var');
+    return redirect('/beta/app#dropbox_error=server_misconfiguration_supabase');
+  }
+
+  let callerEmail;
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'apikey':        serviceKey,
+        'Authorization': `Bearer ${state}`,
+      },
+    });
+    if (!userRes.ok) {
+      console.error('Supabase /auth/v1/user rejected state token:', userRes.status, await userRes.text().catch(() => ''));
+      return redirect('/beta/app#dropbox_error=invalid_state');
+    }
+    const userData = await userRes.json();
+    callerEmail = userData.email;
+  } catch (err) {
+    console.error('State validation fetch failed:', err.message);
+    return redirect('/beta/app#dropbox_error=state_validation_failed');
+  }
+  if (!callerEmail) {
+    return redirect('/beta/app#dropbox_error=state_no_email');
   }
 
   const clientSecret = process.env.BETA_DROPBOX_CLIENT_SECRET;
@@ -79,7 +102,7 @@ exports.handler = async (event) => {
 
   // Encrypt and store the refresh token
   try {
-    await storeDropboxRefreshToken(claims.email, tokens.refresh_token, dropboxAccountEmail);
+    await storeDropboxRefreshToken(callerEmail, tokens.refresh_token, dropboxAccountEmail);
   } catch (err) {
     console.error('Failed to store Dropbox refresh token:', err.message);
     return redirect('/beta/app#dropbox_error=store_failed');
@@ -99,31 +122,6 @@ function encryptToken(plaintext, hexKey) {
   const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, ct]).toString('base64');
-}
-
-function verifySupabaseJwt(token) {
-  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
-  if (!jwtSecret) {
-    console.error('SUPABASE_JWT_SECRET not set');
-    return null;
-  }
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-
-  const [header, payload, sig] = parts;
-  const expected = createHmac('sha256', jwtSecret)
-    .update(`${header}.${payload}`)
-    .digest('base64url');
-  if (sig !== expected) return null;
-
-  let claims;
-  try {
-    claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-  } catch {
-    return null;
-  }
-  if (claims.exp && claims.exp < Math.floor(Date.now() / 1000)) return null;
-  return claims;
 }
 
 async function storeDropboxRefreshToken(email, refreshToken, dropboxAccountEmail) {
