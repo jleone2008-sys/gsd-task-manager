@@ -1634,7 +1634,7 @@ async function handleViewAsUser(email) {
 async function handleRevokeToken(email) {
   if (!confirm(`Revoke stored Google token for ${email}? They will need to sign in again.`)) return;
   try {
-    const res  = await adminFetch('POST', { action: 'revoke-token', target_email: email });
+    const res  = await adminFetch('POST', { action: 'revoke-token', email });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
