@@ -12,7 +12,7 @@ const BETA_DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
 // developer console (developer.whoop.com / cloud.ouraring.com/oauth/applications).
 // Until populated, the connect button stays disabled with a "not yet configured" tooltip.
 const BETA_WHOOP_CLIENT_ID = '';
-const BETA_OURA_CLIENT_ID  = '';
+const BETA_OURA_CLIENT_ID  = '718bad26-5171-4dc7-addc-ca20cd1a4f73';
 
 const SETTINGS_DEFAULTS = {
   enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal'],
@@ -461,7 +461,7 @@ async function startOuraConnect() {
     client_id:     BETA_OURA_CLIENT_ID,
     redirect_uri:  window.location.origin + '/.netlify/functions/beta-oura-auth',
     response_type: 'code',
-    scope:         'daily heartrate workout tag session personal',
+    scope:         'email personal daily heartrate workout tag session spo2Daily ring_configuration',
     state:         session.access_token,
   });
   window.location.href = 'https://cloud.ouraring.com/oauth/authorize?' + params;
