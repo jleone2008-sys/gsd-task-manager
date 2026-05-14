@@ -35,3 +35,8 @@
   from = "/admin"
   to = "/admin/app.html"
   status = 200
+
+# Daily Whoop + Oura sync. 04:00 UTC = late evening US, so prior-day metrics
+# have finalized in both vendor APIs by the time we pull.
+[functions."cron-health-sync"]
+  schedule = "0 4 * * *"

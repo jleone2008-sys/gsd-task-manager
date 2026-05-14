@@ -690,8 +690,9 @@ async function restoreSession() {
   // Handle redirect back from Netlify OAuth proxy
   if (await handleBetaOAuthCallback()) return;
 
-  // Pick up any pending Dropbox connect result so we can toast/refresh after auth resumes
+  // Pick up any pending integration-connect result so we can toast/refresh after auth resumes
   consumeDropboxCallbackHash();
+  consumeIntegrationCallbackHash();
 
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) {
@@ -723,6 +724,37 @@ function consumeDropboxCallbackHash() {
         renderSettingsPage();
       }
       if (typeof showToast === 'function') showToast('Dropbox connected', 'ok');
+    }
+  }, 600);
+}
+
+/* ── BETA: Pick up hashes set by beta-whoop-auth / beta-oura-auth ── */
+function consumeIntegrationCallbackHash() {
+  const hash = location.hash || '';
+  const providers = [
+    { key: 'whoop', label: 'Whoop', loader: 'loadWhoopStatus' },
+    { key: 'oura',  label: 'Oura',  loader: 'loadOuraStatus'  },
+  ];
+  const hit = providers.find(p => hash.includes(`${p.key}=`) || hash.includes(`${p.key}_error=`));
+  if (!hit) return;
+
+  const params = new URLSearchParams(hash.slice(1));
+  const ok    = params.get(hit.key);
+  const error = params.get(`${hit.key}_error`);
+  history.replaceState(null, '', location.pathname);
+
+  setTimeout(async () => {
+    if (error) {
+      if (typeof showToast === 'function') showToast(`${hit.label} connect failed: ${error}`, 'offline');
+      return;
+    }
+    if (ok === 'connected') {
+      const loader = window[hit.loader];
+      if (typeof loader === 'function') await loader();
+      if (typeof activeTool !== 'undefined' && activeTool === 'settings' && typeof renderSettingsPage === 'function') {
+        renderSettingsPage();
+      }
+      if (typeof showToast === 'function') showToast(`${hit.label} connected — backfilling 30 days of history…`, 'ok');
     }
   }, 600);
 }

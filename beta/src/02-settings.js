@@ -8,6 +8,11 @@
 let userSettings = null;
 
 const BETA_DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
+// Public OAuth client IDs. Set these once after creating apps in each vendor's
+// developer console (developer.whoop.com / cloud.ouraring.com/oauth/applications).
+// Until populated, the connect button stays disabled with a "not yet configured" tooltip.
+const BETA_WHOOP_CLIENT_ID = '';
+const BETA_OURA_CLIENT_ID  = '';
 
 const SETTINGS_DEFAULTS = {
   enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal'],
@@ -41,9 +46,13 @@ async function loadUserSettings() {
     console.warn('[settings] load failed', e);
     userSettings = { ...SETTINGS_DEFAULTS };
   }
-  // Layer in live integration status from the server (Dropbox status lives in
-  // user_profiles, not user_settings, so it isn't covered by the load above).
-  await loadDropboxStatus();
+  // Layer in live integration status from the server (per-integration status
+  // lives in user_profiles, not user_settings).
+  await Promise.all([
+    loadDropboxStatus(),
+    loadWhoopStatus(),
+    loadOuraStatus(),
+  ]);
 }
 
 async function loadDropboxStatus() {
@@ -63,6 +72,46 @@ async function loadDropboxStatus() {
     };
   } catch (e) {
     console.warn('[settings] dropbox status load failed', e);
+  }
+}
+
+async function loadWhoopStatus() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/.netlify/functions/beta-whoop?action=status', {
+      headers: { 'Authorization': `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
+    if (!userSettings.integrations) userSettings.integrations = {};
+    userSettings.integrations.whoop = {
+      connected: !!data.connected,
+      email:     data.whoop_account_email || null,
+    };
+  } catch (e) {
+    console.warn('[settings] whoop status load failed', e);
+  }
+}
+
+async function loadOuraStatus() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/.netlify/functions/beta-oura?action=status', {
+      headers: { 'Authorization': `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
+    if (!userSettings.integrations) userSettings.integrations = {};
+    userSettings.integrations.oura = {
+      connected: !!data.connected,
+      email:     data.oura_account_email || null,
+    };
+  } catch (e) {
+    console.warn('[settings] oura status load failed', e);
   }
 }
 
@@ -195,20 +244,21 @@ function renderSettingsPage() {
     </div>`;
   }).join('');
 
+  const clientIdByProvider = { dropbox: BETA_DROPBOX_CLIENT_ID, whoop: BETA_WHOOP_CLIENT_ID, oura: BETA_OURA_CLIENT_ID };
   const integrationsHtml = INTEGRATIONS_META.map(i => {
     const intData = integrations[i.id] || {};
     const conn = !!intData.connected;
-    const isDropbox = i.id === 'dropbox';
     const statusLabel = conn
-      ? (isDropbox && intData.email ? `Connected · ${escapeHtml(intData.email)}` : 'Connected')
+      ? (intData.email ? `Connected · ${escapeHtml(intData.email)}` : 'Connected')
       : 'Not connected';
+    const configured = !!clientIdByProvider[i.id];
     let buttonHtml;
-    if (isDropbox) {
-      buttonHtml = conn
-        ? `<button class="settings-btn-secondary" data-settings-dropbox="disconnect">Disconnect</button>`
-        : `<button class="settings-btn-secondary" data-settings-dropbox="connect">Connect Dropbox</button>`;
+    if (conn) {
+      buttonHtml = `<button class="settings-btn-secondary" data-settings-int-action="disconnect" data-settings-int-id="${i.id}">Disconnect</button>`;
+    } else if (configured) {
+      buttonHtml = `<button class="settings-btn-secondary" data-settings-int-action="connect" data-settings-int-id="${i.id}">Connect ${escapeHtml(i.label)}</button>`;
     } else {
-      buttonHtml = `<button class="settings-btn-secondary" data-settings-int="${i.id}" disabled title="OAuth setup in progress">Connect (coming soon)</button>`;
+      buttonHtml = `<button class="settings-btn-secondary" disabled title="OAuth client_id not yet configured in beta/src/02-settings.js">Connect (coming soon)</button>`;
     }
     return `
       <div class="settings-int-card">
@@ -315,11 +365,19 @@ document.addEventListener('click', e => {
     });
     return;
   }
-  const dropboxBtn = e.target.closest('[data-settings-dropbox]');
-  if (dropboxBtn) {
-    const op = dropboxBtn.dataset.settingsDropbox;
-    if (op === 'connect') startDropboxConnect();
-    else if (op === 'disconnect') disconnectDropbox();
+  const intBtn = e.target.closest('[data-settings-int-action]');
+  if (intBtn) {
+    const op = intBtn.dataset.settingsIntAction;
+    const id = intBtn.dataset.settingsIntId;
+    if (op === 'connect') {
+      if (id === 'dropbox') startDropboxConnect();
+      else if (id === 'whoop') startWhoopConnect();
+      else if (id === 'oura') startOuraConnect();
+    } else if (op === 'disconnect') {
+      if (id === 'dropbox') disconnectDropbox();
+      else if (id === 'whoop') disconnectWhoop();
+      else if (id === 'oura') disconnectOura();
+    }
     return;
   }
   const action = e.target.closest('[data-settings-action]')?.dataset.settingsAction;
@@ -342,6 +400,96 @@ async function startDropboxConnect() {
     state:              session.access_token,
   });
   window.location.href = 'https://www.dropbox.com/oauth2/authorize?' + params;
+}
+
+async function startWhoopConnect() {
+  if (!BETA_WHOOP_CLIENT_ID) {
+    if (typeof showToast === 'function') showToast('Whoop client_id not yet configured', 'offline');
+    return;
+  }
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    if (typeof showToast === 'function') showToast('Sign in required', 'offline');
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id:     BETA_WHOOP_CLIENT_ID,
+    redirect_uri:  window.location.origin + '/.netlify/functions/beta-whoop-auth',
+    response_type: 'code',
+    scope:         'offline read:recovery read:cycles read:sleep read:workout read:profile read:body_measurement',
+    state:         session.access_token,
+  });
+  window.location.href = 'https://api.prod.whoop.com/oauth/oauth2/auth?' + params;
+}
+
+async function disconnectWhoop() {
+  if (!confirm('Disconnect Whoop? GSD will no longer sync your Whoop data. Historical data already synced will remain in your account.')) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/.netlify/functions/beta-whoop', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'disconnect' }),
+    });
+    if (!res.ok) throw new Error('disconnect failed');
+    if (userSettings?.integrations?.whoop) {
+      userSettings.integrations.whoop = { connected: false, email: null };
+    }
+    if (activeTool === 'settings') renderSettingsPage();
+    if (typeof showToast === 'function') showToast('Whoop disconnected', 'ok');
+  } catch (e) {
+    console.error('[settings] whoop disconnect failed', e);
+    if (typeof showToast === 'function') showToast('Could not disconnect Whoop', 'offline');
+  }
+}
+
+async function startOuraConnect() {
+  if (!BETA_OURA_CLIENT_ID) {
+    if (typeof showToast === 'function') showToast('Oura client_id not yet configured', 'offline');
+    return;
+  }
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    if (typeof showToast === 'function') showToast('Sign in required', 'offline');
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id:     BETA_OURA_CLIENT_ID,
+    redirect_uri:  window.location.origin + '/.netlify/functions/beta-oura-auth',
+    response_type: 'code',
+    scope:         'daily heartrate workout tag session personal',
+    state:         session.access_token,
+  });
+  window.location.href = 'https://cloud.ouraring.com/oauth/authorize?' + params;
+}
+
+async function disconnectOura() {
+  if (!confirm('Disconnect Oura? GSD will no longer sync your Oura Ring data. Historical data already synced will remain in your account.')) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/.netlify/functions/beta-oura', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'disconnect' }),
+    });
+    if (!res.ok) throw new Error('disconnect failed');
+    if (userSettings?.integrations?.oura) {
+      userSettings.integrations.oura = { connected: false, email: null };
+    }
+    if (activeTool === 'settings') renderSettingsPage();
+    if (typeof showToast === 'function') showToast('Oura disconnected', 'ok');
+  } catch (e) {
+    console.error('[settings] oura disconnect failed', e);
+    if (typeof showToast === 'function') showToast('Could not disconnect Oura', 'offline');
+  }
 }
 
 async function disconnectDropbox() {
