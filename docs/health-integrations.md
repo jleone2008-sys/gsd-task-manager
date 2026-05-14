@@ -7,10 +7,12 @@ access to**, **where it lives in Supabase**, and **how we plan to use it**.
 It is meant to be edited in place as the integrations evolve.
 
 Related:
-- [supabase-migrations/health_integrations.sql](../supabase-migrations/health_integrations.sql) — base schema
-- [supabase-migrations/health_integrations_v2_oura_full.sql](../supabase-migrations/health_integrations_v2_oura_full.sql) — full Oura schema
+- [supabase-migrations/health_integrations.sql](../supabase-migrations/health_integrations.sql) — base schema (whoop_daily, oura_daily, health_sync_log, refresh-token columns)
+- [supabase-migrations/health_integrations_v2_oura_full.sql](../supabase-migrations/health_integrations_v2_oura_full.sql) — full Oura V2 schema (per-event tables, ~50 oura_daily columns)
+- [supabase-migrations/whoop_byo_credentials.sql](../supabase-migrations/whoop_byo_credentials.sql) — `user_profiles.whoop_client_id` + `whoop_client_secret_enc` for the BYO model
 - [netlify/functions/cron-health-sync.js](../netlify/functions/cron-health-sync.js) — the nightly sync that populates these tables
-- [beta/src/02-settings.js](../beta/src/02-settings.js) — per-user OAuth connect
+- [netlify/functions/beta-whoop-creds.js](../netlify/functions/beta-whoop-creds.js) — user-facing endpoint for managing Whoop BYO credentials
+- [beta/src/02-settings.js](../beta/src/02-settings.js) — per-integration OAuth connect UI (Whoop card includes credential form)
 
 ---
 
@@ -291,7 +293,7 @@ flowing, the planned weekly AI sync can join them:
   days where you logged a journal entry the night before. Correlation
   isn't causation, but worth a 2-week test."
 
-These require: (a) Oura data flowing (done), (b) Whoop wired (pending),
+These require: (a) Oura data flowing (done), (b) Whoop wired (done; user-specific via BYO credentials),
 (c) Dropbox sync running (done — admin browse already live), (d) the
 weekly AI prompt itself (not yet built).
 
@@ -332,8 +334,9 @@ For ops:
 
 ## 6. Roadmap (rough order)
 
-1. **Now** — Oura connect + sync live. Whoop client_id + secret to land
-   when ready. SQL migrations applied.
+1. **Now** — Oura connect + sync live. Whoop connect live with per-user
+   BYO credentials (each user supplies their own dev app at
+   developer.whoop.com). SQL migrations applied.
 2. **Next** — Daily health strip on journal entries (Feature A.1). This is
    the smallest piece of user-visible value and validates that data is
    flowing correctly.
