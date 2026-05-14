@@ -278,6 +278,7 @@ let dropboxTokenCache = {};   // email → { token, expires }
 let dropboxFolderStack = [{ path: '', name: 'Dropbox' }];
 let dropboxImageList = [];    // {path, name}[] — image files in current Dropbox folder
 let dropboxSharedSet = new Set(); // folder_path values currently shared for the selected user
+let dropboxSelected  = new Map(); // path → { tag, name, path } selected in current folder
 
 /* ════════════════════════════════════════
    INIT
@@ -906,8 +907,18 @@ async function loadDropbox(area) {
         return (a.name || '').localeCompare(b.name || '');
       });
       const rows = sorted.map(e => renderDropboxEntryRow(e)).join('');
-      browseHtml = `${header}<table class="google-data-table">
-        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th></tr></thead>
+      const selectedCount = dropboxSelected.size;
+      const toolbar = `<div id="dbxBulkBar" style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;padding:.4rem .6rem;background:#1a1f2c;border:1px solid #2a3245;border-radius:.4rem;font-size:.8rem">
+        <span><strong id="dbxSelCount">${selectedCount}</strong> selected</span>
+        <button class="btn-secondary" id="dbxBulkDownload" ${selectedCount ? '' : 'disabled'} style="padding:.3rem .7rem;font-size:.75rem">⬇ Download selected</button>
+        <button class="btn-icon" id="dbxBulkClear" ${selectedCount ? '' : 'disabled'} style="font-size:.75rem">Clear</button>
+        <span style="color:#9aaabb;font-size:.7rem;margin-left:auto">Tip: select folders to download recursively. Best on Chrome/Edge.</span>
+      </div>`;
+      browseHtml = `${header}${toolbar}<table class="google-data-table">
+        <thead><tr>
+          <th style="width:1.5rem;padding-right:.25rem"><input type="checkbox" id="dbxSelectAll" /></th>
+          <th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th>
+        </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     }
@@ -953,6 +964,8 @@ function renderDropboxEntryRow(e) {
   const icon     = isFolder ? '📁' : '📄';
   const path     = e.path_lower || e.path_display || '';
   const name     = e.name || '';
+  const tag      = e['.tag'] || 'file';
+  const isSelected = dropboxSelected.has(path);
   const nameAttr = isFolder
     ? `data-dbx-folder="${escHtml(path)}" data-dbx-name="${escHtml(name)}"`
     : isImage
@@ -969,8 +982,9 @@ function renderDropboxEntryRow(e) {
   } else {
     actionsCell = `<button class="btn-icon" data-dbx-download="${escHtml(path)}" data-dbx-name="${escHtml(name)}" title="Download" style="font-size:.85rem">⬇</button>`;
   }
-  const typeLbl = isFolder ? 'folder' : (name.split('.').pop() || 'file').toLowerCase();
-  return `<tr><td title="${escHtml(name)}">${nameCell}</td><td>${escHtml(typeLbl)}</td><td>${size}</td><td>${mod}</td><td style="text-align:right">${actionsCell}</td></tr>`;
+  const typeLbl   = isFolder ? 'folder' : (name.split('.').pop() || 'file').toLowerCase();
+  const selectCell = `<td style="padding-right:.25rem"><input type="checkbox" class="dbx-row-select" data-dbx-select="${escHtml(path)}" data-dbx-select-tag="${escHtml(tag)}" data-dbx-select-name="${escHtml(name)}" ${isSelected ? 'checked' : ''} /></td>`;
+  return `<tr>${selectCell}<td title="${escHtml(name)}">${nameCell}</td><td>${escHtml(typeLbl)}</td><td>${size}</td><td>${mod}</td><td style="text-align:right">${actionsCell}</td></tr>`;
 }
 
 function isDropboxImage(name) {
@@ -984,14 +998,70 @@ function attachDropboxHandlers(area) {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       dropboxFolderStack.push({ path: el.dataset.dbxFolder, name: el.dataset.dbxName });
+      dropboxSelected.clear();
       loadGoogleData('dropbox');
     });
+  });
+
+  // Per-row checkbox selection
+  area.querySelectorAll('.dbx-row-select').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const path = cb.dataset.dbxSelect;
+      if (cb.checked) {
+        dropboxSelected.set(path, {
+          tag:  cb.dataset.dbxSelectTag,
+          name: cb.dataset.dbxSelectName,
+          path,
+        });
+      } else {
+        dropboxSelected.delete(path);
+      }
+      updateDropboxBulkBar(area);
+    });
+  });
+
+  // Select-all toggle
+  const selectAll = area.querySelector('#dbxSelectAll');
+  if (selectAll) {
+    const rowBoxes = area.querySelectorAll('.dbx-row-select');
+    selectAll.checked = rowBoxes.length > 0 && [...rowBoxes].every(c => c.checked);
+    selectAll.addEventListener('change', () => {
+      rowBoxes.forEach(cb => {
+        if (cb.checked !== selectAll.checked) {
+          cb.checked = selectAll.checked;
+          const path = cb.dataset.dbxSelect;
+          if (selectAll.checked) {
+            dropboxSelected.set(path, {
+              tag:  cb.dataset.dbxSelectTag,
+              name: cb.dataset.dbxSelectName,
+              path,
+            });
+          } else {
+            dropboxSelected.delete(path);
+          }
+        }
+      });
+      updateDropboxBulkBar(area);
+    });
+  }
+
+  // Bulk actions
+  const dlBtn = area.querySelector('#dbxBulkDownload');
+  if (dlBtn) dlBtn.addEventListener('click', () => bulkDownloadDropbox());
+  const clrBtn = area.querySelector('#dbxBulkClear');
+  if (clrBtn) clrBtn.addEventListener('click', () => {
+    dropboxSelected.clear();
+    area.querySelectorAll('.dbx-row-select').forEach(cb => { cb.checked = false; });
+    const sa = area.querySelector('#dbxSelectAll'); if (sa) sa.checked = false;
+    updateDropboxBulkBar(area);
   });
   area.querySelectorAll('[data-dbx-crumb]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const idx = +el.dataset.dbxCrumb;
       dropboxFolderStack = dropboxFolderStack.slice(0, idx + 1);
+      dropboxSelected.clear();
       loadGoogleData('dropbox');
     });
   });
@@ -1176,6 +1246,225 @@ async function removeDropboxShareRow(shareId, btn) {
     btn.textContent = orig;
     btn.disabled = false;
   }
+}
+
+function updateDropboxBulkBar(area) {
+  const count = dropboxSelected.size;
+  const cEl   = area.querySelector('#dbxSelCount');
+  const dlBtn = area.querySelector('#dbxBulkDownload');
+  const clr   = area.querySelector('#dbxBulkClear');
+  if (cEl)   cEl.textContent = String(count);
+  if (dlBtn) dlBtn.disabled  = count === 0;
+  if (clr)   clr.disabled    = count === 0;
+}
+
+async function bulkDownloadDropbox() {
+  if (!dropboxSelected.size) return;
+  const items   = [...dropboxSelected.values()];
+  const progress = openBulkProgress();
+
+  try {
+    const token = await getDropboxTokenForUser(selectedUser.email);
+
+    progress.setStatus('Enumerating files…');
+    const files = []; // { path, relativePath }
+    for (const item of items) {
+      if (progress.isAborted()) { progress.close(); return; }
+      if (item.tag === 'folder') {
+        const entries = await listAllFilesUnder(item.path, token);
+        for (const ent of entries) {
+          const sub = (ent.path_display || ent.path_lower).substring(item.path.length);
+          files.push({
+            path:         ent.path_lower,
+            relativePath: (item.name + sub).replace(/^\/+/, ''),
+          });
+        }
+      } else {
+        files.push({ path: item.path, relativePath: item.name });
+      }
+    }
+
+    if (!files.length) {
+      progress.setStatus('Nothing to download.');
+      progress.markDone();
+      return;
+    }
+    progress.setTotal(files.length);
+
+    // Try File System Access API for direct-to-folder writes
+    let dirHandle = null;
+    if (typeof window.showDirectoryPicker === 'function') {
+      try {
+        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      } catch (err) {
+        if (err.name === 'AbortError') { progress.close(); return; }
+        // Other errors: fall through to per-file Downloads
+      }
+    }
+
+    if (!dirHandle) {
+      progress.setStatus('Browser will save files individually. Allow multiple downloads when prompted.');
+    } else {
+      progress.setStatus('Downloading…');
+    }
+
+    const CONCURRENCY = 4;
+    let downloaded = 0;
+    const errors = [];
+
+    const worker = async () => {
+      while (!progress.isAborted()) {
+        const idx = worker.cursor++;
+        if (idx >= files.length) break;
+        const file = files[idx];
+        try {
+          const blob = await downloadDropboxBlob(file.path, token);
+          if (dirHandle) {
+            await writeBlobToDirectory(dirHandle, file.relativePath, blob);
+          } else {
+            triggerBlobSave(blob, file.relativePath.split('/').pop());
+            // brief stagger so the browser doesn't drop concurrent downloads
+            await new Promise(r => setTimeout(r, 150));
+          }
+          downloaded++;
+          progress.update(downloaded, file.relativePath);
+        } catch (err) {
+          errors.push({ file: file.relativePath, error: err.message });
+          progress.logError(file.relativePath, err.message);
+        }
+      }
+    };
+    worker.cursor = 0;
+    await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+
+    if (progress.isAborted()) {
+      progress.setStatus(`Aborted at ${downloaded}/${files.length}.`);
+    } else if (errors.length) {
+      progress.setStatus(`Done. ${downloaded} downloaded, ${errors.length} failed.`);
+      console.error('Bulk download errors:', errors);
+    } else {
+      progress.setStatus(`✓ Downloaded ${downloaded} file${downloaded === 1 ? '' : 's'}.`);
+    }
+    progress.markDone();
+  } catch (err) {
+    progress.setStatus('Failed: ' + err.message);
+    progress.markDone();
+  }
+}
+
+async function listAllFilesUnder(path, token) {
+  const all = [];
+  let res = await dropboxApi('/2/files/list_folder', token, { path, recursive: true, limit: 2000 });
+  while (true) {
+    for (const e of (res.entries || [])) if (e['.tag'] === 'file') all.push(e);
+    if (!res.has_more) break;
+    res = await dropboxApi('/2/files/list_folder/continue', token, { cursor: res.cursor });
+  }
+  return all;
+}
+
+async function downloadDropboxBlob(path, accessToken) {
+  const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: {
+      'Authorization':   `Bearer ${accessToken}`,
+      'Dropbox-API-Arg': JSON.stringify({ path }),
+    },
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = await res.text(); } catch {}
+    throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail.slice(0, 200) : ''}`);
+  }
+  return await res.blob();
+}
+
+async function writeBlobToDirectory(rootHandle, relativePath, blob) {
+  const parts = relativePath.split('/').filter(Boolean);
+  const fileName = parts.pop();
+  let dir = rootHandle;
+  for (const part of parts) {
+    dir = await dir.getDirectoryHandle(sanitizeFsName(part), { create: true });
+  }
+  const fileHandle = await dir.getFileHandle(sanitizeFsName(fileName), { create: true });
+  const writable   = await fileHandle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+function sanitizeFsName(name) {
+  // Strip characters illegal on Windows/Mac, then trim trailing dots/spaces
+  let s = String(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+  s = s.replace(/[. ]+$/, '');
+  return s || '_';
+}
+
+function triggerBlobSave(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url;
+  a.download = fileName || 'download';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function openBulkProgress() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  overlay.innerHTML = `
+    <div style="background:#1a1f2c;border:1px solid #2a3245;border-radius:.75rem;padding:1.25rem 1.5rem;width:min(520px, 100%);color:#fff;font-size:.85rem">
+      <div style="font-size:1rem;font-weight:600;margin-bottom:.5rem">Bulk Dropbox download</div>
+      <div id="dbxProgStatus" style="color:#9aaabb;margin-bottom:.75rem">Starting…</div>
+      <div style="background:#0e1320;border-radius:.4rem;height:.5rem;overflow:hidden;margin-bottom:.5rem">
+        <div id="dbxProgBar" style="background:#5b8def;height:100%;width:0;transition:width .15s"></div>
+      </div>
+      <div id="dbxProgCount" style="color:#9aaabb;font-size:.75rem;margin-bottom:.5rem">0 / 0</div>
+      <div id="dbxProgCurrent" style="color:#9aaabb;font-size:.7rem;margin-bottom:.75rem;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      <div id="dbxProgErrors" style="max-height:7rem;overflow:auto;font-size:.7rem;color:#ff8a8a;margin-bottom:.75rem"></div>
+      <div style="text-align:right">
+        <button id="dbxProgCancel" class="btn-secondary" style="padding:.4rem .8rem;font-size:.75rem">Cancel</button>
+        <button id="dbxProgClose"  class="btn-primary"   style="padding:.4rem .8rem;font-size:.75rem;display:none">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let aborted = false;
+  let total   = 0;
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#dbxProgCancel').addEventListener('click', () => {
+    aborted = true;
+    overlay.querySelector('#dbxProgStatus').textContent = 'Cancelling…';
+  });
+  overlay.querySelector('#dbxProgClose').addEventListener('click', close);
+
+  return {
+    setStatus(text) {
+      overlay.querySelector('#dbxProgStatus').textContent = text;
+    },
+    setTotal(n) {
+      total = n;
+      overlay.querySelector('#dbxProgCount').textContent = `0 / ${n}`;
+    },
+    update(done, currentName) {
+      overlay.querySelector('#dbxProgCount').textContent = `${done} / ${total}`;
+      overlay.querySelector('#dbxProgCurrent').textContent = currentName || '';
+      overlay.querySelector('#dbxProgBar').style.width = total ? `${Math.round((done / total) * 100)}%` : '0';
+    },
+    logError(name, msg) {
+      const el = document.createElement('div');
+      el.textContent = `✗ ${name} — ${msg}`;
+      overlay.querySelector('#dbxProgErrors').appendChild(el);
+    },
+    isAborted() { return aborted; },
+    markDone() {
+      overlay.querySelector('#dbxProgCancel').style.display = 'none';
+      overlay.querySelector('#dbxProgClose').style.display  = '';
+    },
+    close,
+  };
 }
 
 async function handleRevokeDropbox(email) {
