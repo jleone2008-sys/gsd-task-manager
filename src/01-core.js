@@ -278,21 +278,36 @@ async function handleEmailAuth() {
 }
 
 async function maybeRedirectToBeta(user) {
-  // Bypass via ?prod=1 — for the rare time we want to test prod despite
-  // having beta_enabled flipped on.
   try {
-    if (new URL(location.href).searchParams.has('prod')) return false;
-  } catch (_) { return false; }
-  try {
-    const [{ data: profile }, { data: settings }] = await Promise.all([
-      db.from('user_profiles').select('role').eq('supabase_user_id', user.id).maybeSingle(),
-      db.from('user_settings').select('beta_enabled').maybeSingle(),
-    ]);
-    // Defense in depth: redirect only when the user is admin AND has the
-    // flag set. A non-admin who somehow flips the row stays on prod.
-    if (profile?.role === 'admin' && settings?.beta_enabled === true) {
-      location.replace('/beta/app' + location.search);
+    const { data: profile } = await db
+      .from('user_profiles')
+      .select('role')
+      .eq('supabase_user_id', user.id)
+      .maybeSingle();
+    const role = profile?.role;
+
+    // role='beta' → strict redirect, no escape. Beta users are corralled into
+    // /beta/app so they can't accidentally test against prod. To let one out,
+    // change their role in user_profiles.
+    if (role === 'beta') {
+      location.replace('/beta/app');
       return true;
+    }
+
+    // role='admin' → opt-in via user_settings.beta_enabled, with ?prod=1
+    // escape for the rare time we want to test prod despite the toggle.
+    if (role === 'admin') {
+      try {
+        if (new URL(location.href).searchParams.has('prod')) return false;
+      } catch (_) { return false; }
+      const { data: settings } = await db
+        .from('user_settings')
+        .select('beta_enabled')
+        .maybeSingle();
+      if (settings?.beta_enabled === true) {
+        location.replace('/beta/app' + location.search);
+        return true;
+      }
     }
   } catch (_) { /* fall through and sign in to prod normally */ }
   return false;

@@ -469,8 +469,9 @@ function renderProfileTab(body) {
     <div class="field-row">
       <div class="field-label">Role</div>
       <select class="field-input" id="editRole">
-        <option value="standard" ${u.role==='standard'?'selected':''}>Standard</option>
-        <option value="admin"    ${u.role==='admin'?'selected':''}>Admin</option>
+        <option value="standard"   ${u.role==='standard'?'selected':''}>Standard</option>
+        <option value="beta"       ${u.role==='beta'?'selected':''}>Beta (forced to /beta/app)</option>
+        <option value="admin"      ${u.role==='admin'?'selected':''}>Admin</option>
         <option value="restricted" ${u.role==='restricted'?'selected':''}>Restricted</option>
       </select>
     </div>
