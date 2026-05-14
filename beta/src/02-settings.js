@@ -23,7 +23,7 @@ const TAB_META = {
 };
 
 const INTEGRATIONS_META = [
-  { id: 'dropbox', label: 'Dropbox',   desc: 'Grant full read access to your Dropbox so AI insights can include your files and photos.' },
+  { id: 'dropbox', label: 'Dropbox',   desc: 'Grant Dropbox access for AI insights functionality.' },
   { id: 'oura',    label: 'Oura Ring', desc: 'Sleep, readiness, and activity from your Oura Ring.' },
   { id: 'whoop',   label: 'Whoop',     desc: 'Recovery, strain, and sleep from your Whoop.' }
 ];
