@@ -1,19 +1,17 @@
-// OAuth proxy for /beta Whoop connect — exchanges Whoop auth code for tokens
-// server-side so the Whoop app secret never touches the browser. Encrypts the
-// refresh token with AES-256-GCM (ADMIN_ENCRYPTION_KEY) before storing it in
-// user_profiles.whoop_refresh_token_enc.
-//
-// Identifies the GSD user by validating the Supabase access_token tucked into
-// the OAuth `state` param via /auth/v1/user (same pattern as Dropbox).
+// OAuth proxy for /beta Whoop connect. Per-user credentials model: the user's
+// own client_id + AES-256-GCM-encrypted client_secret live in user_profiles
+// (saved via beta-whoop-creds.js). This callback resolves the GSD user
+// from the `state` param (their Supabase access_token), pulls their stored
+// credentials, exchanges the code for tokens, and stores the refresh token.
 //
 // On success: kicks off a 30-day backfill into whoop_daily, then redirects to
 // /beta/app#whoop=connected.
 
-const { createCipheriv, randomBytes } = require('crypto');
+const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
-const WHOOP_API = 'https://api.prod.whoop.com/developer';
+const WHOOP_API       = 'https://api.prod.whoop.com/developer';
 
 exports.handler = async (event) => {
   const { code, state, error } = event.queryStringParameters || {};
@@ -22,19 +20,17 @@ exports.handler = async (event) => {
   const host  = event.headers.host;
   const redirectUri = `${proto}://${host}/.netlify/functions/beta-whoop-auth`;
 
-  if (error)        return redirect(`/beta/app#whoop_error=${encodeURIComponent(error)}`);
-  if (!code || !state) return redirect('/beta/app#whoop_error=missing_code_or_state');
+  if (error)            return redirect(`/beta/app#whoop_error=${encodeURIComponent(error)}`);
+  if (!code || !state)  return redirect('/beta/app#whoop_error=missing_code_or_state');
 
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-  const clientId   = process.env.BETA_WHOOP_CLIENT_ID;
-  const clientSec  = process.env.BETA_WHOOP_CLIENT_SECRET;
   const encKey     = process.env.ADMIN_ENCRYPTION_KEY;
-  if (!serviceKey || !clientId || !clientSec || !encKey) {
-    console.error('whoop-auth: missing one of SUPABASE_SERVICE_KEY / BETA_WHOOP_CLIENT_ID / BETA_WHOOP_CLIENT_SECRET / ADMIN_ENCRYPTION_KEY');
+  if (!serviceKey || !encKey) {
+    console.error('whoop-auth: missing SUPABASE_SERVICE_KEY or ADMIN_ENCRYPTION_KEY');
     return redirect('/beta/app#whoop_error=server_misconfiguration');
   }
 
-  // Validate state and identify the GSD user
+  // Validate state → caller email
   let callerEmail;
   try {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -48,7 +44,26 @@ exports.handler = async (event) => {
   }
   if (!callerEmail) return redirect('/beta/app#whoop_error=state_no_email');
 
-  // Exchange auth code for tokens
+  // Look up this user's stored Whoop credentials
+  let clientId, clientSecret;
+  try {
+    const credRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(callerEmail)}&select=whoop_client_id,whoop_client_secret_enc`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    );
+    const rows = await credRes.json();
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row?.whoop_client_id || !row?.whoop_client_secret_enc) {
+      return redirect('/beta/app#whoop_error=no_credentials');
+    }
+    clientId     = row.whoop_client_id;
+    clientSecret = decryptToken(row.whoop_client_secret_enc, encKey);
+  } catch (err) {
+    console.error('whoop-auth: credentials lookup failed:', err.message);
+    return redirect('/beta/app#whoop_error=credentials_lookup_failed');
+  }
+
+  // Exchange auth code for tokens using the user's own credentials
   let tokens;
   try {
     const res = await fetch(WHOOP_TOKEN_URL, {
@@ -59,7 +74,7 @@ exports.handler = async (event) => {
         code,
         redirect_uri:  redirectUri,
         client_id:     clientId,
-        client_secret: clientSec,
+        client_secret: clientSecret,
       }),
     });
     tokens = await res.json();
@@ -96,7 +111,6 @@ exports.handler = async (event) => {
   }
 
   // Fire-and-forget 30-day backfill so the user has history immediately.
-  // We don't await — the OAuth redirect should be snappy. Failures are logged.
   try {
     const backfillUrl = `${proto}://${host}/.netlify/functions/cron-health-sync?backfill=1&user=${encodeURIComponent(callerEmail)}&provider=whoop&days=30`;
     fetch(backfillUrl, { headers: { 'X-Internal-Auth': process.env.INTERNAL_FN_SECRET || '' } }).catch(() => {});
@@ -116,6 +130,17 @@ function encryptToken(plaintext, hexKey) {
   const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, ct]).toString('base64');
+}
+
+function decryptToken(b64, hexKey) {
+  const key = Buffer.from(hexKey, 'hex');
+  const buf = Buffer.from(b64, 'base64');
+  const iv  = buf.slice(0, 12);
+  const tag = buf.slice(12, 28);
+  const ct  = buf.slice(28);
+  const dec = createDecipheriv('aes-256-gcm', key, iv);
+  dec.setAuthTag(tag);
+  return Buffer.concat([dec.update(ct), dec.final()]).toString('utf8');
 }
 
 async function storeWhoopRefreshToken(email, refreshToken, whoopEmail, whoopUserId, encKey, serviceKey) {

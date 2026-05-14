@@ -112,19 +112,20 @@ async function syncOneUser(email, provider, days, serviceKey, encKey) {
 
 // ── Whoop ─────────────────────────────────────────────────────────────────
 async function syncWhoopUser(email, start, end, serviceKey, encKey) {
-  const clientId  = process.env.BETA_WHOOP_CLIENT_ID;
-  const clientSec = process.env.BETA_WHOOP_CLIENT_SECRET;
-  if (!clientId || !clientSec) throw new Error('whoop_misconfigured');
-
-  // Load and decrypt refresh token
+  // Per-user credentials: load refresh token AND the user's own client_id +
+  // encrypted client_secret. They register their own Whoop dev app at
+  // developer.whoop.com and store credentials via beta-whoop-creds.js.
   const profRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=whoop_refresh_token_enc`,
+    `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=whoop_refresh_token_enc,whoop_client_id,whoop_client_secret_enc`,
     { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
   );
   const profRows = await profRes.json();
-  const enc = profRows?.[0]?.whoop_refresh_token_enc;
-  if (!enc) throw new Error('no_refresh_token');
-  const refreshToken = decryptToken(enc, encKey);
+  const row = profRows?.[0];
+  if (!row?.whoop_refresh_token_enc) throw new Error('no_refresh_token');
+  if (!row?.whoop_client_id || !row?.whoop_client_secret_enc) throw new Error('no_credentials');
+  const refreshToken = decryptToken(row.whoop_refresh_token_enc, encKey);
+  const clientId     = row.whoop_client_id;
+  const clientSec    = decryptToken(row.whoop_client_secret_enc, encKey);
 
   // Exchange refresh → access token (Whoop rotates refresh; capture both)
   const tr = await fetch(WHOOP_TOKEN_URL, {

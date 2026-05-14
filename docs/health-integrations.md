@@ -16,20 +16,23 @@ Related:
 
 ## 1. Integration status
 
-| Provider | Connect UI | OAuth | Nightly sync | Notes |
+| Provider | Connect UI | OAuth | Nightly sync | Auth model |
 |---|---|---|---|---|
-| **Oura** | ✅ live in /beta Settings | ✅ | ✅ daily 04:00 UTC | Personal-tier app under jleone2008@gmail.com. All available scopes requested. |
-| **Whoop** | ⚙️ wired but client_id not yet pasted | ⚙️ code ready | ⚙️ code ready | Waiting on Whoop dev portal app + env vars. Free, ~10-user cap until production-tier review. |
+| **Oura** | ✅ live in /beta Settings | ✅ | ✅ daily 04:00 UTC | **GSD-owned app** — shared client_id, all users authorize against one app at cloud.ouraring.com. |
+| **Whoop** | ✅ live in /beta Settings | ✅ | ✅ daily 04:00 UTC | **Bring-your-own-credentials (BYO)** — each user creates their own Whoop dev app and pastes their client_id + secret into Settings. |
+
+**Why Whoop uses BYO:** GSD doesn't maintain a Whoop developer account (the
+owner isn't a Whoop member, and Whoop's dev terms historically required
+membership). Each end-user has their own developer app under their own
+Whoop login. The trade-off is one-time setup friction per user; the upside
+is zero Whoop dev-account dependencies on GSD's side and independent rate
+quotas per user.
 
 When a user connects:
-1. They click **Connect** in beta Settings → redirected to vendor OAuth screen.
-2. Callback function stores AES-256-GCM-encrypted refresh token in
-   `user_profiles.{provider}_refresh_token_enc`.
-3. A 30-day backfill kicks off immediately so they have history without
-   waiting for tomorrow's scheduled run.
-4. Nightly cron pulls a rolling 3-day window for everyone connected. Old
-   data is upserted (so Oura's day-end recalcs and Whoop's late-arriving
-   recoveries are picked up).
+1. **Oura:** click **Connect Oura** → redirected to cloud.ouraring.com to authorize → callback stores encrypted refresh token in `user_profiles.oura_refresh_token_enc`.
+2. **Whoop (BYO):** user follows the in-app instructions to create their own dev app at developer.whoop.com, registers our callback URL, pastes client_id + client_secret into the Settings form. Credentials are saved via `beta-whoop-creds` (secret AES-256-GCM-encrypted into `user_profiles.whoop_client_secret_enc`). Then they click **Authorize Whoop** → standard OAuth flow with their own client_id → refresh token stored in `user_profiles.whoop_refresh_token_enc`.
+3. Either way, a 30-day backfill kicks off immediately so the user has history without waiting for tomorrow's scheduled run.
+4. Nightly cron pulls a rolling 3-day window for everyone connected. Old data is upserted (so Oura's day-end recalcs and Whoop's late-arriving recoveries are picked up).
 
 ---
 
@@ -144,10 +147,43 @@ displaying "your ring" details to the user.
 
 ---
 
-## 3. Whoop — data inventory (when wired)
+## 3. Whoop — data inventory + BYO credentials
 
 Pulled from Whoop V1 developer API. Single table since Whoop's surface is
 narrower than Oura's.
+
+### Per-user credential storage
+
+The BYO model adds three columns to `user_profiles`:
+
+| Column | Type | Notes |
+|---|---|---|
+| `whoop_client_id` | text | User's own Whoop dev app client_id. Public per OAuth spec, stored plaintext. |
+| `whoop_client_secret_enc` | text | AES-256-GCM-encrypted with `ADMIN_ENCRYPTION_KEY` (same key as refresh tokens). |
+| `whoop_refresh_token_enc` | text | Stored after OAuth completes. Whoop rotates this on every exchange; cron re-stores. |
+
+User-facing endpoints:
+
+- `POST beta-whoop-creds {action:'status'}` → `{configured, client_id, connected, whoop_account_email}`
+- `POST beta-whoop-creds {action:'set', client_id, client_secret}` → encrypts secret, stores both
+- `POST beta-whoop-creds {action:'clear'}` → wipes creds **and** any existing refresh token
+
+When the user clicks Disconnect (vs Clear credentials), only the refresh
+token is nulled — saved credentials remain so they can re-authorize without
+re-entering client_id/secret.
+
+The cron sync, OAuth callback, and disconnect endpoint all read the
+per-user client_id + secret from `user_profiles` instead of env vars. No
+shared `BETA_WHOOP_CLIENT_*` env vars exist.
+
+### Setup flow shown in beta Settings UI
+
+The Whoop card walks the user through:
+1. Sign in at developer.whoop.com.
+2. Create an app (any name).
+3. Add the exact redirect URI shown in the card (`https://<host>/.netlify/functions/beta-whoop-auth`).
+4. Check scopes: `offline read:recovery read:cycles read:sleep read:workout read:profile read:body_measurement`.
+5. Paste Client ID + Client Secret into the form → click **Save & Authorize** → OAuth flow runs.
 
 ### `whoop_daily` — one row per cycle (≈ one per day)
 

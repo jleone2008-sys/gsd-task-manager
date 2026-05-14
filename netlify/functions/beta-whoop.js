@@ -61,18 +61,20 @@ async function getStatus(email, serviceKey) {
 }
 
 async function disconnect(email, serviceKey) {
-  const encKey    = process.env.ADMIN_ENCRYPTION_KEY;
-  const clientId  = process.env.BETA_WHOOP_CLIENT_ID;
-  const clientSec = process.env.BETA_WHOOP_CLIENT_SECRET;
-  if (!encKey || !clientId || !clientSec) throw new Error('whoop_misconfigured');
+  const encKey = process.env.ADMIN_ENCRYPTION_KEY;
+  if (!encKey) throw new Error('whoop_misconfigured');
 
-  // Fetch encrypted token so we can mint a fresh access token to revoke
+  // Per-user credentials: fetch the user's own client_id + secret alongside
+  // the refresh token, so we can revoke at Whoop using their app's credentials.
   const profRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=whoop_refresh_token_enc`,
+    `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=whoop_refresh_token_enc,whoop_client_id,whoop_client_secret_enc`,
     { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
   );
   const rows = await profRes.json();
-  const enc = Array.isArray(rows) ? rows[0]?.whoop_refresh_token_enc : null;
+  const row = Array.isArray(rows) ? rows[0] : null;
+  const enc       = row?.whoop_refresh_token_enc || null;
+  const clientId  = row?.whoop_client_id || null;
+  const clientSec = row?.whoop_client_secret_enc ? decryptToken(row.whoop_client_secret_enc, encKey) : null;
 
   // Best-effort revoke at Whoop
   if (enc) {
