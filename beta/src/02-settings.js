@@ -7,6 +7,8 @@
 
 let userSettings = null;
 
+const BETA_DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
+
 const SETTINGS_DEFAULTS = {
   enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal'],
   integrations: {},
@@ -21,8 +23,9 @@ const TAB_META = {
 };
 
 const INTEGRATIONS_META = [
-  { id: 'oura',  label: 'Oura Ring', desc: 'Sleep, readiness, and activity from your Oura Ring.' },
-  { id: 'whoop', label: 'Whoop',     desc: 'Recovery, strain, and sleep from your Whoop.' }
+  { id: 'dropbox', label: 'Dropbox',   desc: 'Grant full read access to your Dropbox so AI insights can include your files and photos.' },
+  { id: 'oura',    label: 'Oura Ring', desc: 'Sleep, readiness, and activity from your Oura Ring.' },
+  { id: 'whoop',   label: 'Whoop',     desc: 'Recovery, strain, and sleep from your Whoop.' }
 ];
 
 async function loadUserSettings() {
@@ -37,6 +40,29 @@ async function loadUserSettings() {
   } catch (e) {
     console.warn('[settings] load failed', e);
     userSettings = { ...SETTINGS_DEFAULTS };
+  }
+  // Layer in live integration status from the server (Dropbox status lives in
+  // user_profiles, not user_settings, so it isn't covered by the load above).
+  await loadDropboxStatus();
+}
+
+async function loadDropboxStatus() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/.netlify/functions/beta-dropbox?action=status', {
+      headers: { 'Authorization': `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
+    if (!userSettings.integrations) userSettings.integrations = {};
+    userSettings.integrations.dropbox = {
+      connected: !!data.connected,
+      email:     data.dropbox_account_email || null,
+    };
+  } catch (e) {
+    console.warn('[settings] dropbox status load failed', e);
   }
 }
 
@@ -170,15 +196,28 @@ function renderSettingsPage() {
   }).join('');
 
   const integrationsHtml = INTEGRATIONS_META.map(i => {
-    const conn = !!integrations[i.id]?.connected;
+    const intData = integrations[i.id] || {};
+    const conn = !!intData.connected;
+    const isDropbox = i.id === 'dropbox';
+    const statusLabel = conn
+      ? (isDropbox && intData.email ? `Connected · ${escapeHtml(intData.email)}` : 'Connected')
+      : 'Not connected';
+    let buttonHtml;
+    if (isDropbox) {
+      buttonHtml = conn
+        ? `<button class="settings-btn-secondary" data-settings-dropbox="disconnect">Disconnect</button>`
+        : `<button class="settings-btn-secondary" data-settings-dropbox="connect">Connect Dropbox</button>`;
+    } else {
+      buttonHtml = `<button class="settings-btn-secondary" data-settings-int="${i.id}" disabled title="OAuth setup in progress">Connect (coming soon)</button>`;
+    }
     return `
       <div class="settings-int-card">
         <div class="settings-int-head">
           <div class="settings-int-name">${i.label}</div>
-          <span class="settings-int-status${conn ? ' connected' : ''}">${conn ? 'Connected' : 'Not connected'}</span>
+          <span class="settings-int-status${conn ? ' connected' : ''}">${statusLabel}</span>
         </div>
         <div class="settings-int-desc">${i.desc}</div>
-        <button class="settings-btn-secondary" data-settings-int="${i.id}" disabled title="OAuth setup in progress">Connect (coming soon)</button>
+        ${buttonHtml}
       </div>`;
   }).join('');
 
@@ -276,8 +315,56 @@ document.addEventListener('click', e => {
     });
     return;
   }
+  const dropboxBtn = e.target.closest('[data-settings-dropbox]');
+  if (dropboxBtn) {
+    const op = dropboxBtn.dataset.settingsDropbox;
+    if (op === 'connect') startDropboxConnect();
+    else if (op === 'disconnect') disconnectDropbox();
+    return;
+  }
   const action = e.target.closest('[data-settings-action]')?.dataset.settingsAction;
   if (!action) return;
   if (action === 'backup' && typeof openBackupModal === 'function') openBackupModal();
   else if (action === 'delete-account' && typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
 });
+
+async function startDropboxConnect() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    if (typeof showToast === 'function') showToast('Sign in required', 'offline');
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id:          BETA_DROPBOX_CLIENT_ID,
+    redirect_uri:       window.location.origin + '/.netlify/functions/beta-dropbox-auth',
+    response_type:      'code',
+    token_access_type:  'offline',     // required for a refresh_token
+    state:              session.access_token,
+  });
+  window.location.href = 'https://www.dropbox.com/oauth2/authorize?' + params;
+}
+
+async function disconnectDropbox() {
+  if (!confirm('Disconnect Dropbox? GSD will no longer be able to access your Dropbox files. Any folders previously shared with GSD will remain shared until you remove them from your Dropbox account.')) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/.netlify/functions/beta-dropbox', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'disconnect' }),
+    });
+    if (!res.ok) throw new Error('disconnect failed');
+    if (userSettings?.integrations?.dropbox) {
+      userSettings.integrations.dropbox = { connected: false, email: null };
+    }
+    if (activeTool === 'settings') renderSettingsPage();
+    if (typeof showToast === 'function') showToast('Dropbox disconnected', 'ok');
+  } catch (e) {
+    console.error('[settings] dropbox disconnect failed', e);
+    if (typeof showToast === 'function') showToast('Could not disconnect Dropbox', 'offline');
+  }
+}

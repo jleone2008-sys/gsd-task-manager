@@ -274,6 +274,10 @@ let activeDetailTab = 'profile';
 let googleTokenCache = {}; // email → { token, expires }
 let driveFolderStack = [{ id: 'root', name: 'My Drive' }];
 let driveImageList = []; // {id, mimeType, name}[] — image files in current folder, used for preview nav
+let dropboxTokenCache = {};   // email → { token, expires }
+let dropboxFolderStack = [{ path: '', name: 'Dropbox' }];
+let dropboxImageList = [];    // {path, name}[] — image files in current Dropbox folder
+let dropboxSharedSet = new Set(); // folder_path values currently shared for the selected user
 
 /* ════════════════════════════════════════
    INIT
@@ -385,6 +389,7 @@ function renderUserTable() {
           <span title="${u.has_refresh_token ? 'Google token stored' : 'No Google token'}">
             <span class="token-dot ${u.has_refresh_token ? '' : 'missing'}"></span>
           </span>
+          <span title="${u.has_dropbox_token ? 'Dropbox token stored' : 'No Dropbox token'}" style="font-size:.7rem">${u.has_dropbox_token ? '📦' : '<span style="opacity:.25">📦</span>'}</span>
           <button class="btn-icon" title="View as user" onclick="event.stopPropagation();handleViewAsUser('${escHtml(u.email)}')">👁</button>
           <button class="btn-icon danger" title="Revoke Google token" onclick="event.stopPropagation();handleRevokeToken('${escHtml(u.email)}')">⊗</button>
         </div>
@@ -486,12 +491,19 @@ function renderProfileTab(body) {
       ${u.has_refresh_token
         ? `<button class="btn-danger" id="btnRevokeToken">Revoke Google Token</button>`
         : `<div style="font-size:.75rem;color:#9aaabb;text-align:center;">No Google token stored yet</div>`}
+      ${u.has_dropbox_token
+        ? `<button class="btn-danger" id="btnRevokeDropbox">Revoke Dropbox Token</button>
+           <div style="font-size:.7rem;color:#9aaabb;text-align:center;">Dropbox: ${escHtml(u.dropbox_account_email || u.email)}</div>`
+        : `<div style="font-size:.75rem;color:#9aaabb;text-align:center;">No Dropbox token stored yet</div>`}
     </div>`;
 
   document.getElementById('btnSaveProfile').addEventListener('click', () => saveProfile(u.email));
   document.getElementById('btnViewAsUser').addEventListener('click', () => handleViewAsUser(u.email));
   if (u.has_refresh_token) {
     document.getElementById('btnRevokeToken').addEventListener('click', () => handleRevokeToken(u.email));
+  }
+  if (u.has_dropbox_token) {
+    document.getElementById('btnRevokeDropbox').addEventListener('click', () => handleRevokeDropbox(u.email));
   }
 }
 
@@ -513,16 +525,20 @@ async function renderGsdTab(body) {
 }
 
 function renderGoogleTab(body) {
-  if (!selectedUser?.has_refresh_token) {
-    body.innerHTML = `<div class="no-token-msg">No Google token stored for this user. They need to sign out and sign back in to the beta app to capture their token.</div>`;
+  const hasGoogle  = !!selectedUser?.has_refresh_token;
+  const hasDropbox = !!selectedUser?.has_dropbox_token;
+  if (!hasGoogle && !hasDropbox) {
+    body.innerHTML = `<div class="no-token-msg">No external service tokens stored for this user. They need to sign in to the beta app (Google) or connect Dropbox from Settings to capture tokens.</div>`;
     return;
   }
 
+  const firstTab = hasGoogle ? 'calendar' : 'dropbox';
   body.innerHTML = `
     <div class="google-tabs">
-      <button class="google-tab active" data-gtab="calendar">📅 Calendar</button>
-      <button class="google-tab" data-gtab="drive">📁 Drive</button>
-      <button class="google-tab" data-gtab="tasks">✅ Tasks</button>
+      ${hasGoogle  ? `<button class="google-tab${firstTab==='calendar'?' active':''}" data-gtab="calendar">📅 Calendar</button>` : ''}
+      ${hasGoogle  ? `<button class="google-tab" data-gtab="drive">📁 Drive</button>` : ''}
+      ${hasGoogle  ? `<button class="google-tab" data-gtab="tasks">✅ Tasks</button>` : ''}
+      ${hasDropbox ? `<button class="google-tab${firstTab==='dropbox'?' active':''}" data-gtab="dropbox">📦 Dropbox</button>` : ''}
     </div>
     <div id="googleDataArea"><div class="loading-msg">Select a service above</div></div>`;
 
@@ -530,13 +546,13 @@ function renderGoogleTab(body) {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.google-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      if (btn.dataset.gtab === 'drive') driveFolderStack = [{ id: 'root', name: 'My Drive' }];
+      if (btn.dataset.gtab === 'drive')   driveFolderStack   = [{ id: 'root', name: 'My Drive' }];
+      if (btn.dataset.gtab === 'dropbox') dropboxFolderStack = [{ path: '', name: 'Dropbox' }];
       loadGoogleData(btn.dataset.gtab);
     });
   });
 
-  // Auto-load calendar on open
-  loadGoogleData('calendar');
+  loadGoogleData(firstTab);
 }
 
 async function loadGoogleData(service) {
@@ -545,6 +561,8 @@ async function loadGoogleData(service) {
   area.innerHTML = '<div class="loading-msg">Loading…</div>';
 
   try {
+    if (service === 'dropbox') { await loadDropbox(area); return; }
+
     const token = await getGoogleTokenForUser(selectedUser.email);
 
     if (service === 'calendar')  await loadCalendar(area, token);
@@ -804,6 +822,381 @@ function typeLabel(mime) {
   if (!mime) return '—';
   if (mime === 'application/vnd.google-apps.folder') return 'folder';
   return mime.replace('application/vnd.google-apps.', '').split('/').pop();
+}
+
+/* ════════════════════════════════════════
+   DROPBOX BROWSER (admin)
+════════════════════════════════════════ */
+
+const DROPBOX_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.heic', '.heif', '.webp', '.bmp', '.tif', '.tiff'];
+
+async function getDropboxTokenForUser(email) {
+  const cached = dropboxTokenCache[email];
+  if (cached && cached.expires > Date.now() + 30000) return cached.token;
+  const res = await adminFetch('POST', { action: 'get-dropbox-token', target_email: email });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d.error || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  dropboxTokenCache[email] = { token: data.dropbox_access_token, expires: Date.now() + 3500000 };
+  return data.dropbox_access_token;
+}
+
+async function dropboxApi(path, accessToken, body) {
+  const res = await fetch(`https://api.dropboxapi.com${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const summary = data.error_summary || `HTTP ${res.status}`;
+    const err = new Error(summary);
+    err.tag = data.error?.['.tag'];
+    throw err;
+  }
+  return data;
+}
+
+async function loadDropbox(area) {
+  // Always render the shared-folders sub-section first (works without user's OAuth)
+  let sharesHtml = '';
+  let sharesErr  = null;
+  try {
+    const sharesRes  = await adminFetch('POST', { action: 'list-dropbox-shares', target_email: selectedUser.email });
+    const shares     = sharesRes.ok ? await sharesRes.json() : [];
+    dropboxSharedSet = new Set((shares || []).map(s => s.folder_path));
+    sharesHtml = renderDropboxShares(shares || []);
+  } catch (err) {
+    sharesErr = err.message;
+  }
+
+  // Try the live OAuth browse next. If it fails with token errors, fall back to a notice.
+  let browseHtml;
+  try {
+    const token  = await getDropboxTokenForUser(selectedUser.email);
+    const folder = dropboxFolderStack[dropboxFolderStack.length - 1];
+    const data   = await dropboxApi('/2/files/list_folder', token, { path: folder.path, limit: 500 });
+    const entries = data.entries || [];
+
+    dropboxImageList = entries
+      .filter(e => e['.tag'] === 'file' && isDropboxImage(e.name))
+      .map(e => ({ path: e.path_lower, name: e.name }));
+
+    const crumbs = dropboxFolderStack.map((f, i) => {
+      const isLast = i === dropboxFolderStack.length - 1;
+      return isLast
+        ? `<span style="font-weight:600">${escHtml(f.name)}</span>`
+        : `<a href="#" data-dbx-crumb="${i}" style="color:#5b8def;text-decoration:none">${escHtml(f.name)}</a>`;
+    }).join(' <span style="color:#9aaabb">/</span> ');
+    const header = `<div style="margin:.5rem 0 .75rem;font-size:.85rem">${crumbs}</div>`;
+
+    if (!entries.length) {
+      browseHtml = `${header}<div class="loading-msg">Folder is empty</div>`;
+    } else {
+      // Folders first, then files; alphabetical within each
+      const sorted = entries.slice().sort((a, b) => {
+        const aFold = a['.tag'] === 'folder' ? 0 : 1;
+        const bFold = b['.tag'] === 'folder' ? 0 : 1;
+        if (aFold !== bFold) return aFold - bFold;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      const rows = sorted.map(e => renderDropboxEntryRow(e)).join('');
+      browseHtml = `${header}<table class="google-data-table">
+        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+  } catch (err) {
+    const tokenIssue = /expired_access_token|invalid_access_token|no_dropbox_refresh_token|token/i.test(err.message || '');
+    browseHtml = `<div class="no-token-msg" style="margin-top:1rem">${tokenIssue
+      ? `User's Dropbox token has expired or been revoked. Only shared folders above are accessible.`
+      : `Error loading Dropbox: ${escHtml(err.message)}`}</div>`;
+  }
+
+  area.innerHTML = `${sharesErr ? `<div class="error-msg">Could not load shared folders: ${escHtml(sharesErr)}</div>` : sharesHtml}${browseHtml}`;
+  attachDropboxHandlers(area);
+}
+
+function renderDropboxShares(shares) {
+  if (!shares.length) {
+    return `<div style="background:#1a1f2c;border:1px solid #2a3245;border-radius:.5rem;padding:.6rem .75rem;font-size:.75rem;color:#9aaabb;margin-bottom:.5rem">
+      🔗 No shared folders yet. Use "Mark as shared" on any folder below to create a permanent shared link that survives token expiry.
+    </div>`;
+  }
+  const rows = shares.map(s => {
+    const created = s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—';
+    return `<tr>
+      <td>🔗 ${escHtml(s.folder_name || s.folder_path || '(unnamed)')}</td>
+      <td style="font-size:.7rem;color:#9aaabb">${escHtml(created)}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <a href="${escHtml(s.shared_link_url)}" target="_blank" rel="noopener" class="btn-icon" title="Open in Dropbox" style="text-decoration:none;font-size:.8rem">↗ Open</a>
+        <button class="btn-icon" data-dbx-share-remove="${escHtml(s.id)}" title="Remove share" style="font-size:.85rem;margin-left:.25rem">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div style="margin-bottom:.75rem">
+    <div style="font-size:.75rem;color:#9aaabb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">🔗 Shared folders (admin-set, persist after token expiry)</div>
+    <table class="google-data-table"><tbody>${rows}</tbody></table>
+  </div>`;
+}
+
+function renderDropboxEntryRow(e) {
+  const isFolder = e['.tag'] === 'folder';
+  const isImage  = e['.tag'] === 'file' && isDropboxImage(e.name);
+  const mod      = e.server_modified ? new Date(e.server_modified).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—';
+  const size     = e.size ? formatBytes(+e.size) : '—';
+  const icon     = isFolder ? '📁' : '📄';
+  const path     = e.path_lower || e.path_display || '';
+  const name     = e.name || '';
+  const nameAttr = isFolder
+    ? `data-dbx-folder="${escHtml(path)}" data-dbx-name="${escHtml(name)}"`
+    : isImage
+      ? `data-dbx-preview="${escHtml(path)}" data-dbx-name="${escHtml(name)}"`
+      : `data-dbx-download="${escHtml(path)}" data-dbx-name="${escHtml(name)}"`;
+  const nameStyle = isFolder ? 'color:#5b8def;text-decoration:none' : 'color:inherit;text-decoration:none';
+  const nameCell  = `<a href="#" ${nameAttr} style="${nameStyle}">${icon} ${escHtml(name)}</a>`;
+  let actionsCell = '';
+  if (isFolder) {
+    const alreadyShared = dropboxSharedSet.has(path);
+    actionsCell = alreadyShared
+      ? `<span class="btn-icon" title="Already shared" style="opacity:.6;font-size:.75rem;cursor:default">🔗 Shared</span>`
+      : `<button class="btn-icon" data-dbx-share="${escHtml(path)}" data-dbx-name="${escHtml(name)}" title="Mark as shared (creates a permanent view-only link)" style="font-size:.75rem">🔗 Share</button>`;
+  } else {
+    actionsCell = `<button class="btn-icon" data-dbx-download="${escHtml(path)}" data-dbx-name="${escHtml(name)}" title="Download" style="font-size:.85rem">⬇</button>`;
+  }
+  const typeLbl = isFolder ? 'folder' : (name.split('.').pop() || 'file').toLowerCase();
+  return `<tr><td title="${escHtml(name)}">${nameCell}</td><td>${escHtml(typeLbl)}</td><td>${size}</td><td>${mod}</td><td style="text-align:right">${actionsCell}</td></tr>`;
+}
+
+function isDropboxImage(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return DROPBOX_IMAGE_EXTS.some(ext => lower.endsWith(ext));
+}
+
+function attachDropboxHandlers(area) {
+  area.querySelectorAll('[data-dbx-folder]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      dropboxFolderStack.push({ path: el.dataset.dbxFolder, name: el.dataset.dbxName });
+      loadGoogleData('dropbox');
+    });
+  });
+  area.querySelectorAll('[data-dbx-crumb]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = +el.dataset.dbxCrumb;
+      dropboxFolderStack = dropboxFolderStack.slice(0, idx + 1);
+      loadGoogleData('dropbox');
+    });
+  });
+  area.querySelectorAll('[data-dbx-preview]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      previewDropboxImage(el.dataset.dbxPreview, el.dataset.dbxName);
+    });
+  });
+  area.querySelectorAll('[data-dbx-download]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadDropboxFile(el.dataset.dbxDownload, el.dataset.dbxName, el);
+    });
+  });
+  area.querySelectorAll('[data-dbx-share]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      markDropboxShared(el.dataset.dbxShare, el.dataset.dbxName, el);
+    });
+  });
+  area.querySelectorAll('[data-dbx-share-remove]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      removeDropboxShareRow(el.dataset.dbxShareRemove, el);
+    });
+  });
+}
+
+async function previewDropboxImage(path, name) {
+  let currentIndex = dropboxImageList.findIndex(f => f.path === path);
+  if (currentIndex === -1) {
+    dropboxImageList = [{ path, name }];
+    currentIndex = 0;
+  }
+  const hasMultiple = dropboxImageList.length > 1;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;cursor:zoom-out';
+  const navBtnStyle = 'position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:none;width:3rem;height:3rem;border-radius:50%;font-size:1.5rem;cursor:pointer;z-index:1;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `<div style="color:#fff;font-size:.875rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
+      <span id="dbxPreviewName">${escHtml(name)}</span>
+      <span id="dbxPreviewCounter" style="color:#9aaabb;font-size:.75rem"></span>
+      <button id="dbxPreviewDownloadBtn" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:.4rem .8rem;border-radius:.5rem;cursor:pointer;font-size:.75rem">⬇ Download</button>
+      <button id="dbxPreviewCloseBtn" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:.4rem .8rem;border-radius:.5rem;cursor:pointer;font-size:.75rem">✕ Close</button>
+    </div>
+    ${hasMultiple ? `<button id="dbxPreviewPrevBtn" style="${navBtnStyle};left:1rem">‹</button>` : ''}
+    <img id="dbxPreviewImg" style="max-width:90vw;max-height:80vh;object-fit:contain;display:none" />
+    <div id="dbxPreviewSpinner" style="color:#9aaabb;font-size:.875rem">Loading…</div>
+    ${hasMultiple ? `<button id="dbxPreviewNextBtn" style="${navBtnStyle};right:1rem">›</button>` : ''}`;
+  document.body.appendChild(overlay);
+
+  let alive = true;
+  const close = () => {
+    alive = false;
+    document.removeEventListener('keydown', onKey, true);
+    overlay.remove();
+  };
+
+  const loadImage = async () => {
+    const file = dropboxImageList[currentIndex];
+    const img    = overlay.querySelector('#dbxPreviewImg');
+    const spin   = overlay.querySelector('#dbxPreviewSpinner');
+    const nameEl = overlay.querySelector('#dbxPreviewName');
+    const ctrEl  = overlay.querySelector('#dbxPreviewCounter');
+    img.style.display = 'none';
+    spin.style.display = 'block';
+    spin.textContent = 'Loading…';
+    nameEl.textContent = file.name;
+    ctrEl.textContent  = hasMultiple ? `${currentIndex + 1} / ${dropboxImageList.length}` : '';
+    try {
+      const token = await getDropboxTokenForUser(selectedUser.email);
+      const data  = await dropboxApi('/2/files/get_temporary_link', token, { path: file.path });
+      if (!alive) return;
+      img.onload = () => { spin.style.display = 'none'; img.style.display = 'block'; };
+      img.onerror = () => { spin.textContent = 'Failed to load image'; };
+      img.src = data.link;
+    } catch (err) {
+      if (alive) spin.textContent = 'Error: ' + err.message;
+    }
+  };
+
+  const navigate = (delta) => {
+    currentIndex = (currentIndex + delta + dropboxImageList.length) % dropboxImageList.length;
+    loadImage();
+  };
+
+  const triggerDownload = () => {
+    const file = dropboxImageList[currentIndex];
+    downloadDropboxFile(file.path, file.name, overlay.querySelector('#dbxPreviewDownloadBtn'));
+  };
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation(); e.preventDefault();
+      close();
+    } else if (e.key === 'ArrowLeft' && hasMultiple) {
+      e.stopPropagation(); e.preventDefault();
+      navigate(-1);
+    } else if (e.key === 'ArrowRight' && hasMultiple) {
+      e.stopPropagation(); e.preventDefault();
+      navigate(1);
+    }
+  };
+
+  document.addEventListener('keydown', onKey, true);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#dbxPreviewCloseBtn').addEventListener('click', close);
+  overlay.querySelector('#dbxPreviewDownloadBtn').addEventListener('click', triggerDownload);
+  if (hasMultiple) {
+    overlay.querySelector('#dbxPreviewPrevBtn').addEventListener('click', (e) => { e.stopPropagation(); navigate(-1); });
+    overlay.querySelector('#dbxPreviewNextBtn').addEventListener('click', (e) => { e.stopPropagation(); navigate(1); });
+  }
+
+  await loadImage();
+}
+
+async function downloadDropboxFile(path, fileName, btn) {
+  const orig = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  try {
+    const res = await adminFetch('POST', { action: 'get-dropbox-download-info', target_email: selectedUser.email, path });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    const { download_url, access_token, dropbox_api_arg } = await res.json();
+    const fileRes = await fetch(download_url, {
+      method: 'POST',
+      headers: {
+        'Authorization':    `Bearer ${access_token}`,
+        'Dropbox-API-Arg':  dropbox_api_arg,
+      },
+    });
+    if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+    const blob = await fileRes.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    alert('Download failed: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = orig; btn.disabled = false; }
+  }
+}
+
+async function markDropboxShared(path, name, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const res = await adminFetch('POST', {
+      action:       'create-dropbox-share',
+      target_email: selectedUser.email,
+      folder_path:  path,
+      folder_name:  name,
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    dropboxSharedSet.add(path);
+    // Re-render to show the new row in the shares section + flip the button
+    await loadGoogleData('dropbox');
+  } catch (err) {
+    alert('Failed to mark as shared: ' + err.message);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+async function removeDropboxShareRow(shareId, btn) {
+  if (!confirm('Remove this shared folder? GSD will lose access to it after the user disconnects Dropbox.')) return;
+  const orig = btn.textContent;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const res = await adminFetch('POST', { action: 'remove-dropbox-share', share_id: shareId });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    await loadGoogleData('dropbox');
+  } catch (err) {
+    alert('Failed to remove share: ' + err.message);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+async function handleRevokeDropbox(email) {
+  if (!confirm(`Revoke Dropbox token for ${email}? Existing shared folders will be preserved.`)) return;
+  try {
+    const res  = await adminFetch('POST', { action: 'revoke-dropbox-token', email });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    const u = allUsers.find(u => u.email === email);
+    if (u) { u.has_dropbox_token = false; u.dropbox_account_email = null; }
+    if (selectedUser?.email === email) {
+      selectedUser = { ...selectedUser, has_dropbox_token: false, dropbox_account_email: null };
+      if (activeDetailTab === 'profile') renderProfileTab(document.getElementById('detailBody'));
+    }
+    delete dropboxTokenCache[email];
+    renderUserTable();
+    showToast('Dropbox token revoked');
+  } catch (err) {
+    showToast(`Revoke failed: ${err.message}`);
+  }
 }
 
 function exportExtension(mime) {

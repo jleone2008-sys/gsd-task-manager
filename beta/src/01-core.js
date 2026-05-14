@@ -690,12 +690,41 @@ async function restoreSession() {
   // Handle redirect back from Netlify OAuth proxy
   if (await handleBetaOAuthCallback()) return;
 
+  // Pick up any pending Dropbox connect result so we can toast/refresh after auth resumes
+  consumeDropboxCallbackHash();
+
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) {
     signInUser(session.user);
   } else {
     document.getElementById('authScreen').classList.remove('hidden');
   }
+}
+
+/* ── BETA: Pick up the hash set by beta-dropbox-auth function ── */
+function consumeDropboxCallbackHash() {
+  const hash = location.hash || '';
+  if (!hash.includes('dropbox=') && !hash.includes('dropbox_error=')) return;
+
+  const params = new URLSearchParams(hash.slice(1));
+  const ok    = params.get('dropbox');
+  const error = params.get('dropbox_error');
+  history.replaceState(null, '', location.pathname);
+
+  // Defer until after sign-in / first paint so the toast and re-render land cleanly
+  setTimeout(async () => {
+    if (error) {
+      if (typeof showToast === 'function') showToast(`Dropbox connect failed: ${error}`, 'offline');
+      return;
+    }
+    if (ok === 'connected') {
+      if (typeof loadDropboxStatus === 'function') await loadDropboxStatus();
+      if (typeof activeTool !== 'undefined' && activeTool === 'settings' && typeof renderSettingsPage === 'function') {
+        renderSettingsPage();
+      }
+      if (typeof showToast === 'function') showToast('Dropbox connected', 'ok');
+    }
+  }, 600);
 }
 
 /* ── ADMIN VIEW MODE ── */

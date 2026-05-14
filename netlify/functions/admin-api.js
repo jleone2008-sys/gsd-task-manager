@@ -9,8 +9,9 @@
 
 const { createCipheriv, createDecipheriv, randomBytes, createHmac } = require('crypto');
 
-const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const SUPABASE_URL     = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
+const DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
 
 exports.handler = async (event) => {
   // CORS preflight
@@ -67,6 +68,12 @@ exports.handler = async (event) => {
       case 'get-google-token':  return cors(await getGoogleToken(JSON.parse(event.body), serviceKey));
       case 'get-gsd-data':      return cors(await getGsdData(JSON.parse(event.body), serviceKey));
       case 'get-drive-download-info': return cors(await getDriveDownloadInfo(JSON.parse(event.body), serviceKey));
+      case 'get-dropbox-token': return cors(await getDropboxToken(JSON.parse(event.body), serviceKey));
+      case 'get-dropbox-download-info': return cors(await getDropboxDownloadInfo(JSON.parse(event.body), serviceKey));
+      case 'revoke-dropbox-token': return cors(await revokeDropboxToken(JSON.parse(event.body), serviceKey));
+      case 'list-dropbox-shares':  return cors(await listDropboxShares(JSON.parse(event.body), serviceKey));
+      case 'create-dropbox-share': return cors(await createDropboxShare(JSON.parse(event.body), serviceKey, callerEmail));
+      case 'remove-dropbox-share': return cors(await removeDropboxShare(JSON.parse(event.body), serviceKey));
       default:                  return cors(json(400, { error: 'unknown_action' }));
     }
   } catch (err) {
@@ -80,7 +87,7 @@ exports.handler = async (event) => {
 async function listUsers(serviceKey) {
   // Get all user_profiles
   const profilesRes = await supabaseFetch(
-    '/rest/v1/user_profiles?select=email,role,status,tab_permissions,display_name,supabase_user_id,updated_at,google_refresh_token_enc',
+    '/rest/v1/user_profiles?select=email,role,status,tab_permissions,display_name,supabase_user_id,updated_at,google_refresh_token_enc,dropbox_refresh_token_enc,dropbox_account_email',
     'GET', null, null, serviceKey
   );
   const profiles = await profilesRes.json();
@@ -109,10 +116,14 @@ async function listUsers(serviceKey) {
   const users = profiles.map(p => ({
     ...p,
     last_sign_in_at: p.supabase_user_id ? (signInMap[p.supabase_user_id] || null) : null,
-    has_refresh_token: !!p.google_refresh_token_enc, // don't expose the token itself
+    has_refresh_token:         !!p.google_refresh_token_enc,  // don't expose the token itself
+    has_dropbox_token:         !!p.dropbox_refresh_token_enc,
   }));
-  // Strip the encrypted token from the list response
-  users.forEach(u => delete u.google_refresh_token_enc);
+  // Strip the encrypted tokens from the list response
+  users.forEach(u => {
+    delete u.google_refresh_token_enc;
+    delete u.dropbox_refresh_token_enc;
+  });
 
   return json(200, users);
 }
@@ -291,6 +302,232 @@ function pickExportMime(googleMime) {
   }
 }
 
+// ── Dropbox actions ───────────────────────────────────────────────────────
+
+async function getDropboxToken(body, serviceKey) {
+  const { target_email } = body;
+  if (!target_email) return json(400, { error: 'target_email_required' });
+
+  const profileRes = await supabaseFetch(
+    `/rest/v1/user_profiles?email=eq.${encodeURIComponent(target_email)}&select=dropbox_refresh_token_enc`,
+    'GET', null, null, serviceKey
+  );
+  const profiles = await profileRes.json();
+  const enc = profiles?.[0]?.dropbox_refresh_token_enc;
+  if (!enc) return json(400, { error: 'no_dropbox_refresh_token' });
+
+  try {
+    const accessToken = await exchangeDropboxRefreshToken(enc);
+    return json(200, { dropbox_access_token: accessToken });
+  } catch (err) {
+    return json(400, { error: 'dropbox_token_exchange_failed', message: err.message });
+  }
+}
+
+async function getDropboxDownloadInfo(body, serviceKey) {
+  const { target_email, path } = body;
+  if (!target_email || !path) return json(400, { error: 'target_email_and_path_required' });
+
+  const profileRes = await supabaseFetch(
+    `/rest/v1/user_profiles?email=eq.${encodeURIComponent(target_email)}&select=dropbox_refresh_token_enc`,
+    'GET', null, null, serviceKey
+  );
+  const profiles = await profileRes.json();
+  const enc = profiles?.[0]?.dropbox_refresh_token_enc;
+  if (!enc) return json(400, { error: 'no_dropbox_refresh_token' });
+
+  const accessToken = await exchangeDropboxRefreshToken(enc);
+  // Dropbox file downloads are POST to the content host with Dropbox-API-Arg
+  return json(200, {
+    download_url: 'https://content.dropboxapi.com/2/files/download',
+    access_token: accessToken,
+    dropbox_api_arg: JSON.stringify({ path }),
+  });
+}
+
+async function revokeDropboxToken(body, serviceKey) {
+  const { email } = body;
+  if (!email) return json(400, { error: 'email_required' });
+
+  // Best-effort: mint a fresh access token and revoke at Dropbox so the
+  // refresh token can no longer be used. Fall through to nulling the column.
+  const profRes = await supabaseFetch(
+    `/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=dropbox_refresh_token_enc`,
+    'GET', null, null, serviceKey
+  );
+  const profiles = await profRes.json();
+  const enc = profiles?.[0]?.dropbox_refresh_token_enc;
+  if (enc) {
+    try {
+      const accessToken = await exchangeDropboxRefreshToken(enc);
+      await fetch('https://api.dropboxapi.com/2/auth/token/revoke', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+    } catch (err) {
+      console.warn('Dropbox revoke failed (non-fatal):', err.message);
+    }
+  }
+
+  const res = await supabaseFetch(
+    `/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}`,
+    'PATCH',
+    {
+      dropbox_refresh_token_enc: null,
+      dropbox_account_email:     null,
+      updated_at:                new Date().toISOString(),
+    },
+    null, serviceKey
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    return json(500, { error: `revoke_failed: ${text}` });
+  }
+  return json(200, { ok: true });
+}
+
+async function listDropboxShares(body, serviceKey) {
+  const { target_email } = body;
+  if (!target_email) return json(400, { error: 'target_email_required' });
+
+  const res = await supabaseFetch(
+    `/rest/v1/dropbox_shared_folders?user_email=eq.${encodeURIComponent(target_email)}&select=*&order=created_at.desc`,
+    'GET', null, null, serviceKey
+  );
+  const rows = await res.json();
+  return json(200, Array.isArray(rows) ? rows : []);
+}
+
+async function createDropboxShare(body, serviceKey, callerEmail) {
+  const { target_email, folder_path, folder_name } = body;
+  if (!target_email || !folder_path) return json(400, { error: 'target_email_and_folder_path_required' });
+
+  // Need the user's still-valid Dropbox token to create the link on their account
+  const profRes = await supabaseFetch(
+    `/rest/v1/user_profiles?email=eq.${encodeURIComponent(target_email)}&select=dropbox_refresh_token_enc`,
+    'GET', null, null, serviceKey
+  );
+  const profiles = await profRes.json();
+  const enc = profiles?.[0]?.dropbox_refresh_token_enc;
+  if (!enc) return json(400, { error: 'no_dropbox_refresh_token', message: 'User has not connected Dropbox.' });
+
+  const accessToken = await exchangeDropboxRefreshToken(enc);
+
+  // Create the public view-only link. If one already exists, Dropbox returns
+  // an error containing the existing link — we surface that as success.
+  let shareUrl;
+  const createRes = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      path: folder_path,
+      settings: {
+        audience: 'public',
+        access:   'viewer',
+        requested_visibility: 'public',
+      },
+    }),
+  });
+  const createData = await createRes.json();
+
+  if (createRes.ok && createData.url) {
+    shareUrl = createData.url;
+  } else if (createData.error?.['.tag'] === 'shared_link_already_exists' && createData.error?.shared_link_already_exists?.metadata?.url) {
+    shareUrl = createData.error.shared_link_already_exists.metadata.url;
+  } else if (createData.error_summary?.includes('shared_link_already_exists')) {
+    // Fall back to list_shared_links to grab the existing URL
+    const listRes = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({ path: folder_path, direct_only: true }),
+    });
+    const listData = await listRes.json();
+    shareUrl = listData?.links?.[0]?.url;
+    if (!shareUrl) return json(500, { error: 'share_lookup_failed', detail: listData });
+  } else {
+    return json(500, { error: 'create_share_failed', detail: createData });
+  }
+
+  // Upsert the share row — use a direct fetch so we can request both
+  // resolution=merge-duplicates AND return=representation in one call.
+  const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/dropbox_shared_folders?on_conflict=user_email,folder_path`, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'apikey':        serviceKey,
+      'Authorization': `Bearer ${serviceKey}`,
+      'Prefer':        'resolution=merge-duplicates,return=representation',
+    },
+    body: JSON.stringify({
+      user_email:      target_email,
+      folder_path,
+      folder_name:     folder_name || null,
+      shared_link_url: shareUrl,
+      created_by:      callerEmail,
+    }),
+  });
+  if (!upsertRes.ok) {
+    const text = await upsertRes.text();
+    return json(500, { error: `share_store_failed: ${text}` });
+  }
+  const rows = await upsertRes.json();
+  return json(200, Array.isArray(rows) ? rows[0] : rows);
+}
+
+async function removeDropboxShare(body, serviceKey) {
+  const { share_id } = body;
+  if (!share_id) return json(400, { error: 'share_id_required' });
+
+  // Look up the row so we know the URL and which user's token to try
+  const rowRes = await supabaseFetch(
+    `/rest/v1/dropbox_shared_folders?id=eq.${encodeURIComponent(share_id)}&select=*`,
+    'GET', null, null, serviceKey
+  );
+  const rows = await rowRes.json();
+  const row  = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return json(404, { error: 'share_not_found' });
+
+  // Best-effort revoke at Dropbox (using the user's token if still valid)
+  try {
+    const profRes = await supabaseFetch(
+      `/rest/v1/user_profiles?email=eq.${encodeURIComponent(row.user_email)}&select=dropbox_refresh_token_enc`,
+      'GET', null, null, serviceKey
+    );
+    const profiles = await profRes.json();
+    const enc = profiles?.[0]?.dropbox_refresh_token_enc;
+    if (enc) {
+      const accessToken = await exchangeDropboxRefreshToken(enc);
+      await fetch('https://api.dropboxapi.com/2/sharing/revoke_shared_link', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({ url: row.shared_link_url }),
+      });
+    }
+  } catch (err) {
+    console.warn('Dropbox shared-link revoke failed (non-fatal):', err.message);
+  }
+
+  // Delete the row regardless of revoke outcome
+  const delRes = await supabaseFetch(
+    `/rest/v1/dropbox_shared_folders?id=eq.${encodeURIComponent(share_id)}`,
+    'DELETE', null, null, serviceKey
+  );
+  if (!delRes.ok) {
+    const text = await delRes.text();
+    return json(500, { error: `share_delete_failed: ${text}` });
+  }
+  return json(200, { ok: true });
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function exchangeRefreshToken(encryptedToken) {
@@ -312,6 +549,28 @@ async function exchangeRefreshToken(encryptedToken) {
   });
   const data = await res.json();
   if (data.error) throw new Error(`Google token refresh failed: ${data.error} — ${data.error_description}`);
+  return data.access_token;
+}
+
+async function exchangeDropboxRefreshToken(encryptedToken) {
+  const encKey       = process.env.ADMIN_ENCRYPTION_KEY;
+  const clientSecret = process.env.BETA_DROPBOX_CLIENT_SECRET;
+  if (!encKey || !clientSecret) throw new Error('Missing encryption key or Dropbox client secret');
+
+  const refreshToken = decryptToken(encryptedToken, encKey);
+
+  const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     DROPBOX_CLIENT_ID,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type:    'refresh_token',
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(`Dropbox token refresh failed: ${data.error} — ${data.error_description}`);
   return data.access_token;
 }
 
