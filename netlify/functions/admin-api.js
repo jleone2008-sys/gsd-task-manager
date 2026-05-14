@@ -93,12 +93,15 @@ async function listUsers(serviceKey) {
   const profiles = await profilesRes.json();
   if (!Array.isArray(profiles)) return json(500, { error: 'failed_to_fetch_profiles' });
 
-  // Get last_sign_in_at from auth.users for each known supabase_user_id
+  // Get last_sign_in_at + identities from auth.users for each user. Identities
+  // tell us which auth method each user actually last used (google vs email
+  // vs magic link). Useful for diagnosing "I signed in with Google" claims —
+  // if identities.google.last_sign_in_at is stale, they're really using
+  // session refresh, not a fresh OAuth handshake.
   const uids = profiles.map(p => p.supabase_user_id).filter(Boolean);
-  let signInMap = {};
+  let signInMap = {}, identitiesMap = {};
   if (uids.length) {
     try {
-      // Fetch auth users in batches (Supabase admin list endpoint)
       const authRes = await supabaseFetch(
         `/auth/v1/admin/users?per_page=1000`,
         'GET', null, null, serviceKey
@@ -108,6 +111,10 @@ async function listUsers(serviceKey) {
         const authUsers = authData.users || [];
         for (const u of authUsers) {
           signInMap[u.id] = u.last_sign_in_at;
+          identitiesMap[u.id] = (u.identities || []).map(i => ({
+            provider:        i.provider,
+            last_sign_in_at: i.last_sign_in_at || null,
+          }));
         }
       }
     } catch { /* non-fatal */ }
@@ -116,6 +123,7 @@ async function listUsers(serviceKey) {
   const users = profiles.map(p => ({
     ...p,
     last_sign_in_at: p.supabase_user_id ? (signInMap[p.supabase_user_id] || null) : null,
+    identities:      p.supabase_user_id ? (identitiesMap[p.supabase_user_id] || []) : [],
     has_refresh_token:         !!p.google_refresh_token_enc,  // don't expose the token itself
     has_dropbox_token:         !!p.dropbox_refresh_token_enc,
   }));

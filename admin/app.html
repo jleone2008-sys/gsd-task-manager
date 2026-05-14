@@ -374,6 +374,17 @@ function renderUserTable() {
     const lastSeen = u.last_sign_in_at
       ? new Date(u.last_sign_in_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
       : '—';
+    // Per-identity breakdown: which auth method did they actually last use?
+    // Helps diagnose "I signed in with Google" claims when google identity is
+    // stale and they're really riding a long-lived session.
+    const identityLines = (u.identities || [])
+      .sort((a, b) => (b.last_sign_in_at || '').localeCompare(a.last_sign_in_at || ''))
+      .map(i => {
+        const rel = relTime(i.last_sign_in_at);
+        const stale = isStale(i.last_sign_in_at);
+        return `<div style="color:${stale ? '#d99000' : '#7aa07a'};font-size:.68rem">${escHtml(i.provider)} · ${rel}</div>`;
+      })
+      .join('');
 
     return `<tr data-email="${escHtml(u.email)}" class="${selectedUser?.email === u.email ? 'selected' : ''}">
       <td><div class="user-avatar-sm">${initials}</div></td>
@@ -384,7 +395,10 @@ function renderUserTable() {
       <td><span class="badge badge-${u.role}">${u.role}</span></td>
       <td><span class="badge badge-${u.status}">${u.status}</span></td>
       <td><div class="tab-icons">${tabs.join('')}</div></td>
-      <td style="color:#9aaabb">${lastSeen}</td>
+      <td style="color:#9aaabb">
+        <div>${lastSeen}</div>
+        ${identityLines}
+      </td>
       <td>
         <div class="action-btns">
           <span title="${u.has_refresh_token ? 'Google token stored' : 'No Google token'}">
@@ -1694,6 +1708,27 @@ function escHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Compact relative-time formatter for identity timestamps. "2mo" / "3d" / "today".
+function relTime(iso) {
+  if (!iso) return 'never';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return 'just now';
+  const days = Math.floor(ms / 86400000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7)   return `${days}d ago`;
+  if (days < 30)  return `${Math.floor(days / 7)}w ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+// "Stale" if older than 30 days — beyond this, identity is unlikely to have
+// been used in any recent admin-view session. Drives the amber tint in the table.
+function isStale(iso) {
+  if (!iso) return true;
+  return Date.now() - new Date(iso).getTime() > 30 * 86400000;
 }
 
 function showToast(msg) {
