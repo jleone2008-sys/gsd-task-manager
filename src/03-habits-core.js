@@ -131,16 +131,21 @@ async function toggleCompletion(habitClientId, dateStr) {
     renderHabits();
     setStatus('syncing');
     const row = { user_id: currentUser.id, habit_id: habitSid, completed_date: dateStr };
-    // Extras habits intentionally allow multiple rows per date, so a plain insert
-    // is correct there. For normal habits, upsert on the unique constraint makes
-    // "mark this date complete" idempotent: if the DB already has the row (e.g. local
-    // state drifted out of sync), we adopt it instead of hitting a 409 duplicate-key
-    // error and reverting the tap.
-    const isExtra = !!(habit && habit.allowExtras);
-    const builder = db.from('habit_completions');
-    const { data, error } = isExtra
-      ? await builder.insert(row).select()
-      : await builder.upsert(row, { onConflict: 'user_id,habit_id,completed_date' }).select();
+    let { data, error } = await db.from('habit_completions').insert(row).select();
+    // Local completion state can drift out of sync with the DB (e.g. a dropped
+    // realtime event), leaving us without a row the server already has — a plain
+    // insert then 409s on the unique constraint. Rather than error and revert the
+    // tap, treat "already exists" as success: fetch the existing row and adopt its
+    // id so the dot stays marked and a later un-check deletes the right row. Skip
+    // this for extras habits, which intentionally add multiple rows per date.
+    if (error && !(habit && habit.allowExtras) &&
+        (error.code === '23505' || /duplicate key/i.test(error.message || ''))) {
+      const res = await db.from('habit_completions')
+        .select('*')
+        .eq('user_id', currentUser.id).eq('habit_id', habitSid).eq('completed_date', dateStr)
+        .limit(1);
+      if (!res.error && res.data?.[0]) { data = res.data; error = null; }
+    }
     setStatus(error ? 'error' : 'saved');
     if (error) { console.error('addCompletion:', error.message); habitCompletions = habitCompletions.filter(c => c !== temp); renderHabits(); return; }
     if (data?.[0]) {
