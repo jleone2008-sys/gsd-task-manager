@@ -27,7 +27,7 @@
   .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .home-section-title { font-size: var(--t-lg); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 
-  /* Shared pill button — Log mood, Scratchpad, and the Task + add button.
+  /* Shared pill button — Scratchpad and the Task + add button.
      White, subtle: thin edge, muted text. */
   .home-pill-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: 999px; padding: 6px 13px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
   .home-pill-btn:hover { border-color: var(--edge-strong); color: var(--ink-2); }
@@ -46,9 +46,8 @@
   .home-ring-trend.is-up { color: #5e8c4f; }
   .home-ring-trend.is-down { color: var(--guava-700); }
 
-  /* Mood block (inside Today card) — hidden until "Log mood" is tapped. */
-  .home-mood-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--edge); }
-  .home-mood-block[hidden] { display: none; }
+  /* Mood picker — lives in the Journal card, below the reflection box. */
+  .home-journal-mood { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--edge); }
   .home-mood { display: flex; gap: 8px; }
   .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 9px 4px; cursor: pointer; font-size: 21px; line-height: 1; }
   .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }

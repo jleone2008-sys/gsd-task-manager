@@ -145,11 +145,8 @@ function homeDateLabel() {
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).replace(String(day), day + ord);
 }
 function homeTodayCardHTML() {
-  return `${homeSectionHead(homeDateLabel(), '<button class="home-pill-btn" data-home-mood-toggle>+ Log mood</button>')}
-    <div id="homeRingsRow"><div class="home-skeleton">Loading your numbers…</div></div>
-    <div class="home-mood-block" id="homeMoodBlock" hidden>
-      <div id="homeMoodRow">${homeMoodRowHTML(null)}</div>
-    </div>`;
+  return `${homeSectionHead(homeDateLabel())}
+    <div id="homeRingsRow"><div class="home-skeleton">Loading your numbers…</div></div>`;
 }
 
 function ringSvg(score, color) {
@@ -320,7 +317,8 @@ function homeJournalInnerHTML(entry) {
   const e = entry || ((typeof journalState !== 'undefined') ? journalState.entries.get(today) : null);
   const text = e?.reflections || '';
   const esc = (typeof escapeHtml === 'function') ? escapeHtml : hEsc;
-  return `<textarea class="home-journal-input" id="homeJournalInput" placeholder="Reflect on today…" spellcheck="true" rows="1">${esc(text)}</textarea>`;
+  return `<textarea class="home-journal-input" id="homeJournalInput" placeholder="Reflect on today…" spellcheck="true" rows="1">${esc(text)}</textarea>
+    <div class="home-journal-mood"><div id="homeMoodRow">${homeMoodRowHTML(e)}</div></div>`;
 }
 function homeAutoGrow(el) {
   if (!el) return;
@@ -431,18 +429,18 @@ async function hydrateHomeToday() {
     const oura = await loadOuraScores();
     if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
   }
-  // Mood (today's journal entry).
+  // Journal reflection + mood (today's journal entry).
   if (typeof loadJournalEntry === 'function') {
     const entry = await loadJournalEntry(homeToday());
-    const moodEl = document.getElementById('homeMoodRow');
-    if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
-    // If a mood is already logged for today, reveal the picker so it's visible.
-    if (entry && entry.mood) document.getElementById('homeMoodBlock')?.removeAttribute('hidden');
-    // Journal box prefills today's reflection once loaded (don't clobber while typing).
+    // Prefill the reflection box + mood row once loaded. Don't clobber the
+    // textarea while typing — in that case just repaint the mood row.
     const ji = document.getElementById('homeJournalInput');
     if (!ji || document.activeElement !== ji) {
       refreshHomeSection('homeJournal', homeJournalInnerHTML(entry));
       homeAutoGrow(document.getElementById('homeJournalInput'));
+    } else {
+      const moodEl = document.getElementById('homeMoodRow');
+      if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
     }
   }
 }
@@ -622,11 +620,6 @@ function homeWireOnce() {
       return;
     }
 
-    if (e.target.closest('[data-home-mood-toggle]')) {
-      const block = document.getElementById('homeMoodBlock');
-      if (block) block.hidden = !block.hidden;
-      return;
-    }
     const doneToggle = e.target.closest('[data-home-done-toggle]');
     if (doneToggle) {
       const list = document.getElementById('homeTasksDone');
