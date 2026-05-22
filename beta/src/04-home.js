@@ -404,14 +404,7 @@ function homeWeekInnerHTML(oura, entriesByDate) {
         ${cell(o.activity_score, HOME_RING_COLORS.activity)}
       </div>`);
   }
-  const avgRow = `<div class="hw-row hw-avg">
-      <span class="hw-day">AVG</span>
-      <span class="hw-mood"></span>
-      ${cell(homeWeekAvg(days, 'sleep_score', 0, 7), HOME_RING_COLORS.sleep)}
-      ${cell(homeWeekAvg(days, 'readiness_score', 0, 7), HOME_RING_COLORS.readiness)}
-      ${cell(homeWeekAvg(days, 'activity_score', 0, 7), HOME_RING_COLORS.activity)}
-    </div>`;
-  const table = `<div class="home-week-table">${head}${dayRows.join('')}${avgRow}</div>`;
+  const table = `<div class="home-week-table">${head}${dayRows.join('')}</div>`;
   return homeSectionHead('Last 7 Days', avgHtml) + stats + table;
 }
 
