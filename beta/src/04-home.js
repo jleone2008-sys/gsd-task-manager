@@ -258,7 +258,7 @@ function homeTasksInnerHTML() {
     : `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
   const doneHtml = doneToday.length
     ? `<div class="home-done-toggle" data-home-done-toggle role="button" tabindex="0">
-        <span class="home-done-label">COMPLETED <span class="home-done-pill">${doneToday.length}</span></span>
+        <span class="home-done-label">FINISHED TODAY <span class="home-done-pill">${doneToday.length}</span></span>
         <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="home-tasks-done" id="homeTasksDone" hidden>${doneToday.map(t => homeTaskCardHTML(t)).join('')}</div>`
