@@ -330,6 +330,8 @@ function renderSettingsPage() {
             <label><input type="radio" name="healthSource" data-settings-health-source="oura" ${healthSource === 'oura' ? 'checked' : ''} /> Oura</label>
             <label><input type="radio" name="healthSource" data-settings-health-source="whoop" ${healthSource === 'whoop' ? 'checked' : ''} /> Whoop <span class="settings-soon">coming soon</span></label>
           </div>
+          <button class="settings-btn-secondary" data-settings-sync-now>Sync now</button>
+          <span class="settings-saved" id="settingsSyncStatus"></span>
         </div>
         <div class="settings-int-grid">${integrationsHtml}</div>
       </div>
@@ -435,6 +437,56 @@ function flashSettingsSaved() {
   flashSettingsSaved._t = setTimeout(() => el.classList.remove('visible'), 1400);
 }
 
+function flashSyncStatus(msg) {
+  const el = document.getElementById('settingsSyncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+  clearTimeout(flashSyncStatus._t);
+  flashSyncStatus._t = setTimeout(() => el.classList.remove('visible'), 6000);
+}
+
+// Self-serve "Sync now": pulls the selected wearable's recent history on demand
+// via beta-sync-now (which triggers the cron backfill server-side for this user).
+async function runSyncNow(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  const src = getHealthSource();
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not signed in');
+    const res = await fetch(`/.netlify/functions/beta-sync-now?provider=${src}&days=30`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      // A long sync can exceed the function timeout (502/504) while still
+      // finishing in the background — report that rather than a hard failure.
+      throw new Error(res.status >= 500 ? 'still-running' : `HTTP ${res.status}`);
+    }
+    const data = await res.json().catch(() => ({}));
+    let total = 0;
+    Object.values(data.results || {}).forEach(r => { if (typeof r.rowsUpserted === 'number') total += r.rowsUpserted; });
+    const msg = total > 0 ? `Synced — ${total} day${total === 1 ? '' : 's'} of data` : 'Sync ran — no new data found';
+    flashSyncStatus(msg);
+    if (typeof showToast === 'function') showToast(msg);
+    if (typeof loadOuraStatus === 'function') loadOuraStatus();
+  } catch (err) {
+    if (err.message === 'still-running') {
+      const msg = 'Sync is running — reload Home in a minute';
+      flashSyncStatus(msg);
+      if (typeof showToast === 'function') showToast(msg);
+    } else {
+      console.error('[settings] sync now failed', err);
+      flashSyncStatus('Sync failed');
+      if (typeof showToast === 'function') showToast('Sync failed: ' + err.message, 'offline');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
 document.addEventListener('change', e => {
   const betaCb = e.target.closest('#settingsBetaEnabled');
   if (betaCb) {
@@ -484,6 +536,8 @@ document.addEventListener('click', e => {
     });
     return;
   }
+  const syncBtn = e.target.closest('[data-settings-sync-now]');
+  if (syncBtn) { runSyncNow(syncBtn); return; }
   const intBtn = e.target.closest('[data-settings-int-action]');
   if (intBtn) {
     const op = intBtn.dataset.settingsIntAction;
