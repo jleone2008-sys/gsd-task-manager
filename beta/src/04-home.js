@@ -140,8 +140,15 @@ function ringSvg(score, color) {
     <text class="home-ring-score" x="40" y="41" text-anchor="middle" dominant-baseline="central">${score == null ? '—' : Math.round(score)}</text>
   </svg>`;
 }
+// The most recent day that actually has the headline scores. A day with only
+// activity (ring not worn overnight) has null sleep/readiness — skip it so the
+// rings don't show blanks for two of three metrics.
+function homeLatestOuraDay(oura) {
+  const days = oura?.days || [];
+  return days.find(d => d.readiness_score != null || d.sleep_score != null) || days[0] || null;
+}
 function homeRingsRowHTML(oura) {
-  const latest = oura?.days?.[0];
+  const latest = homeLatestOuraDay(oura);
   if (!latest) return `<div class="home-empty">No Oura data yet — it syncs overnight.</div>`;
   const ring = (label, score, color) => `<div class="home-ring">${ringSvg(score, color)}<span class="home-ring-label">${label}</span></div>`;
   return `<div class="home-rings">
@@ -308,7 +315,7 @@ async function hydrateHomeToday() {
   } else {
     const oura = await loadOuraScores();
     if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
-    const latest = oura?.days?.[0];
+    const latest = homeLatestOuraDay(oura);
     const asOf = document.getElementById('homeTodayAsOf');
     if (asOf) asOf.textContent = (latest && latest.date && latest.date !== homeToday() && typeof jFormatShort === 'function')
       ? `as of ${jFormatShort(latest.date)}` : '';
