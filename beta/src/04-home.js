@@ -318,11 +318,14 @@ function homeNotesInnerHTML() {
 function homeJournalInnerHTML(entry) {
   const today = homeToday();
   const e = entry || ((typeof journalState !== 'undefined') ? journalState.entries.get(today) : null);
-  const text = (e?.reflections || '').trim();
-  if (text) {
-    return `<div class="home-journal-line has-text" data-home-journal role="button" tabindex="0">${hEsc(text)}</div>`;
-  }
-  return `<div class="home-journal-line" data-home-journal role="button" tabindex="0">Reflect on today…</div>`;
+  const text = e?.reflections || '';
+  const esc = (typeof escapeHtml === 'function') ? escapeHtml : hEsc;
+  return `<textarea class="home-journal-input" id="homeJournalInput" placeholder="Reflect on today…" spellcheck="true" rows="1">${esc(text)}</textarea>`;
+}
+function homeAutoGrow(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 /* ── Card 4: Last 7 Days ──────────────────────────────────── */
@@ -435,8 +438,12 @@ async function hydrateHomeToday() {
     if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
     // If a mood is already logged for today, reveal the picker so it's visible.
     if (entry && entry.mood) document.getElementById('homeMoodBlock')?.removeAttribute('hidden');
-    // Journal line shows today's reflection preview once loaded.
-    refreshHomeSection('homeJournal', homeJournalInnerHTML(entry));
+    // Journal box prefills today's reflection once loaded (don't clobber while typing).
+    const ji = document.getElementById('homeJournalInput');
+    if (!ji || document.activeElement !== ji) {
+      refreshHomeSection('homeJournal', homeJournalInnerHTML(entry));
+      homeAutoGrow(document.getElementById('homeJournalInput'));
+    }
   }
 }
 
@@ -633,7 +640,6 @@ function homeWireOnce() {
     const noteEl = e.target.closest('[data-home-note]');
     if (noteEl) { openHomeNoteModal(parseInt(noteEl.dataset.homeNote, 10)); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
-    if (e.target.closest('[data-home-journal]')) { switchTool('journal'); return; }
 
     const moodEl = e.target.closest('[data-home-mood]');
     if (moodEl) {
@@ -649,6 +655,20 @@ function homeWireOnce() {
     // Tasks (data-task-action) and habits (data-habit-action) are handled by
     // their own global delegated listeners; render()/renderHabits() then call
     // refreshHomeData to repaint the Home sections.
+  });
+
+  // Inline journal reflection — edits save straight to today's journal entry
+  // (same scheduleSave path as the Journal tab) and the box auto-grows.
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'homeJournalInput') return;
+    const today = homeToday();
+    const val = e.target.value;
+    if (typeof journalState !== 'undefined') {
+      const entry = journalState.entries.get(today) || { entry_date: today, reflections: '', mood: null, photos: [] };
+      journalState.entries.set(today, { ...entry, reflections: val });
+    }
+    if (typeof scheduleSave === 'function') scheduleSave(today, { reflections: val });
+    homeAutoGrow(e.target);
   });
 
   document.addEventListener('keydown', e => {

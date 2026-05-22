@@ -70,10 +70,11 @@
   .home-habit-streak { flex-shrink: 0; font-size: var(--t-xs); font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
   .home-trow-meta { font-size: var(--t-sm); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
 
-  /* Journal quick-capture — single-line tap target. */
-  .home-journal-line { font-size: var(--t-sm); color: var(--ink-4); cursor: pointer; padding: 4px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home-journal-line:hover { color: var(--ink-2); }
-  .home-journal-line.has-text { color: var(--ink); }
+  /* Journal quick-capture — inline textarea, edits save straight to today's entry. */
+  .home-journal-input { width: 100%; box-sizing: border-box; display: block; resize: none; overflow: hidden;
+    font-family: inherit; font-size: var(--t-sm); line-height: 1.5; color: var(--ink);
+    background: none; border: 0; padding: 2px 2px; outline: none; min-height: 1.5em; }
+  .home-journal-input::placeholder { color: var(--ink-4); }
 
   /* Tasks: strip the .card chrome → flat line rows; priority strip hidden (all priority). */
   #homeTasks .task-group { margin: 0; }
