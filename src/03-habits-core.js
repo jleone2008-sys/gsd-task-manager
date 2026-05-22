@@ -108,11 +108,12 @@ async function toggleCompletion(habitClientId, dateStr) {
   }
   if (!habitSid) { console.error('toggleCompletion: no server id for', habitClientId); return; }
 
-  const habit = habitsArr.find(h => h.id === habitClientId);
   const existing = habitCompletions.find(c => c.habitId === habitSid && c.completedDate === dateStr);
 
-  if (existing && !(habit && habit.allowExtras)) {
-    // Normal toggle: remove completion
+  if (existing) {
+    // Toggle off: remove the completion. One row per (habit, date) — "allow
+    // extras" lets you mark more DAYS than the goal, not multiple per day — so
+    // tapping a marked day always un-marks it.
     habitCompletions = habitCompletions.filter(c => c !== existing);
     renderHabits();
     setStatus('syncing');
@@ -125,7 +126,7 @@ async function toggleCompletion(habitClientId, dateStr) {
       renderHabits();
     }
   } else {
-    // Add completion (first time, or extras mode adds another)
+    // Toggle on: add the completion for this date.
     const temp = { id: -Date.now(), habitId: habitSid, completedDate: dateStr };
     habitCompletions.push(temp);
     renderHabits();
@@ -136,10 +137,8 @@ async function toggleCompletion(habitClientId, dateStr) {
     // realtime event), leaving us without a row the server already has — a plain
     // insert then 409s on the unique constraint. Rather than error and revert the
     // tap, treat "already exists" as success: fetch the existing row and adopt its
-    // id so the dot stays marked and a later un-check deletes the right row. Skip
-    // this for extras habits, which intentionally add multiple rows per date.
-    if (error && !(habit && habit.allowExtras) &&
-        (error.code === '23505' || /duplicate key/i.test(error.message || ''))) {
+    // id so the dot stays marked and a later un-check deletes the right row.
+    if (error && (error.code === '23505' || /duplicate key/i.test(error.message || ''))) {
       const res = await db.from('habit_completions')
         .select('*')
         .eq('user_id', currentUser.id).eq('habit_id', habitSid).eq('completed_date', dateStr)
@@ -154,24 +153,6 @@ async function toggleCompletion(habitClientId, dateStr) {
       completionRowIdMap.set(data[0].id, data[0].id);
     }
   }
-}
-
-// Remove the most recent completion for a habit on a given date (for extras undo)
-async function removeLastCompletion(habitClientId, dateStr) {
-  let habitSid = null;
-  for (const [sid, cid] of habitRowIdMap) {
-    if (cid === habitClientId) { habitSid = sid; break; }
-  }
-  if (!habitSid) return;
-  const matches = habitCompletions.filter(c => c.habitId === habitSid && c.completedDate === dateStr);
-  if (!matches.length) return;
-  const last = matches[matches.length - 1];
-  habitCompletions = habitCompletions.filter(c => c !== last);
-  renderHabits();
-  setStatus('syncing');
-  const { error } = await db.from('habit_completions').delete().eq('id', last.id);
-  setStatus(error ? 'error' : 'saved');
-  if (error) console.error('deleteCompletion:', error.message);
 }
 
 // Count completions for a habit on a specific date
@@ -633,49 +614,17 @@ function renderHabits() {
 
 /**
  * Build the Today view card HTML for a single habit. Extracted so both the
- * DUE TODAY and HABITS sections can reuse the exact same markup.
- * "isExtras + isDone" branch renders the +/- controls; the default is the
- * standard toggle check.
+ * DUE TODAY and HABITS sections can reuse the exact same markup. Renders a
+ * single toggle check that marks/un-marks the habit for the day.
  */
 function habitTodayCardHTML(h, today) {
   const streak = computeStreak(h.id);
   const isDone = isCompletedOn(h.id, today);
-  const isExtras = !!h.allowExtras;
-  const todayCount = getCompletionCountForDate(h.id, today);
-  const periodCount = h.frequency === 'x_per_month' ? getMonthCompletions(h.id, today)
-                   : h.frequency === 'x_per_week'  ? getWeekCompletions(h.id, today)
-                   : 0;
-  const periodGoal = h.frequencyCount || 1;
-  const periodLabel = h.frequency === 'x_per_month' ? 'this month'
-                    : h.frequency === 'x_per_week'  ? 'this week'
-                    : '';
   const cardCls = `habit-card habit-today-card${isDone ? ' habit-done' : ''}`;
 
-  if (isDone && isExtras) {
-    // Completed + extras allowed → show count badge + +/- controls.
-    const countBadge = todayCount > 1
-      ? `<span style="font-size:10px;font-weight:700;color:var(--guava-700);background:var(--guava-100);padding:1px 6px;border-radius:8px;margin-left:4px">×${todayCount}</span>`
-      : '';
-    const progressMeta = periodLabel
-      ? `<span style="color:var(--guava-700);font-weight:600">${periodCount}/${periodGoal}</span> ${periodLabel}`
-      : '';
-    return `<div class="${cardCls}" data-habit-id="${h.id}">
-      <div class="swipe-complete-bg">✓</div>
-      <span class="habit-emoji-lg" data-habit-action="drill" data-habit-id="${h.id}">${escHTML(h.emoji || '')}</span>
-      <div class="habit-today-content" data-habit-action="drill" data-habit-id="${h.id}" style="cursor:pointer">
-        <div class="habit-card-top">
-          <span class="habit-name">${escHTML(h.name || '')}</span>${countBadge}
-        </div>
-        <div class="habit-card-meta">${progressMeta ? progressMeta + ' · ' : ''}<span class="habit-streak${streak===0?' dead':''}">${streakLabel(streak)}</span></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        <button data-habit-action="remove-last" data-habit-id="${h.id}" data-habit-date="${today}" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--edge-strong);background:var(--surface);color:var(--ink-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1" title="Remove one">−</button>
-        <button data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" style="width:22px;height:22px;border-radius:50%;border:1.5px solid var(--guava-700);background:var(--guava-700);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-weight:700" title="Add another">+</button>
-      </div>
-    </div>`;
-  }
-
-  // Standard card — either incomplete or done-without-extras.
+  // Standard card for every state. "Allow extras" means you can mark more DAYS
+  // than the goal (handled by the due/quota gating), not multiple times per day,
+  // so a done habit always shows a toggleable check that un-marks on tap.
   return `<div class="${cardCls}" data-habit-id="${h.id}">
     <div class="swipe-complete-bg">✓</div>
     <span class="habit-emoji-lg" data-habit-action="drill" data-habit-id="${h.id}">${escHTML(h.emoji || '')}</span>
@@ -1094,7 +1043,6 @@ document.addEventListener('click', e => {
       case 'drill-calendar': openHabitDrillIn(id, 'calendar'); return;
       case 'drill-stats':    openHabitDrillIn(id, 'stats'); return;
       case 'drill-edit':     openHabitDrillIn(id, 'edit'); return;
-      case 'remove-last':    removeLastCompletion(id, date); return;
       case 'toggle-complete': toggleCompletion(id, date); return;
       case 'toggle-complete-dot':
         hAction.classList.add('just-toggled');
