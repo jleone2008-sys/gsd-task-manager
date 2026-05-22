@@ -140,9 +140,8 @@ function homeSectionHead(text, rightHtml) {
 
 function homeDateLabel() {
   const d = new Date();
-  const day = d.getDate();
-  const ord = (day % 10 === 1 && day !== 11) ? 'st' : (day % 10 === 2 && day !== 12) ? 'nd' : (day % 10 === 3 && day !== 13) ? 'rd' : 'th';
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).replace(String(day), day + ord);
+  // e.g. "Today - Fri, May 22"
+  return `Today - ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`;
 }
 function homeTodayCardHTML() {
   return `${homeSectionHead(homeDateLabel())}
