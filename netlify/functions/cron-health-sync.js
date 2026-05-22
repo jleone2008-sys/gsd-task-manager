@@ -259,7 +259,9 @@ async function syncOuraUser(email, start, end, serviceKey, encKey) {
   const accessToken = tk.access_token;
 
   const startDay = dateKey(start);
-  const endDay   = dateKey(end);
+  // Oura's daily end_date can behave as exclusive — pad by a day so the current
+  // day is always in range. Oura simply ignores any future portion.
+  const endDay   = dateKey(new Date(end.getTime() + 86400_000));
   const qs = `?start_date=${startDay}&end_date=${endDay}`;
   const authHdr = { Authorization: `Bearer ${accessToken}` };
   const opt = { optional: true };   // skip on ANY error — never abort the core sync
