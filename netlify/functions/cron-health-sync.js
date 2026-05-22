@@ -262,7 +262,7 @@ async function syncOuraUser(email, start, end, serviceKey, encKey) {
   const endDay   = dateKey(end);
   const qs = `?start_date=${startDay}&end_date=${endDay}`;
   const authHdr = { Authorization: `Bearer ${accessToken}` };
-  const opt = { tolerate403: true };
+  const opt = { optional: true };   // skip on ANY error — never abort the core sync
 
   // Daily-aggregate endpoints + per-event endpoints, fetched in parallel
   const [
@@ -578,22 +578,36 @@ async function syncOuraUser(email, start, end, serviceKey, encKey) {
 async function ouraFetch(url, authHdr, opts) {
   const all = [];
   let next = url;
-  for (let i = 0; i < 8; i++) {
-    const r = await fetch(next, { headers: authHdr });
-    if (r.status === 403 && opts?.tolerate403) {
-      // Scope not approved or endpoint unavailable for this user — skip silently
+  try {
+    for (let i = 0; i < 8; i++) {
+      const r = await fetch(next, { headers: authHdr });
+      if (!r.ok) {
+        // Optional endpoints (plan-gated / scope not approved / unavailable for
+        // this user) return assorted 4xx — not always 403. Skip them silently
+        // so one extra endpoint can never abort the core daily sync.
+        if (opts?.optional) {
+          console.warn(`oura optional ${url} HTTP ${r.status} — skipped`);
+          return all;
+        }
+        throw new Error(`oura ${url} HTTP ${r.status}`);
+      }
+      const j = await r.json();
+      if (Array.isArray(j?.data)) all.push(...j.data);
+      else if (j && !j.data && !j.next_token) {
+        // Single-object endpoints (e.g. personal_info) — wrap as one-element array
+        all.push(j);
+        break;
+      }
+      if (!j?.next_token) break;
+      next = `${url}${url.includes('?') ? '&' : '?'}next_token=${encodeURIComponent(j.next_token)}`;
+    }
+  } catch (e) {
+    // Network/parse error on an optional endpoint shouldn't sink the whole sync.
+    if (opts?.optional) {
+      console.warn(`oura optional ${url} failed: ${e.message} — skipped`);
       return all;
     }
-    if (!r.ok) throw new Error(`oura ${url} HTTP ${r.status}`);
-    const j = await r.json();
-    if (Array.isArray(j?.data)) all.push(...j.data);
-    else if (j && !j.data && !j.next_token) {
-      // Single-object endpoints (e.g. personal_info) — wrap as one-element array
-      all.push(j);
-      break;
-    }
-    if (!j?.next_token) break;
-    next = `${url}${url.includes('?') ? '&' : '?'}next_token=${encodeURIComponent(j.next_token)}`;
+    throw e;
   }
   return all;
 }
