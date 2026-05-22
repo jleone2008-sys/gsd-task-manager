@@ -497,7 +497,24 @@ function homeWireOnce() {
     if (e.target.id === 'homeNoteModal') { closeHomeNoteModal(); return; }
     if (e.target.id === 'homeQuickNotesModal') { closeQuickNotesModal(); return; }
 
-    if (activeTool !== 'home' || !document.getElementById('homeContainer')) return;
+    const container = document.getElementById('homeContainer');
+    if (activeTool !== 'home' || !container) return;
+
+    // Task-card actions: the Tasks-tab handler is bound to #taskContainer, so it
+    // never fires for Home's cards. Dispatch them here to the global task fns.
+    const taEl = e.target.closest('[data-task-action]');
+    if (taEl && container.contains(taEl)) {
+      const action = taEl.dataset.taskAction;
+      if (action === 'open-create') { if (typeof openCreatePanel === 'function') openCreatePanel(); return; }
+      const card = taEl.closest('.task-item');
+      const tid = card ? parseInt(card.dataset.id, 10) : null;
+      if (tid != null) {
+        if (action === 'toggle-done' && typeof toggleDone_t === 'function') toggleDone_t(tid);
+        else if (action === 'toggle-top3' && typeof toggleTop3 === 'function') toggleTop3(tid);
+        else if (action === 'open-edit' && typeof openEdit === 'function') openEdit(tid);
+      }
+      return;
+    }
 
     if (e.target.closest('[data-home-cta="settings"]')) { switchTool('settings'); return; }
     const go = e.target.closest('[data-home-go]');
