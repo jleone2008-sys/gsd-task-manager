@@ -22,8 +22,9 @@
   }
   .home-card-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; }
 
-  /* Unboxed sections (Events / Tasks / Habits / Notes): bold title + item cards. */
-  .home-section { margin-bottom: 22px; }
+  /* Sections inside a card (Events/Tasks/Habits share one box; Notes its own):
+     bold title + item cards, separated by a hairline divider. */
+  .home-section + .home-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--edge); }
   .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
   .home-section-title { font-size: var(--t-md); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
   .home-add-btn { flex-shrink: 0; width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid var(--edge-strong); background: var(--surface); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
