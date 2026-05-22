@@ -22,10 +22,8 @@
   }
   .home-card-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; }
 
-  /* Unboxed flow sections (Events/Tasks/Habits/Notes): no card chrome, separated
-     by generous spacing; rows inside use hairline dividers (.home-row). */
-  .home-flow { margin-bottom: 22px; }
-  .home-section + .home-section { margin-top: 26px; }
+  /* Boxed flow sections (Events/Tasks/Habits/Notes): each its own card,
+     rows inside separated by hairline dividers (.home-row). */
   .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .home-section-title { font-size: var(--t-lg); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 
@@ -73,6 +71,9 @@
   }
   #homeTasks .strip { display: none; }
   #homeTasks .task-item.done .task-text { text-decoration: none; color: var(--ink-4); }
+  #homeTasks > .task-group:last-child .task-item,
+  .home-tasks-done .task-group:last-child .task-item,
+  .home-done-toggle:last-child { border-bottom: 0; }
   .home-tasks-done[hidden] { display: none; }
 
   /* COMPLETED disclosure row */

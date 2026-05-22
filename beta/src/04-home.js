@@ -87,23 +87,21 @@ function renderHome() {
 
   el.innerHTML = `
     <div class="home-card" id="homeToday">${homeTodayCardHTML()}</div>
-    <div class="home-flow">
-      <section class="home-section">
-        ${homeSectionHead('Events')}
-        <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
-      </section>
-      <section class="home-section">
-        ${homeSectionHead('Priority Tasks', '<button class="home-pill-btn home-pill-btn--icon" data-task-action="open-create" title="Add task">+</button>')}
-        <div id="homeTasks">${homeTasksInnerHTML()}</div>
-      </section>
-      <section class="home-section">
-        ${homeSectionHead('Habits', '<span class="home-card-meta" id="homeHabitsMeta">' + homeHabitsMeta() + '</span>')}
-        <div id="homeHabits">${homeHabitsInnerHTML()}</div>
-      </section>
-      <section class="home-section">
-        ${homeSectionHead('Recent Notes', '<button class="home-pill-btn" data-home-quicknotes>Scratchpad</button>')}
-        <div id="homeNotes">${homeNotesInnerHTML()}</div>
-      </section>
+    <div class="home-card home-section">
+      ${homeSectionHead('Events')}
+      <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
+    </div>
+    <div class="home-card home-section">
+      ${homeSectionHead('Priority Tasks', '<button class="home-pill-btn home-pill-btn--icon" data-task-action="open-create" title="Add task">+</button>')}
+      <div id="homeTasks">${homeTasksInnerHTML()}</div>
+    </div>
+    <div class="home-card home-section">
+      ${homeSectionHead('Habits', '<span class="home-card-meta" id="homeHabitsMeta">' + homeHabitsMeta() + '</span>')}
+      <div id="homeHabits">${homeHabitsInnerHTML()}</div>
+    </div>
+    <div class="home-card home-section">
+      ${homeSectionHead('Recent Notes', '<button class="home-pill-btn" data-home-quicknotes>Scratchpad</button>')}
+      <div id="homeNotes">${homeNotesInnerHTML()}</div>
     </div>
     <div class="home-card" id="homeWeek">${homeWeekSkeletonHTML()}</div>
   `;
