@@ -610,6 +610,8 @@ function renderHabits() {
   renderHabitAll(active);
   renderHabitStats(active);
   updateHabitStatsBar(active);
+  // Keep the beta Home tab's habit section in sync (no-op elsewhere / in prod).
+  if (typeof refreshHomeData === 'function') refreshHomeData();
 }
 
 /**

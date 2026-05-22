@@ -21,10 +21,11 @@ const SETTINGS_DEFAULTS = {
   beta_enabled: false
 };
 
+// Scratch is intentionally omitted — it's no longer a standalone tab (folded
+// into the Home tab's quick-capture box), so it isn't user-toggleable here.
 const TAB_META = {
   habits:  { label: 'Habits',  desc: 'Track recurring habits and streaks.' },
   notes:   { label: 'Notes',   desc: 'Long-form notes organized by notebook.' },
-  scratch: { label: 'Scratch', desc: 'A quick scratchpad for ad-hoc text.' },
   journal: { label: 'Journal', desc: 'Daily reflections, photos, and mood.' }
 };
 
@@ -33,6 +34,12 @@ const INTEGRATIONS_META = [
   { id: 'oura',    label: 'Oura Ring', desc: 'Sleep, readiness, and activity from your Oura Ring.' },
   { id: 'whoop',   label: 'Whoop',     desc: 'Recovery, strain, and sleep from your Whoop.' }
 ];
+
+// Which wearable's scores show on the Home tab. Stored inside the integrations
+// jsonb column (no schema change). Defaults to Oura.
+function getHealthSource() {
+  return (userSettings?.integrations?.health_source === 'whoop') ? 'whoop' : 'oura';
+}
 
 async function loadUserSettings() {
   try {
@@ -145,15 +152,15 @@ function getEffectiveTabs() {
   const adminPerms = (typeof currentUserProfile !== 'undefined' && currentUserProfile?.tab_permissions) || VALID_TABS;
   const userEnabled = userSettings?.enabled_tools || VALID_TABS;
   return VALID_TABS.filter(t =>
-    adminPerms.includes(t) && (t === 'tasks' || userEnabled.includes(t))
+    (t === 'home') || (adminPerms.includes(t) && (t === 'tasks' || userEnabled.includes(t)))
   );
 }
 
 function getOrderedEffectiveTabs() {
   const effective = getEffectiveTabs();
   const userOrder = userSettings?.enabled_tools || VALID_TABS;
-  // Tasks first; then user's order; then any remaining effective tabs not in user's order
-  const result = ['tasks'].filter(t => effective.includes(t));
+  // Home then Tasks first; then user's order; then any remaining effective tabs not in user's order
+  const result = ['home', 'tasks'].filter(t => effective.includes(t));
   for (const t of userOrder) if (effective.includes(t) && !result.includes(t)) result.push(t);
   for (const t of effective) if (!result.includes(t)) result.push(t);
   return result;
@@ -174,7 +181,7 @@ function applyEffectiveTabs() {
     });
   });
   if (typeof activeTool !== 'undefined' && activeTool !== 'settings' && !ordered.includes(activeTool)) {
-    if (typeof switchTool === 'function') switchTool('tasks');
+    if (typeof switchTool === 'function') switchTool('home');
   }
 }
 
@@ -199,6 +206,11 @@ function ensureSettingsStyles() {
     .settings-reorder button { width: 22px; height: 16px; border: 1px solid var(--edge); background: var(--surface); border-radius: var(--r-sm); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 9px; line-height: 1; }
     .settings-reorder button:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
     .settings-reorder button[disabled] { opacity: 0.3; cursor: not-allowed; }
+    .settings-health-source { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 4px 0 16px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); }
+    .settings-health-source-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+    .settings-health-source-opts { display: flex; gap: 18px; flex-wrap: wrap; }
+    .settings-health-source-opts label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; }
+    .settings-soon { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-4); }
     .settings-int-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     .settings-int-card { background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 14px 16px; }
     .settings-int-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -241,6 +253,7 @@ function renderSettingsPage() {
   if (!root) return;
   const enabled = userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools;
   const integrations = userSettings?.integrations || {};
+  const healthSource = getHealthSource();
 
   // Build the order: enabled tabs in user order, then disabled tabs at the end
   const tabIds = Object.keys(TAB_META);
@@ -311,6 +324,13 @@ function renderSettingsPage() {
       <div class="settings-section">
         <div class="settings-h">Integrations</div>
         <div class="settings-sub">Connect external services to enrich your journal entries with health data.</div>
+        <div class="settings-health-source">
+          <span class="settings-health-source-label">Health rings on Home</span>
+          <div class="settings-health-source-opts">
+            <label><input type="radio" name="healthSource" data-settings-health-source="oura" ${healthSource === 'oura' ? 'checked' : ''} /> Oura</label>
+            <label><input type="radio" name="healthSource" data-settings-health-source="whoop" ${healthSource === 'whoop' ? 'checked' : ''} /> Whoop <span class="settings-soon">coming soon</span></label>
+          </div>
+        </div>
         <div class="settings-int-grid">${integrationsHtml}</div>
       </div>
 
@@ -419,6 +439,13 @@ document.addEventListener('change', e => {
   const betaCb = e.target.closest('#settingsBetaEnabled');
   if (betaCb) {
     saveUserSettings({ beta_enabled: betaCb.checked }).then(() => flashSettingsSaved());
+    return;
+  }
+  const healthRadio = e.target.closest('input[data-settings-health-source]');
+  if (healthRadio) {
+    const src = healthRadio.dataset.settingsHealthSource;
+    const merged = { ...(userSettings?.integrations || {}), health_source: src };
+    saveUserSettings({ integrations: merged }).then(() => flashSettingsSaved());
     return;
   }
   const cb = e.target.closest('input[data-settings-tab]');

@@ -158,6 +158,10 @@ function renderTaskStats() {
 
 function render() {
   const c = document.getElementById('taskContainer');
+  // Keep the beta Home tab's priority/finished sections in sync. render() is
+  // always called after `tasks` is mutated, and refreshHomeData reads the array
+  // (not the DOM), so the start of render() covers every exit path. No-op in prod.
+  if (typeof refreshHomeData === 'function') refreshHomeData();
   if (filter === 'stats') {
     c.innerHTML = renderTaskStats();
     updateTaskPillCounts();

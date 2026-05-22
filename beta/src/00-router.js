@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════════════════════════ */
 const GSD_LAST_TOOL_KEY = 'gsd_beta_last_tool';
 const GSD_HABIT_VIEWS = ['today', 'all', 'stats'];
-const GSD_TOOLS = ['tasks', 'habits', 'notes', 'scratch', 'journal', 'settings'];
+const GSD_TOOLS = ['home', 'tasks', 'habits', 'notes', 'scratch', 'journal', 'settings'];
 
 function parseAppRoute() {
   const path = location.pathname;
@@ -15,10 +15,10 @@ function parseAppRoute() {
   if (!m) return null;
   const [, seg1, seg2] = m;
   if (!seg1) {
-    // Bare /beta/app URL always lands on Tasks. GSD_LAST_TOOL_KEY is still
-    // written on navigation so deep-links round-trip, but the bare URL is
-    // intentionally anchored to a single home tab.
-    return { tool: 'tasks', _bare: true };
+    // Bare /beta/app URL always lands on Home (the daily brief). GSD_LAST_TOOL_KEY
+    // is still written on navigation so deep-links round-trip, but the bare URL is
+    // intentionally anchored to Home.
+    return { tool: 'home', _bare: true };
   }
   if (!GSD_TOOLS.includes(seg1)) return null;
   if (seg1 === 'tasks') {
@@ -37,6 +37,7 @@ function parseAppRoute() {
 
 function buildAppRoute(r) {
   if (!r || !r.tool) return '/beta/app';
+  if (r.tool === 'home') return '/beta/app';
   if (r.tool === 'tasks') {
     return r.filter ? `/beta/app/tasks?filter=${encodeURIComponent(r.filter)}` : '/beta/app/tasks';
   }

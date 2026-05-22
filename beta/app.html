@@ -11,6 +11,95 @@
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
 <link rel="stylesheet" href="/app.css">
+<!-- Home (daily brief) styles — beta-only, scoped so they never reach prod's app.css.
+     Reuses app.css design tokens (--surface, --ink scale, --edge, radii, shadows). -->
+<style id="homeStyles">
+  #homeContainer { max-width: 920px; margin: 0 auto; padding: 4px 0 32px; }
+  .home-row { display: grid; gap: 14px; margin-bottom: 14px; }
+  .home-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .home-row.cols-2 { grid-template-columns: 1fr; } }
+  .home-card {
+    background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card); padding: 16px; min-width: 0;
+  }
+  .home-card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px; gap: 8px;
+  }
+  .home-card-title {
+    font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-3); margin: 0;
+  }
+  .home-card-link {
+    font-size: var(--t-xs); font-weight: 600; color: var(--guava-700);
+    cursor: pointer; background: none; border: 0; padding: 0;
+  }
+  /* Header */
+  .home-greeting { margin-bottom: 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .home-greeting h1 { font-size: var(--fs-display, 28px); font-weight: 800; color: var(--ink); margin: 0 0 4px; line-height: 1.15; }
+  .home-greeting .home-subtitle { font-size: var(--t-sm); color: var(--ink-3); }
+  .home-quickadd { position: relative; }
+  .home-quickadd-btn {
+    display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600;
+    color: #fff; background: var(--guava-700); border: 0; border-radius: var(--r-md);
+    padding: 8px 14px; cursor: pointer;
+  }
+  .home-quickadd-menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px;
+    background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg);
+    box-shadow: var(--shadow-raised); padding: 6px; display: none;
+  }
+  .home-quickadd-menu.open { display: block; }
+  .home-quickadd-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    background: none; border: 0; border-radius: var(--r-md); padding: 9px 10px;
+    font-size: var(--t-sm); color: var(--ink-2); cursor: pointer;
+  }
+  .home-quickadd-item:hover { background: var(--surface-2); }
+  /* Rings */
+  .home-rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .home-ring { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .home-ring svg { width: 88px; height: 88px; }
+  .home-ring-track { stroke: var(--surface-2); }
+  .home-ring-score { font-size: 20px; font-weight: 700; fill: var(--ink); }
+  .home-ring-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+  /* Trend chart */
+  .home-trend svg { width: 100%; height: 150px; display: block; }
+  .home-trend-legend { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+  .home-trend-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--ink-3); }
+  .home-trend-legend i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+  /* Mood */
+  .home-mood { display: flex; gap: 8px; justify-content: space-between; }
+  .home-mood-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: var(--surface-2); border: 1px solid transparent; border-radius: var(--r-md);
+    padding: 10px 4px; cursor: pointer; font-size: 22px; line-height: 1;
+  }
+  .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }
+  .home-mood-btn.is-selected { border-color: var(--guava-500); background: var(--guava-50); }
+  /* Scratch capture */
+  .home-scratch-capture {
+    width: 100%; min-height: 56px; resize: none; border: 1px dashed var(--edge-strong);
+    border-radius: var(--r-md); background: var(--surface-2); padding: 12px 14px;
+    font-family: var(--font-sans); font-size: var(--t-sm); color: var(--ink-2); cursor: text;
+  }
+  .home-scratch-capture:focus { outline: none; border-color: var(--guava-500); }
+  /* Lists / empties */
+  .home-empty { font-size: var(--t-sm); color: var(--ink-4); padding: 8px 2px; }
+  .home-cta {
+    display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600;
+    color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 6px 0;
+  }
+  .home-list-item { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--edge); }
+  .home-list-item:first-child { border-top: 0; }
+  .home-list-item .hli-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-list-item .hli-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+  .home-cal-event { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--edge); }
+  .home-cal-event:first-child { border-top: 0; }
+  .home-cal-time { font-size: var(--t-xs); color: var(--ink-3); width: 64px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .home-cal-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-skeleton { color: var(--ink-4); font-size: var(--t-sm); padding: 12px 2px; }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -193,7 +282,11 @@
 <aside class="sidebar" id="desktopSidebar">
   <a class="wordmark" href="#" aria-label="GSD"><span>gsd</span><span class="dot"></span></a>
   <nav class="sidebar-nav">
-    <button class="sidebar-btn is-active" data-tool="tasks">
+    <button class="sidebar-btn is-active" data-tool="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="sidebar-btn" data-tool="tasks">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span>Tasks</span>
       <span class="count" id="sidebarTasksCount">0</span>
@@ -207,10 +300,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       <span>Notes</span>
       <span class="count" id="sidebarNotesCount">0</span>
-    </button>
-    <button class="sidebar-btn" data-tool="scratch">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      <span>Scratch</span>
     </button>
     <button class="sidebar-btn" data-tool="journal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
@@ -238,7 +327,7 @@
     <div class="header-inner">
     <a class="logo" href="/beta/app" id="headerLogo">
       <span class="logo-main"><span>gsd</span><em class="logo-dot">.</em></span>
-      <span class="page-title-mobile" id="pageTitle">Tasks</span>
+      <span class="page-title-mobile" id="pageTitle">Home</span>
     </a>
     <!-- Desktop-only header actions (new-task button, search, etc.) -->
     <div class="header-actions" id="headerActions"></div>
@@ -303,7 +392,11 @@
 
 </div><!-- /topbar -->
 
-<div class="content" data-tool-view="tasks">
+<div class="content" data-tool-view="home">
+  <div id="homeContainer"></div>
+</div>
+
+<div class="content" data-tool-view="tasks" style="display:none">
   <div id="taskContainer"></div>
 </div>
 
@@ -368,7 +461,11 @@
      Desktop sidebar below now uses the SAME icons so mobile and desktop
      iconography is identical. -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav">
-  <button class="mobile-nav-btn active" data-tool="tasks">
+  <button class="mobile-nav-btn active" data-tool="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="mobile-nav-btn" data-tool="tasks">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     <span>Tasks</span>
     <span class="mobile-nav-badge" id="tasksBadgeMobile">0</span>
@@ -382,10 +479,6 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     <span>Notes</span>
     <span class="mobile-nav-badge" id="notesBadgeMobile">0</span>
-  </button>
-  <button class="mobile-nav-btn" data-tool="scratch">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    <span>Scratch</span>
   </button>
   <button class="mobile-nav-btn" data-tool="journal">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
@@ -739,6 +832,7 @@
 <script src="/src/09-touch.js" defer></script>
 <script src="/src/10-legal-backup.js" defer></script>
 <script src="/src/11-init.js" defer></script>
+<script src="/beta/src/04-home.js" defer></script>
 <div class="sort-dropdown" id="sortDropdown">
   <div class="sort-opt active" data-sort="default">User Sorted</div>
   <div class="sort-opt" data-sort="recent">Recently Created</div>

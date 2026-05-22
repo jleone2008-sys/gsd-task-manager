@@ -206,7 +206,7 @@ let isAdminViewMode = false;
 let signingIn = false;
 let googleAccessToken = null;   // set after OAuth or admin impersonation
 let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
-const VALID_TABS = ['tasks', 'habits', 'notes', 'scratch', 'journal'];
+const VALID_TABS = ['home', 'tasks', 'habits', 'notes', 'scratch', 'journal'];
 
 // Set this after creating the beta Google Cloud project
 const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
@@ -408,6 +408,9 @@ async function _signInUser(user) {
     if (typeof applyEffectiveTabs === 'function') applyEffectiveTabs();
   }
   if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
+  // Home is the default tab and matches the default activeTool, so routerApplyRoute
+  // won't fire switchTool('home') on a bare URL — render it explicitly here.
+  if (activeTool === 'home' && typeof renderHome === 'function') renderHome();
 }
 
 async function signOut() {
@@ -490,7 +493,7 @@ function closeDeleteAccountModal() {
   document.getElementById('deleteAccountModal').classList.remove('open');
 }
 // ── Tool switching ──────────────────────────────────────
-let activeTool = 'tasks';
+let activeTool = 'home';
 let _navFromPop = false;
 function switchTool(tool) {
   if (tool === activeTool) return;
@@ -513,16 +516,17 @@ function switchTool(tool) {
   document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
-  const titles = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal', settings: 'Settings' };
+  const titles = { home: 'Home', tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
   const fab = document.getElementById('fabBtn');
   if (fab) {
-    const hideFabOn = ['scratch', 'journal', 'settings'];
+    const hideFabOn = ['home', 'scratch', 'journal', 'settings'];
     fab.classList.toggle('hidden', hideFabOn.includes(tool));
   }
-  if (tool === 'habits') { renderHabits(); }
+  if (tool === 'home') { if (typeof renderHome === 'function') renderHome(); }
+  else if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
   else if (tool === 'notes') { renderNotes(); }
   else if (tool === 'scratch') { renderScratch(); }
@@ -532,11 +536,11 @@ function switchTool(tool) {
 document.addEventListener('click', e => {
   const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
   if (tab && tab.dataset.tool) switchTool(tab.dataset.tool);
-  // Wordmark logo click → home (Tasks) without a full reload
+  // Wordmark logo click → Home without a full reload
   const logo = e.target.closest('#headerLogo');
   if (logo) {
     e.preventDefault();
-    if (typeof switchTool === 'function') switchTool('tasks');
+    if (typeof switchTool === 'function') switchTool('home');
   }
 });
 document.addEventListener('keydown', e => {
@@ -588,7 +592,7 @@ window.addEventListener('popstate', e => {
       const r = parseAppRoute();
       if (r) routerApplyRoute(r);
     } else {
-      const state = e.state || { tool: 'tasks' };
+      const state = e.state || { tool: 'home' };
       if (state.tool && state.tool !== activeTool) switchTool(state.tool);
     }
   } finally { _navFromPop = false; }

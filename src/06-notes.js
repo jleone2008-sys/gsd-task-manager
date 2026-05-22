@@ -256,6 +256,8 @@ function renderNotes() {
   // hide the notes-list and expand the editor to fill the same space.
   const layout = document.querySelector('[data-tool-view="notes"] .notes-layout');
   if (layout) layout.classList.toggle('has-active-note', !!activeNoteId);
+  // Keep the beta Home tab's recent-notes section in sync (no-op elsewhere / in prod).
+  if (typeof refreshHomeData === 'function') refreshHomeData();
 }
 
 function getFilteredNotes() {
