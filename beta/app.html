@@ -27,9 +27,10 @@
   .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .home-section-title { font-size: var(--t-lg); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 
-  /* Shared pill button — Log mood, Scratchpad, and the Task + add button. */
-  .home-pill-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--edge); border-radius: 999px; padding: 6px 13px; line-height: 1; cursor: pointer; }
-  .home-pill-btn:hover { background: var(--surface); border-color: var(--edge-strong); color: var(--ink); }
+  /* Shared pill button — Log mood, Scratchpad, and the Task + add button.
+     White, subtle: thin edge, muted text. */
+  .home-pill-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: 999px; padding: 6px 13px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+  .home-pill-btn:hover { border-color: var(--edge-strong); color: var(--ink-2); }
   .home-pill-btn--icon { padding: 6px 10px; font-size: 16px; }
 
   /* Rings */
@@ -71,13 +72,15 @@
   }
   #homeTasks .strip { display: none; }
   #homeTasks .task-item.done .task-text { text-decoration: none; color: var(--ink-4); }
+  /* No trailing divider: drop it on the last active task, the task before the
+     COMPLETED row, and the last completed task. */
   #homeTasks > .task-group:last-child .task-item,
-  .home-tasks-done .task-group:last-child .task-item,
-  .home-done-toggle:last-child { border-bottom: 0; }
+  #homeTasks .task-group:has(+ .home-done-toggle) .task-item,
+  .home-tasks-done .task-group:last-child .task-item { border-bottom: 0; }
   .home-tasks-done[hidden] { display: none; }
 
-  /* COMPLETED disclosure row */
-  .home-done-toggle { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px; cursor: pointer; border-bottom: 1px solid var(--edge); }
+  /* COMPLETED disclosure row — top border separates it from active tasks; none below. */
+  .home-done-toggle { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px; cursor: pointer; border-top: 1px solid var(--edge); }
   .home-done-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; color: var(--ink-3); display: inline-flex; align-items: center; gap: 8px; }
   .home-done-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-3); font-size: 11px; font-weight: 700; }
   .home-done-arrow { color: var(--ink-3); transition: transform var(--dur) var(--ease); }
@@ -98,15 +101,26 @@
   /* Last 7 Days — average stat boxes */
   .home-week-avg { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
   .home-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
-  .home-stat { background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 12px 8px; text-align: center; }
+  .home-stat { background: #f7f4ec; border: 1px solid var(--edge); border-radius: var(--r-md); padding: 12px 8px; text-align: center; }
   .home-stat-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
   .home-stat-num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
   .home-stat-delta { font-size: var(--t-xs); font-weight: 600; margin-top: 5px; color: var(--ink-4); }
   .home-stat-delta.is-up { color: #5e8c4f; }
   .home-stat-delta.is-down { color: var(--guava-700); }
-  .home-week-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .home-week-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
   .home-week-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--ink-3); }
   .home-week-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* Daily breakdown table (below the averages) */
+  .hw-row { display: grid; grid-template-columns: 1fr 44px 44px 44px; align-items: center; padding: 9px 0; }
+  .hw-row + .hw-row { border-top: 1px solid var(--edge); }
+  .hw-head { padding: 6px 0; }
+  .hw-head .hw-col { font-size: var(--t-xs); font-weight: 700; }
+  .hw-daycell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .hw-day { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
+  .hw-mood { font-size: 16px; line-height: 1; }
+  .hw-col { text-align: right; font-size: var(--t-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+  .hw-avg .hw-day { color: var(--ink-4); font-weight: 700; letter-spacing: .04em; }
 
   /* Misc */
   .home-empty { font-size: var(--t-sm); color: var(--ink-4); padding: 6px 2px; }
