@@ -29,9 +29,10 @@
 
   /* Shared pill button — Scratchpad and the Task + add button.
      White, subtle: thin edge, muted text. */
-  .home-pill-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 6px 13px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+  .home-pill-btn { flex-shrink: 0; box-sizing: border-box; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 0 12px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
   .home-pill-btn:hover { border-color: var(--edge-strong); color: var(--ink-2); }
-  .home-pill-btn--icon { padding: 6px 10px; font-size: 16px; }
+  /* Icon-only variant: same 28px height as the text pills, just a tighter, larger glyph. */
+  .home-pill-btn--icon { padding: 0 9px; font-size: 15px; }
   .home-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
   /* Rings */

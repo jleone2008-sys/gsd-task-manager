@@ -100,8 +100,9 @@ function renderHome() {
       <div id="homeHabits">${homeHabitsInnerHTML()}</div>
     </div>
     <div class="home-card home-section">
-      ${homeSectionHead('Journal')}
+      ${homeSectionHead('Journal', '<button class="home-pill-btn" data-home-addphoto>+ Add Photo</button>')}
       <div id="homeJournal">${homeJournalInnerHTML()}</div>
+      <input type="file" id="homePhotoInput" accept="image/*" multiple style="position:absolute;left:-9999px;opacity:0;" />
     </div>
     <div class="home-card home-section">
       ${homeSectionHead('Recent Notes', '<span class="home-head-actions"><button class="home-pill-btn home-pill-btn--icon" data-home-newnote title="New note">+</button><button class="home-pill-btn" data-home-quicknotes>Scratchpad</button></span>')}
@@ -634,6 +635,7 @@ function homeWireOnce() {
     if (go) { switchTool(go.dataset.homeGo); return; }
     const noteEl = e.target.closest('[data-home-note]');
     if (noteEl) { openHomeNoteModal(parseInt(noteEl.dataset.homeNote, 10)); return; }
+    if (e.target.closest('[data-home-addphoto]')) { document.getElementById('homePhotoInput')?.click(); return; }
     if (e.target.closest('[data-home-newnote]')) { homeCreateNote(); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
 
@@ -665,6 +667,17 @@ function homeWireOnce() {
     }
     if (typeof scheduleSave === 'function') scheduleSave(today, { reflections: val });
     homeAutoGrow(e.target);
+  });
+
+  // Add Photo — funnels into the Journal entry's photos for today via the same
+  // helper the Journal tab uses; photos show up in the Journal tab.
+  document.addEventListener('change', async e => {
+    if (e.target.id !== 'homePhotoInput') return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length && typeof addPhotosFromCardFiles === 'function') {
+      await addPhotosFromCardFiles(files, homeToday());
+    }
   });
 
   document.addEventListener('keydown', e => {
