@@ -6,7 +6,7 @@
 ═══════════════════════════════════════════════════════════════ */
 const GSD_LAST_TOOL_KEY = 'gsd_beta_last_tool';
 const GSD_HABIT_VIEWS = ['today', 'all', 'stats'];
-const GSD_TOOLS = ['home', 'tasks', 'habits', 'notes', 'scratch', 'journal', 'settings'];
+const GSD_TOOLS = ['home', 'tasks', 'habits', 'notes', 'journal', 'settings'];
 
 function parseAppRoute() {
   const path = location.pathname;

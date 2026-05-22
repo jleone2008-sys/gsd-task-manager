@@ -600,7 +600,9 @@ function openCreatePanel() {
   setTimeout(() => document.getElementById('newTaskInput').focus(), 50);
 }
 function closeCreatePanel() {
-  document.getElementById('fabBtn').classList.remove('hidden');
+  // Tabs without their own FAB (e.g. beta Home) keep it hidden after closing.
+  const hideFab = ['home', 'scratch', 'journal', 'settings'].includes(activeTool);
+  document.getElementById('fabBtn').classList.toggle('hidden', hideFab);
   updateFloatingSearch();
   document.getElementById('createPanel').classList.remove('open');
 }

@@ -1,54 +1,45 @@
 /* ══════════════════════════════════════════════════════════════
    HOME — daily brief (beta-only). The default tab on load.
-   Aggregates existing domains; reuses their data + helpers rather
-   than duplicating logic:
+   Aggregates existing domains; reuses their data + helpers:
      - greeting/mood/calendar/finished-today  → beta/src/03-journal.js
      - tasks (top3, toggleDone_t)             → beta/src/01-core.js + /src/*
-     - habits (isHabitDueToday, cards)        → /src/03-habits-core.js
-     - notes (notesArr, stripHTML)            → /src/06-notes.js, /src/08-editor.js
-     - scratch (renderScratch, SCRATCH_ID)    → /src/07-scratch.js
-   Oura scores are read directly from oura_daily via a scoped RLS SELECT
-   policy (oura_daily_select_own; auth.email() = user_email). The nightly
-   cron writes with the service key, so clients still can't mutate the table.
+     - habits (isHabitDueToday, toggle)       → /src/03-habits-core.js
+     - notes (notesArr) + Quill editor        → /src/06-notes.js, /src/12-quill-init.js
+     - Quick Notes (renderScratch)            → /src/07-scratch.js
+   Oura rings read oura_daily directly via the oura_daily_select_own RLS policy.
 
-   Render strategy: paint synchronously from in-memory data, then
-   hydrate the two network-backed cards (rings/trend + calendar) in
-   place — Home is the default tab, so it must show instantly.
+   Layout: single column, every row full width. The greeting acts as the page
+   title (the topbar "Home" title is blanked on Home). Quick-add, note editing,
+   and Quick Notes all open in-page modals — Home never navigates to another tab.
 ═══════════════════════════════════════════════════════════════ */
 
-// Ring colors — pulled from the app.css earth palette for visual kinship.
 const HOME_RING_COLORS = { sleep: '#6b4862', readiness: '#a37826', activity: '#5e6d3f' };
 
-let _homeOura = null;        // cached { days: [...] } for the current render
+let _homeOura = null;
 let _homeOuraInflight = null;
-let _homeWired = false;      // one-time delegated listener guard
+let _homeWired = false;
 
 function homeToday() {
   return (typeof jToday === 'function') ? jToday() : new Date().toISOString().slice(0, 10);
 }
-
+function homeYesterday() {
+  return (typeof jShiftDays === 'function') ? jShiftDays(homeToday(), -1) : null;
+}
 function hEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
 }
-
 function homeOuraConnected() {
   return !!(typeof userSettings !== 'undefined' && userSettings?.integrations?.oura?.connected);
 }
-
 function homeWhoopConnected() {
   return !!(typeof userSettings !== 'undefined' && userSettings?.integrations?.whoop?.connected);
 }
-
-// Which wearable feeds the Home rings, chosen in Settings. Defaults to Oura.
 function homeHealthSource() {
   if (typeof getHealthSource === 'function') return getHealthSource();
   return (typeof userSettings !== 'undefined' && userSettings?.integrations?.health_source === 'whoop') ? 'whoop' : 'oura';
 }
-
-// Shared empty/notice card body for the rings + trend when there are no scores
-// to show (not connected, or Whoop's "coming soon").
 function homeHealthNoticeHTML(title, msg, ctaLabel) {
   const cta = ctaLabel ? `<button class="home-cta" data-home-cta="settings">${hEsc(ctaLabel)} →</button>` : '';
   return `<div class="home-card-head"><h3 class="home-card-title">${hEsc(title)}</h3></div>
@@ -62,13 +53,12 @@ async function loadOuraScores() {
   if (_homeOuraInflight) return _homeOuraInflight;
   _homeOuraInflight = (async () => {
     try {
-      // Direct read, scoped by the oura_daily_select_own RLS policy.
       const { data, error } = await db.from('oura_daily')
         .select('date,sleep_score,readiness_score,activity_score')
         .order('date', { ascending: false })
         .limit(7);
       if (error) throw error;
-      _homeOura = { days: data || [] }; // newest-first
+      _homeOura = { days: data || [] };
       return _homeOura;
     } catch (e) {
       console.warn('[home] oura scores load failed', e);
@@ -80,31 +70,40 @@ async function loadOuraScores() {
   return _homeOuraInflight;
 }
 
+/* ── Greeting ─────────────────────────────────────────────── */
+
+function homeGreetingText() {
+  const h = new Date().getHours();
+  const name = (typeof getFirstName === 'function' && getFirstName()) || 'there';
+  let part = 'evening';
+  if (h < 5) part = 'night';
+  else if (h < 12) part = 'morning';
+  else if (h < 18) part = 'afternoon';
+  else if (h < 22) part = 'evening';
+  else part = 'night';
+  return `Good ${part}, ${name}`;
+}
+function homeDateLabel() {
+  return new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
 /* ── Top-level render ─────────────────────────────────────── */
 
 function renderHome() {
   const el = document.getElementById('homeContainer');
   if (!el) return;
-  // A fresh visit re-fetches Oura so the rings reflect the latest nightly sync.
   _homeOura = null;
+  homeSyncChrome();
 
   el.innerHTML = `
     ${homeGreetingHTML()}
     <div class="home-row"><div class="home-card" id="homeRings">${homeRingsSkeletonHTML()}</div></div>
-    <div class="home-row cols-2">
-      <div class="home-card" id="homePriority">${homePriorityHTML()}</div>
-      <div class="home-card" id="homeCalendar">${homeCalendarSkeletonHTML()}</div>
-    </div>
-    <div class="home-row cols-2">
-      <div class="home-card" id="homeMood">${homeMoodHTML(null)}</div>
-      <div class="home-card" id="homeHabits">${homeHabitsHTML()}</div>
-    </div>
+    <div class="home-row"><div class="home-card" id="homeTasks">${homeTasksHTML()}</div></div>
+    <div class="home-row"><div class="home-card" id="homeCalendar">${homeCalendarSkeletonHTML()}</div></div>
+    <div class="home-row"><div class="home-card" id="homeMood">${homeMoodHTML(null, null)}</div></div>
+    <div class="home-row"><div class="home-card" id="homeHabits">${homeHabitsHTML()}</div></div>
     <div class="home-row"><div class="home-card" id="homeNotes">${homeNotesHTML()}</div></div>
-    <div class="home-row"><div class="home-card" id="homeScratch">${homeScratchHTML()}</div></div>
-    <div class="home-row cols-2">
-      <div class="home-card" id="homeTrend">${homeTrendSkeletonHTML()}</div>
-      <div class="home-card" id="homeFinished">${homeFinishedHTML()}</div>
-    </div>
+    <div class="home-row"><div class="home-card" id="homeTrend">${homeTrendSkeletonHTML()}</div></div>
   `;
 
   homeWireOnce();
@@ -113,40 +112,44 @@ function renderHome() {
   hydrateHomeMood();
 }
 
-/* ── Section: greeting + quick add ────────────────────────── */
+// Home is the default tab but switchTool isn't called on the bare initial load,
+// so its chrome (page title, FAB, search, per-tool pill bars) must be asserted
+// here — covering both first paint and switchTool('home').
+function homeSyncChrome() {
+  const pt = document.getElementById('pageTitle');
+  if (pt) pt.textContent = '';                              // greeting is the heading
+  document.getElementById('fabBtn')?.classList.add('hidden');
+  document.getElementById('floatingSearch')?.classList.add('hidden');
+  document.querySelectorAll('[data-tool-view]').forEach(elx => {
+    if (elx.dataset.toolView !== 'home' && elx.classList.contains('pill-bar')) elx.style.display = 'none';
+  });
+}
 
 function homeGreetingHTML() {
-  const name = (typeof getFirstName === 'function') ? getFirstName() : '';
-  const greeting = (typeof getTimeBasedGreeting === 'function') ? getTimeBasedGreeting(name) : `Hello${name ? ', ' + name : ''}`;
-  const today = homeToday();
-  const dateLabel = (typeof jFormatLong === 'function') ? jFormatLong(today) : today;
   return `
     <div class="home-greeting">
-      <div>
-        <h1>${hEsc(greeting)}</h1>
-        <div class="home-subtitle">${hEsc(dateLabel)}</div>
+      <div class="home-greeting-text">
+        <h1 class="home-greeting-title">${hEsc(homeGreetingText())}</h1>
+        <div class="home-subtitle">${hEsc(homeDateLabel())}</div>
       </div>
-      <div class="home-quickadd">
-        <button class="home-quickadd-btn" id="homeQuickAddBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Quick add
-        </button>
-        <div class="home-quickadd-menu" id="homeQuickAddMenu">
-          <button class="home-quickadd-item" data-home-add="task">📋 Add task</button>
-          <button class="home-quickadd-item" data-home-add="journal">📓 Today's journal entry</button>
-          <button class="home-quickadd-item" data-home-add="note">📝 Add note</button>
-        </div>
+      <button class="home-quickadd-btn" id="homeQuickAddBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Quick add
+      </button>
+      <div class="home-quickadd-menu" id="homeQuickAddMenu">
+        <button class="home-quickadd-item" data-home-add="task">📋 Add task</button>
+        <button class="home-quickadd-item" data-home-add="journal">📓 Today's journal entry</button>
+        <button class="home-quickadd-item" data-home-add="note">📝 Add note</button>
       </div>
     </div>`;
 }
 
-/* ── Section: rings (Oura) ────────────────────────────────── */
+/* ── Rings (Oura) ─────────────────────────────────────────── */
 
 function homeRingsSkeletonHTML() {
   return `<div class="home-card-head"><h3 class="home-card-title">Today</h3></div>
     <div class="home-skeleton">Loading your numbers…</div>`;
 }
-
 function ringSvg(score, color) {
   const r = 34, c = 2 * Math.PI * r;
   const pct = score == null ? 0 : Math.max(0, Math.min(100, score)) / 100;
@@ -158,25 +161,19 @@ function ringSvg(score, color) {
     <text class="home-ring-score" x="40" y="41" text-anchor="middle" dominant-baseline="central">${score == null ? '—' : Math.round(score)}</text>
   </svg>`;
 }
-
-// Assumes the Oura source is selected + connected (gated by hydrateHomeRingsAndTrend).
+// Assumes Oura source is selected + connected (gated by hydrateHomeRingsAndTrend).
 function homeRingsContentHTML(oura) {
   const latest = oura?.days?.[0];
   if (!latest) {
     return `<div class="home-card-head"><h3 class="home-card-title">Today</h3></div>
-      <div class="home-empty">No Oura data yet for today — it syncs overnight.</div>`;
+      <div class="home-empty">No Oura data yet — it syncs overnight.</div>`;
   }
-  // The latest row may pre-date today (ring not worn / not yet synced). Label it
-  // honestly rather than implying the numbers are from last night.
   const stale = latest.date && latest.date !== homeToday();
   const asOf = stale && typeof jFormatShort === 'function'
-    ? `<span class="home-card-link" style="cursor:default;color:var(--ink-4)">as of ${hEsc(jFormatShort(latest.date))}</span>`
+    ? `<span class="home-card-meta">as of ${hEsc(jFormatShort(latest.date))}</span>`
     : '';
   const ring = (label, score, color) => `
-    <div class="home-ring">
-      ${ringSvg(score, color)}
-      <span class="home-ring-label">${label}</span>
-    </div>`;
+    <div class="home-ring">${ringSvg(score, color)}<span class="home-ring-label">${label}</span></div>`;
   return `<div class="home-card-head"><h3 class="home-card-title">Today</h3>${asOf}</div>
     <div class="home-rings">
       ${ring('Sleep', latest.sleep_score, HOME_RING_COLORS.sleep)}
@@ -185,13 +182,12 @@ function homeRingsContentHTML(oura) {
     </div>`;
 }
 
-/* ── Section: this-week trend ─────────────────────────────── */
+/* ── This-week trend ──────────────────────────────────────── */
 
 function homeTrendSkeletonHTML() {
   return `<div class="home-card-head"><h3 class="home-card-title">This week</h3></div>
     <div class="home-skeleton">Loading trend…</div>`;
 }
-
 function _trendLine(days, key, color) {
   const n = days.length;
   const pts = days.map((d, i) => {
@@ -204,11 +200,8 @@ function _trendLine(days, key, color) {
   if (!pts.length) return '';
   return `<polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts.join(' ')}"/>`;
 }
-
-// Assumes the Oura source is selected + connected (gated by hydrateHomeRingsAndTrend).
 function homeTrendContentHTML(oura) {
   const head = `<div class="home-card-head"><h3 class="home-card-title">This week</h3></div>`;
-  // Chronological order (rows come back newest-first).
   const days = (oura?.days || []).slice().reverse();
   if (days.length < 2) {
     return head + `<div class="home-empty">Not enough data for a trend yet.</div>`;
@@ -228,37 +221,44 @@ function homeTrendContentHTML(oura) {
     </div>`;
 }
 
-/* ── Section: priority tasks ──────────────────────────────── */
+/* ── Today's Tasks (+ finished today) ─────────────────────── */
 
-function homePriorityHTML() {
-  const list = (typeof tasks !== 'undefined' && Array.isArray(tasks))
-    ? tasks.filter(t => t.top3 && !t.done) : [];
-  const head = `<div class="home-card-head">
-      <h3 class="home-card-title">Priority${list.length ? ' · ' + list.length : ''}</h3>
-      <button class="home-card-link" data-home-go="tasks">View all →</button>
-    </div>`;
-  if (!list.length) {
-    return head + `<div class="home-empty">No priority tasks. Set your top 3 in Tasks.</div>`;
-  }
-  const rows = list.map(t => {
-    // Reuse the Tasks tab's due badge so styling/wording stays consistent.
-    const meta = (t.due && typeof dueBadgeHTML === 'function') ? dueBadgeHTML(t.due) : '';
-    return `<div class="home-list-item">
-      <button class="home-cta" data-home-task="${t.id}" style="padding:0;color:var(--ink-4)" title="Mark done">○</button>
-      <span class="hli-title" data-home-go="tasks" style="flex:1;cursor:pointer">${hEsc(t.text || '')}</span>
+function homeTaskRow(t, done) {
+  const today = homeToday();
+  const meta = (!done && t.due && typeof dueBadgeHTML === 'function') ? dueBadgeHTML(t.due) : '';
+  return `<div class="home-trow${done ? ' is-done' : ''}">
+      <button class="home-check${done ? ' checked' : ''}" data-home-task="${t.id}" title="${done ? 'Mark not done' : 'Mark done'}">
+        <svg width="11" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <span class="home-trow-title">${hEsc(t.text || '')}</span>
       ${meta}
     </div>`;
-  }).join('');
-  return head + rows;
+}
+function homeTasksHTML() {
+  const today = homeToday();
+  const list = (typeof tasks !== 'undefined' && Array.isArray(tasks))
+    ? tasks.filter(t => t.top3 && !t.done) : [];
+  const done = (typeof getCompletedTasksForDate === 'function') ? getCompletedTasksForDate(today) : [];
+  const head = `<div class="home-card-head">
+      <h3 class="home-card-title">Today's Tasks${list.length ? ' · ' + list.length : ''}</h3>
+      <button class="home-card-link" data-home-go="tasks">View all →</button>
+    </div>`;
+  let body = list.length
+    ? list.map(t => homeTaskRow(t, false)).join('')
+    : `<div class="home-empty">No priority tasks. Set your top 3 in Tasks.</div>`;
+  if (done.length) {
+    body += `<div class="home-subsection">Finished today</div>`
+      + done.map(t => homeTaskRow(t, true)).join('');
+  }
+  return head + body;
 }
 
-/* ── Section: calendar (Google) ───────────────────────────── */
+/* ── Calendar (Google) ────────────────────────────────────── */
 
 function homeCalendarSkeletonHTML() {
   return `<div class="home-card-head"><h3 class="home-card-title">Today's calendar</h3></div>
     <div class="home-skeleton">Loading events…</div>`;
 }
-
 function _fmtEventTime(ev) {
   if (ev.isAllDay) return 'All day';
   if (!ev.start) return '';
@@ -266,7 +266,6 @@ function _fmtEventTime(ev) {
   if (isNaN(d)) return '';
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
-
 function homeCalendarContentHTML(events, expired) {
   const head = `<div class="home-card-head"><h3 class="home-card-title">Today's calendar</h3></div>`;
   if (expired) {
@@ -283,21 +282,28 @@ function homeCalendarContentHTML(events, expired) {
   return head + rows;
 }
 
-/* ── Section: mood ────────────────────────────────────────── */
+/* ── Mood (+ yesterday's entry) ───────────────────────────── */
 
-function homeMoodHTML(entry) {
-  const sel = entry && entry.mood != null ? entry.mood : null;
+function homeMoodHTML(entry, yEntry) {
+  // Mood is stored 1–5 (1=Great … 5=Bad), null = unset — matching the Journal tab.
+  const sel = entry && entry.mood ? entry.mood : null;
   const labels = (typeof MOOD_LABEL !== 'undefined') ? MOOD_LABEL : ['Great', 'Good', 'Okay', 'Low', 'Bad'];
   const emoji = (typeof MOOD_EMOJI !== 'undefined') ? MOOD_EMOJI : ['🤩', '😊', '😐', '😔', '😢'];
   const btns = emoji.map((e, i) => `
-    <button class="home-mood-btn${sel === i ? ' is-selected' : ''}" data-home-mood="${i}">
+    <button class="home-mood-btn${sel === i + 1 ? ' is-selected' : ''}" data-home-mood="${i + 1}">
       <span>${e}</span><span class="home-mood-cap">${labels[i] || ''}</span>
     </button>`).join('');
+  let yest = '';
+  const yText = yEntry && (yEntry.reflections || '').trim();
+  if (yText) {
+    const clip = yText.length > 180 ? yText.slice(0, 180).trim() + '…' : yText;
+    yest = `<div class="home-mood-yesterday">“${hEsc(clip)}”<span class="home-mood-yesterday-tag">Yesterday's entry</span></div>`;
+  }
   return `<div class="home-card-head"><h3 class="home-card-title">How are you feeling?</h3></div>
-    <div class="home-mood">${btns}</div>`;
+    <div class="home-mood">${btns}</div>${yest}`;
 }
 
-/* ── Section: today's habits ──────────────────────────────── */
+/* ── Today's habits (condensed) ───────────────────────────── */
 
 function homeHabitsHTML() {
   const today = homeToday();
@@ -307,73 +313,46 @@ function homeHabitsHTML() {
   const doneCount = (typeof isCompletedOn === 'function') ? due.filter(h => isCompletedOn(h.id, today)).length : 0;
   const head = `<div class="home-card-head">
       <h3 class="home-card-title">Today's habits</h3>
-      ${due.length ? `<span class="home-card-link" style="cursor:default;color:var(--ink-4)">${doneCount} of ${due.length} done</span>` : ''}
+      ${due.length ? `<span class="home-card-meta">${doneCount} of ${due.length} done</span>` : ''}
     </div>`;
-  if (!active.length) {
-    return head + `<div class="home-empty">No habits yet. Start one in Habits.</div>`;
-  }
-  if (!due.length) {
-    return head + `<div class="home-empty">Nothing scheduled today — nice.</div>`;
-  }
-  const cards = (typeof habitTodayCardHTML === 'function')
-    ? due.map(h => habitTodayCardHTML(h, today)).join('')
-    : '';
-  return head + `<div class="habits-content">${cards}</div>`;
+  if (!active.length) return head + `<div class="home-empty">No habits yet. Start one in Habits.</div>`;
+  if (!due.length) return head + `<div class="home-empty">Nothing scheduled today — nice.</div>`;
+  const esc = (typeof escHTML === 'function') ? escHTML : hEsc;
+  const rows = due.map(h => {
+    const isDone = (typeof isCompletedOn === 'function') && isCompletedOn(h.id, today);
+    return `<div class="home-hrow${isDone ? ' is-done' : ''}">
+        <span class="home-hrow-emoji">${esc(h.emoji || '•')}</span>
+        <span class="home-hrow-title">${esc(h.name || '')}</span>
+        <button class="home-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" title="${isDone ? 'Undo' : 'Mark done'}">
+          <svg width="11" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>`;
+  }).join('');
+  return head + rows;
 }
 
-/* ── Section: recent notes ────────────────────────────────── */
+/* ── Recent notes (+ Quick Notes button) ──────────────────── */
 
 function homeNotesHTML() {
+  const SC = (typeof SCRATCH_ID !== 'undefined') ? SCRATCH_ID : -1;
   const all = (typeof notesArr !== 'undefined' && Array.isArray(notesArr))
-    ? notesArr.filter(n => !n.trashed && n.id !== (typeof SCRATCH_ID !== 'undefined' ? SCRATCH_ID : -1)) : [];
+    ? notesArr.filter(n => !n.trashed && n.id !== SC) : [];
   const recent = all.slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 3);
   const head = `<div class="home-card-head">
       <h3 class="home-card-title">Recent notes</h3>
       <button class="home-card-link" data-home-go="notes">View all →</button>
     </div>`;
-  if (!recent.length) {
-    return head + `<div class="home-empty">No notes yet — capture a thought.</div>`;
-  }
   const fmt = (typeof formatNoteDate === 'function') ? formatNoteDate : (s => s || '');
-  const rows = recent.map(n => `<div class="home-list-item">
-      <span class="hli-title" data-home-note="${n.id}" style="flex:1;cursor:pointer">${hEsc(n.title || 'Untitled')}</span>
-      <span class="hli-meta">${hEsc(fmt(n.updatedAt))}</span>
-    </div>`).join('');
-  return head + rows;
-}
-
-/* ── Section: scratch quick-capture ───────────────────────── */
-
-function homeScratchHTML() {
-  let preview = '';
-  try {
-    const raw = localStorage.getItem('gsd-scratch') || '';
-    if (raw && typeof stripHTML === 'function') preview = stripHTML(raw).trim().slice(0, 140);
-  } catch (_) {}
-  const placeholder = preview || 'Brain dump… (opens the full scratchpad)';
-  return `<div class="home-card-head"><h3 class="home-card-title">Scratch</h3></div>
-    <div class="home-scratch-capture" id="homeScratchCapture" tabindex="0" role="button">${hEsc(placeholder)}</div>`;
-}
-
-/* ── Section: finished today ──────────────────────────────── */
-
-function homeFinishedHTML() {
-  const today = homeToday();
-  const doneTasks = (typeof getCompletedTasksForDate === 'function') ? getCompletedTasksForDate(today) : [];
-  let habitsDone = 0;
-  if (typeof habitCompletions !== 'undefined' && Array.isArray(habitCompletions)) {
-    habitsDone = habitCompletions.filter(c => c.completedDate === today).length;
-  }
-  const head = `<div class="home-card-head"><h3 class="home-card-title">Finished today</h3></div>`;
-  if (!doneTasks.length && !habitsDone) {
-    return head + `<div class="home-empty">Nothing checked off yet. The day's young.</div>`;
-  }
-  const taskRows = doneTasks.slice(0, 5).map(t => `<div class="home-list-item">
-      <span class="hli-title" style="color:var(--ink-3);text-decoration:line-through">${hEsc(t.text || '')}</span>
-    </div>`).join('');
-  const more = doneTasks.length > 5 ? `<div class="home-empty">+${doneTasks.length - 5} more</div>` : '';
-  const habitLine = habitsDone ? `<div class="home-empty">${habitsDone} habit${habitsDone === 1 ? '' : 's'} completed</div>` : '';
-  return head + taskRows + more + habitLine;
+  const rows = recent.length
+    ? recent.map(n => `<div class="home-trow">
+        <span class="home-trow-title" data-home-note="${n.id}" style="cursor:pointer">${hEsc(n.title || 'Untitled')}</span>
+        <span class="home-trow-meta">${hEsc(fmt(n.updatedAt))}</span>
+      </div>`).join('')
+    : `<div class="home-empty">No notes yet — capture a thought.</div>`;
+  const quickBtn = `<div class="home-quicknotes-wrap">
+      <button class="home-quicknotes-btn" data-home-quicknotes>📝 Quick Notes</button>
+    </div>`;
+  return head + rows + quickBtn;
 }
 
 /* ── Hydration ────────────────────────────────────────────── */
@@ -381,105 +360,193 @@ function homeFinishedHTML() {
 async function hydrateHomeRingsAndTrend() {
   const ringsEl = document.getElementById('homeRings');
   const trendEl = document.getElementById('homeTrend');
-  const setBoth = (ringsHtml, trendHtml) => {
-    if (ringsEl) ringsEl.innerHTML = ringsHtml;
-    if (trendEl) trendEl.innerHTML = trendHtml;
-  };
-
+  const setBoth = (r, t) => { if (ringsEl) ringsEl.innerHTML = r; if (trendEl) trendEl.innerHTML = t; };
   const source = homeHealthSource();
 
   if (source === 'whoop') {
     if (homeWhoopConnected()) {
-      setBoth(
-        homeHealthNoticeHTML('Today', 'Whoop rings on Home are coming soon.', null),
-        homeHealthNoticeHTML('This week', 'Whoop trends are coming soon.', null)
-      );
+      setBoth(homeHealthNoticeHTML('Today', 'Whoop rings on Home are coming soon.', null),
+              homeHealthNoticeHTML('This week', 'Whoop trends are coming soon.', null));
     } else {
-      setBoth(
-        homeHealthNoticeHTML('Today', 'Connect Whoop to track your health on Home.', 'Connect Whoop'),
-        homeHealthNoticeHTML('This week', 'Connect Whoop to see your weekly trend.', 'Connect Whoop')
-      );
+      setBoth(homeHealthNoticeHTML('Today', 'Connect Whoop to track your health on Home.', 'Connect Whoop'),
+              homeHealthNoticeHTML('This week', 'Connect Whoop to see your weekly trend.', 'Connect Whoop'));
     }
     return;
   }
-
-  // source === 'oura'
   if (!homeOuraConnected()) {
-    setBoth(
-      homeHealthNoticeHTML('Today', 'Connect your Oura Ring to see sleep, readiness, and activity.', 'Connect Oura'),
-      homeHealthNoticeHTML('This week', 'Connect Oura to see your 7-day trend.', 'Connect Oura')
-    );
+    setBoth(homeHealthNoticeHTML('Today', 'Connect your Oura Ring to see sleep, readiness, and activity.', 'Connect Oura'),
+            homeHealthNoticeHTML('This week', 'Connect Oura to see your 7-day trend.', 'Connect Oura'));
     return;
   }
-
   const oura = await loadOuraScores();
   if (ringsEl) ringsEl.innerHTML = homeRingsContentHTML(oura);
   if (trendEl) trendEl.innerHTML = homeTrendContentHTML(oura);
 }
 
 async function hydrateHomeCalendar() {
-  const el = document.getElementById('homeCalendar');
-  if (!el) return;
+  if (!document.getElementById('homeCalendar')) return;
   const today = homeToday();
   let events = [];
-  if (typeof fetchCalendarEventsForDate === 'function') {
-    events = await fetchCalendarEventsForDate(today);
-  }
-  const expired = typeof journalState !== 'undefined'
-    && journalState.eventsError && journalState.eventsError.get(today) === 'expired';
-  // Re-check the element — the user may have navigated away mid-fetch.
+  if (typeof fetchCalendarEventsForDate === 'function') events = await fetchCalendarEventsForDate(today);
+  const expired = typeof journalState !== 'undefined' && journalState.eventsError && journalState.eventsError.get(today) === 'expired';
   const still = document.getElementById('homeCalendar');
   if (still) still.innerHTML = homeCalendarContentHTML(events, expired);
 }
 
 async function hydrateHomeMood() {
-  const el = document.getElementById('homeMood');
-  if (!el) return;
-  let entry = null;
+  if (!document.getElementById('homeMood')) return;
+  let entry = null, yEntry = null;
   if (typeof loadJournalEntry === 'function') {
     entry = await loadJournalEntry(homeToday());
+    const y = homeYesterday();
+    if (y) yEntry = await loadJournalEntry(y);
   }
   const still = document.getElementById('homeMood');
-  if (still) still.innerHTML = homeMoodHTML(entry);
+  if (still) still.innerHTML = homeMoodHTML(entry, yEntry);
 }
 
-/* ── Targeted section refreshes (after in-place edits) ────── */
+/* ── Section refresh hook (called by render/renderHabits/renderNotes) ── */
 
 function refreshHomeSection(id, html) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = html;
 }
-
-// Called by the shared data loaders (tasks/habits/notes) when their async load
-// finishes. They fire-and-forget at sign-in, so Home's first paint can precede
-// the data — this repaints the in-memory-backed sections once data arrives.
-// Guarded so it's a harmless no-op in prod (where renderHome doesn't exist).
 function refreshHomeData() {
   if (typeof activeTool === 'undefined' || activeTool !== 'home') return;
   if (!document.getElementById('homeContainer')) return;
-  refreshHomeSection('homePriority', homePriorityHTML());
+  refreshHomeSection('homeTasks', homeTasksHTML());
   refreshHomeSection('homeHabits', homeHabitsHTML());
   refreshHomeSection('homeNotes', homeNotesHTML());
-  refreshHomeSection('homeScratch', homeScratchHTML());
-  refreshHomeSection('homeFinished', homeFinishedHTML());
 }
 
-/* ── Event wiring (delegated, attached once) ──────────────── */
+/* ── In-page modals: note editor + Quick Notes ────────────── */
+
+let _homeNoteQuill = null, _homeNoteId = null, _homeNoteSaveTimer = null;
+
+function openHomeNoteModal(noteId) {
+  if (typeof notesArr === 'undefined') return;
+  const note = notesArr.find(n => n.id === noteId);
+  if (!note) return;
+  closeHomeNoteModal(true);
+  _homeNoteId = noteId;
+  const html = `
+    <div class="home-modal-overlay" id="homeNoteModal">
+      <div class="home-modal home-modal--editor">
+        <div class="home-modal-head">
+          <input id="homeNoteTitle" class="home-note-title" placeholder="Untitled" value="${hEsc(note.title || '')}" />
+          <button class="home-modal-close" data-home-modal-close="note" title="Close">×</button>
+        </div>
+        <div class="home-modal-body ne-quill">
+          ${typeof renderCustomToolbar === 'function' ? renderCustomToolbar('homeNoteToolbar') : ''}
+          <div id="homeNoteQuill"></div>
+        </div>
+      </div>
+    </div>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => document.getElementById('homeNoteModal')?.classList.add('open'));
+
+  const cont = document.getElementById('homeNoteQuill');
+  if (cont && typeof createQuillEditor === 'function') {
+    _homeNoteQuill = createQuillEditor(cont, { placeholder: 'Write…', toolbarContainer: '#homeNoteToolbar' });
+    if (_homeNoteQuill) {
+      let saved = note.content || '';
+      if (typeof migrateLegacyChecklistHTML === 'function') saved = migrateLegacyChecklistHTML(saved);
+      if (saved) _homeNoteQuill.clipboard.dangerouslyPasteHTML(saved, 'silent');
+      _homeNoteQuill.on('text-change', (_d, _o, src) => { if (src === 'user') homeNoteSave(); });
+      _homeNoteQuill.root.addEventListener('click', e => {
+        const a = e.target.closest('a'); if (a && a.href) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
+      });
+    }
+  }
+  document.getElementById('homeNoteTitle')?.addEventListener('input', homeNoteSave);
+  setTimeout(() => document.getElementById('homeNoteTitle')?.focus(), 60);
+}
+function homeNoteSave() {
+  if (typeof notesArr === 'undefined') return;
+  const note = notesArr.find(n => n.id === _homeNoteId);
+  if (!note) return;
+  const titleEl = document.getElementById('homeNoteTitle');
+  if (titleEl) note.title = titleEl.value;
+  if (_homeNoteQuill) note.content = _homeNoteQuill.root.innerHTML;
+  note.updatedAt = new Date().toISOString();
+  if (_homeNoteSaveTimer) clearTimeout(_homeNoteSaveTimer);
+  _homeNoteSaveTimer = setTimeout(() => { if (typeof saveNoteToDB === 'function') saveNoteToDB(note); }, 700);
+}
+function closeHomeNoteModal(skip) {
+  if (_homeNoteSaveTimer) { clearTimeout(_homeNoteSaveTimer); _homeNoteSaveTimer = null; }
+  const note = (typeof notesArr !== 'undefined') ? notesArr.find(n => n.id === _homeNoteId) : null;
+  if (note && typeof saveNoteToDB === 'function') saveNoteToDB(note);
+  _homeNoteQuill = null; _homeNoteId = null;
+  document.getElementById('homeNoteModal')?.remove();
+  if (!skip) {
+    document.body.style.overflow = '';
+    refreshHomeSection('homeNotes', homeNotesHTML());
+  }
+}
+function homeCreateNote() {
+  if (typeof notesArr === 'undefined') return;
+  const note = {
+    id: Date.now(), title: '', content: '', notebookId: null, tags: [],
+    starred: false, trashed: false, trashedAt: null, order: notesArr.length,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  };
+  notesArr.unshift(note);
+  if (typeof saveNoteToDB === 'function') saveNoteToDB(note);
+  openHomeNoteModal(note.id);
+}
+
+function openQuickNotesModal() {
+  if (document.getElementById('homeQuickNotesModal')) return;
+  const html = `
+    <div class="home-modal-overlay" id="homeQuickNotesModal">
+      <div class="home-modal home-modal--editor">
+        <div class="home-modal-head">
+          <span class="home-modal-title">Quick Notes</span>
+          <button class="home-modal-close" data-home-modal-close="quicknotes" title="Close">×</button>
+        </div>
+        <div class="home-modal-body"><div id="scratchEditorContent"></div></div>
+      </div>
+    </div>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => document.getElementById('homeQuickNotesModal')?.classList.add('open'));
+  if (typeof renderScratch === 'function') renderScratch();   // renders the Quill editor into #scratchEditorContent
+}
+function closeQuickNotesModal() {
+  // Flush the debounced scratch save.
+  if (typeof scratchNote !== 'undefined' && typeof saveNoteToDB === 'function') saveNoteToDB(scratchNote);
+  document.getElementById('homeQuickNotesModal')?.remove();
+  document.body.style.overflow = '';
+}
+
+/* ── Event wiring ─────────────────────────────────────────── */
 
 function homeWireOnce() {
   if (_homeWired) return;
   _homeWired = true;
 
   document.addEventListener('click', e => {
-    const container = document.getElementById('homeContainer');
-    if (!container || activeTool !== 'home') {
-      // Quick-add menu can be left open; close it on any outside click.
-      const menu = document.getElementById('homeQuickAddMenu');
-      if (menu) menu.classList.remove('open');
+    // Modal closes work regardless of active tab.
+    const mc = e.target.closest('[data-home-modal-close]');
+    if (mc) {
+      if (mc.dataset.homeModalClose === 'note') closeHomeNoteModal();
+      else if (mc.dataset.homeModalClose === 'quicknotes') closeQuickNotesModal();
+      return;
+    }
+    // Backdrop click closes the in-page modals.
+    if (e.target.id === 'homeNoteModal') { closeHomeNoteModal(); return; }
+    if (e.target.id === 'homeQuickNotesModal') { closeQuickNotesModal(); return; }
+
+    if (activeTool !== 'home' || !document.getElementById('homeContainer')) {
+      document.getElementById('homeQuickAddMenu')?.classList.remove('open');
       return;
     }
 
-    // Quick-add toggle
     if (e.target.closest('#homeQuickAddBtn')) {
       e.stopPropagation();
       document.getElementById('homeQuickAddMenu')?.classList.toggle('open');
@@ -491,73 +558,55 @@ function homeWireOnce() {
       homeQuickAdd(addItem.dataset.homeAdd);
       return;
     }
-    // Close menu on any other click
     document.getElementById('homeQuickAddMenu')?.classList.remove('open');
 
-    // CTA → settings
     if (e.target.closest('[data-home-cta="settings"]')) { switchTool('settings'); return; }
 
-    // Navigate to a tab
     const go = e.target.closest('[data-home-go]');
     if (go) { switchTool(go.dataset.homeGo); return; }
 
-    // Open a specific note
     const noteEl = e.target.closest('[data-home-note]');
-    if (noteEl) {
-      const id = parseInt(noteEl.dataset.homeNote, 10);
-      switchTool('notes');
-      if (typeof selectNote === 'function') selectNote(id);
-      return;
-    }
+    if (noteEl) { openHomeNoteModal(parseInt(noteEl.dataset.homeNote, 10)); return; }
 
-    // Toggle a priority task done. toggleDone_t → render() → refreshHomeData()
-    // repaints the priority/finished sections, so no manual refresh here.
+    if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
+
     const taskEl = e.target.closest('[data-home-task]');
     if (taskEl) {
-      const id = parseInt(taskEl.dataset.homeTask, 10);
-      if (typeof toggleDone_t === 'function') toggleDone_t(id);
-      return;
+      if (typeof toggleDone_t === 'function') toggleDone_t(parseInt(taskEl.dataset.homeTask, 10));
+      return; // render() → refreshHomeData repaints the tasks card
     }
 
-    // Mood pick. saveJournalEntry doesn't run a domain render fn, so refresh the
-    // mood card directly (journalState is updated synchronously by the call).
     const moodEl = e.target.closest('[data-home-mood]');
     if (moodEl) {
-      const idx = parseInt(moodEl.dataset.homeMood, 10);
+      const val = parseInt(moodEl.dataset.homeMood, 10);  // 1–5
       const today = homeToday();
-      if (typeof saveJournalEntry === 'function') saveJournalEntry(today, { mood: idx });
-      const entry = (typeof journalState !== 'undefined' && journalState.entries.get(today)) || { mood: idx };
-      refreshHomeSection('homeMood', homeMoodHTML(entry));
+      const cur = (typeof journalState !== 'undefined' && journalState.entries.get(today)?.mood) || null;
+      const newMood = cur === val ? null : val;            // tap same mood to clear
+      if (typeof saveJournalEntry === 'function') saveJournalEntry(today, { mood: newMood });
+      const entry = (typeof journalState !== 'undefined' && journalState.entries.get(today)) || { mood: newMood };
+      const y = homeYesterday();
+      const yEntry = (y && typeof journalState !== 'undefined') ? journalState.entries.get(y) : null;
+      refreshHomeSection('homeMood', homeMoodHTML(entry, yEntry));
       return;
     }
-
-    // Scratch capture → open the full scratchpad
-    if (e.target.closest('#homeScratchCapture')) { switchTool('scratch'); return; }
-
-    // Habit toggles are handled by the global habits click handler →
-    // toggleCompletion → renderHabits → refreshHomeData, which repaints the
-    // Home habits section. Nothing to do here.
+    // Habit toggles are handled by the global habits handler →
+    // toggleCompletion → renderHabits → refreshHomeData.
   });
 
-  // Keyboard affordance for the scratch capture box.
+  // Esc closes whichever in-page modal is open.
   document.addEventListener('keydown', e => {
-    if (activeTool !== 'home') return;
-    if (e.target && e.target.id === 'homeScratchCapture' && (e.key === 'Enter' || e.key === ' ')) {
-      e.preventDefault();
-      switchTool('scratch');
-    }
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('homeNoteModal')) closeHomeNoteModal();
+    else if (document.getElementById('homeQuickNotesModal')) closeQuickNotesModal();
   });
 }
 
 function homeQuickAdd(kind) {
   if (kind === 'task') {
-    if (typeof openCreatePanel === 'function') openCreatePanel();
+    if (typeof openCreatePanel === 'function') openCreatePanel();   // existing in-page create panel
   } else if (kind === 'journal') {
-    const today = homeToday();
-    if (typeof journalState !== 'undefined') journalState.selectedDate = today;
-    switchTool('journal');
+    if (typeof openEditModal === 'function') openEditModal(homeToday());  // journal day editor modal
   } else if (kind === 'note') {
-    switchTool('notes');
-    if (typeof createNote === 'function') createNote();
+    homeCreateNote();
   }
 }

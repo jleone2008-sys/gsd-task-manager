@@ -1015,15 +1015,18 @@ function renderStatsMonthly(active) {
 }
 
 function updateHabitStatsBar(active) {
-  // Badge always updates regardless of active tool
-  paintBadge('habitsBadgeMobile', active.length);
-  const sbc = document.getElementById('sidebarHabitsCount'); if (sbc) sbc.textContent = active.length;
-  // Today pill shows the contribution-weighted % done today (matches the
-  // formula used in renderHabitToday). 'All' pill shows the habit count.
+  // Today's contribution-weighted % done (matches renderHabitToday's formula).
   const todayStr_ = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
   let tNum = 0, tDen = 0;
   active.forEach(h => { const c = todayContribution(h, todayStr_); tNum += c.num; tDen += c.den; });
   const tPct = tDen > 0 ? Math.round((tNum / tDen) * 100) : 100;
+  // Nav badge: beta shows today's completion % in the red pill; prod shows the
+  // habit count. Empty (0) hides the pill — only when there are no habits.
+  const isBeta = typeof location !== 'undefined' && location.pathname.startsWith('/beta');
+  const badgeVal = isBeta ? (active.length ? tPct + '%' : 0) : active.length;
+  paintBadge('habitsBadgeMobile', badgeVal);
+  const sbc = document.getElementById('sidebarHabitsCount');
+  if (sbc) sbc.textContent = isBeta ? (active.length ? tPct + '%' : '0') : active.length;
   const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = tPct + '%';
   const pcHA = document.getElementById('pc-habit-all');   if (pcHA) pcHA.textContent = active.length;
 }

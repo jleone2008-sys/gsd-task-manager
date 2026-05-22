@@ -157,6 +157,7 @@ async function loadJournalEntry(dateStr) {
       .eq('entry_date', dateStr).maybeSingle();
     if (error) throw error;
     if (data) journalState.entries.set(dateStr, data);
+    if (dateStr === jToday()) updateJournalBadge();
     return data || null;
   } catch (e) {
     console.warn('[journal] loadEntry failed', e);
@@ -168,6 +169,7 @@ async function saveJournalEntry(dateStr, patch) {
   const existing = journalState.entries.get(dateStr) || { entry_date: dateStr, reflections: '', mood: null, photos: [] };
   const merged = { ...existing, ...patch };
   journalState.entries.set(dateStr, merged);
+  updateJournalBadge();
   journalState.saveStatus = 'saving';
   updateSaveIndicator();
   try {
@@ -745,6 +747,16 @@ function escapeHtml(s) {
 function isEntryEmpty(entry) {
   if (!entry) return true;
   return !((entry.reflections && entry.reflections.trim()) || entry.mood || (entry.photos && entry.photos.length));
+}
+
+// Journal nav badge: ✓ when today's entry is filled, ! when it isn't.
+function updateJournalBadge() {
+  const filled = !isEntryEmpty(journalState.entries.get(jToday()));
+  const mark = filled ? '✓' : '!';
+  const mb = document.getElementById('journalBadgeMobile');
+  if (mb) { mb.textContent = mark; mb.dataset.empty = 'false'; mb.classList.toggle('badge-ok', filled); }
+  const sb = document.getElementById('sidebarJournalCount');
+  if (sb) sb.textContent = mark;
 }
 
 /* ── CALENDAR POPOVER ────────────────────────────────────── */

@@ -206,7 +206,7 @@ let isAdminViewMode = false;
 let signingIn = false;
 let googleAccessToken = null;   // set after OAuth or admin impersonation
 let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
-const VALID_TABS = ['home', 'tasks', 'habits', 'notes', 'scratch', 'journal'];
+const VALID_TABS = ['home', 'tasks', 'habits', 'notes', 'journal'];
 
 // Set this after creating the beta Google Cloud project
 const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
@@ -516,7 +516,8 @@ function switchTool(tool) {
   document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
-  const titles = { home: 'Home', tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch', journal: 'Journal', settings: 'Settings' };
+  // Home shows the greeting as its heading (set in renderHome), so its topbar title is blank.
+  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Notes', journal: 'Journal', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
@@ -529,7 +530,6 @@ function switchTool(tool) {
   else if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
   else if (tool === 'notes') { renderNotes(); }
-  else if (tool === 'scratch') { renderScratch(); }
   else if (tool === 'settings' && typeof renderSettingsPage === 'function') { renderSettingsPage(); }
   else if (tool === 'journal' && typeof renderJournal === 'function') { renderJournal(); }
 }
@@ -548,7 +548,14 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   const editable = document.activeElement?.isContentEditable;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || editable) return;
-  const map = { T: 'tasks', H: 'habits', N: 'notes', S: 'scratch' };
+  // Shift+S opens Quick Notes on Home (Scratch is no longer a tab).
+  if (e.key.toUpperCase() === 'S') {
+    e.preventDefault();
+    if (activeTool !== 'home') switchTool('home');
+    if (typeof openQuickNotesModal === 'function') openQuickNotesModal();
+    return;
+  }
+  const map = { T: 'tasks', H: 'habits', N: 'notes' };
   const tool = map[e.key.toUpperCase()];
   if (tool) { e.preventDefault(); switchTool(tool); }
 });

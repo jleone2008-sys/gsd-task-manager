@@ -14,91 +14,99 @@
 <!-- Home (daily brief) styles — beta-only, scoped so they never reach prod's app.css.
      Reuses app.css design tokens (--surface, --ink scale, --edge, radii, shadows). -->
 <style id="homeStyles">
-  #homeContainer { max-width: 920px; margin: 0 auto; padding: 4px 0 32px; }
-  .home-row { display: grid; gap: 14px; margin-bottom: 14px; }
-  .home-row.cols-2 { grid-template-columns: 1fr 1fr; }
-  @media (max-width: 720px) { .home-row.cols-2 { grid-template-columns: 1fr; } }
+  #homeContainer { max-width: 880px; margin: 0 auto; padding: 2px 0 40px; }
+  .home-row { margin-bottom: 14px; }
   .home-card {
     background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg);
     box-shadow: var(--shadow-card); padding: 16px; min-width: 0;
   }
-  .home-card-head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 12px; gap: 8px;
-  }
-  .home-card-title {
-    font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-    color: var(--ink-3); margin: 0;
-  }
-  .home-card-link {
-    font-size: var(--t-xs); font-weight: 600; color: var(--guava-700);
-    cursor: pointer; background: none; border: 0; padding: 0;
-  }
-  /* Header */
-  .home-greeting { margin-bottom: 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .home-greeting h1 { font-size: var(--fs-display, 28px); font-weight: 800; color: var(--ink); margin: 0 0 4px; line-height: 1.15; }
-  .home-greeting .home-subtitle { font-size: var(--t-sm); color: var(--ink-3); }
-  .home-quickadd { position: relative; }
-  .home-quickadd-btn {
-    display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600;
-    color: #fff; background: var(--guava-700); border: 0; border-radius: var(--r-md);
-    padding: 8px 14px; cursor: pointer;
-  }
-  .home-quickadd-menu {
-    position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px;
-    background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg);
-    box-shadow: var(--shadow-raised); padding: 6px; display: none;
-  }
+  .home-card-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+  .home-card-title { font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
+  .home-card-link { font-size: var(--t-xs); font-weight: 600; color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 0; }
+  .home-card-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; }
+
+  /* Greeting acts as the page title (topbar "Home" is blanked on Home) */
+  .home-greeting { position: relative; margin: 4px 0 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .home-greeting-text { min-width: 0; }
+  .home-greeting-title { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 3px; line-height: 1.1; }
+  @media (min-width: 900px) { .home-greeting-title { font-size: 32px; letter-spacing: -0.03em; } }
+  .home-subtitle { font-size: var(--t-sm); color: var(--ink-3); }
+  .home-quickadd-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; color: #fff; background: var(--guava-700); border: 0; border-radius: var(--r-md); padding: 8px 14px; cursor: pointer; }
+  .home-quickadd-menu { position: absolute; right: 0; top: 44px; z-index: 30; min-width: 220px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); padding: 6px; display: none; }
   .home-quickadd-menu.open { display: block; }
-  .home-quickadd-item {
-    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-    background: none; border: 0; border-radius: var(--r-md); padding: 9px 10px;
-    font-size: var(--t-sm); color: var(--ink-2); cursor: pointer;
-  }
+  .home-quickadd-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: 0; border-radius: var(--r-md); padding: 9px 10px; font-size: var(--t-sm); color: var(--ink-2); cursor: pointer; }
   .home-quickadd-item:hover { background: var(--surface-2); }
+
   /* Rings */
   .home-rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .home-ring { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
-  .home-ring svg { width: 88px; height: 88px; }
+  .home-ring svg { width: 84px; height: 84px; }
   .home-ring-track { stroke: var(--surface-2); }
   .home-ring-score { font-size: 20px; font-weight: 700; fill: var(--ink); }
   .home-ring-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
-  /* Trend chart */
-  .home-trend svg { width: 100%; height: 150px; display: block; }
+
+  /* Trend */
+  .home-trend svg { width: 100%; height: 140px; display: block; }
   .home-trend-legend { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
   .home-trend-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--ink-3); }
   .home-trend-legend i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+
+  /* Condensed task / note rows */
+  .home-trow { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--edge); }
+  .home-trow:first-of-type { border-top: 0; }
+  .home-trow-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-trow-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+  .home-trow.is-done .home-trow-title { color: var(--ink-4); }
+  .home-subsection { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-4); margin: 12px 0 2px; padding-top: 10px; border-top: 1px solid var(--edge); }
+
+  /* Round check button (tasks + habits) */
+  .home-check { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--edge-strong); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .home-check svg { opacity: 0; }
+  .home-check.checked { background: var(--moss-fg); border-color: var(--moss-fg); }
+  .home-check.checked svg { opacity: 1; }
+
+  /* Condensed habit rows */
+  .home-hrow { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--edge); }
+  .home-hrow:first-of-type { border-top: 0; }
+  .home-hrow-emoji { font-size: 17px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
+  .home-hrow-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-hrow.is-done .home-hrow-title { color: var(--ink-4); }
+
   /* Mood */
   .home-mood { display: flex; gap: 8px; justify-content: space-between; }
-  .home-mood-btn {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    background: var(--surface-2); border: 1px solid transparent; border-radius: var(--r-md);
-    padding: 10px 4px; cursor: pointer; font-size: 22px; line-height: 1;
-  }
+  .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface-2); border: 1px solid transparent; border-radius: var(--r-md); padding: 10px 4px; cursor: pointer; font-size: 22px; line-height: 1; }
   .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }
   .home-mood-btn.is-selected { border-color: var(--guava-500); background: var(--guava-50); }
-  /* Scratch capture */
-  .home-scratch-capture {
-    width: 100%; min-height: 56px; resize: none; border: 1px dashed var(--edge-strong);
-    border-radius: var(--r-md); background: var(--surface-2); padding: 12px 14px;
-    font-family: var(--font-sans); font-size: var(--t-sm); color: var(--ink-2); cursor: text;
-  }
-  .home-scratch-capture:focus { outline: none; border-color: var(--guava-500); }
-  /* Lists / empties */
-  .home-empty { font-size: var(--t-sm); color: var(--ink-4); padding: 8px 2px; }
-  .home-cta {
-    display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600;
-    color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 6px 0;
-  }
-  .home-list-item { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--edge); }
-  .home-list-item:first-child { border-top: 0; }
-  .home-list-item .hli-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home-list-item .hli-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+  .home-mood-yesterday { margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-md); font-size: var(--t-sm); font-style: italic; color: var(--ink-2); line-height: 1.5; }
+  .home-mood-yesterday-tag { display: block; margin-top: 6px; font-style: normal; font-size: var(--t-xs); color: var(--ink-4); text-align: right; }
+
+  /* Calendar */
   .home-cal-event { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--edge); }
   .home-cal-event:first-child { border-top: 0; }
   .home-cal-time { font-size: var(--t-xs); color: var(--ink-3); width: 64px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   .home-cal-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Quick Notes button */
+  .home-quicknotes-wrap { display: flex; justify-content: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
+  .home-quicknotes-btn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 8px 16px; cursor: pointer; }
+  .home-quicknotes-btn:hover { background: var(--surface); border-color: var(--edge-strong); }
+
+  /* Misc */
+  .home-empty { font-size: var(--t-sm); color: var(--ink-4); padding: 8px 2px; }
+  .home-cta { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 6px 0; }
   .home-skeleton { color: var(--ink-4); font-size: var(--t-sm); padding: 12px 2px; }
+
+  /* In-page modals (note editor + Quick Notes) — fade in + blur backdrop */
+  .home-modal-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(20,15,10,0.32); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); opacity: 0; transition: opacity .22s ease; }
+  .home-modal-overlay.open { opacity: 1; }
+  .home-modal { width: 100%; max-width: 640px; max-height: 82vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); transform: translateY(8px); transition: transform .22s ease; overflow: hidden; }
+  .home-modal-overlay.open .home-modal { transform: translateY(0); }
+  .home-modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--edge); }
+  .home-modal-title { font-size: var(--t-md); font-weight: 700; color: var(--ink); flex: 1; }
+  .home-note-title { flex: 1; font-family: inherit; font-size: var(--t-lg); font-weight: 700; color: var(--ink); border: 0; background: none; outline: none; }
+  .home-modal-close { flex-shrink: 0; background: none; border: 0; font-size: 22px; line-height: 1; color: var(--ink-3); cursor: pointer; padding: 0 4px; }
+  .home-modal-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 12px 16px; display: flex; flex-direction: column; }
+  .home-modal-body #homeNoteQuill, .home-modal-body #scratchEditorContent { flex: 1; min-height: 320px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -304,6 +312,7 @@
     <button class="sidebar-btn" data-tool="journal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
       <span>Journal</span>
+      <span class="count" id="sidebarJournalCount"></span>
     </button>
   </nav>
   <div class="sidebar-sep"></div>
@@ -408,13 +417,8 @@
   </div>
 </div>
 
-<div class="content scratch-view" data-tool-view="scratch" style="display:none">
-  <div class="notes-layout">
-    <div class="notes-editor" id="scratchEditor" style="min-width:0">
-      <div id="scratchEditorContent"></div>
-    </div>
-  </div>
-</div>
+<!-- Scratch is no longer a standalone tab — its editor (#scratchEditorContent) is
+     created on demand inside the Home tab's Quick Notes modal (beta/src/04-home.js). -->
 
 <div class="content" data-tool-view="journal" style="display:none">
   <div id="journalContainer"></div>
@@ -483,6 +487,7 @@
   <button class="mobile-nav-btn" data-tool="journal">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
     <span>Journal</span>
+    <span class="mobile-nav-badge" id="journalBadgeMobile">!</span>
   </button>
 </nav>
 
