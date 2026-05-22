@@ -15,20 +15,17 @@
      Reuses app.css design tokens (--surface, --ink scale, --edge, radii, shadows). -->
 <style id="homeStyles">
   #homeContainer { max-width: 720px; margin: 0 auto; padding: 2px 0 40px; }
-  .home-row { margin-bottom: 12px; }
-  /* Cards match the rest of the app: --r-md radius, --edge border, --shadow-card. */
+  /* Boxed cards (Today, Last 7 Days) match the rest of the app: --r-md, --edge, --shadow-card. */
   .home-card {
     background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md);
-    box-shadow: var(--shadow-card); padding: 16px; min-width: 0;
+    box-shadow: var(--shadow-card); padding: 16px; min-width: 0; margin-bottom: 22px;
   }
   .home-card-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; }
-  .home-card-link { font-size: var(--t-xs); font-weight: 600; color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 0; }
 
-  /* Bold section titles with inline emoji (used to separate Calendar/Tasks/Habits) */
-  .home-section + .home-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--edge); }
+  /* Unboxed sections (Events / Tasks / Habits / Notes): bold title + item cards. */
+  .home-section { margin-bottom: 22px; }
   .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
   .home-section-title { font-size: var(--t-md); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-  .home-section-emoji { font-style: normal; margin-right: 2px; }
   .home-add-btn { flex-shrink: 0; width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid var(--edge-strong); background: var(--surface); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .home-add-btn:hover { background: var(--surface-2); color: var(--ink); }
 
@@ -48,37 +45,38 @@
   .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }
   .home-mood-btn.is-selected { border-color: var(--guava-500); background: var(--guava-50); }
 
-  /* Tasks: reuse the real task cards (tHTML); hide attribute tags + condense */
+  /* Tasks: real .card.task-item chrome (incl. red priority strip), condensed */
   #homeTasks { display: flex; flex-direction: column; gap: 7px; }
   #homeTasks .task-group { margin: 0; }
-  #homeTasks .task-item { padding-top: 10px; padding-bottom: 10px; }
-  #homeTasks .task-meta .tag { display: none; }   /* drop Work/Personal/Later/Note chips */
-  #homeTasks .task-meta:empty { display: none; }
+  #homeTasks .task-item { padding-top: 11px; padding-bottom: 11px; }
 
-  /* Calendar rows */
-  .home-cal-event { display: flex; gap: 10px; padding: 6px 0; }
-  .home-cal-event + .home-cal-event { border-top: 1px solid var(--edge); }
-  .home-cal-time { font-size: var(--t-xs); color: var(--ink-3); width: 64px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-  .home-cal-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* Condensed habit rows — guava check (matches the app, no green) */
-  .home-hrow { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-  .home-hrow + .home-hrow { border-top: 1px solid var(--edge); }
+  /* Shared item cards — habits + notes match the task cards (no priority strip) */
+  .home-item-list, #homeHabits { display: flex; flex-direction: column; gap: 7px; }
+  .home-item-card {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md);
+    box-shadow: var(--shadow-card); padding: 11px 14px; min-width: 0;
+  }
+  .home-item-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-item-card.is-done .home-item-title { color: var(--ink-4); }
+  .home-note-card { cursor: pointer; }
+  .home-note-card:hover { border-color: var(--edge-strong); }
   .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 18px; text-align: center; }
-  .home-hrow-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home-hrow.is-done .home-hrow-title { color: var(--ink-4); }
+  .home-trow-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+
+  /* Guava check (matches the app's done state — no green) */
   .home-check { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--edge-strong); background: transparent; cursor: pointer; padding: 0; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
   .home-check:hover { border-color: var(--ink-3); }
   .home-check.checked { background: var(--guava-700); border-color: var(--guava-700); }
 
-  /* Recent notes rows */
-  .home-trow { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; }
-  .home-trow + .home-trow { border-top: 1px solid var(--edge); }
-  .home-trow-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home-trow-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
-  .home-quicknotes-wrap { display: flex; justify-content: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
-  .home-quicknotes-btn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 8px 16px; cursor: pointer; }
-  .home-quicknotes-btn:hover { background: var(--surface); border-color: var(--edge-strong); }
+  /* Calendar (events) — no dividers */
+  .home-cal-event { display: flex; gap: 10px; padding: 5px 0; }
+  .home-cal-time { font-size: var(--t-xs); color: var(--ink-3); width: 64px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .home-cal-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Scratchpad button — small, top-right of Recent Notes */
+  .home-scratchpad-btn { font-size: var(--t-xs); font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-sm); padding: 4px 10px; cursor: pointer; }
+  .home-scratchpad-btn:hover { background: var(--surface); border-color: var(--edge-strong); }
 
   /* Last 7 Days */
   .home-week-avg { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }

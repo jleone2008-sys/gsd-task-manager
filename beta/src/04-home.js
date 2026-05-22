@@ -86,10 +86,24 @@ function renderHome() {
   homeSyncChrome();
 
   el.innerHTML = `
-    <div class="home-row"><div class="home-card" id="homeToday">${homeTodayCardHTML()}</div></div>
-    <div class="home-row"><div class="home-card" id="homeAgenda">${homeAgendaCardHTML()}</div></div>
-    <div class="home-row"><div class="home-card" id="homeNotesCard">${homeNotesCardHTML()}</div></div>
-    <div class="home-row"><div class="home-card" id="homeWeek">${homeWeekSkeletonHTML()}</div></div>
+    <div class="home-card" id="homeToday">${homeTodayCardHTML()}</div>
+    <div class="home-section">
+      ${homeSectionHead("Today's Events")}
+      <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
+    </div>
+    <div class="home-section">
+      ${homeSectionHead("Today's Tasks", '<button class="home-add-btn" data-task-action="open-create" title="Add task">+</button>')}
+      <div id="homeTasks">${homeTasksInnerHTML()}</div>
+    </div>
+    <div class="home-section">
+      ${homeSectionHead("Today's Habits", '<span class="home-card-meta" id="homeHabitsMeta">' + homeHabitsMeta() + '</span>')}
+      <div id="homeHabits">${homeHabitsInnerHTML()}</div>
+    </div>
+    <div class="home-section">
+      ${homeSectionHead('Recent Notes', '<button class="home-scratchpad-btn" data-home-quicknotes>Scratchpad</button>')}
+      <div id="homeNotes">${homeNotesInnerHTML()}</div>
+    </div>
+    <div class="home-card" id="homeWeek">${homeWeekSkeletonHTML()}</div>
   `;
 
   homeWireOnce();
@@ -111,17 +125,23 @@ function homeSyncChrome() {
   });
 }
 
-function homeSectionHead(emoji, text, rightHtml) {
+function homeSectionHead(text, rightHtml) {
   return `<div class="home-section-head">
-      <div class="home-section-title"><span class="home-section-emoji">${emoji}</span> ${hEsc(text)}</div>
+      <div class="home-section-title">${hEsc(text)}</div>
       ${rightHtml || ''}
     </div>`;
 }
 
 /* ── Card 1: Today (rings + mood) ─────────────────────────── */
 
+function homeDateLabel() {
+  const d = new Date();
+  const day = d.getDate();
+  const ord = (day % 10 === 1 && day !== 11) ? 'st' : (day % 10 === 2 && day !== 12) ? 'nd' : (day % 10 === 3 && day !== 13) ? 'rd' : 'th';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).replace(String(day), day + ord);
+}
 function homeTodayCardHTML() {
-  return `${homeSectionHead('☀️', 'Today', '<span class="home-card-meta" id="homeTodayAsOf"></span>')}
+  return `${homeSectionHead(homeDateLabel())}
     <div id="homeRingsRow"><div class="home-skeleton">Loading your numbers…</div></div>
     <div class="home-mood-block">
       <div class="home-mood-q">How are you feeling?</div>
@@ -140,21 +160,22 @@ function ringSvg(score, color) {
     <text class="home-ring-score" x="40" y="41" text-anchor="middle" dominant-baseline="central">${score == null ? '—' : Math.round(score)}</text>
   </svg>`;
 }
-// The most recent day that actually has the headline scores. A day with only
-// activity (ring not worn overnight) has null sleep/readiness — skip it so the
-// rings don't show blanks for two of three metrics.
-function homeLatestOuraDay(oura) {
+// Per-metric latest available score. Sleep/readiness for "today" only finalize
+// after the night, so the current day often has only activity — fall back to the
+// most recent non-null value for each metric (e.g. last night's sleep/readiness
+// + today's activity) and present them together as today's snapshot.
+function homePickScore(oura, key) {
   const days = oura?.days || [];
-  return days.find(d => d.readiness_score != null || d.sleep_score != null) || days[0] || null;
+  for (const d of days) if (d[key] != null) return d[key];
+  return null;
 }
 function homeRingsRowHTML(oura) {
-  const latest = homeLatestOuraDay(oura);
-  if (!latest) return `<div class="home-empty">No Oura data yet — it syncs overnight.</div>`;
+  if (!(oura?.days || []).length) return `<div class="home-empty">No Oura data yet — it syncs overnight.</div>`;
   const ring = (label, score, color) => `<div class="home-ring">${ringSvg(score, color)}<span class="home-ring-label">${label}</span></div>`;
   return `<div class="home-rings">
-      ${ring('Sleep', latest.sleep_score, HOME_RING_COLORS.sleep)}
-      ${ring('Readiness', latest.readiness_score, HOME_RING_COLORS.readiness)}
-      ${ring('Activity', latest.activity_score, HOME_RING_COLORS.activity)}
+      ${ring('Sleep', homePickScore(oura, 'sleep_score'), HOME_RING_COLORS.sleep)}
+      ${ring('Readiness', homePickScore(oura, 'readiness_score'), HOME_RING_COLORS.readiness)}
+      ${ring('Activity', homePickScore(oura, 'activity_score'), HOME_RING_COLORS.activity)}
     </div>`;
 }
 function homeMoodRowHTML(entry) {
@@ -167,23 +188,7 @@ function homeMoodRowHTML(entry) {
   return `<div class="home-mood">${btns}</div>`;
 }
 
-/* ── Card 2: Agenda (Calendar · Tasks · Habits) ───────────── */
-
-function homeAgendaCardHTML() {
-  return `
-    <div class="home-section">
-      ${homeSectionHead('📅', "Today's Calendar")}
-      <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
-    </div>
-    <div class="home-section">
-      ${homeSectionHead('✅', "Today's Tasks", '<button class="home-add-btn" data-task-action="open-create" title="Add task">+</button>')}
-      <div id="homeTasks">${homeTasksInnerHTML()}</div>
-    </div>
-    <div class="home-section">
-      ${homeSectionHead('🔁', "Today's Habits", '<span class="home-card-meta" id="homeHabitsMeta">' + homeHabitsMeta() + '</span>')}
-      <div id="homeHabits">${homeHabitsInnerHTML()}</div>
-    </div>`;
-}
+/* ── Section bodies (Calendar · Tasks · Habits · Notes) ───── */
 
 function _fmtEventTime(ev) {
   if (ev.isAllDay) return 'All day';
@@ -197,19 +202,35 @@ function homeCalendarInnerHTML(events, expired) {
       <button class="home-cta" data-home-cta="settings">Connect Google Calendar →</button>`;
   }
   if (!events || !events.length) return `<div class="home-empty">Nothing on the calendar today.</div>`;
-  return events.map(ev => `<div class="home-cal-event">
+  return `<div class="home-item-list">${events.map(ev => `<div class="home-item-card">
       <span class="home-cal-time">${hEsc(_fmtEventTime(ev))}</span>
-      <span class="home-cal-title">${hEsc(ev.summary || '(no title)')}</span>
-    </div>`).join('');
+      <span class="home-item-title">${hEsc(ev.summary || '(no title)')}</span>
+    </div>`).join('')}</div>`;
 }
 
-// Real task cards (same styling + behaviour as the Tasks tab via the global
-// data-task-action handler); category tags are hidden via CSS to condense.
+// Condensed task cards: same .card.task-item chrome as the Tasks tab (incl. the
+// red priority strip), no attribute tags, and clicking the body opens the edit
+// modal (open-edit) — all wired through the global data-task-action handler.
+function homeTaskCardHTML(t) {
+  const cardCls = ['card', 'task-item'];
+  if (t.top3) cardCls.push('top3', 'is-priority');
+  const title = (typeof linkify === 'function') ? linkify(t.text) : hEsc(t.text || '');
+  return `<div class="task-group"><div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
+      <span class="strip" data-task-action="toggle-top3" title="Toggle priority"></span>
+      <div class="card-head">
+        <div class="card-body task-content" data-task-action="open-edit">
+          <div class="card__title task-text">${title}</div>
+        </div>
+        <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done ? 'Reopen' : 'Complete'}">
+          <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div></div>`;
+}
 function homeTasksInnerHTML() {
   const list = (typeof tasks !== 'undefined' && Array.isArray(tasks)) ? tasks.filter(t => t.top3 && !t.done) : [];
   if (!list.length) return `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
-  if (typeof tHTML !== 'function') return '';
-  return list.map(t => tHTML(t)).join('');
+  return list.map(t => homeTaskCardHTML(t)).join('');
 }
 
 function homeHabitsMeta() {
@@ -229,9 +250,9 @@ function homeHabitsInnerHTML() {
   const esc = (typeof escHTML === 'function') ? escHTML : hEsc;
   return due.map(h => {
     const isDone = (typeof isCompletedOn === 'function') && isCompletedOn(h.id, today);
-    return `<div class="home-hrow${isDone ? ' is-done' : ''}">
+    return `<div class="home-item-card${isDone ? ' is-done' : ''}">
         <span class="home-hrow-emoji">${esc(h.emoji || '•')}</span>
-        <span class="home-hrow-title">${esc(h.name || '')}</span>
+        <span class="home-item-title">${esc(h.name || '')}</span>
         <button class="home-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" title="${isDone ? 'Undo' : 'Mark done'}"></button>
       </div>`;
   }).join('');
@@ -239,26 +260,22 @@ function homeHabitsInnerHTML() {
 
 /* ── Card 3: Recent notes (+ Quick Notes) ─────────────────── */
 
-function homeNotesCardHTML() {
+function homeNotesInnerHTML() {
   const SC = (typeof SCRATCH_ID !== 'undefined') ? SCRATCH_ID : -1;
   const all = (typeof notesArr !== 'undefined' && Array.isArray(notesArr)) ? notesArr.filter(n => !n.trashed && n.id !== SC) : [];
   const recent = all.slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 3);
   const fmt = (typeof formatNoteDate === 'function') ? formatNoteDate : (s => s || '');
-  const head = homeSectionHead('📝', 'Recent Notes', '<button class="home-card-link" data-home-go="notes">View all →</button>');
-  const rows = recent.length
-    ? recent.map(n => `<div class="home-trow">
-        <span class="home-trow-title" data-home-note="${n.id}">${hEsc(n.title || 'Untitled')}</span>
-        <span class="home-trow-meta">${hEsc(fmt(n.updatedAt))}</span>
-      </div>`).join('')
-    : `<div class="home-empty">No notes yet — capture a thought.</div>`;
-  const quickBtn = `<div class="home-quicknotes-wrap"><button class="home-quicknotes-btn" data-home-quicknotes>📝 Quick Notes</button></div>`;
-  return head + rows + quickBtn;
+  if (!recent.length) return `<div class="home-empty">No notes yet — capture a thought.</div>`;
+  return `<div class="home-item-list">${recent.map(n => `<div class="home-item-card home-note-card" data-home-note="${n.id}">
+      <span class="home-item-title">${hEsc(n.title || 'Untitled')}</span>
+      <span class="home-trow-meta">${hEsc(fmt(n.updatedAt))}</span>
+    </div>`).join('')}</div>`;
 }
 
 /* ── Card 4: Last 7 Days ──────────────────────────────────── */
 
 function homeWeekSkeletonHTML() {
-  return homeSectionHead('📊', 'Last 7 Days') + `<div class="home-skeleton">Loading…</div>`;
+  return homeSectionHead('Last 7 Days') + `<div class="home-skeleton">Loading…</div>`;
 }
 function homeWeekInnerHTML(oura, entriesByDate) {
   const today = homeToday();
@@ -296,7 +313,7 @@ function homeWeekInnerHTML(oura, entriesByDate) {
       <span><i style="background:${HOME_RING_COLORS.readiness}"></i>Readiness</span>
       <span><i style="background:${HOME_RING_COLORS.activity}"></i>Activity</span>
     </div>`;
-  return homeSectionHead('📊', 'Last 7 Days', avgHtml) + legend + `<div class="home-week">${rows}</div>`;
+  return homeSectionHead('Last 7 Days', avgHtml) + legend + `<div class="home-week">${rows}</div>`;
 }
 
 /* ── Hydration ────────────────────────────────────────────── */
@@ -315,10 +332,6 @@ async function hydrateHomeToday() {
   } else {
     const oura = await loadOuraScores();
     if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
-    const latest = homeLatestOuraDay(oura);
-    const asOf = document.getElementById('homeTodayAsOf');
-    if (asOf) asOf.textContent = (latest && latest.date && latest.date !== homeToday() && typeof jFormatShort === 'function')
-      ? `as of ${jFormatShort(latest.date)}` : '';
   }
   // Mood (today's journal entry).
   if (typeof loadJournalEntry === 'function') {
@@ -361,7 +374,7 @@ function refreshHomeData() {
   refreshHomeSection('homeTasks', homeTasksInnerHTML());
   refreshHomeSection('homeHabits', homeHabitsInnerHTML());
   const hm = document.getElementById('homeHabitsMeta'); if (hm) hm.textContent = homeHabitsMeta();
-  const nc = document.getElementById('homeNotesCard'); if (nc) nc.innerHTML = homeNotesCardHTML();
+  refreshHomeSection('homeNotes', homeNotesInnerHTML());
 }
 
 /* ── In-page modals: note editor + Quick Notes ────────────── */
@@ -428,7 +441,7 @@ function closeHomeNoteModal(skip) {
   document.getElementById('homeNoteModal')?.remove();
   if (!skip) {
     document.body.style.overflow = '';
-    const nc = document.getElementById('homeNotesCard'); if (nc) nc.innerHTML = homeNotesCardHTML();
+    refreshHomeSection('homeNotes', homeNotesInnerHTML());
   }
 }
 function homeCreateNote() {
@@ -449,7 +462,7 @@ function openQuickNotesModal() {
     <div class="home-modal-overlay" id="homeQuickNotesModal">
       <div class="home-modal home-modal--editor">
         <div class="home-modal-head">
-          <span class="home-modal-title">Quick Notes</span>
+          <span class="home-modal-title">Scratchpad</span>
           <button class="home-modal-close" data-home-modal-close="quicknotes" title="Close">×</button>
         </div>
         <div class="home-modal-body"><div id="scratchEditorContent"></div></div>
