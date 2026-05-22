@@ -34,12 +34,17 @@
   .home-pill-btn--icon { padding: 6px 10px; font-size: 16px; }
 
   /* Rings */
+  #homeRingsRow { margin-top: 20px; }
   .home-rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .home-ring { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .home-ring { display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
   .home-ring svg { width: 82px; height: 82px; }
   .home-ring-track { stroke: var(--surface-2); }
   .home-ring-score { font-size: 20px; font-weight: 700; fill: var(--ink); }
   .home-ring-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+  /* Trend vs the previous reading (yesterday) */
+  .home-ring-trend { font-size: var(--t-xs); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+  .home-ring-trend.is-up { color: #5e8c4f; }
+  .home-ring-trend.is-down { color: var(--guava-700); }
 
   /* Mood block (inside Today card) — hidden until "Log mood" is tapped. */
   .home-mood-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--edge); }
@@ -62,7 +67,13 @@
   .home-note-card:hover .home-item-title { opacity: .7; }
   .home-note-title-link { color: var(--sky-fg); font-weight: 500; }
   .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
+  .home-habit-streak { flex-shrink: 0; font-size: var(--t-xs); font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
   .home-trow-meta { font-size: var(--t-sm); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+
+  /* Journal quick-capture — single-line tap target. */
+  .home-journal-line { font-size: var(--t-sm); color: var(--ink-4); cursor: pointer; padding: 4px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-journal-line:hover { color: var(--ink-2); }
+  .home-journal-line.has-text { color: var(--ink); }
 
   /* Tasks: strip the .card chrome → flat line rows; priority strip hidden (all priority). */
   #homeTasks .task-group { margin: 0; }
@@ -107,19 +118,16 @@
   .home-stat-delta { font-size: var(--t-xs); font-weight: 600; margin-top: 5px; color: var(--ink-4); }
   .home-stat-delta.is-up { color: #5e8c4f; }
   .home-stat-delta.is-down { color: var(--guava-700); }
-  .home-week-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
-  .home-week-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--ink-3); }
-  .home-week-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-
-  /* Daily breakdown table (below the averages) */
-  .hw-row { display: grid; grid-template-columns: 1fr 44px 44px 44px; align-items: center; padding: 9px 0; }
+  /* Daily breakdown table (below the averages) — columns evenly spread. */
+  .home-week-table { margin-top: 4px; }
+  .hw-row { display: grid; grid-template-columns: minmax(0, 1.5fr) 1fr 1fr 1fr; align-items: center; padding: 9px 0; }
   .hw-row + .hw-row { border-top: 1px solid var(--edge); }
   .hw-head { padding: 6px 0; }
   .hw-head .hw-col { font-size: var(--t-xs); font-weight: 700; }
   .hw-daycell { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .hw-day { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
   .hw-mood { font-size: 16px; line-height: 1; }
-  .hw-col { text-align: right; font-size: var(--t-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+  .hw-col { text-align: center; font-size: var(--t-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-4); }
   .hw-avg .hw-day { color: var(--ink-4); font-weight: 700; letter-spacing: .04em; }
 
   /* Misc */

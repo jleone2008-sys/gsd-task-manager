@@ -100,6 +100,10 @@ function renderHome() {
       <div id="homeHabits">${homeHabitsInnerHTML()}</div>
     </div>
     <div class="home-card home-section">
+      ${homeSectionHead('Journal')}
+      <div id="homeJournal">${homeJournalInnerHTML()}</div>
+    </div>
+    <div class="home-card home-section">
       ${homeSectionHead('Recent Notes', '<button class="home-pill-btn" data-home-quicknotes>Scratchpad</button>')}
       <div id="homeNotes">${homeNotesInnerHTML()}</div>
     </div>
@@ -168,13 +172,34 @@ function homePickScore(oura, key) {
   for (const d of days) if (d[key] != null) return d[key];
   return null;
 }
+// Latest non-null value for `key` plus the delta vs the previous reading (the
+// next non-null day before it) — for the ↑/↓ trend under each ring.
+function homePickTrend(oura, key) {
+  const days = oura?.days || [];
+  let cur = null, prev = null;
+  for (const d of days) {
+    if (d[key] == null) continue;
+    if (cur === null) cur = d[key];
+    else { prev = d[key]; break; }
+  }
+  return { cur, delta: (cur != null && prev != null) ? cur - prev : null };
+}
+function homeRingTrendHTML(delta) {
+  if (delta == null) return '';
+  if (delta === 0) return `<span class="home-ring-trend is-flat">±0</span>`;
+  const up = delta > 0;
+  return `<span class="home-ring-trend ${up ? 'is-up' : 'is-down'}">${up ? '↑' : '↓'}${Math.abs(delta)}</span>`;
+}
 function homeRingsRowHTML(oura) {
   if (!(oura?.days || []).length) return `<div class="home-empty">No Oura data yet — it syncs overnight.</div>`;
-  const ring = (label, score, color) => `<div class="home-ring">${ringSvg(score, color)}<span class="home-ring-label">${label}</span></div>`;
+  const ring = (label, key, color) => {
+    const { cur, delta } = homePickTrend(oura, key);
+    return `<div class="home-ring">${ringSvg(cur, color)}<span class="home-ring-label">${label}</span>${homeRingTrendHTML(delta)}</div>`;
+  };
   return `<div class="home-rings">
-      ${ring('Sleep', homePickScore(oura, 'sleep_score'), HOME_RING_COLORS.sleep)}
-      ${ring('Readiness', homePickScore(oura, 'readiness_score'), HOME_RING_COLORS.readiness)}
-      ${ring('Activity', homePickScore(oura, 'activity_score'), HOME_RING_COLORS.activity)}
+      ${ring('Sleep', 'sleep_score', HOME_RING_COLORS.sleep)}
+      ${ring('Readiness', 'readiness_score', HOME_RING_COLORS.readiness)}
+      ${ring('Activity', 'activity_score', HOME_RING_COLORS.activity)}
     </div>`;
 }
 function homeMoodRowHTML(entry) {
@@ -261,9 +286,12 @@ function homeHabitsInnerHTML() {
   const esc = (typeof escHTML === 'function') ? escHTML : hEsc;
   return due.map(h => {
     const isDone = (typeof isCompletedOn === 'function') && isCompletedOn(h.id, today);
+    const streak = (typeof computeStreak === 'function') ? computeStreak(h.id) : 0;
+    const streakHtml = streak > 0 ? `<span class="home-habit-streak">🔥 ${streak}</span>` : '';
     return `<div class="home-row${isDone ? ' is-done' : ''}">
         <span class="home-hrow-emoji">${esc(h.emoji || '•')}</span>
         <span class="home-item-title">${esc(h.name || '')}</span>
+        ${streakHtml}
         <button class="home-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" title="${isDone ? 'Undo' : 'Mark done'}">
           <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
@@ -283,6 +311,18 @@ function homeNotesInnerHTML() {
       <span class="home-item-title home-note-title-link">${hEsc(n.title || 'Untitled')}</span>
       <span class="home-trow-meta">${hEsc(fmt(n.updatedAt))}</span>
     </div>`).join('')}</div>`;
+}
+
+/* ── Journal quick-capture (single-line tap target) ───────── */
+
+function homeJournalInnerHTML(entry) {
+  const today = homeToday();
+  const e = entry || ((typeof journalState !== 'undefined') ? journalState.entries.get(today) : null);
+  const text = (e?.reflections || '').trim();
+  if (text) {
+    return `<div class="home-journal-line has-text" data-home-journal role="button" tabindex="0">${hEsc(text)}</div>`;
+  }
+  return `<div class="home-journal-line" data-home-journal role="button" tabindex="0">Reflect on today…</div>`;
 }
 
 /* ── Card 4: Last 7 Days ──────────────────────────────────── */
@@ -338,12 +378,6 @@ function homeWeekInnerHTML(oura, entriesByDate) {
       ${stat('READINESS', 'readiness_score', HOME_RING_COLORS.readiness)}
       ${stat('ACTIVITY', 'activity_score', HOME_RING_COLORS.activity)}
     </div>`;
-  const legend = `<div class="home-week-legend">
-      <span><i style="background:${HOME_RING_COLORS.sleep}"></i>Sleep</span>
-      <span><i style="background:${HOME_RING_COLORS.readiness}"></i>Readiness</span>
-      <span><i style="background:${HOME_RING_COLORS.activity}"></i>Activity</span>
-    </div>`;
-
   // Daily breakdown — newest first, with a header and an AVG footer row.
   const ouraByDate = new Map();
   days.forEach(d => ouraByDate.set(d.date, d));
@@ -374,7 +408,7 @@ function homeWeekInnerHTML(oura, entriesByDate) {
       ${cell(homeWeekAvg(days, 'activity_score', 0, 7), HOME_RING_COLORS.activity)}
     </div>`;
   const table = `<div class="home-week-table">${head}${dayRows.join('')}${avgRow}</div>`;
-  return homeSectionHead('Last 7 Days', avgHtml) + stats + legend + table;
+  return homeSectionHead('Last 7 Days', avgHtml) + stats + table;
 }
 
 /* ── Hydration ────────────────────────────────────────────── */
@@ -401,6 +435,8 @@ async function hydrateHomeToday() {
     if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
     // If a mood is already logged for today, reveal the picker so it's visible.
     if (entry && entry.mood) document.getElementById('homeMoodBlock')?.removeAttribute('hidden');
+    // Journal line shows today's reflection preview once loaded.
+    refreshHomeSection('homeJournal', homeJournalInnerHTML(entry));
   }
 }
 
@@ -597,6 +633,7 @@ function homeWireOnce() {
     const noteEl = e.target.closest('[data-home-note]');
     if (noteEl) { openHomeNoteModal(parseInt(noteEl.dataset.homeNote, 10)); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
+    if (e.target.closest('[data-home-journal]')) { switchTool('journal'); return; }
 
     const moodEl = e.target.closest('[data-home-mood]');
     if (moodEl) {
