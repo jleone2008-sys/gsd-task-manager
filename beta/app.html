@@ -22,13 +22,17 @@
   }
   .home-card-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; }
 
-  /* Sections inside a card (Events/Tasks/Habits share one box; Notes its own):
-     bold title + item cards, separated by a hairline divider. */
-  .home-section + .home-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--edge); }
-  .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-  .home-section-title { font-size: var(--t-md); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-  .home-add-btn { flex-shrink: 0; width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid var(--edge-strong); background: var(--surface); color: var(--ink-2); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .home-add-btn:hover { background: var(--surface-2); color: var(--ink); }
+  /* Unboxed flow sections (Events/Tasks/Habits/Notes): no card chrome, separated
+     by generous spacing; rows inside use hairline dividers (.home-row). */
+  .home-flow { margin-bottom: 22px; }
+  .home-section + .home-section { margin-top: 26px; }
+  .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .home-section-title { font-size: var(--t-lg); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+
+  /* Shared pill button — Log mood, Scratchpad, and the Task + add button. */
+  .home-pill-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--edge); border-radius: 999px; padding: 6px 13px; line-height: 1; cursor: pointer; }
+  .home-pill-btn:hover { background: var(--surface); border-color: var(--edge-strong); color: var(--ink); }
+  .home-pill-btn--icon { padding: 6px 10px; font-size: 16px; }
 
   /* Rings */
   .home-rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -38,62 +42,70 @@
   .home-ring-score { font-size: 20px; font-weight: 700; fill: var(--ink); }
   .home-ring-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
 
-  /* Mood block (inside Today card) */
+  /* Mood block (inside Today card) — hidden until "Log mood" is tapped. */
   .home-mood-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--edge); }
-  .home-mood-q { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+  .home-mood-block[hidden] { display: none; }
   .home-mood { display: flex; gap: 8px; }
-  .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface-2); border: 1px solid transparent; border-radius: var(--r-md); padding: 9px 4px; cursor: pointer; font-size: 21px; line-height: 1; }
+  .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 9px 4px; cursor: pointer; font-size: 21px; line-height: 1; }
   .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }
   .home-mood-btn.is-selected { border-color: var(--guava-500); background: var(--guava-50); }
 
-  /* Tasks: real .card.task-item chrome (incl. red priority strip), condensed */
-  #homeTasks { display: flex; flex-direction: column; gap: 7px; }
-  #homeTasks .task-group { margin: 0; }
-  #homeTasks .task-item { padding-top: 11px; padding-bottom: 11px; }
-  /* Completed-today tasks listed below the active ones — done state (filled
-     check, muted text) but no strikethrough, for a clean read. */
-  .home-tasks-done { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
-  #homeTasks .task-item.done .task-text { text-decoration: none; color: var(--ink-4); }
-
-  /* Shared item cards — habits + notes match the task cards (no priority strip) */
-  .home-item-list, #homeHabits { display: flex; flex-direction: column; gap: 7px; }
-  .home-item-card {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md);
-    box-shadow: var(--shadow-card); padding: 11px 14px; min-width: 0;
+  /* Line-style rows (Events/Habits/Notes): no box, hairline divider between. */
+  .home-item-list, #homeHabits, #homeTasks { display: flex; flex-direction: column; }
+  .home-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 2px; min-width: 0; border-bottom: 1px solid var(--edge);
   }
+  .home-item-list .home-row:last-child, #homeHabits .home-row:last-child { border-bottom: 0; }
   .home-item-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home-item-card.is-done .home-item-title { color: var(--ink-4); }
+  .home-row.is-done .home-item-title { color: var(--ink-4); }
   .home-note-card { cursor: pointer; }
-  .home-note-card:hover { border-color: var(--edge-strong); }
-  .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 18px; text-align: center; }
-  .home-trow-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+  .home-note-card:hover .home-item-title { opacity: .7; }
+  .home-note-title-link { color: var(--sky-fg); font-weight: 500; }
+  .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
+  .home-trow-meta { font-size: var(--t-sm); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
 
-  /* Guava check (matches the app's done state — no green) */
-  .home-check { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--edge-strong); background: transparent; cursor: pointer; padding: 0; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  /* Tasks: strip the .card chrome → flat line rows; priority strip hidden (all priority). */
+  #homeTasks .task-group { margin: 0; }
+  #homeTasks .task-item {
+    background: none; border: 0; border-radius: 0; box-shadow: none;
+    padding: 11px 2px; border-bottom: 1px solid var(--edge);
+  }
+  #homeTasks .strip { display: none; }
+  #homeTasks .task-item.done .task-text { text-decoration: none; color: var(--ink-4); }
+  .home-tasks-done[hidden] { display: none; }
+
+  /* COMPLETED disclosure row */
+  .home-done-toggle { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px; cursor: pointer; border-bottom: 1px solid var(--edge); }
+  .home-done-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; color: var(--ink-3); display: inline-flex; align-items: center; gap: 8px; }
+  .home-done-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-3); font-size: 11px; font-weight: 700; }
+  .home-done-arrow { color: var(--ink-3); transition: transform var(--dur) var(--ease); }
+  .home-done-toggle.is-open .home-done-arrow { transform: rotate(180deg); }
+
+  /* Guava check (matches the app's done state — white check once filled) */
+  .home-check { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--edge-strong); background: transparent; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
   .home-check:hover { border-color: var(--ink-3); }
   .home-check.checked { background: var(--guava-700); border-color: var(--guava-700); }
+  .home-check svg { display: none; }
+  .home-check.checked svg { display: block; }
 
-  /* Calendar (events) — no dividers */
-  .home-cal-event { display: flex; gap: 10px; padding: 5px 0; }
-  .home-cal-time { font-size: var(--t-xs); color: var(--ink-3); width: 64px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-  .home-cal-title { font-size: var(--t-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Calendar (events) — all-day muted, timed in dull blue. */
+  .home-cal-time { font-size: var(--t-sm); width: 70px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .home-cal-time.is-allday { color: var(--ink-4); }
+  .home-cal-time.is-timed { color: var(--sky-fg); font-weight: 600; }
 
-  /* Scratchpad button — small, top-right of Recent Notes */
-  .home-scratchpad-btn { font-size: var(--t-xs); font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-sm); padding: 4px 10px; cursor: pointer; }
-  .home-scratchpad-btn:hover { background: var(--surface); border-color: var(--edge-strong); }
-
-  /* Last 7 Days */
+  /* Last 7 Days — average stat boxes */
   .home-week-avg { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
-  .home-week-legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .home-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+  .home-stat { background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 12px 8px; text-align: center; }
+  .home-stat-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+  .home-stat-num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .home-stat-delta { font-size: var(--t-xs); font-weight: 600; margin-top: 5px; color: var(--ink-4); }
+  .home-stat-delta.is-up { color: #5e8c4f; }
+  .home-stat-delta.is-down { color: var(--guava-700); }
+  .home-week-legend { display: flex; gap: 14px; flex-wrap: wrap; }
   .home-week-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-xs); color: var(--ink-3); }
   .home-week-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-  .home-week-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
-  .home-week-row + .home-week-row { border-top: 1px solid var(--edge); }
-  .hw-day { width: 48px; flex-shrink: 0; font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
-  .hw-mood { width: 22px; flex-shrink: 0; font-size: 18px; line-height: 1; text-align: center; }
-  .hw-scores { flex: 1; display: flex; gap: 16px; justify-content: flex-end; }
-  .hw-num { font-size: var(--t-sm); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-4); width: 26px; text-align: right; }
 
   /* Misc */
   .home-empty { font-size: var(--t-sm); color: var(--ink-4); padding: 6px 2px; }

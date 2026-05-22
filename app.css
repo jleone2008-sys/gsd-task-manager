@@ -810,7 +810,11 @@
     background: var(--guava-700);
     border-color: var(--guava-700);
   }
+  /* White checkmark visible only once complete (centered in the filled circle). */
+  .checkbox { display: flex; align-items: center; justify-content: center; }
   .checkbox svg { display: none; }
+  .task-item.done .checkbox svg,
+  .card.is-done .checkbox svg { display: block; }
 
   /* ──────────────────────────────────────────────────────────────
      CHIPS — 6 earth tones + guava (overdue only) + ghost

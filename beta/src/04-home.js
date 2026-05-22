@@ -15,7 +15,7 @@
      4) Last 7 Days — per-day scores + mood emoji + average mood
 ═══════════════════════════════════════════════════════════════ */
 
-const HOME_RING_COLORS = { sleep: '#6b4862', readiness: '#a37826', activity: '#5e6d3f' };
+const HOME_RING_COLORS = { sleep: '#8a6a84', readiness: '#bf9c47', activity: '#7a8a59' };
 const HOME_MOOD_EMOJI  = ['🤩', '😊', '😐', '😔', '😢'];
 
 let _homeOura = null;
@@ -49,7 +49,7 @@ async function loadOuraScores() {
       const { data, error } = await db.from('oura_daily')
         .select('date,sleep_score,readiness_score,activity_score')
         .order('date', { ascending: false })
-        .limit(7);
+        .limit(14);
       if (error) throw error;
       _homeOura = { days: data || [] };
       return _homeOura;
@@ -87,25 +87,23 @@ function renderHome() {
 
   el.innerHTML = `
     <div class="home-card" id="homeToday">${homeTodayCardHTML()}</div>
-    <div class="home-card">
-      <div class="home-section">
-        ${homeSectionHead("Today's Events")}
+    <div class="home-flow">
+      <section class="home-section">
+        ${homeSectionHead('Events')}
         <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
-      </div>
-      <div class="home-section">
-        ${homeSectionHead("Today's Tasks", '<button class="home-add-btn" data-task-action="open-create" title="Add task">+</button>')}
+      </section>
+      <section class="home-section">
+        ${homeSectionHead('Priority Tasks', '<button class="home-pill-btn home-pill-btn--icon" data-task-action="open-create" title="Add task">+</button>')}
         <div id="homeTasks">${homeTasksInnerHTML()}</div>
-      </div>
-      <div class="home-section">
-        ${homeSectionHead("Today's Habits", '<span class="home-card-meta" id="homeHabitsMeta">' + homeHabitsMeta() + '</span>')}
+      </section>
+      <section class="home-section">
+        ${homeSectionHead('Habits', '<span class="home-card-meta" id="homeHabitsMeta">' + homeHabitsMeta() + '</span>')}
         <div id="homeHabits">${homeHabitsInnerHTML()}</div>
-      </div>
-    </div>
-    <div class="home-card">
-      <div class="home-section">
-        ${homeSectionHead('Recent Notes', '<button class="home-scratchpad-btn" data-home-quicknotes>Scratchpad</button>')}
+      </section>
+      <section class="home-section">
+        ${homeSectionHead('Recent Notes', '<button class="home-pill-btn" data-home-quicknotes>Scratchpad</button>')}
         <div id="homeNotes">${homeNotesInnerHTML()}</div>
-      </div>
+      </section>
     </div>
     <div class="home-card" id="homeWeek">${homeWeekSkeletonHTML()}</div>
   `;
@@ -145,10 +143,9 @@ function homeDateLabel() {
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).replace(String(day), day + ord);
 }
 function homeTodayCardHTML() {
-  return `${homeSectionHead(homeDateLabel())}
+  return `${homeSectionHead(homeDateLabel(), '<button class="home-pill-btn" data-home-mood-toggle>+ Log mood</button>')}
     <div id="homeRingsRow"><div class="home-skeleton">Loading your numbers…</div></div>
-    <div class="home-mood-block">
-      <div class="home-mood-q">How are you feeling?</div>
+    <div class="home-mood-block" id="homeMoodBlock" hidden>
       <div id="homeMoodRow">${homeMoodRowHTML(null)}</div>
     </div>`;
 }
@@ -206,8 +203,8 @@ function homeCalendarInnerHTML(events, expired) {
       <button class="home-cta" data-home-cta="settings">Connect Google Calendar →</button>`;
   }
   if (!events || !events.length) return `<div class="home-empty">Nothing on the calendar today.</div>`;
-  return `<div class="home-item-list">${events.map(ev => `<div class="home-item-card">
-      <span class="home-cal-time">${hEsc(_fmtEventTime(ev))}</span>
+  return `<div class="home-item-list">${events.map(ev => `<div class="home-row">
+      <span class="home-cal-time ${ev.isAllDay ? 'is-allday' : 'is-timed'}">${hEsc(_fmtEventTime(ev))}</span>
       <span class="home-item-title">${hEsc(ev.summary || '(no title)')}</span>
     </div>`).join('')}</div>`;
 }
@@ -240,7 +237,11 @@ function homeTasksInnerHTML() {
     ? active.map(t => homeTaskCardHTML(t)).join('')
     : `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
   const doneHtml = doneToday.length
-    ? `<div class="home-tasks-done">${doneToday.map(t => homeTaskCardHTML(t)).join('')}</div>`
+    ? `<div class="home-done-toggle" data-home-done-toggle role="button" tabindex="0">
+        <span class="home-done-label">COMPLETED <span class="home-done-pill">${doneToday.length}</span></span>
+        <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="home-tasks-done" id="homeTasksDone" hidden>${doneToday.map(t => homeTaskCardHTML(t)).join('')}</div>`
     : '';
   return activeHtml + doneHtml;
 }
@@ -262,10 +263,12 @@ function homeHabitsInnerHTML() {
   const esc = (typeof escHTML === 'function') ? escHTML : hEsc;
   return due.map(h => {
     const isDone = (typeof isCompletedOn === 'function') && isCompletedOn(h.id, today);
-    return `<div class="home-item-card${isDone ? ' is-done' : ''}">
+    return `<div class="home-row${isDone ? ' is-done' : ''}">
         <span class="home-hrow-emoji">${esc(h.emoji || '•')}</span>
         <span class="home-item-title">${esc(h.name || '')}</span>
-        <button class="home-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" title="${isDone ? 'Undo' : 'Mark done'}"></button>
+        <button class="home-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" title="${isDone ? 'Undo' : 'Mark done'}">
+          <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
       </div>`;
   }).join('');
 }
@@ -278,8 +281,8 @@ function homeNotesInnerHTML() {
   const recent = all.slice().sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 3);
   const fmt = (typeof formatNoteDate === 'function') ? formatNoteDate : (s => s || '');
   if (!recent.length) return `<div class="home-empty">No notes yet — capture a thought.</div>`;
-  return `<div class="home-item-list">${recent.map(n => `<div class="home-item-card home-note-card" data-home-note="${n.id}">
-      <span class="home-item-title">${hEsc(n.title || 'Untitled')}</span>
+  return `<div class="home-item-list">${recent.map(n => `<div class="home-row home-note-card" data-home-note="${n.id}">
+      <span class="home-item-title home-note-title-link">${hEsc(n.title || 'Untitled')}</span>
       <span class="home-trow-meta">${hEsc(fmt(n.updatedAt))}</span>
     </div>`).join('')}</div>`;
 }
@@ -289,43 +292,60 @@ function homeNotesInnerHTML() {
 function homeWeekSkeletonHTML() {
   return homeSectionHead('Last 7 Days') + `<div class="home-skeleton">Loading…</div>`;
 }
+// Average a metric over `count` days starting at `startIdx` of the (newest-first)
+// days array; null when no data in that window.
+function homeWeekAvg(days, key, startIdx, count) {
+  const vals = [];
+  for (let i = startIdx; i < startIdx + count && i < days.length; i++) {
+    if (days[i] && days[i][key] != null) vals.push(days[i][key]);
+  }
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+}
 function homeWeekInnerHTML(oura, entriesByDate) {
   const today = homeToday();
-  const ouraByDate = new Map();
-  (oura?.days || []).forEach(d => ouraByDate.set(d.date, d));
+  const days = (oura?.days || []);   // newest first, up to 14
   const emoji = homeMoodEmoji();
 
-  // Newest first: today, then back 6 days.
-  const dates = [];
-  for (let i = 0; i < 7; i++) {
-    dates.push(typeof jShiftDays === 'function' ? jShiftDays(today, -i) : today);
-  }
-
+  // Avg mood across the last 7 days' journal entries.
+  let avgHtml = '';
   const moods = [];
-  const num = (v, color) => `<span class="hw-num"${v == null ? '' : ` style="color:${color}"`}>${v == null ? '—' : v}</span>`;
-  const rows = dates.map(d => {
-    const o = ouraByDate.get(d) || {};
+  for (let i = 0; i < 7; i++) {
+    const d = (typeof jShiftDays === 'function') ? jShiftDays(today, -i) : today;
     const m = entriesByDate.get(d)?.mood;
     if (m) moods.push(m);
-    const wd = (d === today) ? 'Today' : new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' });
-    return `<div class="home-week-row">
-        <span class="hw-day">${hEsc(wd)}</span>
-        <span class="hw-mood">${m ? emoji[m - 1] : '·'}</span>
-        <span class="hw-scores">${num(o.sleep_score, HOME_RING_COLORS.sleep)}${num(o.readiness_score, HOME_RING_COLORS.readiness)}${num(o.activity_score, HOME_RING_COLORS.activity)}</span>
-      </div>`;
-  }).join('');
-
-  let avgHtml = '';
+  }
   if (moods.length) {
     const avg = Math.round(moods.reduce((a, b) => a + b, 0) / moods.length);
     avgHtml = `<span class="home-week-avg">Avg mood ${emoji[avg - 1]}</span>`;
   }
+
+  // Per-metric 7-day average + week-over-week delta (this 7 vs prior 7).
+  const stat = (label, key, color) => {
+    const cur = homeWeekAvg(days, key, 0, 7);
+    const prev = homeWeekAvg(days, key, 7, 7);
+    let delta = '';
+    if (cur != null && prev != null) {
+      const d = cur - prev;
+      const cls = d > 0 ? 'is-up' : d < 0 ? 'is-down' : 'is-flat';
+      delta = `<div class="home-stat-delta ${cls}">${d > 0 ? '+' : ''}${d} wk</div>`;
+    }
+    return `<div class="home-stat">
+        <div class="home-stat-label">${label}</div>
+        <div class="home-stat-num" style="color:${color}">${cur == null ? '—' : cur}</div>
+        ${delta}
+      </div>`;
+  };
+  const stats = `<div class="home-stats">
+      ${stat('SLEEP', 'sleep_score', HOME_RING_COLORS.sleep)}
+      ${stat('READINESS', 'readiness_score', HOME_RING_COLORS.readiness)}
+      ${stat('ACTIVITY', 'activity_score', HOME_RING_COLORS.activity)}
+    </div>`;
   const legend = `<div class="home-week-legend">
       <span><i style="background:${HOME_RING_COLORS.sleep}"></i>Sleep</span>
       <span><i style="background:${HOME_RING_COLORS.readiness}"></i>Readiness</span>
       <span><i style="background:${HOME_RING_COLORS.activity}"></i>Activity</span>
     </div>`;
-  return homeSectionHead('Last 7 Days', avgHtml) + legend + `<div class="home-week">${rows}</div>`;
+  return homeSectionHead('Last 7 Days', avgHtml) + stats + legend;
 }
 
 /* ── Hydration ────────────────────────────────────────────── */
@@ -350,6 +370,8 @@ async function hydrateHomeToday() {
     const entry = await loadJournalEntry(homeToday());
     const moodEl = document.getElementById('homeMoodRow');
     if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
+    // If a mood is already logged for today, reveal the picker so it's visible.
+    if (entry && entry.mood) document.getElementById('homeMoodBlock')?.removeAttribute('hidden');
   }
 }
 
@@ -525,6 +547,18 @@ function homeWireOnce() {
         else if (action === 'toggle-top3' && typeof toggleTop3 === 'function') toggleTop3(tid);
         else if (action === 'open-edit' && typeof openEdit === 'function') openEdit(tid);
       }
+      return;
+    }
+
+    if (e.target.closest('[data-home-mood-toggle]')) {
+      const block = document.getElementById('homeMoodBlock');
+      if (block) block.hidden = !block.hidden;
+      return;
+    }
+    const doneToggle = e.target.closest('[data-home-done-toggle]');
+    if (doneToggle) {
+      const list = document.getElementById('homeTasksDone');
+      if (list) { list.hidden = !list.hidden; doneToggle.classList.toggle('is-open', !list.hidden); }
       return;
     }
 
