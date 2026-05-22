@@ -104,7 +104,7 @@ function renderHome() {
       <div id="homeJournal">${homeJournalInnerHTML()}</div>
     </div>
     <div class="home-card home-section">
-      ${homeSectionHead('Recent Notes', '<button class="home-pill-btn" data-home-quicknotes>Scratchpad</button>')}
+      ${homeSectionHead('Recent Notes', '<span class="home-head-actions"><button class="home-pill-btn home-pill-btn--icon" data-home-newnote title="New note">+</button><button class="home-pill-btn" data-home-quicknotes>Scratchpad</button></span>')}
       <div id="homeNotes">${homeNotesInnerHTML()}</div>
     </div>
     <div class="home-card" id="homeWeek">${homeWeekSkeletonHTML()}</div>
@@ -632,6 +632,7 @@ function homeWireOnce() {
     if (go) { switchTool(go.dataset.homeGo); return; }
     const noteEl = e.target.closest('[data-home-note]');
     if (noteEl) { openHomeNoteModal(parseInt(noteEl.dataset.homeNote, 10)); return; }
+    if (e.target.closest('[data-home-newnote]')) { homeCreateNote(); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
 
     const moodEl = e.target.closest('[data-home-mood]');
