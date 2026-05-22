@@ -50,6 +50,10 @@
   #homeTasks { display: flex; flex-direction: column; gap: 7px; }
   #homeTasks .task-group { margin: 0; }
   #homeTasks .task-item { padding-top: 11px; padding-bottom: 11px; }
+  /* Completed-today tasks listed below the active ones — done state (filled
+     check, muted text) but no strikethrough, for a clean read. */
+  .home-tasks-done { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
+  #homeTasks .task-item.done .task-text { text-decoration: none; color: var(--ink-4); }
 
   /* Shared item cards — habits + notes match the task cards (no priority strip) */
   .home-item-list, #homeHabits { display: flex; flex-direction: column; gap: 7px; }

@@ -218,6 +218,7 @@ function homeCalendarInnerHTML(events, expired) {
 function homeTaskCardHTML(t) {
   const cardCls = ['card', 'task-item'];
   if (t.top3) cardCls.push('top3', 'is-priority');
+  if (t.done) cardCls.push('done', 'is-done');
   const title = (typeof linkify === 'function') ? linkify(t.text) : hEsc(t.text || '');
   return `<div class="task-group"><div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
       <span class="strip" data-task-action="toggle-top3" title="Toggle priority"></span>
@@ -232,9 +233,16 @@ function homeTaskCardHTML(t) {
     </div></div>`;
 }
 function homeTasksInnerHTML() {
-  const list = (typeof tasks !== 'undefined' && Array.isArray(tasks)) ? tasks.filter(t => t.top3 && !t.done) : [];
-  if (!list.length) return `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
-  return list.map(t => homeTaskCardHTML(t)).join('');
+  const all = (typeof tasks !== 'undefined' && Array.isArray(tasks)) ? tasks : [];
+  const active = all.filter(t => t.top3 && !t.done);
+  const doneToday = (typeof getCompletedTasksForDate === 'function') ? getCompletedTasksForDate(homeToday()) : [];
+  const activeHtml = active.length
+    ? active.map(t => homeTaskCardHTML(t)).join('')
+    : `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
+  const doneHtml = doneToday.length
+    ? `<div class="home-tasks-done">${doneToday.map(t => homeTaskCardHTML(t)).join('')}</div>`
+    : '';
+  return activeHtml + doneHtml;
 }
 
 function homeHabitsMeta() {
