@@ -384,7 +384,8 @@ function homeWeekInnerHTML(oura, entriesByDate) {
   days.forEach(d => ouraByDate.set(d.date, d));
   const cell = (v, color) => `<span class="hw-col"${v == null ? '' : ` style="color:${color}"`}>${v == null ? '—' : v}</span>`;
   const head = `<div class="hw-row hw-head">
-      <span class="hw-daycell"></span>
+      <span class="hw-day hw-h">Day</span>
+      <span class="hw-mood hw-h">Mood</span>
       <span class="hw-col" style="color:${HOME_RING_COLORS.sleep}">Slp</span>
       <span class="hw-col" style="color:${HOME_RING_COLORS.readiness}">Rdy</span>
       <span class="hw-col" style="color:${HOME_RING_COLORS.activity}">Act</span>
@@ -396,14 +397,16 @@ function homeWeekInnerHTML(oura, entriesByDate) {
     const m = entriesByDate.get(d)?.mood;
     const wd = (d === today) ? 'Today' : new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' });
     dayRows.push(`<div class="hw-row">
-        <span class="hw-daycell"><span class="hw-day">${hEsc(wd)}</span><span class="hw-mood">${m ? emoji[m - 1] : ''}</span></span>
+        <span class="hw-day">${hEsc(wd)}</span>
+        <span class="hw-mood">${m ? emoji[m - 1] : ''}</span>
         ${cell(o.sleep_score, HOME_RING_COLORS.sleep)}
         ${cell(o.readiness_score, HOME_RING_COLORS.readiness)}
         ${cell(o.activity_score, HOME_RING_COLORS.activity)}
       </div>`);
   }
   const avgRow = `<div class="hw-row hw-avg">
-      <span class="hw-daycell"><span class="hw-day">AVG</span></span>
+      <span class="hw-day">AVG</span>
+      <span class="hw-mood"></span>
       ${cell(homeWeekAvg(days, 'sleep_score', 0, 7), HOME_RING_COLORS.sleep)}
       ${cell(homeWeekAvg(days, 'readiness_score', 0, 7), HOME_RING_COLORS.readiness)}
       ${cell(homeWeekAvg(days, 'activity_score', 0, 7), HOME_RING_COLORS.activity)}
