@@ -130,9 +130,17 @@ async function toggleCompletion(habitClientId, dateStr) {
     habitCompletions.push(temp);
     renderHabits();
     setStatus('syncing');
-    const { data, error } = await db.from('habit_completions')
-      .insert({ user_id: currentUser.id, habit_id: habitSid, completed_date: dateStr })
-      .select();
+    const row = { user_id: currentUser.id, habit_id: habitSid, completed_date: dateStr };
+    // Extras habits intentionally allow multiple rows per date, so a plain insert
+    // is correct there. For normal habits, upsert on the unique constraint makes
+    // "mark this date complete" idempotent: if the DB already has the row (e.g. local
+    // state drifted out of sync), we adopt it instead of hitting a 409 duplicate-key
+    // error and reverting the tap.
+    const isExtra = !!(habit && habit.allowExtras);
+    const builder = db.from('habit_completions');
+    const { data, error } = isExtra
+      ? await builder.insert(row).select()
+      : await builder.upsert(row, { onConflict: 'user_id,habit_id,completed_date' }).select();
     setStatus(error ? 'error' : 'saved');
     if (error) { console.error('addCompletion:', error.message); habitCompletions = habitCompletions.filter(c => c !== temp); renderHabits(); return; }
     if (data?.[0]) {
