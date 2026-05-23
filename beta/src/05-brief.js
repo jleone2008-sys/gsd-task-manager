@@ -255,7 +255,10 @@ async function briefGenerate({ force }) {
     body: JSON.stringify({ force: !!force }),
   });
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j?.error || `http_${res.status}`);
+  if (!res.ok) {
+    const msg = j?.detail ? `${j.error}: ${j.detail}` : (j?.error || `http_${res.status}`);
+    throw new Error(msg);
+  }
   return j;
 }
 

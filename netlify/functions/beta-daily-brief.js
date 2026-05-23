@@ -145,14 +145,22 @@ exports.handler = async (event) => {
 
 // ── User resolution ────────────────────────────────────────────────────────
 async function resolveUser({ email, user_id }, serviceKey) {
-  const sel = 'supabase_user_id,email,timezone,access_status';
+  // access_status will be added in Phase 3 (allowlist gate); not selected today.
+  const sel = 'supabase_user_id,email,timezone';
   const url = email
     ? `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=${sel}`
     : `${SUPABASE_URL}/rest/v1/user_profiles?supabase_user_id=eq.${user_id}&select=${sel}`;
   const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`user_profile_lookup_failed: HTTP ${r.status} ${text.slice(0, 200)}`);
+  }
   const rows = await r.json();
-  const row  = Array.isArray(rows) ? rows[0] : null;
-  if (!row) throw new Error('user_profile_not_found');
+  if (!Array.isArray(rows)) {
+    throw new Error(`user_profile_lookup_unexpected: ${JSON.stringify(rows).slice(0, 200)}`);
+  }
+  const row = rows[0];
+  if (!row) throw new Error(`user_profile_not_found_for_${email || user_id}`);
   return {
     email:    row.email,
     user_id:  row.supabase_user_id || user_id,
