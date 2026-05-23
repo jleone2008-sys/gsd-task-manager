@@ -60,6 +60,7 @@ async function loadUserSettings() {
     loadDropboxStatus(),
     loadWhoopStatus(),
     loadOuraStatus(),
+    loadLocationStatus(),
   ]);
 }
 
@@ -125,6 +126,27 @@ async function loadOuraStatus() {
     };
   } catch (e) {
     console.warn('[settings] oura status load failed', e);
+  }
+}
+
+// Phase 1.6: user-set city for the daily brief's weather line. Read directly
+// from user_profiles via RLS (the user can read their own row).
+async function loadLocationStatus() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data, error } = await db.from('user_profiles')
+      .select('city,weather_label')
+      .eq('email', session.user.email)
+      .maybeSingle();
+    if (error) throw error;
+    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
+    userSettings.location = {
+      city:          data?.city || null,
+      weather_label: data?.weather_label || null,
+    };
+  } catch (e) {
+    console.warn('[settings] location status load failed', e);
   }
 }
 
@@ -337,6 +359,16 @@ function renderSettingsPage() {
       </div>
 
       <div class="settings-section">
+        <div class="settings-h">Location <span class="settings-saved" id="settingsLocationSaved">Saved</span></div>
+        <div class="settings-sub">Sets the weather line on your morning brief. We use Open-Meteo (no account needed).</div>
+        ${(userSettings?.location?.weather_label) ? `<div class="settings-sub" style="margin-top:6px"><strong>Current:</strong> ${escapeHtml(userSettings.location.weather_label)}</div>` : ''}
+        <div class="settings-whoop-field" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+          <input type="text" id="settingsLocationInput" placeholder="e.g. Birmingham, MI" autocomplete="off" spellcheck="false" value="${escapeHtml(userSettings?.location?.city || '')}" style="flex:1; min-width:0;" />
+          <button class="settings-btn-secondary" data-settings-action="save-location">Save</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-h">Backup &amp; Restore</div>
         <div class="settings-sub">Export a full backup of all your data, or restore from a previous backup file.</div>
         <button class="settings-btn-secondary" data-settings-action="backup">Open Backup &amp; Restore</button>
@@ -429,12 +461,14 @@ function renderWhoopCard(intData) {
     </div>`;
 }
 
-function flashSettingsSaved() {
-  const el = document.getElementById('settingsTabsSaved');
+function flashSettingsSaved(elementId) {
+  const el = document.getElementById(elementId || 'settingsTabsSaved');
   if (!el) return;
   el.classList.add('visible');
-  clearTimeout(flashSettingsSaved._t);
-  flashSettingsSaved._t = setTimeout(() => el.classList.remove('visible'), 1400);
+  if (!flashSettingsSaved._timers) flashSettingsSaved._timers = {};
+  const key = el.id;
+  clearTimeout(flashSettingsSaved._timers[key]);
+  flashSettingsSaved._timers[key] = setTimeout(() => el.classList.remove('visible'), 1400);
 }
 
 function flashSyncStatus(msg) {
@@ -563,7 +597,50 @@ document.addEventListener('click', e => {
   if (!action) return;
   if (action === 'backup' && typeof openBackupModal === 'function') openBackupModal();
   else if (action === 'delete-account' && typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
+  else if (action === 'save-location') saveLocationFromInput(e.target.closest('[data-settings-action]'));
 });
+
+// Phase 1.6: save the user's city for the morning brief's weather line.
+async function saveLocationFromInput(btn) {
+  const input = document.getElementById('settingsLocationInput');
+  if (!input) return;
+  const city = input.value.trim();
+  if (!city) {
+    if (typeof showToast === 'function') showToast('Enter a city first', 'offline');
+    return;
+  }
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Sign in required');
+    const res = await fetch('/.netlify/functions/beta-set-location', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ city }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.detail ? `${data.error}: ${data.detail}` : (data?.error || `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
+    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
+    userSettings.location = { city: data.city, weather_label: data.weather_label };
+    flashSettingsSaved('settingsLocationSaved');
+    if (typeof showToast === 'function') showToast(`Location set to ${data.weather_label}`, 'ok');
+    if (activeTool === 'settings') renderSettingsPage();
+  } catch (err) {
+    console.error('[settings] save location failed', err);
+    if (typeof showToast === 'function') showToast(`Could not save location: ${err.message}`, 'offline');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
 
 document.addEventListener('submit', async e => {
   const form = e.target.closest('[data-settings-whoop-form]');

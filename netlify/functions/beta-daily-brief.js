@@ -37,6 +37,13 @@
 
 const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
+const OPEN_METEO_URL  = 'https://api.open-meteo.com/v1/forecast';
+
+// Banned terms that leak statistics jargon into the brief. We strip these
+// from the percentile baselines server-side AND scan the model output as
+// belt-and-suspenders. If a match is found in the rendered paragraphs, the
+// brief is replaced with the deterministic fallback.
+const BANNED_PROSE_REGEX = /\bp\d{2}\b|\bpercentile\b|\bmedian\b|\bIQR\b|\bmilliseconds\b|\b\d+\s?ms\b/i;
 
 // Defaults — overridable via env vars.
 const DEFAULT_MODEL       = 'claude-opus-4-7';
@@ -157,7 +164,7 @@ exports.handler = async (event) => {
 // ── User resolution ────────────────────────────────────────────────────────
 async function resolveUser({ email, user_id }, serviceKey) {
   // access_status will be added in Phase 3 (allowlist gate); not selected today.
-  const sel = 'supabase_user_id,email,timezone';
+  const sel = 'supabase_user_id,email,timezone,city,weather_lat,weather_lng,weather_label';
   const url = email
     ? `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=${sel}`
     : `${SUPABASE_URL}/rest/v1/user_profiles?supabase_user_id=eq.${user_id}&select=${sel}`;
@@ -173,9 +180,12 @@ async function resolveUser({ email, user_id }, serviceKey) {
   const row = rows[0];
   if (!row) throw new Error(`user_profile_not_found_for_${email || user_id}`);
   return {
-    email:    row.email,
-    user_id:  row.supabase_user_id || user_id,
-    timezone: row.timezone || DEFAULT_TIMEZONE,
+    email:         row.email,
+    user_id:       row.supabase_user_id || user_id,
+    timezone:      row.timezone || DEFAULT_TIMEZONE,
+    weather_lat:   row.weather_lat   ?? null,
+    weather_lng:   row.weather_lng   ?? null,
+    weather_label: row.weather_label || row.city || null,
   };
 }
 
@@ -190,34 +200,51 @@ async function fetchBrief(user_id, brief_date, serviceKey) {
 }
 
 // ── Context packager ───────────────────────────────────────────────────────
-// Assembles the JSON payload sent to Claude. Three layers per the plan:
-//   1. Yesterday raw snapshot (~20 cols of oura_daily + tags + workouts +
-//      mood + completed tasks + calendar agenda + habit summary)
-//   2. 7-day rolling per-day arrays (compact)
-//   3. 30-day baselines from v_user_baselines_30d (medians + IQR + n)
+// Assembles the JSON payload sent to Claude. Sections:
+//   yesterday.recovery    — TODAY's Oura row (sleep that ended this morning)
+//   yesterday.activity    — YESTERDAY's Oura row (yesterday's day)
+//   yesterday.{mood,tasks_completed,reflection,calendar_events,habits}
+//                         — user-recorded for yesterday (no Oura date quirk)
+//   today_plan            — today's calendar events, priority tasks, weather
+//   last_7_days           — compact 7-day rolling for trend detection
+//   baselines_30d         — medians only; *_p25 / *_p75 stripped to prevent
+//                           statistics-jargon leakage into the prose
+//
+// Oura date convention: a row dated X represents the sleep that *ended* on X.
+// So sleep_score for "last night" lives in today's row, not yesterday's. See
+// Phase 1.6 context note in the plan for diagnosis of the 75-vs-69 bug.
 async function buildContext(user, brief_date, serviceKey) {
-  const yday = brief_date;                            // already 'yesterday' in user-local
-  const win7 = shiftDate(yday, -6);                   // last 7 calendar days ending yesterday
-  const hdr  = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  const yday  = brief_date;                  // "yesterday" — the day the brief is summarizing
+  const today = shiftDate(brief_date, +1);   // "today" — the morning the user reads the brief
+  const win7  = shiftDate(yday, -6);         // 7-day rolling window ending yesterday
+  const hdr   = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
 
-  // --- Yesterday snapshot
-  const ouraCols = [
-    'date','readiness_score','sleep_score','activity_score','total_sleep_min',
-    'hrv_ms','resting_hr','sleep_efficiency_pct','sleep_midpoint_offset_min',
-    'stress_high_seconds','stress_day_summary','steps','active_calories',
-    'body_temp_deviation_c','resilience_level','updated_at',
+  // Oura column splits: recovery (last night) vs activity (yesterday day)
+  const ouraRecoveryCols = [
+    'date','sleep_score','readiness_score','total_sleep_min','hrv_ms',
+    'resting_hr','sleep_efficiency_pct','sleep_midpoint_offset_min','updated_at',
+  ].join(',');
+  const ouraActivityCols = [
+    'date','activity_score','steps','active_calories','stress_high_seconds',
+    'stress_day_summary','body_temp_deviation_c','resilience_level','updated_at',
   ].join(',');
 
-  const [ouraY, whoopY, oTagsY, oWorkoutsY, journalY, tasksY, calY, habitsY, baselines] = await Promise.all([
-    fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=${ouraCols}`, hdr),
+  const [
+    ouraToday, ouraYesterday, whoopY, oTagsY, oWorkoutsY, journalY, tasksAll,
+    calY, calT, habitsY, baselines, tasksTopOpen,
+  ] = await Promise.all([
+    fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${today}&select=${ouraRecoveryCols}`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=${ouraActivityCols}`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/whoop_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=date,recovery_score,hrv_ms,resting_hr,strain,sleep_duration_min,sleep_performance,updated_at`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_tags?user_email=eq.${encodeURIComponent(user.email)}&start_day=eq.${yday}&select=tag_type_code,custom_name,start_time`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_workouts?user_email=eq.${encodeURIComponent(user.email)}&day=eq.${yday}&select=activity,duration_min,intensity,load,average_hr,calories`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_entries?user_id=eq.${user.user_id}&entry_date=eq.${yday}&select=mood,reflections`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.true&select=text,completed_at&order=completed_at.desc&limit=30`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_calendar_cache?user_id=eq.${user.user_id}&entry_date=eq.${yday}&select=events`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/journal_calendar_cache?user_id=eq.${user.user_id}&entry_date=eq.${today}&select=events`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_habit_summary?user_id=eq.${user.user_id}&entry_date=eq.${yday}&select=due_count,done_count`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_30d?user_id=eq.${user.user_id}&select=*`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&top3=eq.true&select=text&limit=5`, hdr),
   ]);
 
   // --- 7-day rolling (compact arrays)
@@ -228,17 +255,22 @@ async function buildContext(user, brief_date, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_tags?user_email=eq.${encodeURIComponent(user.email)}&start_day=gte.${win7}&start_day=lte.${yday}&select=tag_type_code,start_day`, hdr),
   ]);
 
-  // Filter completed tasks to yesterday in user-local TZ (table has bigint epoch ms; we
-  // overfetched up to 30 recent, now narrow client-side to the local-day window).
+  // Today's weather (only if user has set a location)
+  const weather = (user.weather_lat != null && user.weather_lng != null)
+    ? await fetchWeather(user.weather_lat, user.weather_lng, today, user.timezone, user.weather_label)
+    : null;
+
+  // Filter completed tasks to yesterday in user-local TZ
   const yStart = localDayStartUtcMs(yday, user.timezone);
   const yEnd   = yStart + 86400_000;
-  const tasksYesterday = (tasksY || []).filter(t => t.completed_at && t.completed_at >= yStart && t.completed_at < yEnd);
+  const tasksYesterday = (tasksAll || []).filter(t => t.completed_at && t.completed_at >= yStart && t.completed_at < yEnd);
 
-  // Oura freshness check
-  const ouraRow = ouraY?.[0] || null;
-  const ouraStale = !ouraRow
-    || !ouraRow.updated_at
-    || (Date.now() - new Date(ouraRow.updated_at).getTime()) > OURA_STALE_HOURS * 3600_000;
+  // Oura freshness check: TODAY's recovery row is what matters — that's "did
+  // last night sync yet". If missing or >24h stale, mark the brief preliminary.
+  const recoveryRow = ouraToday?.[0] || null;
+  const ouraStale = !recoveryRow
+    || !recoveryRow.updated_at
+    || (Date.now() - new Date(recoveryRow.updated_at).getTime()) > OURA_STALE_HOURS * 3600_000;
 
   // Tag rollup for the week
   const tagCounts = {};
@@ -247,39 +279,48 @@ async function buildContext(user, brief_date, serviceKey) {
     tagCounts[k] = (tagCounts[k] || 0) + 1;
   }
 
-  // Pull recent reflection text but cap to 500 chars (per plan)
+  // Pull recent reflection text but cap to 500 chars
   const reflection = (journalY?.[0]?.reflections || '').slice(0, 500);
 
-  // Mood scale translation: replace numeric mood with labels so Claude can't
-  // get the direction wrong. See MOOD_LABELS / MOOD_SCALE_NOTE comments above.
+  // Mood: send labels, never raw integers. Prevents Claude misreading the
+  // 1=best/5=worst orientation.
   const yMood = journalY?.[0]?.mood ?? null;
   const moodWeek = (journal7 || []).map(d => ({
     entry_date: d.entry_date,
     mood_label: moodLabel(d.mood),
   })).filter(d => d.mood_label != null);
 
+  // Baselines: keep medians, STRIP percentile fields entirely so Claude can't
+  // parrot "p25 / p75 / IQR" jargon into the prose. The 7-day rolling array
+  // still gives the model enough comparative context for "above your norm".
   const baseline = baselines?.[0] ? { ...baselines[0] } : null;
   if (baseline) {
-    // Replace numeric mood baselines with labels (round to nearest scale value).
-    // Keep the n_days_mood count as-is — it's a count, not a score.
     baseline.mood_label_median = moodLabel(baseline.mood_median);
-    baseline.mood_label_p25    = moodLabel(baseline.mood_p25);
-    baseline.mood_label_p75    = moodLabel(baseline.mood_p75);
-    delete baseline.mood_median;
-    delete baseline.mood_p25;
-    delete baseline.mood_p75;
+    for (const k of Object.keys(baseline)) {
+      if (/_p25$|_p75$/.test(k)) delete baseline[k];
+      if (k === 'mood_median' || k === 'mood_p25' || k === 'mood_p75') delete baseline[k];
+    }
   }
 
+  // Today's plan: weather, calendar events, priority tasks
+  const weekdayName = weekdayInTz(today, user.timezone);
   const ctx = {
-    user: {
-      timezone: user.timezone,
-    },
-    scales: {
-      mood: MOOD_SCALE_NOTE,
-    },
+    user: { timezone: user.timezone },
+    scales: { mood: MOOD_SCALE_NOTE },
     brief_date: brief_date,
     yesterday: {
-      oura: ouraRow ? stripUpdatedAt(ouraRow) : null,
+      recovery: recoveryRow ? {
+        as_of_date: today,
+        source: 'last_night_sleep',
+        ...stripUpdatedAt(recoveryRow),
+        oura_updated_at: recoveryRow.updated_at,
+      } : null,
+      activity: ouraYesterday?.[0] ? {
+        as_of_date: yday,
+        source: 'yesterday_day',
+        ...stripUpdatedAt(ouraYesterday[0]),
+        oura_updated_at: ouraYesterday[0].updated_at,
+      } : null,
       whoop: whoopY?.[0] ? stripUpdatedAt(whoopY[0]) : null,
       tags: (oTagsY || []).map(t => ({ kind: t.tag_type_code, name: t.custom_name, at: t.start_time })),
       workouts: oWorkoutsY || [],
@@ -292,6 +333,15 @@ async function buildContext(user, brief_date, serviceKey) {
       })),
       habits: habitsY?.[0] ? { due: habitsY[0].due_count, done: habitsY[0].done_count } : null,
     },
+    today_plan: {
+      date: today,
+      weekday: weekdayName,
+      weather: weather,
+      calendar_events: ((calT?.[0]?.events) || []).slice(0, 8).map(e => ({
+        summary: e.summary, start: e.start, allDay: !!e.isAllDay,
+      })),
+      priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
+    },
     last_7_days: {
       oura: oura7 || [],
       mood: moodWeek,
@@ -299,11 +349,70 @@ async function buildContext(user, brief_date, serviceKey) {
       tag_counts: tagCounts,
     },
     baselines_30d: baseline,
-    // Internal flags — stripped before sending to Claude
     _oura_stale: ouraStale,
   };
 
   return ctx;
+}
+
+// ── Open-Meteo weather fetch ──────────────────────────────────────────────
+// Free public API, no key needed. Pulls today's forecast (high/low temp,
+// condition summary, sunrise/sunset) in user-local time, Fahrenheit.
+async function fetchWeather(lat, lng, dateLocal, tz, label) {
+  try {
+    const params = new URLSearchParams({
+      latitude:        String(lat),
+      longitude:       String(lng),
+      daily:           'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
+      temperature_unit: 'fahrenheit',
+      timezone:        tz || 'auto',
+      start_date:      dateLocal,
+      end_date:        dateLocal,
+    });
+    const r = await fetch(`${OPEN_METEO_URL}?${params}`);
+    if (!r.ok) {
+      console.warn(`weather fetch HTTP ${r.status}`);
+      return null;
+    }
+    const j = await r.json();
+    const d = j?.daily;
+    if (!d || !d.time || !d.time.length) return null;
+    return {
+      location:        label || null,
+      temp_high_f:     d.temperature_2m_max?.[0] ?? null,
+      temp_low_f:      d.temperature_2m_min?.[0] ?? null,
+      condition:       weatherCodeToText(d.weather_code?.[0]),
+      sunrise:         d.sunrise?.[0] ?? null,
+      sunset:          d.sunset?.[0] ?? null,
+    };
+  } catch (err) {
+    console.warn('weather fetch failed:', err.message);
+    return null;
+  }
+}
+
+// Open-Meteo WMO weather code → short English description.
+// https://open-meteo.com/en/docs#weathervariables — collapsed to plain phrases.
+function weatherCodeToText(code) {
+  if (code == null) return null;
+  const c = Number(code);
+  if (c === 0) return 'clear';
+  if (c <= 3) return 'partly cloudy';
+  if (c <= 48) return 'foggy';
+  if (c <= 57) return 'drizzle';
+  if (c <= 67) return 'rain';
+  if (c <= 77) return 'snow';
+  if (c <= 82) return 'rain showers';
+  if (c <= 86) return 'snow showers';
+  if (c <= 99) return 'thunderstorm';
+  return null;
+}
+
+// Weekday name (e.g. "Friday") in the user's timezone for the given date.
+function weekdayInTz(dateStr, tz) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));   // noon UTC for tz safety
+  return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(dt);
 }
 
 // ── Claude call (forced tool_use) ─────────────────────────────────────────
@@ -318,19 +427,23 @@ async function callClaude(ctx, anthropicKey) {
   const baselineN  = Math.max(n_sleep, n_mood);
   const coldStart  = baselineN < 14;
 
+  const weekday = ctx.today_plan?.weekday || 'today';
   const systemPrompt = [
-    'You are the user\'s calm operations partner. Direct, no fluff. No emojis. No exclamation points. No medical claims.',
-    'Lead with a single-sentence TL;DR (the `tldr` field). Do not write a narrative — the TL;DR is the only prose the user reads. Make it count.',
-    'Use second person. Never say "low" or "high" in absolute terms — only "below your norm of X" or "above your norm of X" using the baselines provided.',
-    'Action cap: 0 to 2 actions. If no action is genuinely warranted today, return an empty actions array. Silence beats noise.',
-    'Anchor every claim to a specific metric the user can verify. If a metric is missing, do not infer it.',
-    'Voice anchor: matches the user\'s brand "Stop managing your list. Start finishing it." Imperative verbs, concrete numbers, no validation.',
-    `Mood uses GSD's scale where 1=Great (best) and 5=Bad (worst). Lower numbers indicate a better mood. ${MOOD_SCALE_NOTE} Mood values are sent to you as labels (Great/Good/Okay/Low/Bad), never as numbers — treat the label directly.`,
-    'Highlights are EXTRAS beyond the rings. The Home rings already show Sleep score, Readiness score, and Activity score — do NOT repeat these in highlights. Use highlights for HRV, Total sleep (as time), Mood, Tasks completed, Habits done %, Resting HR.',
-    'Time values must use compact format: "Xh Ym" (e.g. "5h 58m") or "X.Yh" (e.g. "6.0h"). Never raw minutes like "358 min".',
+    'You are the user\'s calm morning briefing partner. Conversational, warm but direct. No emojis. No exclamation points. No medical claims.',
+    `Write 1-2 short paragraphs (50-120 words total). Open with "Your ${weekday} Brief." followed by a sentence that weaves in weather (if available), today's date, and either last night's sleep or a quick recovery read.`,
+    'Then reference today\'s plan: scheduled events count, key meetings, priority tasks count, habits due. Point to the SHAPE of the day — do not list every event.',
+    'If you notice an interesting pattern in the 7-day data (sleep trend, mood shift, habit streak, repeated event, anomaly) include it as a SECOND short paragraph. Only if it is genuinely worth saying. No forced callout — silence is fine.',
+    'Recovery metrics in `yesterday.recovery` reflect LAST NIGHT\'S sleep (the sleep that ended this morning). Use phrasing like "last night" or "this morning" for sleep_score, readiness_score, HRV, resting HR, total sleep. NEVER call these "yesterday\'s sleep" — that would semantically mean the night before last.',
+    'Activity metrics in `yesterday.activity` reflect YESTERDAY (the calendar day that ended). Use "yesterday" for activity_score, steps, stress.',
+    'Format sleep duration as "Xh Ym" (e.g. "8h 30m") or "X.Yh" (e.g. "8.5h"). Never raw minutes ("510 min").',
+    'NEVER use statistics jargon: no "p25", "p50", "p75", "median", "percentile", "IQR", "standard deviation", "distribution". Plain English only ("above your norm", "best in weeks", "rare for you", "in your typical range").',
+    'HRV: never include "ms" / "milliseconds" or any percentile reference in prose. Frame as "recovery indicator" or describe the trend ("recovery rebounded", "you\'re well-recovered").',
+    `Mood uses GSD's scale where 1=Great (best) and 5=Bad (worst). Lower numbers are better. ${MOOD_SCALE_NOTE} Mood values arrive as labels (Great/Good/Okay/Low/Bad) — use the label directly.`,
+    'Voice anchor: matches the user\'s brand "Stop managing your list. Start finishing it." Concrete, no validation, no "great job" cheerleading.',
+    'Actionable framing weaves into the prose ("ready for today\'s workout", "protect tonight\'s sleep") — there are no separate action cards.',
     coldStart
-      ? `Cold-start mode: only ${baselineN} days of baseline data. Narrate yesterday plainly in the TL;DR. Do NOT make comparative claims ("vs your norm"). Set confidence="low" and return an empty actions array.`
-      : 'Set confidence based on data quality and n: "high" when baselines have n>=30 and yesterday\'s data is complete; "medium" when n=14-29 or one major signal is missing; "low" when n<14 or yesterday is missing.',
+      ? `Cold-start mode: only ${baselineN} days of baseline data. Describe last night and today plainly. Do NOT make comparative claims ("vs your norm"). Set confidence="low".`
+      : 'Set confidence based on data quality and n: "high" when baselines have n>=30 and last night\'s data is complete; "medium" when n=14-29 or one major signal is missing; "low" when n<14 or last night is missing.',
   ].join(' ');
 
   // Strip internal flags before sending
@@ -349,48 +462,20 @@ async function callClaude(ctx, anthropicKey) {
       input_schema: {
         type: 'object',
         properties: {
-          tldr: {
-            type: 'string',
-            description: 'Single takeaway sentence, MAX 120 characters, voice-matched. This is the headline — the user may not read anything else. State the most important thing about yesterday and what it means for today. No period required.',
-          },
-          highlights: {
+          paragraphs: {
             type: 'array',
-            description: '3-5 metric highlights for the chips row. EXTRAS BEYOND THE RINGS: do not include sleep score, readiness score, or activity score (those are the rings). Use HRV, Total sleep (as time like "5h 58m"), Mood (label form), Tasks completed, Habits done %, Resting HR.',
-            items: {
-              type: 'object',
-              properties: {
-                label:           { type: 'string',  description: 'Short metric name. Allowed: "HRV", "Total sleep", "Mood", "Tasks completed", "Habits done", "Resting HR".' },
-                value_today:     { type: ['number', 'string', 'null'], description: 'Yesterday\'s value. Time values use compact format like "5h 58m" or "6.0h". Mood as label like "Great". Never raw minutes.' },
-                baseline:        { type: ['number', 'string', 'null'], description: '30-day median or comparable baseline (same format as value_today).' },
-                direction:       { type: 'string',  enum: ['up', 'down', 'flat', 'unknown'], description: 'Today vs baseline. For mood (where lower=better), "up" means mood IMPROVED (numerically lower), "down" means mood worsened.' },
-                percent_change:  { type: ['number', 'null'], description: 'Optional percent vs baseline.' },
-              },
-              required: ['label', 'direction'],
-            },
-          },
-          actions: {
-            type: 'array',
-            description: '0 to 2 specific, single-day actions. Empty array is valid and preferred when no action is warranted.',
+            description: '1 or 2 short paragraphs of conversational morning briefing prose. ~50-120 words total. First paragraph opens with "Your [Weekday] Brief." then weaves weather + last night + today\'s plan. Optional second paragraph for a pattern callout if something stands out.',
+            items: { type: 'string' },
+            minItems: 1,
             maxItems: 2,
-            items: {
-              type: 'object',
-              properties: {
-                title:         { type: 'string', description: 'Imperative verb, specific. e.g. "Block 30 minutes for deep work before noon"' },
-                why:           { type: 'string', description: 'One sentence anchored to a metric the user can verify' },
-                area:          { type: 'string', enum: ['sleep', 'recovery', 'activity', 'work', 'mood', 'habits', 'nutrition', 'other'] },
-                est_minutes:   { type: ['number', 'null'], description: 'Rough minute estimate or null' },
-                source_metric: { type: 'string', description: 'The metric this action targets, e.g. "sleep_score", "readiness_score", "habit_done_pct"' },
-              },
-              required: ['title', 'why', 'area', 'source_metric'],
-            },
           },
           confidence: {
             type: 'string',
             enum: ['high', 'medium', 'low'],
-            description: 'See system prompt for confidence rules. Low confidence MUST have empty actions array.',
+            description: 'See system prompt for confidence rules.',
           },
         },
-        required: ['tldr', 'highlights', 'actions', 'confidence'],
+        required: ['paragraphs', 'confidence'],
       },
     }],
     tool_choice: { type: 'tool', name: 'record_daily_brief' },
@@ -417,17 +502,27 @@ async function callClaude(ctx, anthropicKey) {
   }
 
   const out = toolUseBlock.input || {};
-  // Defensive: cold-start guarantees no actions, regardless of model output
-  if (coldStart && Array.isArray(out.actions) && out.actions.length > 0) {
-    out.actions = [];
+  const paragraphs = Array.isArray(out.paragraphs)
+    ? out.paragraphs.map(p => String(p || '').trim()).filter(Boolean).slice(0, 2)
+    : [];
+  if (!paragraphs.length) {
+    throw new Error('no_paragraphs_in_response');
+  }
+  const narrative = paragraphs.join('\n\n');
+
+  // Banned-term scan: if Claude leaked statistics jargon despite the prompt
+  // rules, log and substitute the deterministic fallback. Defense in depth.
+  if (BANNED_PROSE_REGEX.test(narrative)) {
+    console.warn('daily-brief: banned term detected in paragraphs, substituting fallback:', narrative.slice(0, 200));
+    return buildFallback({ reason: 'banned_term_in_output', context: ctx });
   }
 
   return {
     status:            'ok',
-    tldr:              (out.tldr || '').slice(0, 200),     // hard cap on length
-    narrative:         null,                                // no longer used (kept in row for back-compat schema)
-    highlights:        Array.isArray(out.highlights) ? out.highlights : [],
-    actions:           Array.isArray(out.actions) ? out.actions : [],
+    tldr:              null,                                // Phase 1.6 stores paragraphs only
+    narrative:         narrative,                           // joined paragraphs (\n\n between)
+    highlights:        [],                                  // Phase-1.5 fields stay nullable
+    actions:           [],
     confidence:        out.confidence || 'low',
     model:             j.model || model,
     prompt_tokens:     j.usage?.input_tokens || null,
@@ -439,22 +534,30 @@ async function callClaude(ctx, anthropicKey) {
 
 // ── Fallback (deterministic template when Claude is unavailable) ──────────
 function buildFallback({ reason, context }) {
-  // Build the simplest possible TL;DR from whatever raw signals we have.
-  const o = context?.yesterday?.oura;
-  let tldr;
-  if (o) {
-    const sleep = o.sleep_score != null ? `sleep ${o.sleep_score}` : null;
-    const rd    = o.readiness_score != null ? `readiness ${o.readiness_score}` : null;
-    const act   = o.activity_score != null ? `activity ${o.activity_score}` : null;
-    const parts = [sleep, rd, act].filter(Boolean);
-    tldr = parts.length ? `Yesterday — ${parts.join(', ')}.` : 'Brief generation unavailable.';
+  // Build a one-paragraph deterministic fallback from whatever signals exist.
+  const r = context?.yesterday?.recovery;
+  const a = context?.yesterday?.activity;
+  const weekday = context?.today_plan?.weekday || 'today';
+  const parts = [];
+  parts.push(`Your ${weekday} Brief.`);
+  if (r) {
+    if (r.sleep_score != null) parts.push(`Sleep last night: score of ${r.sleep_score}.`);
+    if (r.total_sleep_min != null) {
+      const h = Math.floor(r.total_sleep_min / 60);
+      const m = Math.round(r.total_sleep_min % 60);
+      parts.push(`${h}h ${m}m total.`);
+    }
   } else {
-    tldr = 'No wearable data available for yesterday.';
+    parts.push('No recovery data available yet.');
+  }
+  if (a?.activity_score != null) parts.push(`Yesterday's activity: ${a.activity_score}.`);
+  if (context?.yesterday?.tasks_completed_count != null) {
+    parts.push(`You finished ${context.yesterday.tasks_completed_count} tasks.`);
   }
   return {
     status:            'fallback',
-    tldr:              tldr,
-    narrative:         null,
+    tldr:              null,
+    narrative:         parts.join(' '),
     highlights:        [],
     actions:           [],
     confidence:        'low',
