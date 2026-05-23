@@ -86,6 +86,7 @@ function renderHome() {
   homeSyncChrome();
 
   el.innerHTML = `
+    <div class="home-card" id="homeBrief"></div>
     <div class="home-card" id="homeToday">${homeTodayCardHTML()}</div>
     <div class="home-card home-section">
       ${homeSectionHead('Events')}
@@ -112,6 +113,8 @@ function renderHome() {
   `;
 
   homeWireOnce();
+  if (typeof homeBriefMount === 'function') homeBriefMount();
+  if (typeof homeBriefLoad  === 'function') homeBriefLoad();
   hydrateHomeToday();
   hydrateHomeCalendar();
   hydrateHomeWeek();
