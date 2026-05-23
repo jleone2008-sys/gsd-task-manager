@@ -87,7 +87,6 @@ function renderHome() {
 
   el.innerHTML = `
     <div class="home-card" id="homeBrief"></div>
-    <div class="home-card" id="homeToday">${homeTodayCardHTML()}</div>
     <div class="home-card home-section">
       ${homeSectionHead('Events')}
       <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>

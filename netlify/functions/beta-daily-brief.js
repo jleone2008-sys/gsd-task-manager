@@ -50,6 +50,17 @@ const DEFAULT_TIMEZONE    = 'America/New_York';
 // user opens the phone app the next morning).
 const OURA_STALE_HOURS = 24;
 
+// GSD mood scale: 1=best, 5=worst. We send labels (not integers) to Claude so
+// it can't reverse the orientation (which it did on first launch — reported
+// "Mood at 1" as a concerning low when it was actually the best score).
+const MOOD_LABELS = { 1: 'Great', 2: 'Good', 3: 'Okay', 4: 'Low', 5: 'Bad' };
+const MOOD_SCALE_NOTE = 'GSD mood scale: 1=Great (best), 2=Good, 3=Okay, 4=Low, 5=Bad (worst). Lower numbers are better.';
+function moodLabel(v) {
+  if (v == null) return null;
+  const k = Math.round(Number(v));
+  return MOOD_LABELS[k] || `Unknown(${v})`;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
 
@@ -172,7 +183,7 @@ async function resolveUser({ email, user_id }, serviceKey) {
 async function fetchBrief(user_id, brief_date, serviceKey) {
   const url = `${SUPABASE_URL}/rest/v1/daily_briefs`
     + `?user_id=eq.${user_id}&brief_date=eq.${brief_date}`
-    + `&select=id,brief_date,generated_at,model,narrative,highlights,actions,confidence,status,fallback_reason`;
+    + `&select=id,brief_date,generated_at,model,tldr,narrative,highlights,actions,confidence,status,fallback_reason`;
   const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
   const rows = await r.json();
   return Array.isArray(rows) && rows.length ? rows[0] : null;
@@ -239,9 +250,32 @@ async function buildContext(user, brief_date, serviceKey) {
   // Pull recent reflection text but cap to 500 chars (per plan)
   const reflection = (journalY?.[0]?.reflections || '').slice(0, 500);
 
+  // Mood scale translation: replace numeric mood with labels so Claude can't
+  // get the direction wrong. See MOOD_LABELS / MOOD_SCALE_NOTE comments above.
+  const yMood = journalY?.[0]?.mood ?? null;
+  const moodWeek = (journal7 || []).map(d => ({
+    entry_date: d.entry_date,
+    mood_label: moodLabel(d.mood),
+  })).filter(d => d.mood_label != null);
+
+  const baseline = baselines?.[0] ? { ...baselines[0] } : null;
+  if (baseline) {
+    // Replace numeric mood baselines with labels (round to nearest scale value).
+    // Keep the n_days_mood count as-is — it's a count, not a score.
+    baseline.mood_label_median = moodLabel(baseline.mood_median);
+    baseline.mood_label_p25    = moodLabel(baseline.mood_p25);
+    baseline.mood_label_p75    = moodLabel(baseline.mood_p75);
+    delete baseline.mood_median;
+    delete baseline.mood_p25;
+    delete baseline.mood_p75;
+  }
+
   const ctx = {
     user: {
       timezone: user.timezone,
+    },
+    scales: {
+      mood: MOOD_SCALE_NOTE,
     },
     brief_date: brief_date,
     yesterday: {
@@ -249,7 +283,7 @@ async function buildContext(user, brief_date, serviceKey) {
       whoop: whoopY?.[0] ? stripUpdatedAt(whoopY[0]) : null,
       tags: (oTagsY || []).map(t => ({ kind: t.tag_type_code, name: t.custom_name, at: t.start_time })),
       workouts: oWorkoutsY || [],
-      mood: journalY?.[0]?.mood ?? null,
+      mood: yMood == null ? null : { value_label: moodLabel(yMood) },
       reflection: reflection || null,
       tasks_completed_count: tasksYesterday.length,
       tasks_completed_sample: tasksYesterday.slice(0, 10).map(t => t.text).filter(Boolean),
@@ -260,11 +294,11 @@ async function buildContext(user, brief_date, serviceKey) {
     },
     last_7_days: {
       oura: oura7 || [],
-      mood: journal7 || [],
+      mood: moodWeek,
       habits: habits7 || [],
       tag_counts: tagCounts,
     },
-    baselines_30d: baselines?.[0] || null,
+    baselines_30d: baseline,
     // Internal flags — stripped before sending to Claude
     _oura_stale: ouraStale,
   };
@@ -286,12 +320,16 @@ async function callClaude(ctx, anthropicKey) {
 
   const systemPrompt = [
     'You are the user\'s calm operations partner. Direct, no fluff. No emojis. No exclamation points. No medical claims.',
+    'Lead with a single-sentence TL;DR (the `tldr` field). Do not write a narrative — the TL;DR is the only prose the user reads. Make it count.',
     'Use second person. Never say "low" or "high" in absolute terms — only "below your norm of X" or "above your norm of X" using the baselines provided.',
     'Action cap: 0 to 2 actions. If no action is genuinely warranted today, return an empty actions array. Silence beats noise.',
     'Anchor every claim to a specific metric the user can verify. If a metric is missing, do not infer it.',
     'Voice anchor: matches the user\'s brand "Stop managing your list. Start finishing it." Imperative verbs, concrete numbers, no validation.',
+    `Mood uses GSD's scale where 1=Great (best) and 5=Bad (worst). Lower numbers indicate a better mood. ${MOOD_SCALE_NOTE} Mood values are sent to you as labels (Great/Good/Okay/Low/Bad), never as numbers — treat the label directly.`,
+    'Highlights are EXTRAS beyond the rings. The Home rings already show Sleep score, Readiness score, and Activity score — do NOT repeat these in highlights. Use highlights for HRV, Total sleep (as time), Mood, Tasks completed, Habits done %, Resting HR.',
+    'Time values must use compact format: "Xh Ym" (e.g. "5h 58m") or "X.Yh" (e.g. "6.0h"). Never raw minutes like "358 min".',
     coldStart
-      ? `Cold-start mode: only ${baselineN} days of baseline data. Narrate yesterday plainly. Do NOT make comparative claims ("vs your norm"). Set confidence="low" and return an empty actions array.`
+      ? `Cold-start mode: only ${baselineN} days of baseline data. Narrate yesterday plainly in the TL;DR. Do NOT make comparative claims ("vs your norm"). Set confidence="low" and return an empty actions array.`
       : 'Set confidence based on data quality and n: "high" when baselines have n>=30 and yesterday\'s data is complete; "medium" when n=14-29 or one major signal is missing; "low" when n<14 or yesterday is missing.',
   ].join(' ');
 
@@ -311,21 +349,21 @@ async function callClaude(ctx, anthropicKey) {
       input_schema: {
         type: 'object',
         properties: {
-          narrative: {
+          tldr: {
             type: 'string',
-            description: '2-4 short paragraphs (under 400 words total) recapping yesterday. Direct, concrete, voice-matched. Avoid emojis and exclamation points.',
+            description: 'Single takeaway sentence, MAX 120 characters, voice-matched. This is the headline — the user may not read anything else. State the most important thing about yesterday and what it means for today. No period required.',
           },
           highlights: {
             type: 'array',
-            description: '3-5 metric highlights with comparisons to baselines. Each highlight is a label + today\'s value + baseline + direction.',
+            description: '3-5 metric highlights for the chips row. EXTRAS BEYOND THE RINGS: do not include sleep score, readiness score, or activity score (those are the rings). Use HRV, Total sleep (as time like "5h 58m"), Mood (label form), Tasks completed, Habits done %, Resting HR.',
             items: {
               type: 'object',
               properties: {
-                label:           { type: 'string',  description: 'Short metric name, e.g. "Sleep score", "Readiness", "Mood"' },
-                value_today:     { type: ['number', 'string', 'null'], description: 'Yesterday\'s value (number, or short string like "73 min")' },
-                baseline:        { type: ['number', 'string', 'null'], description: '30-day median or comparable baseline' },
-                direction:       { type: 'string',  enum: ['up', 'down', 'flat', 'unknown'], description: 'Today vs baseline' },
-                percent_change:  { type: ['number', 'null'], description: 'Optional percent vs baseline' },
+                label:           { type: 'string',  description: 'Short metric name. Allowed: "HRV", "Total sleep", "Mood", "Tasks completed", "Habits done", "Resting HR".' },
+                value_today:     { type: ['number', 'string', 'null'], description: 'Yesterday\'s value. Time values use compact format like "5h 58m" or "6.0h". Mood as label like "Great". Never raw minutes.' },
+                baseline:        { type: ['number', 'string', 'null'], description: '30-day median or comparable baseline (same format as value_today).' },
+                direction:       { type: 'string',  enum: ['up', 'down', 'flat', 'unknown'], description: 'Today vs baseline. For mood (where lower=better), "up" means mood IMPROVED (numerically lower), "down" means mood worsened.' },
+                percent_change:  { type: ['number', 'null'], description: 'Optional percent vs baseline.' },
               },
               required: ['label', 'direction'],
             },
@@ -352,7 +390,7 @@ async function callClaude(ctx, anthropicKey) {
             description: 'See system prompt for confidence rules. Low confidence MUST have empty actions array.',
           },
         },
-        required: ['narrative', 'highlights', 'actions', 'confidence'],
+        required: ['tldr', 'highlights', 'actions', 'confidence'],
       },
     }],
     tool_choice: { type: 'tool', name: 'record_daily_brief' },
@@ -386,7 +424,8 @@ async function callClaude(ctx, anthropicKey) {
 
   return {
     status:            'ok',
-    narrative:         out.narrative || '',
+    tldr:              (out.tldr || '').slice(0, 200),     // hard cap on length
+    narrative:         null,                                // no longer used (kept in row for back-compat schema)
     highlights:        Array.isArray(out.highlights) ? out.highlights : [],
     actions:           Array.isArray(out.actions) ? out.actions : [],
     confidence:        out.confidence || 'low',
@@ -400,23 +439,22 @@ async function callClaude(ctx, anthropicKey) {
 
 // ── Fallback (deterministic template when Claude is unavailable) ──────────
 function buildFallback({ reason, context }) {
-  const lines = [];
-  if (context?.yesterday?.oura) {
-    const o = context.yesterday.oura;
-    lines.push(`Yesterday: sleep ${o.sleep_score ?? '—'}, readiness ${o.readiness_score ?? '—'}, activity ${o.activity_score ?? '—'}.`);
-    if (o.total_sleep_min != null) lines.push(`Total sleep ${Math.round(o.total_sleep_min)} min. HRV ${o.hrv_ms ?? '—'} ms.`);
+  // Build the simplest possible TL;DR from whatever raw signals we have.
+  const o = context?.yesterday?.oura;
+  let tldr;
+  if (o) {
+    const sleep = o.sleep_score != null ? `sleep ${o.sleep_score}` : null;
+    const rd    = o.readiness_score != null ? `readiness ${o.readiness_score}` : null;
+    const act   = o.activity_score != null ? `activity ${o.activity_score}` : null;
+    const parts = [sleep, rd, act].filter(Boolean);
+    tldr = parts.length ? `Yesterday — ${parts.join(', ')}.` : 'Brief generation unavailable.';
   } else {
-    lines.push('No wearable data was available for yesterday.');
-  }
-  if (context?.yesterday?.tasks_completed_count != null) {
-    lines.push(`You completed ${context.yesterday.tasks_completed_count} tasks.`);
-  }
-  if (context?.yesterday?.mood != null) {
-    lines.push(`Mood: ${context.yesterday.mood}/5.`);
+    tldr = 'No wearable data available for yesterday.';
   }
   return {
     status:            'fallback',
-    narrative:         lines.join(' ') || 'Brief generation unavailable.',
+    tldr:              tldr,
+    narrative:         null,
     highlights:        [],
     actions:           [],
     confidence:        'low',
@@ -437,7 +475,8 @@ async function storeBrief(user, brief_date, result, serviceKey) {
     model:             result.model,
     prompt_tokens:     result.prompt_tokens,
     completion_tokens: result.completion_tokens,
-    narrative:         result.narrative,
+    tldr:              result.tldr || null,
+    narrative:         result.narrative,           // null on new rows; preserved for back-compat
     highlights:        result.highlights,
     actions:           result.actions,
     confidence:        result.confidence,
