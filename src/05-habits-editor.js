@@ -356,6 +356,11 @@ function populateDrillEdit() {
     document.getElementById('drillEditFreqCountInput').max = h.frequency === 'x_per_week' ? 7 : 31;
   }
   drillEditTags = new Set(h.tags);
+  // Library link picker — Phase 4. Mirror of the modal habitEditLibraryKind
+  // logic in openHabitEdit. The select might be absent on older HTML
+  // builds so guard the lookup.
+  const drillLibSel = document.getElementById('drillEditLibraryKind');
+  if (drillLibSel) drillLibSel.value = h.libraryKind || '';
 }
 
 function pickDrillEditEmoji(em) {
@@ -385,6 +390,8 @@ function saveHabitDrill() {
     h.allowExtras = false;
   }
   h.tags = [...drillEditTags];
+  const drillLibSel = document.getElementById('drillEditLibraryKind');
+  if (drillLibSel) h.libraryKind = drillLibSel.value || null;
   closeDrillIn();
   renderHabits();
   saveHabitToDB(h);

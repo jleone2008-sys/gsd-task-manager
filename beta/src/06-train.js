@@ -139,12 +139,9 @@ function trainWireOnce() {
       st.isBonus = true;
       st.selectedDow = null;
       st.day = null;
+      st.bonusModality = null;
+      st.bonusDuration = '';
       st.submittedFeedback = null;
-      renderTrain();
-      return;
-    }
-    if (action === 'bonus-type') {
-      _trainTodayState.bonusType = actionEl.dataset.type;
       renderTrain();
       return;
     }
@@ -153,17 +150,8 @@ function trainWireOnce() {
       renderTrain();
       return;
     }
-    if (action === 'activity-add') {
-      _trainTodayState.bonusActivities.push({ name: '', duration: '' });
-      renderTrain();
-      return;
-    }
-    if (action === 'activity-remove') {
-      const i = Number(actionEl.dataset.i);
-      _trainTodayState.bonusActivities.splice(i, 1);
-      if (_trainTodayState.bonusActivities.length === 0) {
-        _trainTodayState.bonusActivities.push({ name: '', duration: '' });
-      }
+    if (action === 'bonus-modality') {
+      _trainTodayState.bonusModality = actionEl.dataset.modality;
       renderTrain();
       return;
     }
@@ -313,16 +301,7 @@ function trainWireOnce() {
     if (action === 'cardio-duration') { _trainTodayState.cardio.duration = v; return; }
     if (action === 'cardio-distance') { _trainTodayState.cardio.distance = v; return; }
     if (action === 'notes')           { _trainTodayState.notes          = v; return; }
-    if (action === 'activity-name') {
-      const i = Number(el.dataset.i);
-      if (_trainTodayState.bonusActivities[i]) _trainTodayState.bonusActivities[i].name = v;
-      return;
-    }
-    if (action === 'activity-duration') {
-      const i = Number(el.dataset.i);
-      if (_trainTodayState.bonusActivities[i]) _trainTodayState.bonusActivities[i].duration = v;
-      return;
-    }
+    if (action === 'bonus-duration')  { _trainTodayState.bonusDuration  = v; return; }
 
     // ── Progress subtab inputs ────────────────────────────────────
     if (action === 'wizard-dob') {
@@ -666,8 +645,12 @@ const _trainTodayState = {
   // Per-exercise set entries: { [exerciseName]: [{ weight: '', reps: '', done: false }, ...] }
   liftSets:    {},
   cardio:      { modality: null, duration: '', distance: '' },
-  bonusType:   'lift',        // 'lift' | 'activity' — when isBonus
-  bonusActivities: [{ name: '', duration: '' }],
+  // Bonus mode (Phase 4 follow-up): a single icon-grid picker mirroring
+  // the Cardio modality grid. 7 presets + Other. Duration only — no
+  // sets/reps/distance/name fields. Each preset maps to a library kind
+  // (lifting / cardio / activity) so habit-link auto-mark still works.
+  bonusModality: null,
+  bonusDuration: '',
   feel:        null,          // 1=Great .. 5=Bad
   notes:       '',
   submitting:  false,
@@ -696,8 +679,8 @@ function ensureTrainTodayInit() {
   _trainTodayState.day = trainFindDay(dow);
   _trainTodayState.liftSets = trainSeedSetsFromDay(_trainTodayState.day);
   _trainTodayState.cardio = { modality: null, duration: '', distance: '' };
-  _trainTodayState.bonusType = 'lift';
-  _trainTodayState.bonusActivities = [{ name: '', duration: '' }];
+  _trainTodayState.bonusModality = null;
+  _trainTodayState.bonusDuration = '';
   _trainTodayState.feel = null;
   _trainTodayState.notes = '';
   _trainTodayState.submittedFeedback = null;
@@ -940,14 +923,22 @@ function renderTodayLoggedSessions(sessions, viewDate, todayStr) {
   const cards = sessions.map(s => {
     const sets = (_trainState.setsBySession || {})[s.id] || [];
     let summary;
-    if (s.day_type === 'cardio' || (s.day_type === 'bonus' && /cardio/i.test(s.day_name))) {
+    if (s.day_type === 'cardio') {
       const row  = sets[0] || {};
       const dur  = row.actual_reps;
       const dist = row.actual_weight;
       summary = `${row.exercise_name || 'Cardio'} · ${dur != null ? dur + ' min' : '—'}${dist != null ? ' · ' + dist + ' mi' : ''}`;
-    } else if (s.day_type === 'bonus' && /activity/i.test(s.day_name)) {
-      const total = sets.reduce((acc, r) => acc + (Number(r.actual_reps) || 0), 0);
-      summary = `${sets.length} activit${sets.length === 1 ? 'y' : 'ies'} · ${total} min`;
+    } else if (s.day_type === 'bonus') {
+      // Phase-4 follow-up bonus shape: one row, exercise_name = preset label,
+      // actual_reps = duration. Legacy bonus rows (old Activity-Log shape with
+      // multiple rows) fall back to "N activities" totals.
+      if (sets.length === 1) {
+        const row = sets[0];
+        summary = `${row.exercise_name || 'Activity'} · ${row.actual_reps != null ? row.actual_reps + ' min' : '—'}`;
+      } else {
+        const total = sets.reduce((acc, r) => acc + (Number(r.actual_reps) || 0), 0);
+        summary = `${sets.length} activit${sets.length === 1 ? 'y' : 'ies'} · ${total} min`;
+      }
     } else {
       // Lift / bonus lifting
       const exerciseNames = Array.from(new Set(sets.map(r => r.exercise_name)));
@@ -1104,48 +1095,28 @@ function renderTodayCardio(st) {
   </div>`;
 }
 
-function renderTodayBonus(st) {
-  // V1: only Bonus Lifting is implemented; Activity Log placeholder.
-  if (st.bonusType === 'activity') {
-    const rows = st.bonusActivities.map((a, i) => `
-      <div class="activity-row">
-        <div class="form-field">
-          <label class="form-label">Activity</label>
-          <input class="form-input" type="text" placeholder="e.g. Hiked Mt. Monadnock" value="${trainEsc(a.name)}" data-train-action="activity-name" data-i="${i}">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Duration (min)</label>
-          <input class="form-input" type="text" inputmode="numeric" placeholder="60" value="${trainEsc(a.duration)}" data-train-action="activity-duration" data-i="${i}">
-        </div>
-        <button class="activity-row-remove" data-train-action="activity-remove" data-i="${i}" title="Remove">×</button>
-      </div>`).join('');
-    return `<div class="train-today-body">
-      ${renderBonusTypeToggle(st)}
-      <div class="cardio-card">
-        <div class="cardio-card-head">
-          <div class="cardio-card-title">Freeform activity</div>
-          <div class="cardio-card-meta">Hikes, walks, climbing, pickup sports — anything off-program.</div>
-        </div>
-        ${rows}
-        <button class="activity-row-add" data-train-action="activity-add">+ Add another activity</button>
-      </div>
-    </div>`;
-  }
-  // Bonus Lifting — empty by default, user adds exercises.
-  // V1: prompt user to fork from a template's day or start blank.
-  return `<div class="train-today-body">
-    ${renderBonusTypeToggle(st)}
-    <div class="train-empty">
-      <div class="train-empty-title">Bonus lifting</div>
-      <div class="train-empty-msg">Custom exercise add lands in a follow-up commit. For now, log a planned day from the picker or use Activity Log for cardio.</div>
-    </div>
-  </div>`;
+// 7 preset activities + Other for the Bonus picker. Mirrors the Cardio
+// modality grid. Each preset maps to a habit_library kind so submitting
+// auto-marks the right linked habit (lifting / cardio / activity).
+const TRAIN_BONUS_PRESETS = [
+  { key: 'Lift',  emoji: '🏋️', kind: 'lifting'  },
+  { key: 'Run',   emoji: '🏃',  kind: 'cardio'   },
+  { key: 'Bike',  emoji: '🚴',  kind: 'cardio'   },
+  { key: 'Walk',  emoji: '🚶',  kind: 'activity' },
+  { key: 'Hike',  emoji: '🥾',  kind: 'activity' },
+  { key: 'Climb', emoji: '🧗',  kind: 'activity' },
+  { key: 'Yoga',  emoji: '🧘',  kind: 'activity' },
+  { key: 'Other', emoji: '⋯',   kind: 'activity' },
+];
+
+function trainBonusKindFor(modality) {
+  const p = TRAIN_BONUS_PRESETS.find(x => x.key === modality);
+  return p ? p.kind : 'activity';
 }
 
-function renderBonusTypeToggle(st) {
+function renderTodayBonus(st) {
   const today = st.date;
-  // Build the 7-day backfill picker: today + 6 days back. Tap any day
-  // to log the bonus session for that date; defaults to today.
+  // 7-day backfill picker: today + 6 days back.
   const dateOpts = [];
   for (let i = 0; i < 7; i++) {
     const d = trainShiftDate(today, -i);
@@ -1156,13 +1127,30 @@ function renderBonusTypeToggle(st) {
       ${trainEsc(o.label)}
     </button>`).join('');
 
-  return `<div class="when-what-card" style="margin-bottom:12px">
-    <div class="when-what-label">When</div>
-    <div class="bonus-date-row">${datePills}</div>
-    <div class="when-what-label" style="margin-top:12px">Session type</div>
-    <div class="session-type-row">
-      <button class="session-type-pill ${st.bonusType === 'lift' ? 'is-active' : ''}" data-train-action="bonus-type" data-type="lift">Bonus Lifting</button>
-      <button class="session-type-pill ${st.bonusType === 'activity' ? 'is-active' : ''}" data-train-action="bonus-type" data-type="activity">Activity Log</button>
+  // Activity picker — mirrors the cardio modality grid.
+  const pills = TRAIN_BONUS_PRESETS.map(p => `
+    <button class="cardio-type-pill ${st.bonusModality === p.key ? 'is-selected' : ''}" data-train-action="bonus-modality" data-modality="${p.key}">
+      <span class="cardio-type-emoji">${p.emoji}</span>
+      <span class="cardio-type-label">${p.key}</span>
+    </button>`).join('');
+
+  return `<div class="train-today-body">
+    <div class="when-what-card" style="margin-bottom:12px">
+      <div class="when-what-label">When</div>
+      <div class="bonus-date-row">${datePills}</div>
+    </div>
+    <div class="cardio-card">
+      <div class="cardio-card-head">
+        <div class="cardio-card-title">Pick an activity</div>
+        <div class="cardio-card-meta">Tap a preset, then log how long. Anything off-program — hikes, walks, climbing, pickup lifts.</div>
+      </div>
+      <div class="cardio-type-grid">${pills}</div>
+      <div class="cardio-stats-grid" style="grid-template-columns:1fr">
+        <div class="form-field">
+          <label class="form-label">Duration (min)</label>
+          <input class="form-input" type="text" inputmode="numeric" placeholder="30" value="${trainEsc(st.bonusDuration)}" data-train-action="bonus-duration">
+        </div>
+      </div>
     </div>
   </div>`;
 }
@@ -1201,10 +1189,12 @@ function renderTodayFooter(st) {
 }
 
 function trainComputeLiveTotals(st) {
-  if (st.isBonus && st.bonusType === 'activity') {
-    const count = st.bonusActivities.filter(a => a.name.trim()).length;
-    const mins  = st.bonusActivities.reduce((s, a) => s + (Number(a.duration) || 0), 0);
-    return { left: { num: count, label: 'Activities' }, right: { num: mins, label: 'Total min' } };
+  if (st.isBonus) {
+    const mins = Number(st.bonusDuration) || 0;
+    return {
+      left:  { num: st.bonusModality || '—', label: 'Activity' },
+      right: { num: mins, label: 'Minutes' },
+    };
   }
   if (st.day && st.day.type === 'cardio') {
     const mins = Number(st.cardio.duration) || 0;
@@ -1401,8 +1391,10 @@ async function trainSubmitTodaySession() {
   if (st.submitting) return;
   st.submitting = true; renderTrain();
   try {
-    const dayName = st.isBonus ? (st.bonusType === 'activity' ? 'Bonus Activity' : 'Bonus Lifting') : (st.day?.name || '');
-    const dayType = st.isBonus ? (st.bonusType === 'activity' ? 'bonus' : 'bonus') : (st.day?.type || 'lift');
+    const dayName = st.isBonus
+      ? `Bonus ${st.bonusModality || 'Activity'}`
+      : (st.day?.name || '');
+    const dayType = st.isBonus ? 'bonus' : (st.day?.type || 'lift');
 
     // Bonus sessions can backfill the last 7 days; planned-day sessions
     // always use today's date.
@@ -1427,19 +1419,17 @@ async function trainSubmitTodaySession() {
     // Cardio sessions: a single synthetic row recording duration + distance
     // (exercise_name = the modality). Activity Log: one row per activity.
     const setRows = [];
-    if (st.isBonus && st.bonusType === 'activity') {
-      st.bonusActivities.forEach((a, i) => {
-        if (!a.name.trim() && !a.duration) return;
-        setRows.push({
-          session_id:    session.id,
-          user_id:       currentUser.id,
-          exercise_name: a.name.trim() || `Activity ${i + 1}`,
-          set_index:     1,
-          actual_reps:   Number(a.duration) || null,   // duration parked in reps for now
-          actual_weight: null,
-          is_bodyweight: true,
-          completed_at:  new Date().toISOString(),
-        });
+    if (st.isBonus) {
+      // Single row: exercise_name = preset label, actual_reps = duration.
+      setRows.push({
+        session_id:    session.id,
+        user_id:       currentUser.id,
+        exercise_name: st.bonusModality || 'Activity',
+        set_index:     1,
+        actual_reps:   Number(st.bonusDuration) || null,
+        actual_weight: null,
+        is_bodyweight: true,
+        completed_at:  new Date().toISOString(),
       });
     } else if (st.day && st.day.type === 'cardio') {
       const dur  = Number(st.cardio.duration) || null;
@@ -1518,8 +1508,11 @@ function trainSessionToLibraryKinds(session) {
   if (dayType === 'cardio')   return ['cardio'];
   if (dayType === 'progress') return ['progress'];
   if (dayType === 'bonus') {
-    if (dayName.includes('activity')) return ['activity'];
-    return ['lifting'];   // Bonus Lifting
+    // day_name is "Bonus <Modality>". Pull the modality back out and
+    // look up its kind from TRAIN_BONUS_PRESETS so the source-of-truth
+    // mapping lives in one place.
+    const m = String(session.day_name || '').replace(/^bonus\s+/i, '');
+    return [trainBonusKindFor(m)];
   }
   return [];
 }
@@ -1591,12 +1584,12 @@ function trainBuildFormulaicFeedback(st, setRows) {
   // session lands in commit 6 alongside the AI narrative.
   const stats = [];
   const observations = [];
-  if (st.isBonus && st.bonusType === 'activity') {
-    const totalMin = setRows.reduce((s, r) => s + (Number(r.actual_reps) || 0), 0);
-    stats.push({ label: 'Activities', value: setRows.length });
-    stats.push({ label: 'Total min',  value: totalMin });
+  if (st.isBonus) {
+    const min = Number(st.bonusDuration) || 0;
+    stats.push({ label: 'Activity', value: st.bonusModality || '—' });
+    stats.push({ label: 'Minutes',  value: min });
     return {
-      session_summary: `${setRows.length} activities · ${totalMin} min`,
+      session_summary: `${st.bonusModality || 'Activity'} · ${min} min`,
       stats, observations,
     };
   }

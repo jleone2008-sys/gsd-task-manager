@@ -797,6 +797,20 @@
             </div>
             <input type="text" id="drillEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
           </div>
+          <!-- Phase 4 — habit library link picker (drill-in Edit tab). Same
+               control as the modal habitEditOverlay; keeps both surfaces
+               consistent so the user finds the link from either path. -->
+          <div class="habit-edit-field">
+            <label>Auto-complete from Train</label>
+            <select id="drillEditLibraryKind" style="width:100%;padding:8px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
+              <option value="">Not linked (manual only)</option>
+              <option value="lifting">🏋️ Lifting · auto-marks when you submit a lift in Train</option>
+              <option value="cardio">🏃 Cardio · auto-marks when you submit cardio in Train</option>
+              <option value="activity">🧗 Activity · auto-marks when you log a Bonus activity</option>
+              <option value="progress">📸 Progress pic · auto-marks when you log a body-comp entry</option>
+            </select>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4">Links this habit to Train so submitting the matching session auto-marks it complete for that day.</div>
+          </div>
           <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
             <button data-emoji-target="drill" data-emoji="🏃">🏃</button><button data-emoji-target="drill" data-emoji="💪">💪</button>
             <button data-emoji-target="drill" data-emoji="🧘">🧘</button><button data-emoji-target="drill" data-emoji="🚶">🚶</button>
