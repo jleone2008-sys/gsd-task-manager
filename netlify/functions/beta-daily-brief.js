@@ -287,9 +287,15 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_tags?user_email=eq.${encodeURIComponent(user.email)}&start_day=gte.${win7}&start_day=lte.${yday}&select=tag_type_code,start_day`, hdr),
   ]);
 
-  // Weather only for morning mode (and only if location is set).
-  const weather = (mode === 'morning' && user.weather_lat != null && user.weather_lng != null)
+  // Morning brief shows today's weather; evening brief shows tomorrow's
+  // forecast (the chip in evening mode is prefixed "Tmrw" so it can't be
+  // mistaken for current weather).
+  const hasLocation = (user.weather_lat != null && user.weather_lng != null);
+  const weather = (mode === 'morning' && hasLocation)
     ? await fetchWeather(user.weather_lat, user.weather_lng, today, user.timezone, user.weather_label)
+    : null;
+  const weatherTomorrow = (mode === 'evening' && hasLocation)
+    ? await fetchWeather(user.weather_lat, user.weather_lng, tomorrow, user.timezone, user.weather_label)
     : null;
 
   // Filter completed tasks to yesterday in user-local TZ
@@ -367,6 +373,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     tomorrow_plan: (mode === 'evening') ? {
       date: tomorrow,
       weekday: weekdayInTz(tomorrow, user.timezone),
+      weather: weatherTomorrow,
       calendar_events: ((calTomorrow?.[0]?.events) || []).slice(0, 8).map(e => ({
         summary: e.summary, start: e.start, allDay: !!e.isAllDay,
       })),
@@ -484,12 +491,15 @@ function inferEventIcon(summary) {
   return 'other';
 }
 
-// "64° · Pelham" or just "64°" if no city. Null when no weather data.
-function buildWeatherChip(weather) {
+// "64° · Pelham" (morning) or "Tmrw 64° · Pelham" (evening, forecast).
+// Null when no weather data. The "Tmrw" prefix prevents the chip from being
+// read as current weather when it's actually tomorrow's forecast.
+function buildWeatherChip(weather, mode) {
   if (!weather || weather.temp_high_f == null) return null;
   const temp = `${Math.round(weather.temp_high_f)}°`;
   const place = (weather.location || '').split(',')[0].trim();
-  return place ? `${temp} · ${place}` : temp;
+  const core = place ? `${temp} · ${place}` : temp;
+  return mode === 'evening' ? `Tmrw ${core}` : core;
 }
 
 // Pick the hero metric: respect Claude's override if valid, else use the
@@ -856,7 +866,8 @@ function normalizeStructured(raw, mode, ctx) {
   const heroKey      = HERO_METRIC_KEYS.includes(raw.hero_metric_key) ? raw.hero_metric_key : null;
   const hero_metric  = buildHeroMetric(heroKey, ctx);
   const stats        = buildStats(hero_metric.key, ctx);
-  const weather_chip = mode === 'evening' ? null : buildWeatherChip(ctx.today_plan?.weather);
+  const weatherSrc   = mode === 'evening' ? ctx.tomorrow_plan?.weather : ctx.today_plan?.weather;
+  const weather_chip = buildWeatherChip(weatherSrc, mode);
   const sleepTarget  = raw.sleep_target_time ? String(raw.sleep_target_time).trim().slice(0, 24) : null;
   const playRows     = buildPlayRows(mode, ctx, sleepTarget);
   const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
@@ -897,7 +908,8 @@ function buildFallback({ reason, context, mode }) {
   const ctxSafe = context || { user: { timezone: DEFAULT_TIMEZONE }, yesterday: {}, today_plan: {}, tomorrow_plan: null, baselines_7d: null };
   const hero_metric  = buildHeroMetric(null, ctxSafe);
   const stats        = buildStats(hero_metric.key, ctxSafe);
-  const weather_chip = mode === 'evening' ? null : buildWeatherChip(ctxSafe.today_plan?.weather);
+  const weatherSrc   = mode === 'evening' ? ctxSafe.tomorrow_plan?.weather : ctxSafe.today_plan?.weather;
+  const weather_chip = buildWeatherChip(weatherSrc, mode);
   const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
   const playRows     = buildPlayRows(mode, ctxSafe, null);
 
