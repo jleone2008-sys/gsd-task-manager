@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Train tab — mockups (Phase 4)</title>
+<style>
+  :root {
+    --bg: #f6f2ea; --surface: #ffffff; --surface-2: #f0eadd;
+    --edge: #ddd6c7; --edge-strong: #c8bfae;
+    --ink: #1a1714; --ink-2: #3d3730; --ink-3: #6e6559; --ink-4: #a8a094;
+    --guava-50: #fbeaec; --guava-100: #fde8ea; --guava-500: #d65b6b;
+    --guava-700: #b82d3b; --guava-800: #99232f;
+    --moss-fg: #5e8c4f; --moss-bg: #eaf0e3; --moss-edge: #c2d1aa;
+    --amber-fg: #a87622; --amber-bg: #faf1dc; --amber-edge: #e2c98c;
+    --t-xs: 11px; --t-sm: 13px; --t-md: 15px;
+    --r-sm: 3px; --r-md: 4px; --r-lg: 10px;
+    --shadow-card: 0 1px 2px rgba(20,15,10,.04), 0 4px 16px rgba(20,15,10,.06);
+    --shadow-raised: 0 8px 28px rgba(20,15,10,.10), 0 2px 6px rgba(20,15,10,.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+    color: var(--ink); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Top nav (mockup-only, jumps between sections) ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(246, 242, 234, 0.95);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--edge);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .topbar-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .topbar-nav { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .topbar-link {
+    font-size: 11px; font-weight: 600; color: var(--ink-3);
+    text-decoration: none; padding: 4px 10px;
+    border: 1px solid var(--edge); border-radius: 999px; background: var(--surface);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .topbar-link:hover {
+    background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong);
+  }
+  .topbar-link.active {
+    background: var(--ink); color: #fff; border-color: var(--ink);
+  }
+
+  .page {
+    max-width: 720px; margin: 0 auto;
+    padding: 32px 20px 96px;
+    display: flex; flex-direction: column; gap: 56px;
+  }
+  .section { scroll-margin-top: 72px; }
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--guava-700);
+    margin-bottom: 10px;
+  }
+  .section-note {
+    font-size: 12px; color: var(--ink-3); margin-top: 12px; line-height: 1.55;
+  }
+
+  /* ── Card scaffold ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); box-shadow: var(--shadow-card);
+    padding: 20px 18px;
+  }
+  .card-title {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+    color: var(--ink); margin: 0 0 4px 0;
+  }
+  .card-sub { font-size: var(--t-sm); color: var(--ink-3); margin: 0; }
+
+  /* ── Train tab subtab pill bar (matches the live Tasks pill bar style) ── */
+  .train-topbar {
+    background: var(--surface); border-bottom: 1px solid var(--edge);
+    padding: 10px 16px; display: flex; align-items: center; gap: 6px;
+  }
+  .train-pill {
+    font-size: var(--t-xs); font-weight: 600; color: var(--ink-3);
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--edge); background: var(--surface);
+  }
+  .train-pill.is-active {
+    color: var(--ink); border-color: var(--ink); background: var(--surface);
+  }
+  .train-pill .count { font-size: 10px; color: var(--ink-4); margin-left: 4px; }
+  .train-shell {
+    border: 1px solid var(--edge); border-radius: var(--r-lg);
+    background: var(--surface); overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+  .train-content { padding: 16px; }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PLAN SUBTAB
+  ════════════════════════════════════════════════════════════════════════ */
+  .plan-active {
+    background: var(--surface-2);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    padding: 14px 14px 16px;
+    margin-bottom: 14px;
+  }
+  .plan-eyebrow {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-4); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .plan-name { font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
+  .plan-week {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    font-size: 10px;
+  }
+  .plan-day {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-sm); padding: 6px 4px;
+    text-align: center; display: flex; flex-direction: column; gap: 2px;
+    min-height: 56px; justify-content: center;
+  }
+  .plan-day-dow { font-size: 9px; font-weight: 700; letter-spacing: .05em; color: var(--ink-4); text-transform: uppercase; }
+  .plan-day-name { font-size: 10px; font-weight: 600; color: var(--ink-2); line-height: 1.2; }
+  .plan-day.is-today { background: var(--guava-50); border-color: var(--guava-700); }
+  .plan-day.is-today .plan-day-name { color: var(--guava-700); font-weight: 700; }
+  .plan-day.is-rest { color: var(--ink-4); background: var(--surface-2); }
+  .plan-day.is-rest .plan-day-name { color: var(--ink-4); }
+  .plan-today-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px; margin-top: 10px;
+  }
+  .plan-today-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--guava-50); color: var(--guava-700);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .plan-today-text { flex: 1; min-width: 0; }
+  .plan-today-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .plan-today-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+  .btn-primary {
+    background: var(--guava-700); color: #fff;
+    border: 0; border-radius: var(--r-md);
+    padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+  }
+  .btn-primary:hover { background: var(--guava-800); }
+  .btn-secondary {
+    background: var(--surface); color: var(--ink-2);
+    border: 1px solid var(--edge-strong); border-radius: var(--r-md);
+    padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { background: var(--surface-2); }
+
+  .templates-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin: 18px 0 8px 0;
+  }
+  .template-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 14px;
+    margin-bottom: 8px;
+    display: grid; grid-template-columns: 1fr auto; gap: 12px;
+    align-items: center;
+  }
+  .template-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .template-meta { font-size: 11px; color: var(--ink-3); margin-top: 4px; line-height: 1.45; }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TODAY SUBTAB — 3 VARIATIONS
+  ════════════════════════════════════════════════════════════════════════ */
+  .session-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 12px;
+  }
+  .session-name { font-size: 17px; font-weight: 700; color: var(--ink); }
+  .session-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+  .session-status {
+    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--guava-700); background: var(--guava-50);
+    padding: 3px 8px; border-radius: 999px;
+    border: 1px solid var(--guava-100);
+  }
+  .session-progress {
+    height: 4px; background: var(--surface-2); border-radius: 999px;
+    overflow: hidden; margin-bottom: 14px;
+  }
+  .session-progress-fill {
+    height: 100%; background: var(--guava-700); width: 35%;
+    transition: width 0.2s;
+  }
+
+  .exercise {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .exercise-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 8px; gap: 10px;
+  }
+  .exercise-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .exercise-target { font-size: 11px; color: var(--ink-3); font-weight: 500; }
+  .exercise-last { font-size: 10px; color: var(--ink-4); margin-top: 2px; }
+
+  /* ── Variation A: Numeric keypad modal ── */
+  .va-set-row {
+    display: grid; grid-template-columns: 28px 1fr 1fr 28px; gap: 8px;
+    align-items: center; padding: 8px 0; font-size: var(--t-sm);
+  }
+  .va-set-row + .va-set-row { border-top: 1px dashed var(--edge); }
+  .va-set-num {
+    font-size: 10px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .05em; text-transform: uppercase; text-align: center;
+  }
+  .va-set-field {
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 8px 10px;
+    cursor: pointer; text-align: center;
+  }
+  .va-set-field-num { font-size: 15px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .va-set-field-label { font-size: 9px; font-weight: 600; color: var(--ink-4); letter-spacing: .05em; text-transform: uppercase; margin-top: 2px; }
+  .va-set-field.is-focused { border-color: var(--guava-700); background: var(--guava-50); }
+  .va-set-field.is-focused .va-set-field-num { color: var(--guava-700); }
+  .va-set-check {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--edge-strong); background: var(--surface);
+    cursor: pointer;
+  }
+  .va-set-check.is-done {
+    background: var(--moss-fg); border-color: var(--moss-fg);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; line-height: 1;
+  }
+  .va-set-check.is-done::after { content: '✓'; }
+
+  .va-keypad {
+    margin-top: 14px;
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); padding: 12px;
+    position: relative;
+  }
+  .va-keypad-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .va-keypad-title {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: .05em; text-transform: uppercase;
+  }
+  .va-keypad-value {
+    font-size: 28px; font-weight: 800; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .va-keypad-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  }
+  .va-key {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px 0;
+    font-family: inherit; font-size: 18px; font-weight: 600; color: var(--ink);
+    cursor: pointer; text-align: center;
+  }
+  .va-key:hover { background: var(--surface-2); }
+  .va-key.is-action {
+    background: var(--guava-700); color: #fff; border-color: var(--guava-700);
+    font-size: 13px; font-weight: 700;
+  }
+
+  /* ── Variation B: Inline steppers ── */
+  .vb-set-row {
+    display: grid; grid-template-columns: 28px 1fr 1fr 28px; gap: 8px;
+    align-items: center; padding: 6px 0;
+  }
+  .vb-set-row + .vb-set-row { border-top: 1px dashed var(--edge); }
+  .vb-set-num {
+    font-size: 10px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .05em; text-transform: uppercase; text-align: center;
+  }
+  .vb-stepper {
+    display: grid; grid-template-columns: 26px 1fr 26px; gap: 4px;
+    align-items: center;
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 4px;
+  }
+  .vb-stepper-btn {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-sm); height: 28px;
+    font-family: inherit; font-size: 16px; font-weight: 700; color: var(--ink-2);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .vb-stepper-btn:hover { background: var(--surface-2); border-color: var(--edge-strong); }
+  .vb-stepper-value {
+    text-align: center; font-size: 14px; font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .vb-stepper-label {
+    font-size: 9px; font-weight: 600; color: var(--ink-4); letter-spacing: .05em;
+    text-transform: uppercase; text-align: center; margin-top: 1px;
+  }
+  .vb-set-check {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--edge-strong); background: var(--surface);
+    cursor: pointer;
+  }
+  .vb-set-check.is-done {
+    background: var(--moss-fg); border-color: var(--moss-fg);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; line-height: 1;
+  }
+  .vb-set-check.is-done::after { content: '✓'; }
+
+  /* ── Variation C: Single-set focus ── */
+  .vc-stage {
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); padding: 22px 18px;
+    text-align: center;
+  }
+  .vc-stage-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 4px;
+  }
+  .vc-stage-progress {
+    display: flex; gap: 4px; justify-content: center; margin-bottom: 14px;
+  }
+  .vc-stage-dot {
+    width: 22px; height: 4px; border-radius: 2px; background: var(--edge);
+  }
+  .vc-stage-dot.is-done { background: var(--moss-fg); }
+  .vc-stage-dot.is-current { background: var(--guava-700); }
+  .vc-stage-exercise { font-size: 18px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .vc-stage-target { font-size: 12px; color: var(--ink-3); margin-bottom: 18px; }
+  .vc-stage-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .vc-stage-field {
+    background: var(--surface); border: 2px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px 8px;
+  }
+  .vc-stage-field.is-focused {
+    border-color: var(--guava-700); background: var(--guava-50);
+  }
+  .vc-stage-value { font-size: 32px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+  .vc-stage-unit { font-size: 11px; font-weight: 600; color: var(--ink-4); margin-top: 4px; letter-spacing: .05em; text-transform: uppercase; }
+  .vc-stage-last { font-size: 11px; color: var(--ink-4); margin-bottom: 12px; }
+  .vc-stage-quick {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .vc-quick-btn {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: 999px; padding: 5px 12px;
+    font-family: inherit; font-size: 11px; font-weight: 600; color: var(--ink-2);
+    cursor: pointer;
+  }
+  .vc-quick-btn:hover { background: var(--surface-2); }
+  .vc-stage-actions {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px;
+  }
+  .vc-stage-skip {
+    background: var(--surface); color: var(--ink-3);
+    border: 1px solid var(--edge); border-radius: var(--r-md);
+    padding: 12px 16px; font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .vc-stage-next {
+    background: var(--guava-700); color: #fff;
+    border: 0; border-radius: var(--r-md);
+    padding: 12px 16px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  .vc-stage-next:hover { background: var(--guava-800); }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PROGRESS SUBTAB
+  ════════════════════════════════════════════════════════════════════════ */
+  .progress-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 4px;
+  }
+  .progress-title { font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .progress-sub { font-size: var(--t-sm); color: var(--ink-3); margin-bottom: 16px; }
+
+  /* ── Log card ── */
+  .upload-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-bottom: 14px;
+  }
+  .upload-tile {
+    aspect-ratio: 3/4; border: 1px solid var(--edge);
+    background: var(--surface-2); border-radius: var(--r-md);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; cursor: pointer;
+  }
+  .upload-tile.is-optional {
+    border-style: dashed; border-color: var(--guava-700);
+    background: var(--guava-50);
+  }
+  .upload-tile-icon {
+    width: 36px; height: 36px; border-radius: var(--r-sm);
+    background: var(--surface); border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3);
+  }
+  .upload-tile-label { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .upload-tile-hint { font-size: 10px; color: var(--ink-4); }
+
+  /* Date + Weight on one row, Notes wraps to its own row so nothing spills
+     off narrow widths. */
+  .form-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .form-grid .form-field--wide { grid-column: 1 / -1; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .form-label {
+    font-size: 10px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: .05em; text-transform: uppercase;
+  }
+  .form-input {
+    width: 100%; box-sizing: border-box;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 8px 10px;
+    font-family: inherit; font-size: 13px; color: var(--ink);
+  }
+  .form-input::placeholder { color: var(--ink-4); }
+
+  .measure-toggle {
+    background: none; border: 0;
+    color: var(--guava-700); font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer; padding: 0; margin-bottom: 8px;
+  }
+  /* Auto-wrap: 6 measurement fields (neck added for the Navy BF% formula) lay
+     out 3 + 3 on phones, 6 across on wider viewports. minmax keeps each cell
+     readable without overflowing. */
+  .measure-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .measure-grid .form-input { padding: 6px 8px; font-size: 12px; }
+
+  .btn-analyze {
+    width: 100%;
+    background: var(--guava-700); color: #fff;
+    border: 0; border-radius: var(--r-md);
+    padding: 13px 16px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-analyze:hover { background: var(--guava-800); }
+
+  /* ── Timeline scrub ── */
+  .timeline-scrub {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 4px 2px 8px; margin: 0 -4px;
+  }
+  .timeline-item {
+    flex-shrink: 0; width: 64px;
+    border: 1px solid var(--edge); border-radius: var(--r-md);
+    background: var(--surface); padding: 6px 4px;
+    text-align: center; cursor: pointer;
+  }
+  .timeline-item.is-active {
+    border-color: var(--guava-700); background: var(--guava-50);
+  }
+  .timeline-item-date { font-size: 9px; font-weight: 700; color: var(--ink-3); letter-spacing: .05em; text-transform: uppercase; }
+  .timeline-item-month { font-size: 9px; color: var(--ink-4); margin-top: 1px; }
+  .timeline-item-val { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .timeline-item-unit { font-size: 9px; color: var(--ink-4); }
+
+  /* ── Detail view ── */
+  .detail-photos {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .detail-photo {
+    aspect-ratio: 3/4; border-radius: var(--r-md);
+    background: linear-gradient(135deg, #e5dccc 25%, #ddd4c2 50%, #e5dccc 75%);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-4); font-size: 11px; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase;
+    border: 1px solid var(--edge);
+  }
+  .detail-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .detail-stat {
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 10px 8px; text-align: center;
+  }
+  .detail-stat-label {
+    font-size: 9px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .detail-stat-value {
+    font-size: 18px; font-weight: 800; color: var(--guava-700);
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .detail-stat-value.is-muted { color: var(--ink-4); font-weight: 700; font-size: 16px; }
+  .detail-stat-text { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .detail-stats-2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .analysis-card {
+    background: var(--guava-50);
+    border: 1px solid var(--guava-100);
+    border-radius: var(--r-md);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .analysis-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .analysis-badge {
+    background: var(--guava-700); color: #fff;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .analysis-confidence { font-size: 11px; color: var(--ink-3); }
+  .analysis-overview {
+    font-size: 13px; color: var(--ink); line-height: 1.6;
+    margin: 0 0 14px 0;
+  }
+  .analysis-overview strong { color: var(--ink); }
+
+  .callout {
+    border-left: 3px solid; border-radius: var(--r-sm);
+    padding: 8px 12px; margin-bottom: 8px; font-size: 12px; line-height: 1.55;
+  }
+  .callout.needs-work {
+    border-color: var(--amber-fg); background: var(--amber-bg); color: var(--ink-2);
+  }
+  .callout.balanced {
+    border-color: var(--moss-fg); background: var(--moss-bg); color: var(--ink-2);
+  }
+  .callout-label { font-weight: 700; color: var(--ink); }
+
+  .ratio-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin: 14px 0 6px;
+  }
+  .ratio-block { text-align: center; padding: 8px; background: var(--surface); border-radius: var(--r-sm); border: 1px solid var(--edge); }
+  .ratio-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .ratio-value { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+  .meta-row {
+    font-size: 12px; color: var(--ink-2); line-height: 1.6;
+    margin-bottom: 4px;
+  }
+  .meta-row strong { font-weight: 700; }
+  .meta-row.is-warn { color: var(--amber-fg); }
+
+  .focus-areas {
+    border-top: 1px solid var(--edge);
+    margin-top: 14px; padding-top: 12px;
+  }
+  .focus-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .focus-item {
+    font-size: 12px; color: var(--ink-2); line-height: 1.55;
+    margin-bottom: 8px;
+    padding-left: 22px; position: relative;
+  }
+  .focus-item::before {
+    content: counter(focus); counter-increment: focus;
+    position: absolute; left: 0; top: 0;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--guava-700); color: #fff;
+    font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .focus-list { counter-reset: focus; }
+
+  .stats-empty {
+    background: var(--surface-2);
+    border: 1px dashed var(--edge-strong);
+    border-radius: var(--r-md); padding: 14px;
+    text-align: center; font-size: 12px; color: var(--ink-4);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TODAY · Revised C — overview + bottom-sheet focus + supersets
+  ════════════════════════════════════════════════════════════════════════ */
+  /* 7 plan days + Any-day in one row, no horizontal scroll. Grid auto-sizes
+     each pill to 1/8 of the available width. Below 380px the grid degrades
+     to repeat(auto-fit, minmax(40px, 1fr)) so the wrapped layout still
+     fits on very narrow screens. */
+  .day-row {
+    display: grid; grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    padding: 4px 0 14px;
+  }
+  @media (max-width: 360px) {
+    .day-row { grid-template-columns: repeat(4, 1fr); }
+  }
+  .day-pill-card {
+    border: 1px solid var(--edge); border-radius: var(--r-md);
+    background: var(--surface); padding: 6px 2px;
+    text-align: center; cursor: pointer;
+    display: flex; flex-direction: column; gap: 1px;
+    min-width: 0;       /* allow grid cell to shrink below content width */
+    overflow: hidden;
+  }
+  .day-pill-card.is-active {
+    border-color: var(--guava-700); border-width: 2px; padding: 5px 1px;
+    background: var(--surface);
+  }
+  .day-pill-card.is-rest { background: var(--surface-2); }
+  .day-pill-card.is-any {
+    border-style: dashed; background: var(--surface-2);
+  }
+  .day-pill-dow {
+    font-size: 9px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .04em; text-transform: uppercase; line-height: 1.1;
+  }
+  .day-pill-name {
+    font-size: 10px; font-weight: 700; color: var(--ink); line-height: 1.15;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .day-pill-card.is-active .day-pill-name { color: var(--guava-700); }
+  .day-pill-card.is-rest  .day-pill-name { color: var(--ink-4); }
+  .day-pill-card.is-any   .day-pill-name { color: var(--ink-3); }
+
+  /* Exercise overview cards (HCC-style table per exercise) */
+  .ex-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 12px 8px;
+    margin-bottom: 10px;
+  }
+  .ex-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 10px;
+  }
+  .ex-card-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .ex-card-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+  .ex-target {
+    flex-shrink: 0;
+    font-size: 10px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .ex-target.target-up    { background: var(--moss-bg); color: var(--moss-fg); border: 1px solid var(--moss-edge); }
+  .ex-target.target-hold  { background: var(--guava-50); color: var(--guava-700); border: 1px solid var(--guava-100); }
+  .ex-target.target-maxed { background: var(--amber-bg); color: var(--amber-fg); border: 1px solid var(--amber-edge); }
+  .ex-table-head {
+    display: grid; grid-template-columns: 28px 1fr 1.4fr; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--edge);
+    font-size: 9px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .ex-table-head .col-today {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  .ex-set-row {
+    display: grid; grid-template-columns: 28px 1fr 1.4fr; gap: 8px;
+    padding: 7px 0;
+    align-items: center;
+    font-size: 12px;
+  }
+  .ex-set-row + .ex-set-row { border-top: 1px dashed var(--edge); }
+  .ex-set-num {
+    font-size: 11px; font-weight: 700; color: var(--ink-3); text-align: left;
+  }
+  .ex-set-last {
+    font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+  }
+  .ex-set-today {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  .ex-set-cell {
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-sm); padding: 5px 8px;
+    font-size: 12px; color: var(--ink-3);
+    text-align: center; cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .ex-set-cell.is-filled {
+    background: var(--surface); color: var(--ink); font-weight: 700;
+    border-color: var(--edge-strong);
+  }
+  .ex-set-cell.is-focused {
+    background: var(--guava-50); color: var(--guava-700);
+    border-color: var(--guava-700); border-width: 2px; padding: 4px 7px;
+  }
+  .ex-set-row.is-done { opacity: 0.65; }
+  .ex-set-row.is-done .ex-set-num::after {
+    content: '✓'; color: var(--moss-fg); font-weight: 700; margin-left: 4px;
+  }
+
+  /* Superset grouping */
+  .superset-group {
+    border-left: 3px solid var(--guava-700);
+    padding-left: 10px;
+    margin: 14px 0;
+  }
+  .superset-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    color: var(--guava-700); text-transform: uppercase;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .superset-label .badge {
+    background: var(--guava-700); color: #fff;
+    font-size: 9px; padding: 2px 6px; border-radius: 999px;
+  }
+  .superset-group .ex-card {
+    border-left: 0; border-radius: 0 var(--r-md) var(--r-md) 0;
+  }
+  .superset-cycle {
+    font-size: 10px; color: var(--ink-3);
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-sm); padding: 6px 10px;
+    margin-top: 6px; line-height: 1.4;
+  }
+  .superset-cycle strong { color: var(--ink-2); }
+
+  /* Session footer */
+  .session-footer {
+    background: var(--surface-2); border-top: 1px solid var(--edge);
+    border-radius: var(--r-md); margin-top: 16px; padding: 14px;
+  }
+  .session-footer-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .session-notes-input {
+    width: 100%; min-height: 56px;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-sm); padding: 8px 10px;
+    font-family: inherit; font-size: 12px; color: var(--ink);
+    resize: vertical;
+  }
+  .feel-row { margin-top: 12px; }
+  /* 5-emoji session-feel picker — matches the Journal mood picker on Home. */
+  .mood-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    margin-top: 6px;
+  }
+  .mood-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 8px 4px;
+    font-family: inherit; cursor: pointer;
+  }
+  .mood-btn:hover { background: var(--surface-2); }
+  .mood-btn.is-selected {
+    background: var(--guava-50); border-color: var(--guava-700);
+  }
+  .mood-emoji { font-size: 20px; line-height: 1; }
+  .mood-label {
+    font-size: 9px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  .session-totals {
+    display: flex; gap: 18px; margin-top: 12px;
+    align-items: baseline;
+  }
+  .session-total-num { font-size: 18px; font-weight: 800; color: var(--ink); }
+  .session-total-label { font-size: 9px; font-weight: 700; letter-spacing: .08em; color: var(--ink-4); text-transform: uppercase; }
+  .session-submit {
+    width: 100%; background: var(--guava-700); color: #fff;
+    border: 0; border-radius: var(--r-md);
+    padding: 13px 16px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; margin-top: 14px;
+  }
+  .session-submit:hover { background: var(--guava-800); }
+
+  /* Focus sheet (slides up from bottom over the overview) */
+  .focus-sheet {
+    position: relative; z-index: 1;
+    background: var(--surface); border: 1px solid var(--edge-strong);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-raised);
+    margin: 18px 0 0;
+    padding: 16px 16px 14px;
+  }
+  .focus-sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .focus-sheet-jumper {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 700; color: var(--ink);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .focus-sheet-jumper::after { content: '▾'; color: var(--ink-3); font-size: 10px; margin-left: 2px; }
+  .focus-sheet-close {
+    background: none; border: 0; padding: 4px 8px; cursor: pointer;
+    font-size: 18px; color: var(--ink-3); line-height: 1;
+  }
+  .focus-sheet-subtitle { font-size: 11px; color: var(--ink-3); margin-bottom: 10px; }
+  .focus-sheet-dots {
+    display: flex; gap: 4px; justify-content: center; margin-bottom: 14px;
+  }
+  .focus-sheet-dot {
+    width: 22px; height: 4px; border-radius: 2px; background: var(--edge);
+  }
+  .focus-sheet-dot.is-done    { background: var(--moss-fg); }
+  .focus-sheet-dot.is-current { background: var(--guava-700); }
+  .focus-sheet-fields {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .focus-sheet-field {
+    background: var(--surface-2); border: 2px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 8px; text-align: center;
+  }
+  .focus-sheet-field.is-focused {
+    border-color: var(--guava-700); background: var(--guava-50);
+  }
+  .focus-sheet-value {
+    font-size: 28px; font-weight: 800; color: var(--ink);
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .focus-sheet-unit {
+    font-size: 10px; font-weight: 600; color: var(--ink-4);
+    letter-spacing: .05em; text-transform: uppercase; margin-top: 4px;
+  }
+  .focus-sheet-last {
+    font-size: 11px; color: var(--ink-4); text-align: center; margin-bottom: 12px;
+  }
+  .focus-sheet-quick {
+    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .focus-sheet-quick-btn {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: 999px; padding: 5px 12px;
+    font-family: inherit; font-size: 11px; font-weight: 600; color: var(--ink-2);
+    cursor: pointer;
+  }
+  .focus-sheet-actions {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .focus-sheet-next-superset {
+    background: var(--surface); color: var(--guava-700);
+    border: 1px solid var(--guava-700); border-radius: var(--r-md);
+    padding: 11px 12px; font-family: inherit; font-size: 12px; font-weight: 700;
+    cursor: pointer;
+  }
+  .focus-sheet-next-set {
+    background: var(--guava-700); color: #fff;
+    border: 0; border-radius: var(--r-md);
+    padding: 11px 12px; font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer;
+  }
+  .focus-sheet-actions .single { grid-column: 1 / -1; }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PROGRESS · Dashboard — Goals + Body Comp + Trends
+  ════════════════════════════════════════════════════════════════════════ */
+  .dash-head {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .dash-thumb {
+    width: 44px; height: 56px; border-radius: var(--r-sm);
+    background: linear-gradient(135deg, #e5dccc 25%, #ddd4c2 50%, #e5dccc 75%);
+    border: 1px solid var(--edge);
+    flex-shrink: 0;
+  }
+  .dash-head-text { flex: 1; min-width: 0; }
+  .dash-head-title { font-size: 17px; font-weight: 700; color: var(--ink); }
+  .dash-head-sub { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+  .dash-add {
+    background: var(--guava-700); color: #fff; border: 0; border-radius: var(--r-md);
+    padding: 8px 12px; font-family: inherit; font-size: 12px; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+  }
+  .dash-add:hover { background: var(--guava-800); }
+
+  .dash-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px; margin-bottom: 12px;
+  }
+  .dash-card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .dash-card-title {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .dash-card-action {
+    font-size: 11px; color: var(--guava-700); font-weight: 600;
+    text-decoration: none; cursor: pointer;
+  }
+
+  /* ── Goals card with two progress rings ── */
+  .goals-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  .goal-block { text-align: center; }
+  .goal-ring-svg { width: 96px; height: 96px; }
+  .goal-ring-value { font-size: 22px; font-weight: 800; fill: var(--ink); }
+  .goal-ring-label { font-size: 8px; font-weight: 700; letter-spacing: .08em; fill: var(--ink-3); }
+  .goal-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 8; }
+  .goal-ring-fill  { fill: none; stroke: var(--guava-700); stroke-width: 8; stroke-linecap: round; }
+  .goal-block-title { font-size: 12px; font-weight: 700; color: var(--ink); margin: 6px 0 2px; }
+  .goal-block-meta { font-size: 11px; color: var(--ink-3); }
+  .goal-eta-bar {
+    background: var(--moss-bg); border: 1px solid var(--moss-edge);
+    border-radius: var(--r-sm); padding: 8px 10px; margin-top: 12px;
+    font-size: 11px; color: var(--moss-fg); text-align: center;
+  }
+  .goal-eta-bar strong { color: var(--moss-fg); font-weight: 700; }
+
+  /* ── Calorie target card ── */
+  .cal-hero {
+    text-align: center; padding: 8px 0 12px;
+  }
+  .cal-hero-num {
+    font-size: 34px; font-weight: 800; color: var(--ink);
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .cal-hero-unit { font-size: 11px; color: var(--ink-3); margin-top: 4px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+  .cal-breakdown {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    text-align: center; margin-bottom: 10px;
+  }
+  .cal-step {
+    background: var(--surface-2); border: 1px solid var(--edge);
+    border-radius: var(--r-sm); padding: 6px 4px;
+  }
+  .cal-step-label {
+    font-size: 8px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .05em; text-transform: uppercase;
+  }
+  .cal-step-num {
+    font-size: 13px; font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums; margin-top: 2px;
+  }
+  .cal-step.is-out .cal-step-num { color: var(--guava-700); }
+  .macros-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    margin-top: 4px;
+  }
+  .macro-cell {
+    background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 8px; text-align: center;
+  }
+  .macro-cell-num { font-size: 14px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .macro-cell-label { font-size: 9px; font-weight: 700; color: var(--ink-4); letter-spacing: .05em; text-transform: uppercase; margin-top: 2px; }
+  .macro-cell-pct { font-size: 10px; color: var(--ink-3); margin-top: 1px; }
+  .formula-note {
+    background: var(--surface-2); border-left: 3px solid var(--ink-3);
+    padding: 6px 10px; margin-top: 10px;
+    font-size: 10px; color: var(--ink-3); line-height: 1.5;
+  }
+  .formula-note strong { color: var(--ink-2); font-weight: 700; }
+
+  /* ── Body comp report (latest pic summary) ── */
+  .bc-row {
+    display: grid; grid-template-columns: 64px 1fr; gap: 12px;
+    align-items: center;
+  }
+  .bc-thumb {
+    width: 64px; height: 84px; border-radius: var(--r-sm);
+    background: linear-gradient(135deg, #e5dccc 25%, #ddd4c2 50%, #e5dccc 75%);
+    border: 1px solid var(--edge);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-4); font-size: 10px; font-weight: 700;
+  }
+  .bc-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .bc-stat { text-align: center; }
+  .bc-stat-label {
+    font-size: 8px; font-weight: 700; color: var(--ink-4);
+    letter-spacing: .05em; text-transform: uppercase;
+  }
+  .bc-stat-num {
+    font-size: 16px; font-weight: 800; color: var(--guava-700);
+    font-variant-numeric: tabular-nums; line-height: 1.2;
+  }
+  .bc-stat-text { font-size: 11px; font-weight: 700; color: var(--ink); }
+  .bc-balance-row {
+    font-size: 11px; color: var(--ink-2); line-height: 1.5;
+    border-top: 1px solid var(--edge); margin-top: 12px; padding-top: 10px;
+  }
+  .bc-balance-row strong { color: var(--ink); font-weight: 700; }
+  .bc-balance-row.is-warn { color: var(--amber-fg); }
+  .bc-balance-row.is-good { color: var(--moss-fg); }
+
+  /* ── Trend chart ── */
+  .trend-chart { width: 100%; height: 140px; }
+  .trend-area { fill: var(--guava-50); }
+  .trend-line { fill: none; stroke: var(--guava-700); stroke-width: 2; }
+  .trend-projected { fill: none; stroke: var(--ink-4); stroke-width: 1.5; stroke-dasharray: 3 3; }
+  .trend-goal-line { stroke: var(--moss-fg); stroke-width: 1; stroke-dasharray: 2 4; }
+  .trend-point { fill: var(--guava-700); }
+  .trend-axis { font-size: 9px; fill: var(--ink-4); }
+  .trend-legend {
+    display: flex; gap: 16px; margin-top: 6px;
+    font-size: 10px; color: var(--ink-3);
+    align-items: baseline; justify-content: center;
+  }
+  .trend-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .trend-legend i {
+    display: inline-block; width: 10px; height: 2px; vertical-align: middle;
+  }
+
+  /* ── Setup card on dashboard ── */
+  .setup-summary {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+    margin-bottom: 8px;
+  }
+  .setup-cell {
+    background: var(--surface-2); border-radius: var(--r-sm);
+    padding: 6px 10px; font-size: 11px;
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px;
+  }
+  .setup-cell-label { font-size: 8px; font-weight: 700; color: var(--ink-4); letter-spacing: .05em; text-transform: uppercase; }
+  .setup-cell-val { font-weight: 700; color: var(--ink); }
+  .setup-cell-tag {
+    font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 999px; margin-left: auto;
+  }
+  .setup-cell-tag.is-auto { background: var(--moss-bg); color: var(--moss-fg); }
+  .setup-cell-tag.is-suggested { background: var(--guava-50); color: var(--guava-700); }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     PROGRESS · Setup wizard
+  ════════════════════════════════════════════════════════════════════════ */
+  .wiz-head {
+    margin-bottom: 14px;
+  }
+  .wiz-title {
+    font-size: 18px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.01em; margin-bottom: 4px;
+  }
+  .wiz-sub { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+
+  .wiz-section {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px; margin-bottom: 12px;
+  }
+  .wiz-section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .wiz-section-label {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .wiz-section-source {
+    font-size: 10px; font-weight: 600; padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .wiz-section-source.is-auto      { background: var(--moss-bg); color: var(--moss-fg); border: 1px solid var(--moss-edge); }
+  .wiz-section-source.is-suggested { background: var(--guava-50); color: var(--guava-700); border: 1px solid var(--guava-100); }
+  .wiz-section-source.is-static    { background: var(--surface-2); color: var(--ink-4); border: 1px solid var(--edge); }
+
+  .radio-row { display: flex; gap: 8px; }
+  .radio-pill {
+    flex: 1; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 10px 8px;
+    text-align: center; font-size: 13px; font-weight: 600; color: var(--ink-2);
+  }
+  .radio-pill:hover { background: var(--surface-2); }
+  .radio-pill.is-selected {
+    background: var(--guava-50); border-color: var(--guava-700);
+    color: var(--guava-700); font-weight: 700;
+  }
+
+  .height-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .activity-list { display: flex; flex-direction: column; gap: 6px; }
+  .activity-option {
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 10px;
+    align-items: center;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 10px 12px;
+    cursor: pointer;
+  }
+  .activity-option:hover { background: var(--surface-2); }
+  .activity-option.is-selected {
+    background: var(--guava-50); border-color: var(--guava-700);
+  }
+  .activity-option.is-suggested {
+    border-color: var(--guava-500); border-style: dashed;
+  }
+  .activity-radio {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--edge-strong); background: var(--surface);
+  }
+  .activity-option.is-selected .activity-radio {
+    border-color: var(--guava-700); background: var(--guava-700);
+    box-shadow: inset 0 0 0 3px var(--surface);
+  }
+  .activity-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .activity-desc { font-size: 11px; color: var(--ink-3); margin-top: 2px; line-height: 1.4; }
+  .activity-mult {
+    font-size: 11px; font-weight: 700; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .activity-suggested-tag {
+    background: var(--guava-700); color: #fff;
+    font-size: 8px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 999px;
+    margin-left: 4px;
+  }
+
+  .wiz-derived {
+    background: var(--surface-2); border-left: 3px solid var(--guava-700);
+    border-radius: var(--r-sm); padding: 10px 12px;
+    margin-top: 12px;
+  }
+  .wiz-derived-label {
+    font-size: 9px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .wiz-derived-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; padding: 2px 0;
+  }
+  .wiz-derived-row + .wiz-derived-row { border-top: 1px dashed var(--edge); }
+  .wiz-derived-name { color: var(--ink-2); }
+  .wiz-derived-val {
+    font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+
+  .wiz-actions {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px;
+    margin-top: 14px;
+  }
+  .wiz-skip {
+    background: var(--surface); color: var(--ink-3);
+    border: 1px solid var(--edge); border-radius: var(--r-md);
+    padding: 12px 16px; font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .wiz-save {
+    background: var(--guava-700); color: #fff;
+    border: 0; border-radius: var(--r-md);
+    padding: 12px 16px; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  .wiz-save:hover { background: var(--guava-800); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-title">Train tab — Phase 4 mockup</span>
+  <nav class="topbar-nav">
+    <a class="topbar-link" href="#plan">Plan</a>
+    <a class="topbar-link" href="#today-c">Today</a>
+    <a class="topbar-link" href="#progress-dashboard">Progress · Dash</a>
+    <a class="topbar-link" href="#progress-setup">Progress · Setup</a>
+    <a class="topbar-link" href="#progress-log">Progress · New</a>
+    <a class="topbar-link" href="#progress-detail">Progress · Detail</a>
+  </nav>
+</div>
+
+<div class="page">
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PLAN subtab (single design)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="plan" class="section">
+    <div class="section-label">Plan subtab</div>
+    <div class="train-shell">
+      <div class="train-topbar">
+        <button class="train-pill is-active">Plan</button>
+        <button class="train-pill">Today</button>
+        <button class="train-pill">Progress</button>
+      </div>
+      <div class="train-content">
+        <div class="plan-active">
+          <div class="plan-eyebrow">Active plan · Week 6</div>
+          <div class="plan-name">Push / Pull / Legs</div>
+          <div class="plan-week">
+            <div class="plan-day"><span class="plan-day-dow">Mon</span><span class="plan-day-name">Push A</span></div>
+            <div class="plan-day"><span class="plan-day-dow">Tue</span><span class="plan-day-name">Pull A</span></div>
+            <div class="plan-day"><span class="plan-day-dow">Wed</span><span class="plan-day-name">Legs A</span></div>
+            <div class="plan-day"><span class="plan-day-dow">Thu</span><span class="plan-day-name">Push B</span></div>
+            <div class="plan-day is-today"><span class="plan-day-dow">Fri</span><span class="plan-day-name">Pull B</span></div>
+            <div class="plan-day"><span class="plan-day-dow">Sat</span><span class="plan-day-name">Legs B</span></div>
+            <div class="plan-day is-rest"><span class="plan-day-dow">Sun</span><span class="plan-day-name">Rest</span></div>
+          </div>
+          <div class="plan-today-card">
+            <div class="plan-today-icon">🏋️</div>
+            <div class="plan-today-text">
+              <div class="plan-today-name">Today · Pull B</div>
+              <div class="plan-today-meta">6 lifts · ~55 min</div>
+            </div>
+            <button class="btn-primary">Start →</button>
+          </div>
+        </div>
+
+        <div class="templates-label">Available templates</div>
+        <div class="template-card">
+          <div>
+            <div class="template-name">Push / Pull / Legs (6-day)</div>
+            <div class="template-meta">Push A · Pull A · Legs A · Push B · Pull B · Legs B · Rest</div>
+          </div>
+          <button class="btn-secondary">In use</button>
+        </div>
+        <div class="template-card">
+          <div>
+            <div class="template-name">Upper / Lower (4-day)</div>
+            <div class="template-meta">Upper · Lower · Rest · Upper · Lower · Rest · Rest</div>
+          </div>
+          <button class="btn-primary">Fork</button>
+        </div>
+        <div class="template-card">
+          <div>
+            <div class="template-name">Full Body (3-day)</div>
+            <div class="template-meta">Mon · Wed · Fri full-body · low-friction default</div>
+          </div>
+          <button class="btn-primary">Fork</button>
+        </div>
+      </div>
+    </div>
+    <div class="section-note">
+      Active plan is shown up top with this week visible at a glance — today's
+      session is the bold call-to-action. Templates below are forkable (a
+      Fork creates a personal copy you can edit without touching the template).
+      Single design — no variations.
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       TODAY · Variation C — Single-set focus
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="today-c" class="section">
+    <div class="section-label">Today subtab</div>
+    <div class="train-shell">
+      <div class="train-topbar">
+        <button class="train-pill">Plan</button>
+        <button class="train-pill is-active">Today</button>
+        <button class="train-pill">Progress</button>
+      </div>
+      <div class="train-content">
+
+        <!-- Day picker: 7 plan days + an "Any" pill, all in a single
+             non-scrolling row. Today's slot is bordered in guava; rest day
+             and the Any pill are muted. Auto-rolls weekly so this is always
+             "this week"; the dashboard's weight chart uses a longer window
+             tied to the active goal (see section note below). -->
+        <div class="day-row">
+          <div class="day-pill-card"><span class="day-pill-dow">Mon</span><span class="day-pill-name">Push A</span></div>
+          <div class="day-pill-card"><span class="day-pill-dow">Tue</span><span class="day-pill-name">Pull A</span></div>
+          <div class="day-pill-card"><span class="day-pill-dow">Wed</span><span class="day-pill-name">Legs A</span></div>
+          <div class="day-pill-card"><span class="day-pill-dow">Thu</span><span class="day-pill-name">Push B</span></div>
+          <div class="day-pill-card is-active"><span class="day-pill-dow">Fri</span><span class="day-pill-name">Pull B</span></div>
+          <div class="day-pill-card"><span class="day-pill-dow">Sat</span><span class="day-pill-name">Legs B</span></div>
+          <div class="day-pill-card is-rest"><span class="day-pill-dow">Sun</span><span class="day-pill-name">Rest</span></div>
+          <div class="day-pill-card is-any" title="Cardio / mobility / unscripted">
+            <span class="day-pill-dow">+</span><span class="day-pill-name">Any</span>
+          </div>
+        </div>
+
+        <!-- Standalone exercise (no superset) -->
+        <div class="ex-card">
+          <div class="ex-card-head">
+            <div>
+              <div class="ex-card-name">Barbell row</div>
+              <div class="ex-card-meta">Back · 2-3 min rest</div>
+            </div>
+            <span class="ex-target target-up">↑ 190+ lbs target</span>
+          </div>
+          <div class="ex-table-head">
+            <span>Set</span>
+            <span>Last session</span>
+            <span class="col-today"><span>Today · 4 × 8</span></span>
+          </div>
+          <div class="ex-set-row is-done">
+            <span class="ex-set-num">S1</span>
+            <span class="ex-set-last">185 × 8</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell is-filled">190 lbs</span>
+              <span class="ex-set-cell is-filled">8 reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S2</span>
+            <span class="ex-set-last">185 × 8</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell is-focused">190 lbs</span>
+              <span class="ex-set-cell">8 reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S3</span>
+            <span class="ex-set-last">185 × 7</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S4</span>
+            <span class="ex-set-last">185 × 6</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pull-ups (flat list, user just jumps between exercises as they prefer) -->
+        <div class="ex-card">
+          <div class="ex-card-head">
+            <div>
+              <div class="ex-card-name">Pull-ups</div>
+              <div class="ex-card-meta">Back · 90s rest</div>
+            </div>
+            <span class="ex-target target-up">↑ +15 all sets</span>
+          </div>
+          <div class="ex-table-head">
+            <span>Set</span><span>Last session</span>
+            <span class="col-today"><span>Today · 4 × 8-10</span></span>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S1</span>
+            <span class="ex-set-last">10 reps</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">BW</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S2</span>
+            <span class="ex-set-last">10 reps</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">BW</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S3</span>
+            <span class="ex-set-last">10 reps</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">BW</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Face pulls (flat list) -->
+        <div class="ex-card">
+          <div class="ex-card-head">
+            <div>
+              <div class="ex-card-name">Face pulls</div>
+              <div class="ex-card-meta">Rear delts · light squeeze · 45s</div>
+            </div>
+            <span class="ex-target target-hold">→ Hold 80 lbs</span>
+          </div>
+          <div class="ex-table-head">
+            <span>Set</span><span>Last session</span>
+            <span class="col-today"><span>Today · 3 × 15-20</span></span>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S1</span>
+            <span class="ex-set-last">80 × 20</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S2</span>
+            <span class="ex-set-last">80 × 20</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S3</span>
+            <span class="ex-set-last">80 × 18</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Another standalone (DB curls, the last exercise) -->
+        <div class="ex-card">
+          <div class="ex-card-head">
+            <div>
+              <div class="ex-card-name">DB curls</div>
+              <div class="ex-card-meta">Arms · 60s rest</div>
+            </div>
+            <span class="ex-target target-maxed">⚠ Maxed — use new heavier set</span>
+          </div>
+          <div class="ex-table-head">
+            <span>Set</span><span>Last session</span>
+            <span class="col-today"><span>Today · 2 × 10-12</span></span>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S1</span>
+            <span class="ex-set-last">60 × 10</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+          <div class="ex-set-row">
+            <span class="ex-set-num">S2</span>
+            <span class="ex-set-last">60 × 8</span>
+            <div class="ex-set-today">
+              <span class="ex-set-cell">lbs</span>
+              <span class="ex-set-cell">reps</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Focus sheet: appears when any "Today" cell is tapped. In a real
+             implementation this slides up from the bottom over the overview;
+             rendered here in-flow so you can see it. The header carries the
+             current exercise + set position; the jumper opens a quick-pick
+             list of every exercise. -->
+        <div class="focus-sheet">
+          <div class="focus-sheet-head">
+            <button class="focus-sheet-jumper">Barbell row · Set 2 of 4</button>
+            <button class="focus-sheet-close">×</button>
+          </div>
+          <div class="focus-sheet-subtitle">Target 8 reps @ 190 lbs · Last week: 185 × 8</div>
+          <div class="focus-sheet-dots">
+            <span class="focus-sheet-dot is-done"></span>
+            <span class="focus-sheet-dot is-current"></span>
+            <span class="focus-sheet-dot"></span>
+            <span class="focus-sheet-dot"></span>
+          </div>
+
+          <div class="focus-sheet-fields">
+            <div class="focus-sheet-field is-focused">
+              <div class="focus-sheet-value">190</div>
+              <div class="focus-sheet-unit">Weight (lbs)</div>
+            </div>
+            <div class="focus-sheet-field">
+              <div class="focus-sheet-value">8</div>
+              <div class="focus-sheet-unit">Reps</div>
+            </div>
+          </div>
+
+          <div class="focus-sheet-quick">
+            <button class="focus-sheet-quick-btn">−5</button>
+            <button class="focus-sheet-quick-btn">−2.5</button>
+            <button class="focus-sheet-quick-btn">+2.5</button>
+            <button class="focus-sheet-quick-btn">+5</button>
+            <button class="focus-sheet-quick-btn">Type…</button>
+          </div>
+
+          <div class="focus-sheet-actions">
+            <button class="focus-sheet-next-set single">Complete set → S3</button>
+          </div>
+        </div>
+
+        <!-- Session footer -->
+        <div class="session-footer">
+          <div class="session-footer-label">Session notes</div>
+          <textarea class="session-notes-input" placeholder="How did it go? PRs, anything felt off?"></textarea>
+
+          <div class="feel-row">
+            <div class="session-footer-label">How'd the session feel?</div>
+            <div class="mood-grid">
+              <button class="mood-btn"><span class="mood-emoji">🤩</span><span class="mood-label">Great</span></button>
+              <button class="mood-btn is-selected"><span class="mood-emoji">😊</span><span class="mood-label">Good</span></button>
+              <button class="mood-btn"><span class="mood-emoji">😐</span><span class="mood-label">Okay</span></button>
+              <button class="mood-btn"><span class="mood-emoji">😔</span><span class="mood-label">Low</span></button>
+              <button class="mood-btn"><span class="mood-emoji">😢</span><span class="mood-label">Bad</span></button>
+            </div>
+          </div>
+
+          <div class="session-totals">
+            <div>
+              <div class="session-total-num">1</div>
+              <div class="session-total-label">Sets</div>
+            </div>
+            <div>
+              <div class="session-total-num">1,520</div>
+              <div class="session-total-label">Volume (lbs)</div>
+            </div>
+          </div>
+
+          <button class="session-submit">Submit + Get Feedback</button>
+        </div>
+      </div>
+    </div>
+    <div class="section-note">
+      <strong>Overview first, focus when entering.</strong> Every exercise for
+      the day is visible from the moment you land — tap any "lbs" or "reps"
+      cell and the focus sheet slides up over the page with the big numbers
+      + quick-adjust pills you liked from the original C. The sheet's header
+      ("Barbell row · Set 2 of 4 ▾") is itself a tap target — opens a
+      quick-pick list of every exercise in the session so you can jump
+      anywhere without backing out. <strong>Supersets aren't a callout</strong>
+      — users hop between exercises naturally, recording metrics for each as
+      they cycle. The app doesn't need to track or label the round.
+      <br><br>
+      <strong>Day picker</strong> at top mirrors your HCC reference — Mon-Sun
+      with the plan's prescribed session for each day, today bordered in
+      guava, rest day muted. The "Any day · bonus / activity" slot lets you
+      log cardio / mobility / unscripted lifts without picking a planned day.
+      <strong>Session footer</strong> carries session notes, a 5-emoji
+      "how'd the session feel?" picker (🤩 😊 😐 😔 😢 — matches the
+      Journal mood picker so the data sits on the same 1-5 scale), live
+      totals, and the submit-to-AI button.
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PROGRESS · Dashboard (Goals + Body Comp + Trends)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="progress-dashboard" class="section">
+    <div class="section-label">Progress subtab · Dashboard (default landing view)</div>
+    <div class="train-shell">
+      <div class="train-topbar">
+        <button class="train-pill">Plan</button>
+        <button class="train-pill">Today</button>
+        <button class="train-pill is-active">Progress</button>
+      </div>
+      <div class="train-content">
+
+        <div class="dash-head">
+          <div class="dash-thumb">Latest</div>
+          <div class="dash-head-text">
+            <div class="dash-head-title">Body Composition</div>
+            <div class="dash-head-sub">Latest scan May 24 · Day 47 of 84</div>
+          </div>
+          <button class="dash-add">+ Add entry</button>
+        </div>
+
+        <!-- ── Goals card ─────────────────────────────────────────────── -->
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <span class="dash-card-title">Active goals</span>
+            <a class="dash-card-action">Edit ↗</a>
+          </div>
+
+          <div class="goals-grid">
+            <!-- Weight goal -->
+            <div class="goal-block">
+              <svg class="goal-ring-svg" viewBox="0 0 100 100">
+                <circle class="goal-ring-track" cx="50" cy="50" r="42"/>
+                <circle class="goal-ring-fill" cx="50" cy="50" r="42"
+                        stroke-dasharray="263.9"
+                        stroke-dashoffset="168.9"
+                        transform="rotate(-90 50 50)"/>
+                <text class="goal-ring-value" x="50" y="48" text-anchor="middle" dominant-baseline="central">36%</text>
+                <text class="goal-ring-label" x="50" y="68" text-anchor="middle" dominant-baseline="central">WEIGHT</text>
+              </svg>
+              <div class="goal-block-title">181 → 170 lbs</div>
+              <div class="goal-block-meta">7 lbs left · 5 wk to go</div>
+            </div>
+
+            <!-- Body fat goal -->
+            <div class="goal-block">
+              <svg class="goal-ring-svg" viewBox="0 0 100 100">
+                <circle class="goal-ring-track" cx="50" cy="50" r="42"/>
+                <circle class="goal-ring-fill" cx="50" cy="50" r="42"
+                        stroke-dasharray="263.9"
+                        stroke-dashoffset="105.6"
+                        transform="rotate(-90 50 50)"/>
+                <text class="goal-ring-value" x="50" y="48" text-anchor="middle" dominant-baseline="central">60%</text>
+                <text class="goal-ring-label" x="50" y="68" text-anchor="middle" dominant-baseline="central">BODY FAT</text>
+              </svg>
+              <div class="goal-block-title">18% → 12%</div>
+              <div class="goal-block-meta">2.4% left · 6 wk to go</div>
+            </div>
+          </div>
+
+          <div class="goal-eta-bar">
+            <strong>On track.</strong> At current rate (−0.9 lb/wk · −0.5 %/wk) you hit both goals by <strong>Jul 19</strong>.
+          </div>
+        </div>
+
+        <!-- ── Calorie target card (formulaic) ──────────────────────────── -->
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <span class="dash-card-title">Daily calorie target</span>
+            <a class="dash-card-action">Adjust ↗</a>
+          </div>
+
+          <div class="cal-hero">
+            <div class="cal-hero-num">2,295</div>
+            <div class="cal-hero-unit">cal / day · to lose 1 lb/wk</div>
+          </div>
+
+          <div class="cal-breakdown">
+            <div class="cal-step">
+              <div class="cal-step-label">BMR</div>
+              <div class="cal-step-num">1,791</div>
+            </div>
+            <div class="cal-step">
+              <div class="cal-step-label">+ Active</div>
+              <div class="cal-step-num">985</div>
+            </div>
+            <div class="cal-step">
+              <div class="cal-step-label">TDEE</div>
+              <div class="cal-step-num">2,776</div>
+            </div>
+            <div class="cal-step is-out">
+              <div class="cal-step-label">− Deficit</div>
+              <div class="cal-step-num">481</div>
+            </div>
+          </div>
+
+          <div class="macros-grid">
+            <div class="macro-cell">
+              <div class="macro-cell-num">181g</div>
+              <div class="macro-cell-label">Protein</div>
+              <div class="macro-cell-pct">32%</div>
+            </div>
+            <div class="macro-cell">
+              <div class="macro-cell-num">76g</div>
+              <div class="macro-cell-label">Fat</div>
+              <div class="macro-cell-pct">30%</div>
+            </div>
+            <div class="macro-cell">
+              <div class="macro-cell-num">218g</div>
+              <div class="macro-cell-label">Carbs</div>
+              <div class="macro-cell-pct">38%</div>
+            </div>
+          </div>
+
+          <div class="formula-note">
+            <strong>Source:</strong> Mifflin-St Jeor BMR (male · 32 · 5′11″ · 181 lbs) × 1.55 moderate-activity. Deficit set by 11 lb goal over 8 weeks (~1.4 lb/wk · 481 cal/day). Protein anchored at 1.0 g/lb bodyweight; fat at 30 % of calories; carbs fill the remainder. No AI in this math.
+          </div>
+        </div>
+
+        <!-- ── Body composition report (latest analyzed pic) ────────────── -->
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <span class="dash-card-title">Body composition report</span>
+            <a class="dash-card-action">Full analysis ↗</a>
+          </div>
+
+          <div class="bc-row">
+            <div class="bc-thumb">Latest</div>
+            <div class="bc-stats">
+              <div class="bc-stat">
+                <div class="bc-stat-label">Body fat</div>
+                <div class="bc-stat-num">17.8%</div>
+              </div>
+              <div class="bc-stat">
+                <div class="bc-stat-label">Lean mass</div>
+                <div class="bc-stat-text">148.8 lbs</div>
+              </div>
+              <div class="bc-stat">
+                <div class="bc-stat-label">Fat mass</div>
+                <div class="bc-stat-text">32.2 lbs</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="formula-note" style="margin-top: 12px;">
+            <strong>BF% method:</strong> U.S. Navy formula
+            <span style="background:var(--moss-bg);color:var(--moss-fg);padding:1px 6px;border-radius:999px;font-size:9px;font-weight:700;margin-left:4px;">MEASURED</span><br>
+            86.010 · log₁₀(waist 32 − neck 15.5) − 70.041 · log₁₀(height 71) + 36.76 = <strong>17.8%</strong>. Lean mass = 181 × (1 − 0.178) = 148.8 lbs. Fat mass = 181 − 148.8 = 32.2 lbs. No AI vision in these numbers.
+          </div>
+
+          <div class="bc-balance-row is-warn">
+            <strong>Needs work:</strong> quadriceps, hamstrings, calves, lateral deltoids
+          </div>
+          <div class="bc-balance-row is-good">
+            <strong>Balanced:</strong> chest, biceps, traps, forearms
+          </div>
+          <div class="bc-balance-row">
+            <strong>Posture:</strong> mild anterior pelvic tilt, slight forward head posture
+          </div>
+          <div class="formula-note" style="border-left-color: var(--amber-fg); background: var(--amber-bg);">
+            <strong>Above</strong> (muscle balance · posture) comes from <strong>Claude vision on the photos</strong> — there's no formula for these. The AI block stays narrow: factual observations only, no calorie or training recommendations (those are tied to the formula-driven goal math).
+          </div>
+        </div>
+
+        <!-- ── Trend chart ──────────────────────────────────────────────── -->
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <span class="dash-card-title">Weight trend</span>
+            <a class="dash-card-action">Show body fat ↗</a>
+          </div>
+          <svg class="trend-chart" viewBox="0 0 320 140" preserveAspectRatio="none">
+            <!-- Y axis labels -->
+            <text class="trend-axis" x="2" y="14">190</text>
+            <text class="trend-axis" x="2" y="74">180</text>
+            <text class="trend-axis" x="2" y="134">170</text>
+            <!-- Goal line at 170 -->
+            <line class="trend-goal-line" x1="22" y1="128" x2="318" y2="128"/>
+            <text class="trend-axis" x="290" y="124" text-anchor="end">Goal 170</text>
+            <!-- Trend area -->
+            <path class="trend-area"
+                  d="M 22 28 L 76 40 L 130 46 L 184 58 L 238 70 L 238 134 L 22 134 Z"/>
+            <!-- Actual trend line -->
+            <path class="trend-line"
+                  d="M 22 28 L 76 40 L 130 46 L 184 58 L 238 70"/>
+            <!-- Projected line -->
+            <path class="trend-projected"
+                  d="M 238 70 L 310 128"/>
+            <!-- Points -->
+            <circle class="trend-point" cx="22"  cy="28" r="3"/>
+            <circle class="trend-point" cx="76"  cy="40" r="3"/>
+            <circle class="trend-point" cx="130" cy="46" r="3"/>
+            <circle class="trend-point" cx="184" cy="58" r="3"/>
+            <circle class="trend-point" cx="238" cy="70" r="3.5"/>
+            <!-- X-axis labels -->
+            <text class="trend-axis" x="22"  y="139" text-anchor="start">Mar 29</text>
+            <text class="trend-axis" x="184" y="139" text-anchor="middle">May 10</text>
+            <text class="trend-axis" x="310" y="139" text-anchor="end">Jul 19</text>
+          </svg>
+          <div class="trend-legend">
+            <span><i style="background:var(--guava-700)"></i> Logged (5)</span>
+            <span><i style="background:var(--ink-4)"></i> Projected</span>
+            <span><i style="background:var(--moss-fg)"></i> Goal</span>
+          </div>
+        </div>
+
+        <!-- ── Photos timeline ──────────────────────────────────────────── -->
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <span class="dash-card-title">Photo timeline</span>
+            <a class="dash-card-action">Compare → ↗</a>
+          </div>
+          <div class="timeline-scrub">
+            <div class="timeline-item is-active">
+              <div class="timeline-item-date">24</div>
+              <div class="timeline-item-month">May</div>
+              <div class="timeline-item-val">181</div>
+              <div class="timeline-item-unit">18%</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">10</div>
+              <div class="timeline-item-month">May</div>
+              <div class="timeline-item-val">183</div>
+              <div class="timeline-item-unit">19%</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">26</div>
+              <div class="timeline-item-month">Apr</div>
+              <div class="timeline-item-val">185</div>
+              <div class="timeline-item-unit">20%</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">12</div>
+              <div class="timeline-item-month">Apr</div>
+              <div class="timeline-item-val">186</div>
+              <div class="timeline-item-unit">21%</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">29</div>
+              <div class="timeline-item-month">Mar</div>
+              <div class="timeline-item-val">188</div>
+              <div class="timeline-item-unit">22%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Profile (drives the calorie math) ─────────────────────────── -->
+        <div class="dash-card">
+          <div class="dash-card-head">
+            <span class="dash-card-title">Profile · drives the calorie math</span>
+            <a class="dash-card-action" href="#progress-setup">Edit ↗</a>
+          </div>
+          <div class="setup-summary">
+            <div class="setup-cell">
+              <span class="setup-cell-label">Sex</span>
+              <span class="setup-cell-val">Male</span>
+            </div>
+            <div class="setup-cell">
+              <span class="setup-cell-label">Age</span>
+              <span class="setup-cell-val">32</span>
+              <span class="setup-cell-tag is-auto">from DoB</span>
+            </div>
+            <div class="setup-cell">
+              <span class="setup-cell-label">Height</span>
+              <span class="setup-cell-val">5′11″</span>
+            </div>
+            <div class="setup-cell">
+              <span class="setup-cell-label">Weight</span>
+              <span class="setup-cell-val">181 lbs</span>
+              <span class="setup-cell-tag is-auto">auto</span>
+            </div>
+            <div class="setup-cell" style="grid-column: 1 / -1;">
+              <span class="setup-cell-label">Activity</span>
+              <span class="setup-cell-val">Moderate</span>
+              <span class="setup-cell-tag is-suggested">4 sessions/wk avg</span>
+            </div>
+          </div>
+          <div class="formula-note" style="border-left-color: var(--guava-700);">
+            <strong>Auto-updating fields:</strong> Weight pulls from the latest Progress entry; Age recomputes daily from your DoB; Activity is suggested from your last 4 weeks of logged workout sessions and you can override it any time. <strong>Static fields</strong> (Sex, Height, DoB) are set once in the wizard and only change when you edit them.
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="section-note">
+      <strong>What's formulaic vs AI</strong>
+      <br><br>
+      Everything quantitative is grounded in a formula. AI vision is
+      reserved for things that can only be observed from photos
+      (muscle-group balance, posture, body type).
+      <br><br>
+      <table style="border-collapse:collapse;font-size:11px;width:100%">
+        <tr style="border-bottom:1px solid var(--edge);">
+          <td style="padding:4px 8px 4px 0;font-weight:700;color:var(--ink-2);width:50%">Number</td>
+          <td style="padding:4px 0;font-weight:700;color:var(--ink-2)">Source</td>
+        </tr>
+        <tr><td style="padding:4px 8px 4px 0">Body fat %</td><td style="padding:4px 0">U.S. Navy formula (neck + waist + height). AI estimate only if measurements missing — tagged "low confidence".</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Lean mass · Fat mass</td><td style="padding:4px 0">weight × (1 − BF%) / weight − lean</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">BMR</td><td style="padding:4px 0">Mifflin-St Jeor: 10·kg + 6.25·cm − 5·age ± sex offset</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">TDEE</td><td style="padding:4px 0">BMR × activity multiplier (1.2 / 1.375 / 1.55 / 1.725 / 1.9)</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Daily calorie target</td><td style="padding:4px 0">TDEE − (Δlbs · 3500 / Δdays)</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Macros</td><td style="padding:4px 0">Protein 1g/lb · Fat 30% · Carbs remainder</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Time to goal</td><td style="padding:4px 0">remaining_lbs / observed_loss_rate (linear regression of logged weights)</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Progress %</td><td style="padding:4px 0">(start − current) / (start − goal)</td></tr>
+        <tr style="border-top:1px solid var(--edge);background:var(--amber-bg)">
+          <td style="padding:4px 8px 4px 0;color:var(--amber-fg)">Muscle balance · Posture · Body type</td><td style="padding:4px 0;color:var(--amber-fg)">Claude vision on the photos. No formula exists for these from a 2D photo.</td></tr>
+      </table>
+      <br>
+      <strong>Refresh window per surface</strong>
+      <br><br>
+      <table style="border-collapse:collapse;font-size:11px;width:100%">
+        <tr style="border-bottom:1px solid var(--edge);">
+          <td style="padding:4px 8px 4px 0;font-weight:700;color:var(--ink-2);width:50%">Surface</td>
+          <td style="padding:4px 0;font-weight:700;color:var(--ink-2)">Window</td>
+        </tr>
+        <tr><td style="padding:4px 8px 4px 0">Today subtab — day picker</td><td style="padding:4px 0">This week (Mon-Sun) + Any-day pill. Auto-rolls every Monday at midnight local — always shows "this week", never scrolls.</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Today subtab — "last session" reference</td><td style="padding:4px 0">Most recent recorded session for the same exercise (typically 3-7 days ago). Per-exercise lookup, not a fixed window.</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Dashboard — goal rings + on-track banner</td><td style="padding:4px 0">Recomputed every page load against the active goal's start date and current values.</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Dashboard — calorie target</td><td style="padding:4px 0">Recomputed on every new entry (weight changes ⇒ BMR/TDEE shift).</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Dashboard — weight trend chart</td><td style="padding:4px 0">Full active-goal window (start date → projected end). Not 7-day rolling — 7 days is too short to see a 1 lb/wk trend.</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Dashboard — photo timeline</td><td style="padding:4px 0">Last 8-12 entries regardless of date. Entries are typically 1-2/week so 8 covers ~6-8 weeks.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PROGRESS · Setup wizard (first-time + Edit)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="progress-setup" class="section">
+    <div class="section-label">Progress subtab · Setup wizard (first-time + edit any time)</div>
+    <div class="train-shell">
+      <div class="train-topbar">
+        <button class="train-pill">Plan</button>
+        <button class="train-pill">Today</button>
+        <button class="train-pill is-active">Progress</button>
+      </div>
+      <div class="train-content">
+
+        <div class="wiz-head">
+          <div class="wiz-title">Your body composition profile</div>
+          <div class="wiz-sub">
+            These five values feed the BMR, TDEE, and daily calorie target
+            math. Set them once; we'll keep what we can fresh from data you
+            already log. Change them any time from the dashboard's Profile card.
+          </div>
+        </div>
+
+        <!-- ── Sex ────────────────────────────────────────────────────── -->
+        <div class="wiz-section">
+          <div class="wiz-section-head">
+            <span class="wiz-section-label">Sex</span>
+            <span class="wiz-section-source is-static">Set once</span>
+          </div>
+          <div class="radio-row">
+            <div class="radio-pill is-selected">Male</div>
+            <div class="radio-pill">Female</div>
+          </div>
+          <div class="formula-note" style="margin-top:10px;">
+            Sex shifts the Mifflin-St Jeor BMR offset (<strong>+5</strong> for male, <strong>−161</strong> for female).
+          </div>
+        </div>
+
+        <!-- ── Date of birth ──────────────────────────────────────────── -->
+        <div class="wiz-section">
+          <div class="wiz-section-head">
+            <span class="wiz-section-label">Date of birth</span>
+            <span class="wiz-section-source is-static">Set once</span>
+          </div>
+          <input class="form-input" type="text" value="1994-03-15">
+          <div class="formula-note" style="margin-top:10px;">
+            Age recomputes daily from DoB → today. Right now: <strong>32 years</strong>. BMR drops <strong>5 cal/day</strong> per year of age.
+          </div>
+        </div>
+
+        <!-- ── Height ─────────────────────────────────────────────────── -->
+        <div class="wiz-section">
+          <div class="wiz-section-head">
+            <span class="wiz-section-label">Height</span>
+            <span class="wiz-section-source is-static">Set once</span>
+          </div>
+          <div class="height-row">
+            <div class="form-field">
+              <label class="form-label">Feet</label>
+              <input class="form-input" type="text" value="5">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Inches</label>
+              <input class="form-input" type="text" value="11">
+            </div>
+          </div>
+          <div class="formula-note" style="margin-top:10px;">
+            5′11″ = <strong>180 cm</strong>. Used in BMR (<strong>+6.25 cal/day per cm</strong>) and the U.S. Navy BF% formula.
+          </div>
+        </div>
+
+        <!-- ── Weight (auto from latest entry) ────────────────────────── -->
+        <div class="wiz-section">
+          <div class="wiz-section-head">
+            <span class="wiz-section-label">Weight</span>
+            <span class="wiz-section-source is-auto">Auto from latest entry</span>
+          </div>
+          <input class="form-input" type="text" value="181" readonly>
+          <div class="formula-note" style="margin-top:10px; border-left-color: var(--moss-fg);">
+            Always pulls from your most recent Progress entry (May 24 → <strong>181 lbs</strong>). No manual upkeep needed. To change it, log a new entry. BMR adds <strong>10 cal/day per kg</strong>.
+          </div>
+        </div>
+
+        <!-- ── Activity level (suggested from session log) ────────────── -->
+        <div class="wiz-section">
+          <div class="wiz-section-head">
+            <span class="wiz-section-label">Activity level</span>
+            <span class="wiz-section-source is-suggested">Suggested from your sessions</span>
+          </div>
+          <div class="activity-list">
+            <div class="activity-option">
+              <div class="activity-radio"></div>
+              <div>
+                <div class="activity-name">Sedentary</div>
+                <div class="activity-desc">Desk job, little or no exercise</div>
+              </div>
+              <span class="activity-mult">× 1.2</span>
+            </div>
+            <div class="activity-option">
+              <div class="activity-radio"></div>
+              <div>
+                <div class="activity-name">Light</div>
+                <div class="activity-desc">Light exercise 1-3 days/week</div>
+              </div>
+              <span class="activity-mult">× 1.375</span>
+            </div>
+            <div class="activity-option is-selected is-suggested">
+              <div class="activity-radio"></div>
+              <div>
+                <div class="activity-name">Moderate <span class="activity-suggested-tag">Suggested</span></div>
+                <div class="activity-desc">Moderate exercise 3-5 days/week</div>
+              </div>
+              <span class="activity-mult">× 1.55</span>
+            </div>
+            <div class="activity-option">
+              <div class="activity-radio"></div>
+              <div>
+                <div class="activity-name">Active</div>
+                <div class="activity-desc">Heavy exercise 6-7 days/week</div>
+              </div>
+              <span class="activity-mult">× 1.725</span>
+            </div>
+            <div class="activity-option">
+              <div class="activity-radio"></div>
+              <div>
+                <div class="activity-name">Very Active</div>
+                <div class="activity-desc">Heavy daily + physical job / 2× day</div>
+              </div>
+              <span class="activity-mult">× 1.9</span>
+            </div>
+          </div>
+          <div class="formula-note" style="margin-top:10px; border-left-color: var(--moss-fg);">
+            <strong>Why "Moderate" is suggested:</strong> you've logged <strong>4 workout sessions/week on average</strong> over the last 4 weeks (16 sessions in 28 days). That falls in the 3-5 days/week bucket. Re-suggested weekly; manual override sticks until your weekly average shifts to a new bucket and you re-confirm.
+          </div>
+        </div>
+
+        <!-- ── Derived (what these inputs produce) ─────────────────────── -->
+        <div class="wiz-derived">
+          <div class="wiz-derived-label">What this gives you</div>
+          <div class="wiz-derived-row">
+            <span class="wiz-derived-name">BMR (Mifflin-St Jeor)</span>
+            <span class="wiz-derived-val">1,791 cal</span>
+          </div>
+          <div class="wiz-derived-row">
+            <span class="wiz-derived-name">TDEE (× 1.55 moderate)</span>
+            <span class="wiz-derived-val">2,776 cal</span>
+          </div>
+          <div class="wiz-derived-row">
+            <span class="wiz-derived-name">Target deficit for current goal</span>
+            <span class="wiz-derived-val">−481 cal/day</span>
+          </div>
+          <div class="wiz-derived-row">
+            <span class="wiz-derived-name">Daily target</span>
+            <span class="wiz-derived-val" style="color:var(--guava-700)">2,295 cal/day</span>
+          </div>
+        </div>
+
+        <div class="wiz-actions">
+          <button class="wiz-skip">Skip for now</button>
+          <button class="wiz-save">Save profile</button>
+        </div>
+
+      </div>
+    </div>
+    <div class="section-note">
+      <strong>Two surfaces, one form.</strong> This wizard appears the first
+      time the user opens Progress without a profile. The exact same form is
+      reachable later via the "Edit ↗" link on the dashboard's Profile card
+      — pre-filled with current values, "Skip" replaced with "Cancel".
+      <br><br>
+      <strong>Field freshness, at a glance:</strong>
+      <table style="border-collapse:collapse;font-size:11px;width:100%;margin-top:6px">
+        <tr style="border-bottom:1px solid var(--edge);">
+          <td style="padding:4px 8px 4px 0;font-weight:700;color:var(--ink-2);width:25%">Field</td>
+          <td style="padding:4px 8px 4px 0;font-weight:700;color:var(--ink-2);width:25%">Source</td>
+          <td style="padding:4px 0;font-weight:700;color:var(--ink-2)">Update behavior</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px 4px 0;color:var(--ink-2)">Sex</td>
+          <td style="padding:4px 8px 4px 0"><span class="wiz-section-source is-static" style="font-size:9px;">Static</span></td>
+          <td style="padding:4px 0;color:var(--ink-3)">User-set in wizard; never changes unless edited.</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px 4px 0;color:var(--ink-2)">Date of birth</td>
+          <td style="padding:4px 8px 4px 0"><span class="wiz-section-source is-static" style="font-size:9px;">Static</span></td>
+          <td style="padding:4px 0;color:var(--ink-3)">User-set in wizard. <em>Age</em> auto-derives daily from this.</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px 4px 0;color:var(--ink-2)">Height</td>
+          <td style="padding:4px 8px 4px 0"><span class="wiz-section-source is-static" style="font-size:9px;">Static</span></td>
+          <td style="padding:4px 0;color:var(--ink-3)">User-set; adults don't change height. Editable any time.</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px 4px 0;color:var(--ink-2)">Weight</td>
+          <td style="padding:4px 8px 4px 0"><span class="wiz-section-source is-auto" style="font-size:9px;">Auto</span></td>
+          <td style="padding:4px 0;color:var(--ink-3)">Pulled from the latest <code>progress_pics</code> entry. Every new entry auto-updates the profile — no manual touching.</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 8px 4px 0;color:var(--ink-2)">Activity level</td>
+          <td style="padding:4px 8px 4px 0"><span class="wiz-section-source is-suggested" style="font-size:9px;">Suggested</span></td>
+          <td style="padding:4px 0;color:var(--ink-3)">Server computes sessions-per-week over last 28 days from <code>workout_sessions</code>, maps to one of the 5 buckets. User can override; override sticks until the weekly average shifts to a new bucket and we re-prompt.</td>
+        </tr>
+      </table>
+      <br>
+      <strong>If the user skips the wizard</strong> the calorie card on the dashboard hides itself but the rest of Progress (goal rings if they set a weight goal, body-comp report from photos, weight trend, photo timeline) still works. The Profile card stays visible with "Set up →" call-to-action.
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PROGRESS · Log entry (inspired by HCC screenshot 2)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="progress-log" class="section">
+    <div class="section-label">Progress subtab · Log new entry</div>
+    <div class="train-shell">
+      <div class="train-topbar">
+        <button class="train-pill">Plan</button>
+        <button class="train-pill">Today</button>
+        <button class="train-pill is-active">Progress</button>
+      </div>
+      <div class="train-content">
+        <div class="progress-head"><div class="progress-title">Body Composition</div></div>
+        <div class="progress-sub">Track your physique over time</div>
+
+        <div class="card" style="padding: 14px;">
+          <div class="upload-grid">
+            <div class="upload-tile">
+              <div class="upload-tile-icon">👤</div>
+              <div class="upload-tile-label">Front view</div>
+              <div class="upload-tile-hint">Tap to upload</div>
+            </div>
+            <div class="upload-tile">
+              <div class="upload-tile-icon">↧</div>
+              <div class="upload-tile-label">Side view</div>
+              <div class="upload-tile-hint">Tap to upload</div>
+            </div>
+            <div class="upload-tile is-optional">
+              <div class="upload-tile-icon">≡</div>
+              <div class="upload-tile-label">Back view</div>
+              <div class="upload-tile-hint">Optional</div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="form-label">Date</label>
+              <input class="form-input" type="text" value="05/24/2026" readonly>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Weight (lbs)</label>
+              <input class="form-input" type="text" value="181">
+            </div>
+            <div class="form-field form-field--wide">
+              <label class="form-label">Notes</label>
+              <input class="form-input" type="text" placeholder="Any observations…">
+            </div>
+          </div>
+
+          <button class="measure-toggle">▾ Add measurements (recommended — unlocks formula-based BF%)</button>
+          <div class="measure-grid">
+            <div class="form-field">
+              <label class="form-label">Neck (in)</label>
+              <input class="form-input" type="text" value="15.5">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Waist (in)</label>
+              <input class="form-input" type="text" value="32">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Chest (in)</label>
+              <input class="form-input" type="text" value="40">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Arms (in)</label>
+              <input class="form-input" type="text" value="15">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Hips (in)</label>
+              <input class="form-input" type="text" value="38">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Thighs (in)</label>
+              <input class="form-input" type="text" value="23">
+            </div>
+          </div>
+          <div class="formula-note" style="margin: -6px 0 12px;">
+            <strong>Body fat %</strong> is computed from <strong>neck + waist + height</strong> using the U.S. Navy formula whenever those three are present. Without them, we fall back to an AI estimate from the photos with a "low confidence" tag. Other measurements (chest/arms/hips/thighs) are tracked for trend but don't feed the BF% number.
+          </div>
+
+          <button class="btn-analyze">Analyze &amp; Save</button>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="focus-label">Statistics</div>
+          <div class="stats-empty">Log 2+ entries to see trends</div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="focus-label">Timeline</div>
+          <div class="timeline-scrub">
+            <div class="timeline-item is-active">
+              <div class="timeline-item-date">24</div>
+              <div class="timeline-item-month">May</div>
+              <div class="timeline-item-val">181</div>
+              <div class="timeline-item-unit">lbs</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">10</div>
+              <div class="timeline-item-month">May</div>
+              <div class="timeline-item-val">183</div>
+              <div class="timeline-item-unit">lbs</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">26</div>
+              <div class="timeline-item-month">Apr</div>
+              <div class="timeline-item-val">185</div>
+              <div class="timeline-item-unit">lbs</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">12</div>
+              <div class="timeline-item-month">Apr</div>
+              <div class="timeline-item-val">186</div>
+              <div class="timeline-item-unit">lbs</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-item-date">29</div>
+              <div class="timeline-item-month">Mar</div>
+              <div class="timeline-item-val">188</div>
+              <div class="timeline-item-unit">lbs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section-note">
+      <strong>One screen does it all.</strong> Upload tiles up top (Back view
+      marked optional with the dashed guava border, matching the HCC inspo
+      but in our palette). Date / weight / notes always visible; tape
+      measurements collapsed by default. "Analyze &amp; Save" sends the photos
+      to Claude vision and writes the entry. Horizontal scrub at the bottom
+      jumps to any prior entry — same control surface as the detail view.
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       PROGRESS · Detail view (inspired by HCC screenshot 1)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="progress-detail" class="section">
+    <div class="section-label">Progress subtab · Detail view of one entry</div>
+    <div class="train-shell">
+      <div class="train-topbar">
+        <button class="train-pill">Plan</button>
+        <button class="train-pill">Today</button>
+        <button class="train-pill is-active">Progress</button>
+      </div>
+      <div class="train-content">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <a href="#progress-log" style="color:var(--ink-3);text-decoration:none;font-size:13px;font-weight:600;">‹ Progress</a>
+          <span style="font-size:13px;color:var(--ink);font-weight:700;">Sunday, May 24, 2026</span>
+        </div>
+
+        <div class="timeline-scrub" style="margin-bottom:14px">
+          <div class="timeline-item is-active">
+            <div class="timeline-item-date">24</div><div class="timeline-item-month">May</div>
+            <div class="timeline-item-val">181</div><div class="timeline-item-unit">lbs</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-date">10</div><div class="timeline-item-month">May</div>
+            <div class="timeline-item-val">183</div><div class="timeline-item-unit">lbs</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-date">26</div><div class="timeline-item-month">Apr</div>
+            <div class="timeline-item-val">185</div><div class="timeline-item-unit">lbs</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-date">12</div><div class="timeline-item-month">Apr</div>
+            <div class="timeline-item-val">186</div><div class="timeline-item-unit">lbs</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-item-date">29</div><div class="timeline-item-month">Mar</div>
+            <div class="timeline-item-val">188</div><div class="timeline-item-unit">lbs</div>
+          </div>
+        </div>
+
+        <div class="detail-photos">
+          <div class="detail-photo">Front</div>
+          <div class="detail-photo">Side</div>
+        </div>
+
+        <div class="detail-stats">
+          <div class="detail-stat">
+            <div class="detail-stat-label">Body fat</div>
+            <div class="detail-stat-value">18%</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-label">Weight</div>
+            <div class="detail-stat-value is-muted">181 <span style="font-size:10px;font-weight:600;color:var(--ink-4);">lbs</span></div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-label">Body type</div>
+            <div class="detail-stat-text">ecto/meso</div>
+          </div>
+        </div>
+        <div class="detail-stats-2">
+          <div class="detail-stat">
+            <div class="detail-stat-label">Stage</div>
+            <div class="detail-stat-text">Intermediate</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-label">Class</div>
+            <div class="detail-stat-text">Lean</div>
+          </div>
+        </div>
+
+        <div class="analysis-card">
+          <div class="analysis-head">
+            <span class="analysis-badge">Physique analysis</span>
+            <span class="analysis-confidence">medium confidence</span>
+          </div>
+          <p class="analysis-overview">
+            <strong>Overview:</strong> A reasonably lean physique at approximately 18 % body fat with a decent upper-body base but notably underdeveloped legs relative to the torso. The midsection carries soft fat around the lower abdomen with no visible ab definition, and the side profile shows a flat chest with some pec development but limited shoulder width. The overall frame has good potential — the priority should be building lower-body mass and dropping 3–5 % body fat to reveal existing upper-body musculature.
+          </p>
+
+          <div class="callout needs-work">
+            <span class="callout-label">Needs work:</span> quadriceps, hamstrings, calves, lateral deltoids, triceps
+          </div>
+          <div class="callout balanced">
+            <span class="callout-label">Balanced:</span> chest, biceps, traps, forearms
+          </div>
+
+          <div class="ratio-grid">
+            <div class="ratio-block">
+              <div class="ratio-name">V-Taper</div>
+              <div class="ratio-value">moderate</div>
+            </div>
+            <div class="ratio-block">
+              <div class="ratio-name">Upper / Lower</div>
+              <div class="ratio-value">upper dominant</div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <div class="meta-row"><strong>Symmetry:</strong> good</div>
+            <div class="meta-row is-warn"><strong>Posture:</strong> mild anterior pelvic tilt, slight forward head posture</div>
+            <div class="meta-row"><strong>Skin:</strong> normal; body hair coverage makes precise definition assessment moderately difficult</div>
+          </div>
+
+          <div class="focus-areas">
+            <div class="focus-label">Focus areas</div>
+            <div class="focus-list">
+              <div class="focus-item">Lower-body hypertrophy (squats, Romanian deadlifts, leg press) to address significant quad and hamstring underdevelopment.</div>
+              <div class="focus-item">Lateral deltoid + shoulder width development (lateral raises, overhead press) to improve V-taper and shoulder-to-waist ratio.</div>
+              <div class="focus-item">Moderate caloric deficit with maintained protein intake to reduce lower abdominal fat and reveal existing upper-body musculature.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section-note">
+      <strong>Structure borrowed from the HCC reference, palette retooled to ours.</strong>
+      Photos in the muted paper-card style (front + side default; back drops below
+      if uploaded). Stat cards use guava red for the highlighted metric (body fat)
+      and ink-on-surface for the rest. The analysis card is wrapped in a guava-50
+      tint so the AI block visually separates from the raw stats. "Needs work" and
+      "Balanced" callouts use amber and moss — the same accents already in the
+      brief card's stat-delta logic.
+      <br><br>
+      <strong>Server side:</strong> on Analyze &amp; Save we call Claude vision with the
+      uploaded photos + most recent prior entry, and have it return the full
+      structured block above (overview prose, needs-work / balanced muscle lists,
+      ratio + symmetry / posture / skin notes, focus areas, confidence rating).
+      Everything is stored on the <code>progress_pics</code> row and the
+      <code>ai_analysis</code> JSONB; re-running analysis is idempotent.
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

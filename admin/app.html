@@ -261,8 +261,8 @@ select.field-input:focus, input.field-input:focus { outline: none; border-color:
 const SUPABASE_URL  = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY  = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const ADMIN_API_URL = '/.netlify/functions/admin-api';
-const VALID_TABS    = ['tasks', 'habits', 'notes', 'scratch'];
-const TAB_LABELS    = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', scratch: 'Scratch' };
+const VALID_TABS    = ['tasks', 'habits', 'notes', 'journal', 'train', 'scratch'];
+const TAB_LABELS    = { tasks: 'Tasks', habits: 'Habits', notes: 'Notes', journal: 'Journal', train: 'Train', scratch: 'Scratch' };
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);

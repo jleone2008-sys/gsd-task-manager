@@ -206,7 +206,7 @@ let isAdminViewMode = false;
 let signingIn = false;
 let googleAccessToken = null;   // set after OAuth or admin impersonation
 let googleTokenExpiry = 0;      // unix ms; ensureGoogleToken() refreshes before calls
-const VALID_TABS = ['home', 'tasks', 'habits', 'notes', 'journal'];
+const VALID_TABS = ['home', 'tasks', 'habits', 'notes', 'journal', 'train'];
 
 // Set this after creating the beta Google Cloud project
 const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
@@ -593,6 +593,7 @@ function switchTool(tool) {
   else if (tool === 'notes') { renderNotes(); }
   else if (tool === 'settings' && typeof renderSettingsPage === 'function') { renderSettingsPage(); }
   else if (tool === 'journal' && typeof renderJournal === 'function') { renderJournal(); }
+  else if (tool === 'train' && typeof renderTrain === 'function') { renderTrain(); }
 }
 document.addEventListener('click', e => {
   const tab = e.target.closest('.mobile-nav-btn, .sidebar-btn');
