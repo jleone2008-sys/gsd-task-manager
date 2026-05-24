@@ -655,6 +655,10 @@ const _trainTodayState = {
   notes:       '',
   submitting:  false,
   submittedFeedback: null,    // formulaic feedback object after submit
+  // AI insight overlay — fetched from beta-train-feedback after the
+  // deterministic stats render. { status: 'loading' | 'ok' | 'fallback'
+  // | 'error', data: {...}, message? }
+  aiFeedback: null,
 };
 
 function trainTodayLocalDate() {
@@ -684,6 +688,7 @@ function ensureTrainTodayInit() {
   _trainTodayState.feel = null;
   _trainTodayState.notes = '';
   _trainTodayState.submittedFeedback = null;
+  _trainTodayState.aiFeedback = null;
 }
 
 // "YYYY-MM-DD" shifted by N days from a base date string. Negative N
@@ -1236,9 +1241,50 @@ function renderTodayFeedback(st) {
       </div>
       <div class="fb-stats-grid">${stats}</div>
       ${lines ? `<ul class="fb-observations">${lines}</ul>` : ''}
+      ${renderAIFeedbackBlock(st.aiFeedback)}
       ${renderHabitLinkPrompts(fb._session)}
       <button class="train-btn-secondary" style="margin-top:12px" data-train-action="start-new">Start another session</button>
     </div>
+  </div>`;
+}
+
+// Renders the AI-narrative overlay below the deterministic stats grid.
+// Three states: loading skeleton, success (insight + 0-3 observations),
+// error (silent unless verbose). The block is always visually distinct
+// from the formulaic stats so users can tell which numbers are AI vs
+// derived.
+function renderAIFeedbackBlock(ai) {
+  if (!ai) return '';
+  if (ai.status === 'loading') {
+    return `<div class="train-ai-block is-loading">
+      <div class="train-ai-label">Coach insight</div>
+      <div class="train-ai-skel"></div>
+      <div class="train-ai-skel" style="width:70%"></div>
+    </div>`;
+  }
+  if (ai.status === 'error') {
+    // Quiet failure — the formulaic feedback is already enough on its own.
+    return `<div class="train-ai-block is-error">
+      <div class="train-ai-label">Coach insight</div>
+      <div class="train-ai-msg">Couldn’t reach the coach right now. Your stats above are saved.</div>
+    </div>`;
+  }
+  const data = ai.data || {};
+  const insight = data.insight || '';
+  const obsList = Array.isArray(data.observations) ? data.observations : [];
+  const obs = obsList.length
+    ? `<ul class="train-ai-observations">${obsList.map(o => `<li>${trainEsc(o)}</li>`).join('')}</ul>`
+    : '';
+  const tag = ai.status === 'fallback'
+    ? '<span class="train-ai-tag">deterministic</span>'
+    : '<span class="train-ai-tag is-ai">AI · Claude</span>';
+  return `<div class="train-ai-block">
+    <div class="train-ai-head">
+      <div class="train-ai-label">Coach insight</div>
+      ${tag}
+    </div>
+    ${insight ? `<div class="train-ai-insight">${trainEsc(insight)}</div>` : ''}
+    ${obs}
   </div>`;
 }
 
@@ -1475,6 +1521,13 @@ async function trainSubmitTodaySession() {
     // Stash the session row on the feedback object so the habit-link
     // prompt can read its day_type + session_date.
     st.submittedFeedback._session = session;
+    // Phase 4 commit 6 — kick off the AI narrative call in the background.
+    // The deterministic stats already render; this overlays on top once
+    // it returns. Network failure or no-API-key is non-fatal: the
+    // function's fallback path returns a one-liner so the UI still has
+    // something to show.
+    st.aiFeedback = { status: 'loading' };
+    loadTrainAIFeedback(session.id);
     // Phase 4 commit 4 — auto-mark any habit linked to the matching
     // library kind (lifting / cardio / activity). Idempotent via the
     // habit_completions unique constraint on (user_id, habit_id,
@@ -1495,6 +1548,39 @@ async function trainSubmitTodaySession() {
     st.submitting = false;
     renderTrain();
     showTrainToast('Submit failed — ' + (e.message || 'try again'));
+  }
+}
+
+// Fetch the AI-written narrative for a just-submitted session. Hits
+// /.netlify/functions/beta-train-feedback with the current Supabase
+// access token. Network errors, missing API key, or model errors all
+// flow into the same `status: 'error'` UI path so the formulaic stats
+// remain the source of truth.
+async function loadTrainAIFeedback(sessionId) {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      _trainTodayState.aiFeedback = { status: 'error', message: 'not signed in' };
+      renderTrain();
+      return;
+    }
+    const r = await fetch('/.netlify/functions/beta-train-feedback', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ session_id: sessionId }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      _trainTodayState.aiFeedback = { status: 'error', message: j.error || `http_${r.status}` };
+    } else {
+      _trainTodayState.aiFeedback = { status: j.status || 'ok', data: j };
+    }
+  } catch (e) {
+    console.warn('[train] ai feedback fetch failed', e);
+    _trainTodayState.aiFeedback = { status: 'error', message: e.message || 'fetch failed' };
+  } finally {
+    if (_trainActiveView === 'today') renderTrain();
   }
 }
 
@@ -3091,6 +3177,46 @@ function ensureTrainStyles() {
       .entry-meas-grid { grid-template-columns: repeat(2, 1fr); }
     }
     .train-form-field { display: flex; flex-direction: column; gap: 4px; }
+
+    /* ── AI feedback overlay (Today subtab) ───────────────────────── */
+    .train-ai-block {
+      background: var(--surface-2); border: 1px dashed var(--edge-strong);
+      border-radius: var(--r-md); padding: 12px 14px; margin-top: 14px;
+    }
+    .train-ai-block.is-error { background: var(--surface); border-style: solid; }
+    .train-ai-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 8px;
+    }
+    .train-ai-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase;
+    }
+    .train-ai-tag {
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--surface); color: var(--ink-4); text-transform: uppercase;
+    }
+    .train-ai-tag.is-ai { background: var(--guava-50); color: var(--guava-700); }
+    .train-ai-insight {
+      font-size: 14px; color: var(--ink); line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .train-ai-observations {
+      margin: 6px 0 0; padding-left: 18px;
+      font-size: 13px; color: var(--ink-2); line-height: 1.55;
+    }
+    .train-ai-observations li { margin-bottom: 2px; }
+    .train-ai-msg { font-size: 12px; color: var(--ink-4); }
+    .train-ai-skel {
+      height: 12px; border-radius: 6px; background: var(--edge);
+      animation: trainAiPulse 1.4s ease-in-out infinite;
+      margin-bottom: 6px;
+    }
+    @keyframes trainAiPulse {
+      0%, 100% { opacity: 0.55; }
+      50%      { opacity: 0.85; }
+    }
   `;
   document.head.appendChild(s);
 }
