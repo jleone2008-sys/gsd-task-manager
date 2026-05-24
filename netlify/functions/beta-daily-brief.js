@@ -590,7 +590,13 @@ async function storeBrief(user, brief_date, result, serviceKey) {
     fallback_reason:   result.fallback_reason,
     input_snapshot:    result.input_snapshot,
   };
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/daily_briefs`, {
+  // on_conflict tells PostgREST which constraint to use for upsert. Without
+  // it, the default is the PRIMARY KEY (id, auto-generated UUID), which
+  // never collides — so the merge-duplicates resolution falls back to a
+  // straight insert and trips the (user_id, brief_date) UNIQUE constraint
+  // with a 409 every time we regenerate. Naming the right constraint here
+  // makes the upsert actually upsert.
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/daily_briefs?on_conflict=user_id,brief_date`, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
