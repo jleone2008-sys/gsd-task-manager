@@ -82,6 +82,7 @@ exports.handler = async () => {
         body: JSON.stringify({
           user_email: u.email,
           user_id:    u.supabase_user_id,
+          mode:       'morning',   // cron only fires in the morning window (06-14 local)
         }),
       });
       const j = await r.json().catch(() => ({}));
