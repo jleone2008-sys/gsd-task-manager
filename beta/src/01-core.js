@@ -584,7 +584,11 @@ function switchTool(tool) {
   updateFloatingSearch();
   const fab = document.getElementById('fabBtn');
   if (fab) {
-    const hideFabOn = ['home', 'scratch', 'journal', 'settings'];
+    // FAB is the "new task" / "new habit" / "new note" CTA. It's only
+    // meaningful on tabs that have a primary create action — Train has its
+    // own Submit + Get Feedback button, Home / Journal / Settings don't
+    // have a single primary create.
+    const hideFabOn = ['home', 'scratch', 'journal', 'settings', 'train'];
     fab.classList.toggle('hidden', hideFabOn.includes(tool));
   }
   if (tool === 'home') { if (typeof renderHome === 'function') renderHome(); }

@@ -712,7 +712,7 @@ function renderTodayDayPicker(st) {
   return `<div class="train-day-picker">
     ${pills}
     <div class="${anyCls.join(' ')}" data-train-action="pick-any">
-      <span class="day-pill-dow">+</span><span class="day-pill-name">Any</span>
+      <span class="day-pill-dow">+</span><span class="day-pill-name">Bonus</span>
     </div>
   </div>`;
 }
@@ -1327,7 +1327,10 @@ function ensureTrainStyles() {
       display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
       padding: 4px 0 14px;
     }
-    @media (max-width: 360px) {
+    /* Below 600px (most phones + the dev-preview side panel) the 8-pill
+       row squeezes pill labels too tight. Drop to a 4×2 grid earlier so
+       each pill has room for "Cardio / Rest" without truncation. */
+    @media (max-width: 600px) {
       .train-day-picker { grid-template-columns: repeat(4, 1fr); }
     }
     .train-day-picker .day-pill-card {
