@@ -85,21 +85,27 @@ function homeEnsureSubStyles() {
   style.id = 'homeSubsectionStyles';
   style.textContent = `
     .home-subsection { margin-top: 2px; }
-    /* No vertical gap between adjacent subsections — the uppercase heading
-       is enough of a visual break by itself, and the extra margin was
-       making the Tasks card feel sparse. */
-    .home-subsection + .home-subsection .home-subsection-h { margin-top: 0; }
     .home-subsection-h {
       font-size: 10px; font-weight: 700;
       color: var(--ink-4); letter-spacing: 0.08em;
       text-transform: uppercase; margin: 0 0 8px 0;
     }
-    /* No separator line between buckets — the uppercase heading of the next
-       bucket is enough of a break. The default #homeTasks .task-item rule
-       (1 ID + 1 class) outranks a plain-class override, so this selector
-       includes #homeTasks to win on specificity. Drops the border on the
-       last task in each subsection so PRIORITY's tail flows cleanly into
-       OVERDUE's head. Lines WITHIN a bucket are kept; they group the list. */
+
+    /* Tasks card: tight. The bucket heading should hug the task above and
+       the task below — no daylight on either side beyond the heading's own
+       built-in vertical rhythm. */
+    #homeTasks .home-subsection { margin-top: 0; }
+    #homeTasks .home-subsection-h { margin: 0 0 4px 0; }
+
+    /* Journal card: roomy. Daily Reflection, Today I Learned, and Mood are
+       three distinct inputs; they need real breathing room between them so
+       the reflection text doesn't crowd the Today I Learned heading. */
+    #homeJournal .home-subsection + .home-subsection { margin-top: 18px; }
+
+    /* No separator line between Tasks buckets — the next heading is enough
+       of a break. #homeTasks .task-item carries border-bottom by default
+       (1 ID + 1 class specificity); the selector below matches that to win.
+       Lines WITHIN a bucket are kept so a multi-row list reads as grouped. */
     #homeTasks .home-subsection .task-group:last-child .task-item { border-bottom: 0; }
     .home-task-due-inline {
       display: inline-flex; align-items: center;
