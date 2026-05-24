@@ -241,10 +241,11 @@ async function fetchBrief(user_id, brief_date, mode, serviceKey) {
 
 // ── Context packager ───────────────────────────────────────────────────────
 async function buildContext(user, brief_date, mode, serviceKey) {
-  const yday  = brief_date;
-  const today = shiftDate(brief_date, +1);
-  const win7  = shiftDate(yday, -6);
-  const hdr   = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  const yday     = brief_date;
+  const today    = shiftDate(brief_date, +1);
+  const tomorrow = shiftDate(brief_date, +2);   // for evening "tomorrow's setup"
+  const win7     = shiftDate(yday, -6);
+  const hdr      = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
 
   const ouraRecoveryCols = [
     'date','sleep_score','readiness_score','total_sleep_min','hrv_ms',
@@ -273,6 +274,11 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_7d?user_id=eq.${user.user_id}&select=*`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&top3=eq.true&select=text&limit=5`, hdr),
   ]);
+
+  // Evening mode needs tomorrow's calendar (today's + 1) for the forward-looking play rows
+  const calTomorrow = (mode === 'evening')
+    ? await fetchJson(`${SUPABASE_URL}/rest/v1/journal_calendar_cache?user_id=eq.${user.user_id}&entry_date=eq.${tomorrow}&select=events`, hdr)
+    : [];
 
   const [oura7, journal7, habits7, tags7] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=gte.${win7}&date=lte.${yday}&select=date,sleep_score,readiness_score,activity_score,total_sleep_min,hrv_ms&order=date.asc`, hdr),
@@ -358,6 +364,15 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       })),
       priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
     },
+    tomorrow_plan: (mode === 'evening') ? {
+      date: tomorrow,
+      weekday: weekdayInTz(tomorrow, user.timezone),
+      calendar_events: ((calTomorrow?.[0]?.events) || []).slice(0, 8).map(e => ({
+        summary: e.summary, start: e.start, allDay: !!e.isAllDay,
+      })),
+      // Priority tasks carry forward (top3 open = persistent until done)
+      priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
+    } : null,
     last_7_days: {
       oura: oura7 || [],
       mood: moodWeek,
@@ -434,6 +449,237 @@ function weekdayInTz(dateStr, tz) {
   return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(dt);
 }
 
+// ── Deterministic builders (Phase 1.7 fix-pass) ────────────────────────────
+// Everything factual lives here, not in Claude. Claude contributes ONLY
+// headline, subhead, evidence_pills, optional hero_metric_key override, and
+// optional sleep_target_time. Everything else (numbers, names, counts,
+// task titles, event titles) is computed/copied verbatim from data.
+
+function formatMinutes(m) {
+  if (m == null) return null;
+  const n = Math.round(Number(m));
+  if (!Number.isFinite(n) || n < 0) return null;
+  const h = Math.floor(n / 60);
+  const r = n % 60;
+  if (h === 0) return `${r}m`;
+  if (r === 0) return `${h}h`;
+  return `${h}h ${r}m`;
+}
+
+function formatEventTime(iso, allDay, tz) {
+  if (allDay) return 'All day';
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
+  }).format(d).replace(/\s*AM/, 'a').replace(/\s*PM/, 'p');
+}
+
+function inferEventIcon(summary) {
+  const s = String(summary || '').toLowerCase();
+  if (/(walk|run|gym|workout|lift|yoga|hike|bike|swim|exercise|cardio|stretch)/i.test(s)) return 'walk';
+  if (/(lunch|dinner|breakfast|coffee|meal|brunch|drinks?)/i.test(s)) return 'meal';
+  if (/(meeting|sync|call|review|standup|interview|client|1\:1|check[\s-]?in|catchup|catch-up)/i.test(s)) return 'work';
+  return 'other';
+}
+
+// "64° · Pelham" or just "64°" if no city. Null when no weather data.
+function buildWeatherChip(weather) {
+  if (!weather || weather.temp_high_f == null) return null;
+  const temp = `${Math.round(weather.temp_high_f)}°`;
+  const place = (weather.location || '').split(',')[0].trim();
+  return place ? `${temp} · ${place}` : temp;
+}
+
+// Pick the hero metric: respect Claude's override if valid, else use the
+// largest-deviation server hint. Always fill value/label/delta from raw data.
+function buildHeroMetric(claudeKey, ctx) {
+  const allowed = HERO_METRIC_KEYS.includes(claudeKey) ? claudeKey : (ctx.hero_hint || 'readiness_score');
+  const r = ctx.yesterday?.recovery || {};
+  const a = ctx.yesterday?.activity || {};
+  const b7 = ctx.baselines_7d || {};
+  let value = null, baseline = null;
+  if (allowed === 'sleep_score')     { value = r.sleep_score;     baseline = b7.sleep_score_median; }
+  if (allowed === 'readiness_score') { value = r.readiness_score; baseline = b7.readiness_score_median; }
+  if (allowed === 'activity_score')  { value = a.activity_score;  baseline = b7.activity_score_median; }
+  const delta = (value != null && baseline != null) ? Math.round(Number(value) - Number(baseline)) : 0;
+  return {
+    key: allowed,
+    value: value == null ? 0 : Math.round(Number(value)),
+    label: HERO_METRIC_LABELS[allowed] || allowed.toUpperCase(),
+    delta_vs_7d: delta,
+  };
+}
+
+// Build the stats list (Sleep, Activity, Resting HR, HRV) — exclude the hero
+// metric. All numbers are pulled from the raw recovery/activity rows. Deltas
+// are computed against the 7-day baseline. Notes are computed for special
+// cases (sleep score, HRV banding, RHR elevation).
+function buildStats(heroKey, ctx) {
+  const r  = ctx.yesterday?.recovery || {};
+  const a  = ctx.yesterday?.activity || {};
+  const b7 = ctx.baselines_7d || {};
+  const fmtDelta = (today, base) => {
+    if (today == null || base == null) return null;
+    const d = Math.round(Number(today) - Number(base));
+    if (d === 0) return null;
+    return d > 0 ? `↑${d}` : `↓${Math.abs(d)}`;
+  };
+  const rows = [];
+
+  // Sleep row: duration as value, score as note (if available)
+  if (heroKey !== 'sleep_score' && (r.total_sleep_min != null || r.sleep_score != null)) {
+    const dur = formatMinutes(r.total_sleep_min);
+    rows.push({
+      label: 'Sleep',
+      value: dur || (r.sleep_score != null ? String(r.sleep_score) : '—'),
+      delta: fmtDelta(r.total_sleep_min, b7.total_sleep_min_median),
+      note:  (dur && r.sleep_score != null) ? `score ${r.sleep_score}` : null,
+    });
+  }
+
+  // Activity row: score as value, steps as note
+  if (heroKey !== 'activity_score' && (a.activity_score != null || a.steps != null)) {
+    rows.push({
+      label: 'Activity',
+      value: a.activity_score != null ? String(a.activity_score) : '—',
+      delta: fmtDelta(a.activity_score, b7.activity_score_median),
+      note:  a.steps != null ? `${a.steps.toLocaleString()} steps` : null,
+    });
+  }
+
+  // Readiness row (only if not the hero)
+  if (heroKey !== 'readiness_score' && r.readiness_score != null) {
+    rows.push({
+      label: 'Readiness',
+      value: String(r.readiness_score),
+      delta: fmtDelta(r.readiness_score, b7.readiness_score_median),
+      note:  null,
+    });
+  }
+
+  // Resting HR row: number as value, "elevated" / "+N vs norm" as note
+  if (r.resting_hr != null) {
+    const diff = b7.resting_hr_median != null ? Math.round(r.resting_hr - Number(b7.resting_hr_median)) : null;
+    let note = null;
+    if (diff != null && diff > 5) note = 'elevated';
+    else if (diff != null && diff < -5) note = 'low';
+    rows.push({
+      label: 'Resting HR',
+      value: String(Math.round(r.resting_hr)),
+      delta: fmtDelta(r.resting_hr, b7.resting_hr_median),
+      note,
+    });
+  }
+
+  // HRV row: number as value (no "ms" per voice rules), banding note
+  if (r.hrv_ms != null) {
+    let note = null;
+    if (b7.hrv_ms_median != null) {
+      const pct = Number(r.hrv_ms) / Number(b7.hrv_ms_median);
+      if (pct < 0.7) note = 'well below norm';
+      else if (pct < 0.9) note = 'below norm';
+      else if (pct > 1.2) note = 'above norm';
+    }
+    rows.push({
+      label: 'HRV',
+      value: String(Math.round(r.hrv_ms)),
+      delta: fmtDelta(r.hrv_ms, b7.hrv_ms_median),
+      note,
+    });
+  }
+
+  return rows.slice(0, 4);
+}
+
+// Build the play list deterministically from facts. Morning shows today's plan
+// (events + persistent priority tasks + yesterday's habit-snapshot + sleep
+// target). Evening shows TOMORROW's plan (events + tasks + sleep target) —
+// dropping the today-recap entirely because the cards below already show that.
+function buildPlayRows(mode, ctx, sleepTargetTime) {
+  const rows = [];
+  const tz   = ctx.user?.timezone || DEFAULT_TIMEZONE;
+
+  if (mode === 'morning') {
+    // Today's calendar events (first 2)
+    const events = (ctx.today_plan?.calendar_events || []).slice(0, 2);
+    for (const e of events) {
+      const title = String(e.summary || '').trim();
+      if (!title) continue;
+      rows.push({
+        icon:    inferEventIcon(title),
+        scope:   formatEventTime(e.start, e.allDay, tz) || 'Today',
+        content: title,
+      });
+    }
+    // Priority tasks — ONE row, verbatim titles joined with " · " (max 2)
+    const tasks = (ctx.today_plan?.priority_tasks || []).slice(0, 2);
+    if (tasks.length > 0) {
+      const titles = tasks.map(t => String(t.text || '').trim()).filter(Boolean);
+      if (titles.length > 0) {
+        const allTasks = ctx.today_plan?.priority_tasks || [];
+        rows.push({
+          icon:    'tasks',
+          scope:   `${allTasks.length} task${allTasks.length === 1 ? '' : 's'}`,
+          content: titles.join(' · '),
+        });
+      }
+    }
+    // Yesterday's habit snapshot (clear timeframe: "Y'day 3/4")
+    const habits = ctx.yesterday?.habits;
+    if (habits && habits.due > 0) {
+      const done = habits.done ?? 0;
+      const due  = habits.due;
+      rows.push({
+        icon:    'habits',
+        scope:   `Y'day ${done}/${due}`,
+        content: done >= due ? 'All habits closed yesterday' : 'Set up today\'s habits',
+      });
+    }
+    // Sleep target
+    rows.push({
+      icon:    'sleep',
+      scope:   'Sleep',
+      content: sleepTargetTime ? `In bed by ${sleepTargetTime}` : 'Protect tonight\'s sleep',
+    });
+  } else {
+    // EVENING: forward-only. No today-recap rows (cards below cover that).
+    // Tonight's sleep first (most immediate action).
+    rows.push({
+      icon:    'sleep',
+      scope:   'Tonight',
+      content: sleepTargetTime ? `In bed by ${sleepTargetTime}` : 'Wind down for the night',
+    });
+    // Tomorrow's calendar events (first 2)
+    const tEvents = (ctx.tomorrow_plan?.calendar_events || []).slice(0, 2);
+    for (const e of tEvents) {
+      const title = String(e.summary || '').trim();
+      if (!title) continue;
+      rows.push({
+        icon:    inferEventIcon(title),
+        scope:   formatEventTime(e.start, e.allDay, tz) || 'Tomorrow',
+        content: title,
+      });
+    }
+    // Persistent priority tasks (carry into tomorrow)
+    const tasks = (ctx.tomorrow_plan?.priority_tasks || []).slice(0, 2);
+    if (tasks.length > 0) {
+      const titles = tasks.map(t => String(t.text || '').trim()).filter(Boolean);
+      if (titles.length > 0) {
+        const allTasks = ctx.tomorrow_plan?.priority_tasks || [];
+        rows.push({
+          icon:    'tasks',
+          scope:   `${allTasks.length} task${allTasks.length === 1 ? '' : 's'}`,
+          content: titles.join(' · '),
+        });
+      }
+    }
+  }
+
+  return rows.slice(0, 5);
+}
+
 // ── Claude call ───────────────────────────────────────────────────────────
 async function callClaude(ctx, mode, anthropicKey) {
   const model     = process.env.BRIEF_MODEL || DEFAULT_MODEL;
@@ -508,114 +754,80 @@ async function callClaude(ctx, mode, anthropicKey) {
 }
 
 function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
-  const hasWeather = !!(ctx.today_plan?.weather);
-  const weekday    = ctx.today_plan?.weekday || 'today';
-  const hint       = ctx.hero_hint;
+  const hint = ctx.hero_hint;
   const lines = [
-    'You are the user\'s chief-of-staff briefing partner. Direct, verb-first, no filler. No emojis in prose. No medical claims.',
-    'You return a STRUCTURED object via record_daily_brief — no prose paragraphs. The UI renders block by block.',
+    'You are the user\'s chief-of-staff briefing partner. Direct, verb-first, no filler. No emojis. No medical claims.',
     '',
-    'FIELD RULES:',
-    'headline — ONE sentence ≤30 chars. Verb-first call. Examples: "Recovery day.", "Push day.", "Light day.", "Hold the line.", "Catch-up morning.". NEVER prefix with greetings ("Your X Brief", "Good morning") — the card header shows that.',
+    'YOUR JOB IS NARROW. You only write text-only synthesis. The server builds all factual blocks (weather chip, hero ring numbers, stats list, play rows of events/tasks/habits/sleep). You MUST NOT produce numbers, counts, event titles, or task titles — anything factual.',
+    '',
+    'FIELDS YOU PRODUCE:',
+    'headline — ONE sentence ≤30 chars. Verb-first call. Examples: "Recovery day.", "Push day.", "Light day.", "Hold the line.", "Catch-up morning.". NEVER prefix with a greeting ("Your X Brief", "Good morning") — the card header shows that.',
     'subhead — ONE sentence ≤80 chars stating the play. Examples: "Pull back on intensity. Protect tonight\'s sleep.", "Front-load the hardest task; lift later if recovered."',
-    'hero_metric — pick the metric whose value deviates most from its 7-day median. ' + (hint ? `Server hint: "${hint}".` : '') + ' Use the value from the recovery (today\'s row) for sleep_score/readiness_score, or yesterday\'s activity_score. Compute delta_vs_7d as today\'s value minus baselines_7d.{key}_median, signed.',
-    'stats — 3-4 rows for the OTHER metrics (NOT the hero). Each row: {label, value, delta, note}. label = short name ("Sleep", "Activity", "Resting HR", "HRV"). value = display string ("75", "82", "38"). delta = "↑6" or "↓23" (vs 7-day baseline; null if not informative). note = short context like "+8 vs norm", "low · 2nd this wk" — null if no context worth adding.',
-    'evidence_pills — 0-3 short tags ≤4 words each, all caps not required. Each tag explains WHY today is what it is. Examples: "Body still cleaning up", "Late night Friday", "2nd low HRV", "Streak intact". Skip pills entirely if you don\'t have something true to say.',
-    mode === 'morning'
-      ? 'today_play — 3-5 rows summarizing the day. Each row: {icon, scope, content}. icon ∈ [walk, tasks, habits, sleep, work, meal, other]. scope = short token ("10:00", "2 tasks", "Habits", "Sleep"). content = ONE imperative line. Examples: {walk, "10:00", "Walk with Phil"}, {tasks, "2 tasks", "Chase Adbuzz · FSP cut point"}, {habits, "Habits", "Posture is the streak risk"}, {sleep, "Sleep", "In bed by 10pm to recover"}. Pull from today_plan.calendar_events + today_plan.priority_tasks. Always include a sleep row when recovery is below median.'
-      : 'tomorrow_setup — 3-5 rows looking ahead to tomorrow. Same row shape as today_play. Lead with a recap (what got done today) then tee up tomorrow\'s first event or task. Always include a sleep row.',
-    mode === 'morning' && hasWeather
-      ? 'weather_chip — set to "{temp}° · {city short name}" using today_plan.weather. Example: "64° · Pelham". Keep it tight, no full city/state.'
-      : 'weather_chip — null (evening mode skips weather; morning skips it when no location is set).',
+    'evidence_pills — 0-3 short context tags ≤4 words each. Each explains WHY today is what it is. Examples: "Body still cleaning up", "Late night Friday", "2nd low HRV", "Streak intact". Skip entirely if nothing true to say. DO NOT put numbers, counts, or task names in pills.',
+    'hero_metric_key — OPTIONAL override of the server\'s pick for the hero ring. Server hint: ' + (hint || 'none') + '. Set null to accept the server pick; or pick one of "sleep_score", "readiness_score", "activity_score" if a different metric is the story.',
+    mode === 'evening'
+      ? 'sleep_target_time — OPTIONAL specific time recommendation, e.g. "10:30 PM". The server uses this for the sleep row\'s content. Null if no specific target.'
+      : 'sleep_target_time — OPTIONAL specific time recommendation, e.g. "10:30 PM". Used for the sleep row in today\'s play. Null if no specific target.',
+    'confidence — "high" if baselines have n>=30 AND last night\'s data is complete; "medium" if n=14-29 or one signal missing; "low" if n<14 or last night missing.',
     '',
-    'BANNED phrases (will trigger fallback if used anywhere): "worth noting", "fun evening", "the week\'s been rich", "actually land", "no weather to report", "your body\'s still", any percentile speak (p25, median, percentile, IQR), any "ms" / "milliseconds".',
-    'NEVER use statistics jargon. Plain English only ("above your norm", "best in weeks", "rare for you").',
-    'HRV: frame as a recovery indicator. Never include "ms" in any field.',
-    'Format sleep duration as "Xh Ym" (e.g. "7h 4m") or "X.Yh" — never raw minutes.',
-    'Recovery (yesterday.recovery) = LAST NIGHT\'s sleep that ended this morning. Activity (yesterday.activity) = YESTERDAY\'s day.',
-    `Mood scale: ${MOOD_SCALE_NOTE} Mood values arrive as labels (Great/Good/Okay/Low/Bad) — use the label directly.`,
+    'BANNED — using any of these triggers a fallback: "worth noting", "fun evening", "the week\'s been rich", "actually land", "no weather to report", "your body\'s still", any percentile/median/IQR/p25/p50/p75 reference, any "ms"/"milliseconds" reference. Also: never invent numbers or names — the data you can see (recovery, activity, baselines, weeks-rolling) is for your reasoning only; you must not echo specific numbers/titles in headline/subhead/pills.',
+    '',
+    'CONTEXT YOU SEE (for reasoning, not for echoing):',
+    '- yesterday.recovery = LAST NIGHT\'s sleep that ended this morning (sleep_score, readiness_score, HRV, resting_hr).',
+    '- yesterday.activity = YESTERDAY\'s day (activity_score, steps, stress).',
+    `- mood values arrive as labels (Great/Good/Okay/Low/Bad). ${MOOD_SCALE_NOTE}`,
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
-      : 'confidence: "high" if baselines have n>=30 AND last night\'s data is complete; "medium" if n=14-29 or one signal missing; "low" if n<14 or last night missing.',
-  ];
+      : '',
+  ].filter(Boolean);
   return lines.join('\n');
 }
 
 function briefToolSchema(mode) {
-  const playRow = {
-    type: 'object',
-    properties: {
-      icon:    { type: 'string', enum: PLAY_ICONS },
-      scope:   { type: 'string', description: 'Short token like "10:00", "2 tasks", "Habits", "Sleep".' },
-      content: { type: 'string', description: 'One imperative line.' },
-    },
-    required: ['icon', 'scope', 'content'],
-  };
-  const properties = {
-    weather_chip: {
-      type: ['string', 'null'],
-      description: 'Compact weather chip for the header, e.g. "64° · Pelham". Null when evening mode or no location set.',
-    },
+  const props = {
     headline: {
       type: 'string',
-      description: 'ONE sentence ≤30 chars, verb-first. NEVER a greeting prefix.',
+      description: 'ONE sentence ≤30 chars, verb-first call. NEVER a greeting prefix. No specific numbers or names.',
     },
     subhead: {
       type: 'string',
-      description: 'ONE sentence ≤80 chars stating the play.',
-    },
-    hero_metric: {
-      type: 'object',
-      properties: {
-        key:           { type: 'string', enum: HERO_METRIC_KEYS },
-        value:         { type: 'number' },
-        label:         { type: 'string', description: 'Short uppercase label, e.g. "READINESS".' },
-        delta_vs_7d:   { type: 'number', description: 'Signed integer: today value minus 7-day median.' },
-      },
-      required: ['key', 'value', 'label', 'delta_vs_7d'],
-    },
-    stats: {
-      type: 'array',
-      minItems: 0,
-      maxItems: 5,
-      items: {
-        type: 'object',
-        properties: {
-          label: { type: 'string' },
-          value: { type: ['string', 'number'] },
-          delta: { type: ['string', 'null'] },
-          note:  { type: ['string', 'null'] },
-        },
-        required: ['label', 'value'],
-      },
+      description: 'ONE sentence ≤80 chars stating the play. No specific numbers or task/event names.',
     },
     evidence_pills: {
       type: 'array',
       maxItems: 3,
       items: { type: 'string' },
+      description: '0-3 short context tags, each ≤4 words. No counts, no titles. Examples: "Body still cleaning up", "Late night Friday".',
+    },
+    hero_metric_key: {
+      type: ['string', 'null'],
+      enum: [...HERO_METRIC_KEYS, null],
+      description: 'OPTIONAL override of server\'s hero pick. Null = accept server pick.',
+    },
+    sleep_target_time: {
+      type: ['string', 'null'],
+      description: 'OPTIONAL specific time recommendation for sleep (e.g. "10:30 PM"). Null = generic protect-sleep messaging.',
     },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
   };
-  if (mode === 'morning') {
-    properties.today_play = { type: 'array', minItems: 0, maxItems: 5, items: playRow };
-  } else {
-    properties.tomorrow_setup = { type: 'array', minItems: 0, maxItems: 5, items: playRow };
-  }
   return {
     name: 'record_daily_brief',
-    description: 'Record the structured daily brief. Called exactly once.',
+    description: 'Record the narrative parts of the daily brief. Called exactly once. Server fills in all factual blocks.',
     input_schema: {
       type: 'object',
-      properties: properties,
-      required: ['headline', 'subhead', 'hero_metric', 'stats', 'confidence', mode === 'morning' ? 'today_play' : 'tomorrow_setup'],
+      properties: props,
+      required: ['headline', 'subhead', 'evidence_pills', 'confidence'],
     },
   };
 }
 
-// Validate + tighten + scan. Returns normalized object or null (→ fallback).
+// Merge Claude's narrow text-only output with server-built factual blocks.
+// Banned-phrase scan applies to Claude's text fields. Returns the full
+// structured object ready for storage, or null (→ fallback) if invalid.
 function normalizeStructured(raw, mode, ctx) {
   if (!raw || typeof raw !== 'object') return null;
 
+  // ── Claude's text fields ───────────────────────────────────────────────
   // Headline: strip greeting prefix, trim, cap length
   let headline = String(raw.headline || '').trim();
   headline = headline.replace(GREETING_PREFIX_REGEX, '').trim();
@@ -626,59 +838,28 @@ function normalizeStructured(raw, mode, ctx) {
   let subhead = String(raw.subhead || '').trim();
   if (subhead.length > 80) subhead = subhead.slice(0, 80).trim();
 
-  // Hero metric: validate key; fall back to server hint if missing/invalid
-  let hero = raw.hero_metric || {};
-  if (!HERO_METRIC_KEYS.includes(hero.key)) {
-    const hint = ctx.hero_hint || 'readiness_score';
-    hero = { key: hint, value: 0, label: HERO_METRIC_LABELS[hint] || hint.toUpperCase(), delta_vs_7d: 0 };
-  }
-  hero.label = String(hero.label || HERO_METRIC_LABELS[hero.key] || hero.key.toUpperCase()).toUpperCase().slice(0, 16);
-  hero.value = Number(hero.value) || 0;
-  hero.delta_vs_7d = Math.round(Number(hero.delta_vs_7d) || 0);
-
-  // Stats: keep array shape, drop bad rows
-  const stats = (Array.isArray(raw.stats) ? raw.stats : [])
-    .filter(s => s && s.label && s.value != null)
-    .slice(0, 5)
-    .map(s => ({
-      label: String(s.label).slice(0, 24),
-      value: typeof s.value === 'number' ? s.value : String(s.value).slice(0, 24),
-      delta: s.delta == null ? null : String(s.delta).slice(0, 16),
-      note:  s.note  == null ? null : String(s.note).slice(0, 30),
-    }));
-
-  // Evidence pills: drop pills with >4 words or >30 chars
+  // Evidence pills: drop pills with >4 words or >30 chars; cap to 3
   const pills = (Array.isArray(raw.evidence_pills) ? raw.evidence_pills : [])
     .map(p => String(p || '').trim())
     .filter(p => p && p.split(/\s+/).length <= 4 && p.length <= 30)
     .slice(0, 3);
 
-  // Today's play or Tomorrow's setup
-  const playKey = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
-  const playRaw = Array.isArray(raw[playKey]) ? raw[playKey] : [];
-  const play = playRaw
-    .filter(r => r && PLAY_ICONS.includes(r.icon) && r.content)
-    .slice(0, 5)
-    .map(r => ({
-      icon:    r.icon,
-      scope:   String(r.scope  || '').slice(0, 24),
-      content: String(r.content || '').slice(0, 100),
-    }));
-
-  // Weather chip — keep null in evening or when not provided
-  let weather_chip = raw.weather_chip == null ? null : String(raw.weather_chip).trim().slice(0, 30);
-  if (mode === 'evening') weather_chip = null;
-
-  // Banned-phrase scan across all prose-bearing fields
-  const allText = [
-    headline, subhead, weather_chip || '', pills.join(' '),
-    ...stats.map(s => `${s.delta || ''} ${s.note || ''}`),
-    ...play.map(r => `${r.scope} ${r.content}`),
-  ].join(' ');
-  if (BANNED_PROSE_REGEX.test(allText)) {
-    console.warn('daily-brief: banned phrase in structured output, rejecting:', allText.slice(0, 200));
+  // Banned-phrase scan: only applies to Claude's text (the factual blocks
+  // are server-built and trusted).
+  const claudeText = [headline, subhead, pills.join(' ')].join(' ');
+  if (BANNED_PROSE_REGEX.test(claudeText)) {
+    console.warn('daily-brief: banned phrase in Claude output, rejecting:', claudeText.slice(0, 200));
     return null;
   }
+
+  // ── Server-built factual blocks ────────────────────────────────────────
+  const heroKey      = HERO_METRIC_KEYS.includes(raw.hero_metric_key) ? raw.hero_metric_key : null;
+  const hero_metric  = buildHeroMetric(heroKey, ctx);
+  const stats        = buildStats(hero_metric.key, ctx);
+  const weather_chip = mode === 'evening' ? null : buildWeatherChip(ctx.today_plan?.weather);
+  const sleepTarget  = raw.sleep_target_time ? String(raw.sleep_target_time).trim().slice(0, 24) : null;
+  const playRows     = buildPlayRows(mode, ctx, sleepTarget);
+  const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
 
   const confidence = ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low';
 
@@ -687,10 +868,10 @@ function normalizeStructured(raw, mode, ctx) {
     weather_chip,
     headline,
     subhead,
-    hero_metric: hero,
+    hero_metric,
     stats,
     evidence_pills: pills,
-    [playKey]: play,
+    [playKey]: playRows,
     confidence,
   };
 }
@@ -709,32 +890,28 @@ function buildFlatNarrative(s) {
 }
 
 // ── Fallback ──────────────────────────────────────────────────────────────
+// Uses the same server-side builders as the OK path so the layout matches.
+// Headline/subhead/pills get deterministic placeholders; everything factual
+// is built from real data when present.
 function buildFallback({ reason, context, mode }) {
-  const r = context?.yesterday?.recovery;
-  const a = context?.yesterday?.activity;
-  const heroKey = (r?.readiness_score != null) ? 'readiness_score'
-    : (r?.sleep_score != null) ? 'sleep_score'
-    : 'activity_score';
-  const heroValue = heroKey === 'readiness_score' ? (r?.readiness_score ?? 0)
-    : heroKey === 'sleep_score' ? (r?.sleep_score ?? 0)
-    : (a?.activity_score ?? 0);
+  const ctxSafe = context || { user: { timezone: DEFAULT_TIMEZONE }, yesterday: {}, today_plan: {}, tomorrow_plan: null, baselines_7d: null };
+  const hero_metric  = buildHeroMetric(null, ctxSafe);
+  const stats        = buildStats(hero_metric.key, ctxSafe);
+  const weather_chip = mode === 'evening' ? null : buildWeatherChip(ctxSafe.today_plan?.weather);
+  const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
+  const playRows     = buildPlayRows(mode, ctxSafe, null);
 
   const structured = {
     mode,
-    weather_chip: null,
-    headline:     mode === 'morning' ? 'Brief unavailable.' : 'Wrap-up unavailable.',
-    subhead:      'Recovery snapshot below. Generate again when ready.',
-    hero_metric:  { key: heroKey, value: heroValue, label: HERO_METRIC_LABELS[heroKey] || 'METRIC', delta_vs_7d: 0 },
-    stats: [
-      r?.sleep_score      != null ? { label: 'Sleep',      value: r.sleep_score,      delta: null, note: null } : null,
-      a?.activity_score   != null ? { label: 'Activity',   value: a.activity_score,   delta: null, note: null } : null,
-      r?.resting_hr       != null ? { label: 'Resting HR', value: r.resting_hr,       delta: null, note: null } : null,
-      r?.hrv_ms           != null ? { label: 'HRV',        value: Math.round(r.hrv_ms), delta: null, note: null } : null,
-    ].filter(Boolean).slice(0, 4),
+    weather_chip,
+    headline:       mode === 'morning' ? 'Brief unavailable.' : 'Wrap-up unavailable.',
+    subhead:        'Generate again when ready.',
+    hero_metric,
+    stats,
     evidence_pills: [],
-    confidence: 'low',
+    [playKey]:      playRows,
+    confidence:     'low',
   };
-  structured[mode === 'morning' ? 'today_play' : 'tomorrow_setup'] = [];
 
   return {
     status:            'fallback',
