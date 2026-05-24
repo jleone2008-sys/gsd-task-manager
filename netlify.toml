@@ -41,10 +41,12 @@
 [functions."cron-health-sync"]
   schedule = "0 4 * * *"
 
-# Daily-brief cache warmer. Hourly tick from 09:00-23:00 UTC covers the
-# morning window across all US/EU timezones. The function itself filters
-# to users whose local hour is 6-14 and skips users that already have a
-# brief for today, so the per-tick overhead is negligible.
+# Daily-brief cache warmer. Phase 1.8 "Tier 2 realtime" — hourly across the
+# full day. The function itself filters per user by local hour (06-22) and
+# lets beta-daily-brief.js derive morning vs evening mode from the user's
+# timezone, so we cover both modes across all US/EU timezones with one cron
+# expression. Each tick upserts onto the same (user_id, brief_date, mode)
+# row — no duplicate rows accumulate.
 #
 # Required env vars (set in Netlify dashboard):
 #   ANTHROPIC_API_KEY       Anthropic key for Claude calls (required)
@@ -56,4 +58,4 @@
 #                           if quality holds for your use case.
 #   BRIEF_MAX_TOKENS        Max output tokens for each brief (default: 1500).
 [functions."cron-daily-brief"]
-  schedule = "0 9-23 * * *"
+  schedule = "0 * * * *"

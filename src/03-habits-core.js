@@ -116,6 +116,8 @@ async function toggleCompletion(habitClientId, dateStr) {
     // tapping a marked day always un-marks it.
     habitCompletions = habitCompletions.filter(c => c !== existing);
     renderHabits();
+    // Tier 1 realtime: brief habit row recomputes from live completions.
+    if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
     setStatus('syncing');
     const { error } = await db.from('habit_completions').delete().eq('id', existing.id);
     setStatus(error ? 'error' : 'saved');
@@ -130,6 +132,8 @@ async function toggleCompletion(habitClientId, dateStr) {
     const temp = { id: -Date.now(), habitId: habitSid, completedDate: dateStr };
     habitCompletions.push(temp);
     renderHabits();
+    // Tier 1 realtime: brief habit row recomputes from live completions.
+    if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
     setStatus('syncing');
     const row = { user_id: currentUser.id, habit_id: habitSid, completed_date: dateStr };
     let { data, error } = await db.from('habit_completions').insert(row).select();

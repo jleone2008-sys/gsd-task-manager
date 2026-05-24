@@ -378,6 +378,154 @@ function briefRender() {
   else if (_briefState.brief)                    el.innerHTML = briefEmptyHTML();
 }
 
+/* ── Tier 1 realtime: client-side recompute of deterministic blocks ───────
+   When the user completes a task, checks off a habit, or changes mood, the
+   AI-written copy (headline / subhead / evidence pills) stays put but the
+   deterministic blocks below it rebuild from live state so the brief is
+   never lying about counts. No fetch, no DB write — Tier 2's hourly cron
+   refreshes the AI copy on the server.
+─────────────────────────────────────────────────────────────────────────── */
+
+// Mirror of netlify/functions/beta-daily-brief.js computeTaskCounts.
+function briefComputeTaskCounts(refDate) {
+  const arr = (typeof tasks !== 'undefined' && Array.isArray(tasks))
+    ? tasks.filter(t => !t.done) : [];
+  let priority = 0, due_today = 0, overdue = 0;
+  for (const t of arr) {
+    if (t.due && t.due < refDate) overdue++;
+    else if (t.due && t.due === refDate) due_today++;
+    if (t.top3) priority++;
+  }
+  return { priority, due_today, overdue, total_open: arr.length };
+}
+
+// Mirror of beta-daily-brief.js buildTaskCountsRow.
+function briefTaskCountsRow(counts) {
+  if (!counts || !counts.total_open) return null;
+  const parts = [];
+  if (counts.priority  > 0) parts.push(`${counts.priority} priority`);
+  if (counts.due_today > 0) parts.push(`${counts.due_today} due today`);
+  if (counts.overdue   > 0) parts.push(`${counts.overdue} overdue`);
+  if (parts.length === 0)   parts.push(`${counts.total_open} open`);
+  return {
+    icon:    'tasks',
+    scope:   `${counts.total_open} open`,
+    content: parts.join(' · '),
+  };
+}
+
+// Today's habit completion as { due, done } using the same isHabitDueToday
+// gate the Habits tab uses — quota habits only count on days they're forced.
+function briefComputeHabitsToday() {
+  if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return null;
+  if (typeof isHabitDueToday !== 'function' || typeof isCompletedOn !== 'function') return null;
+  const today = (typeof jToday === 'function') ? jToday()
+              : new Date().toISOString().slice(0, 10);
+  const due = habitsArr.filter(h => !h.archived && isHabitDueToday(h));
+  if (!due.length) return null;
+  const done = due.reduce((n, h) => n + (isCompletedOn(h.id, today) ? 1 : 0), 0);
+  return { due: due.length, done };
+}
+
+// "YYYY-MM-DD" tomorrow in the user's local timezone.
+function briefTomorrowLocal() {
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [y, m, d] = today.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  return dt.toISOString().slice(0, 10);
+}
+
+// "Today" in the user's local timezone, YYYY-MM-DD.
+function briefTodayLocal() {
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+
+const _BRIEF_MOOD_LABELS = { 1: 'Great', 2: 'Good', 3: 'Okay', 4: 'Low', 5: 'Bad' };
+function briefMoodLabel(v) {
+  if (v == null) return null;
+  const k = Math.round(Number(v));
+  return _BRIEF_MOOD_LABELS[k] || null;
+}
+
+// Replace the task play row in-place. If no row currently exists and there are
+// open tasks worth surfacing, append one. If the row exists but should be
+// dropped (all counts zero), remove it.
+function briefPatchTaskRow(rows, newRow) {
+  if (!Array.isArray(rows)) return rows;
+  const idx = rows.findIndex(r => r && r.icon === 'tasks');
+  if (newRow) {
+    if (idx >= 0) rows[idx] = newRow;
+    else rows.push(newRow);
+  } else if (idx >= 0) {
+    rows.splice(idx, 1);
+  }
+  return rows;
+}
+
+// Replace the habits play row's content with a fresh "Y'day X/Y" frame from
+// today's live habits state. (Server's morning brief renders habits as
+// "yesterday's snapshot" — we keep that scope label and only update the
+// "still set up today" / "all closed" framing if it changes.)
+function briefPatchHabitsRow(rows) {
+  if (!Array.isArray(rows)) return rows;
+  const idx = rows.findIndex(r => r && r.icon === 'habits');
+  if (idx < 0) return rows;
+  const stats = briefComputeHabitsToday();
+  if (!stats || stats.due === 0) return rows;
+  const row = rows[idx];
+  row.content = stats.done >= stats.due
+    ? 'All habits closed today'
+    : `${stats.done}/${stats.due} habits done today`;
+  return rows;
+}
+
+function homeBriefRecompute() {
+  const brief = _briefState && _briefState.brief;
+  const s     = brief && brief.structured;
+  if (!s) return;                   // brief not loaded yet — nothing to patch
+  const mode  = s.mode || brief.mode || 'morning';
+
+  if (mode === 'morning') {
+    const ref    = briefTodayLocal();
+    const counts = briefComputeTaskCounts(ref);
+    s.today_plan = s.today_plan || {};
+    s.today_plan.task_counts = counts;
+    s.today_play = briefPatchTaskRow(s.today_play || [], briefTaskCountsRow(counts));
+    s.today_play = briefPatchHabitsRow(s.today_play);
+  } else {
+    const ref    = briefTomorrowLocal();
+    const counts = briefComputeTaskCounts(ref);
+    s.tomorrow_plan = s.tomorrow_plan || {};
+    s.tomorrow_plan.task_counts = counts;
+    s.tomorrow_setup = briefPatchTaskRow(s.tomorrow_setup || [], briefTaskCountsRow(counts));
+    s.tomorrow_setup = briefPatchHabitsRow(s.tomorrow_setup);
+  }
+
+  // Mood-evidence pill refresh: if any pill mentions a mood label, swap it for
+  // the current label. Best-effort — silent no-op if no mood pill is present.
+  if (typeof journalState !== 'undefined') {
+    const today = briefTodayLocal();
+    const entry = journalState.entries.get(today);
+    const label = entry ? briefMoodLabel(entry.mood) : null;
+    if (label && Array.isArray(s.evidence_pills)) {
+      s.evidence_pills = s.evidence_pills.map(p => {
+        if (!p) return p;
+        // Match labels case-insensitively, only within a "Mood:" prefix pill.
+        if (/^mood\s*[:|-]/i.test(p)) return `Mood: ${label}`;
+        return p;
+      });
+    }
+  }
+
+  briefRender();
+}
+
+// Other modules call this without imports — expose on window for global access.
+if (typeof window !== 'undefined') window.homeBriefRecompute = homeBriefRecompute;
+
 /* ── Data ─────────────────────────────────────────────────── */
 
 async function homeBriefLoad() {

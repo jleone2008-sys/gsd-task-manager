@@ -79,11 +79,29 @@ function homeGreetingText() {
 
 /* ── Top-level render ─────────────────────────────────────── */
 
+function homeEnsureSubStyles() {
+  if (document.getElementById('homeSubsectionStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'homeSubsectionStyles';
+  style.textContent = `
+    .home-subsection { margin-top: 2px; }
+    .home-subsection + .home-subsection { margin-top: 14px; }
+    .home-subsection-h {
+      font-size: 10px; font-weight: 700;
+      color: var(--ink-4); letter-spacing: 0.08em;
+      text-transform: uppercase; margin: 0 0 8px 0;
+    }
+    .home-task-due { margin-top: 4px; }
+  `;
+  document.head.appendChild(style);
+}
+
 function renderHome() {
   const el = document.getElementById('homeContainer');
   if (!el) return;
   _homeOura = null;
   homeSyncChrome();
+  homeEnsureSubStyles();
 
   el.innerHTML = `
     <div class="home-card" id="homeBrief"></div>
@@ -239,11 +257,15 @@ function homeTaskCardHTML(t) {
   if (t.top3) cardCls.push('top3', 'is-priority');
   if (t.done) cardCls.push('done', 'is-done');
   const title = (typeof linkify === 'function') ? linkify(t.text) : hEsc(t.text || '');
+  const dueHtml = (t.due && typeof dueBadgeHTML === 'function')
+    ? `<div class="home-task-due">${dueBadgeHTML(t.due)}</div>`
+    : '';
   return `<div class="task-group"><div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
       <span class="strip" data-task-action="toggle-top3" title="Toggle priority"></span>
       <div class="card-head">
         <div class="card-body task-content" data-task-action="open-edit">
           <div class="card__title task-text">${title}</div>
+          ${dueHtml}
         </div>
         <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done ? 'Reopen' : 'Complete'}">
           <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
@@ -251,12 +273,34 @@ function homeTaskCardHTML(t) {
       </div>
     </div></div>`;
 }
-function homeTasksInnerHTML() {
+
+// Bucket open tasks into Overdue / Due today / Priority (in that precedence — a
+// task only appears in one bucket). Top3 tasks that also have due<=today land in
+// Overdue or Due today (the priority strip still renders on those rows).
+function homeTaskBuckets() {
   const all = (typeof tasks !== 'undefined' && Array.isArray(tasks)) ? tasks : [];
-  const active = all.filter(t => t.top3 && !t.done);
+  const today = homeToday();
+  const overdue  = all.filter(t => !t.done && t.due && t.due < today);
+  const dueToday = all.filter(t => !t.done && t.due === today);
+  // Don't double-count: tasks in earlier buckets are excluded by date semantics
+  // (due < today vs due === today are mutually exclusive), so priority filter
+  // only needs to exclude what's already in overdue/dueToday by identity.
+  const inEarlier = new Set([...overdue, ...dueToday]);
+  const priority = all.filter(t => !t.done && t.top3 && !inEarlier.has(t));
+  return { overdue, dueToday, priority };
+}
+
+function homeTasksInnerHTML() {
+  const { overdue, dueToday, priority } = homeTaskBuckets();
   const doneToday = (typeof getCompletedTasksForDate === 'function') ? getCompletedTasksForDate(homeToday()) : [];
-  const activeHtml = active.length
-    ? active.map(t => homeTaskCardHTML(t)).join('')
+  const bucket = (label, arr) => arr.length
+    ? `<div class="home-subsection">
+         <div class="home-subsection-h">${label}</div>
+         ${arr.map(t => homeTaskCardHTML(t)).join('')}
+       </div>`
+    : '';
+  const activeHtml = (overdue.length || dueToday.length || priority.length)
+    ? `${bucket('Overdue', overdue)}${bucket('Due today', dueToday)}${bucket('Priority', priority)}`
     : `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
   const doneHtml = doneToday.length
     ? `<div class="home-done-toggle" data-home-done-toggle role="button" tabindex="0">
@@ -318,9 +362,17 @@ function homeJournalInnerHTML(entry) {
   const today = homeToday();
   const e = entry || ((typeof journalState !== 'undefined') ? journalState.entries.get(today) : null);
   const text = e?.reflections || '';
+  const learning = e?.learning || '';
   const esc = (typeof escapeHtml === 'function') ? escapeHtml : hEsc;
-  return `<textarea class="home-journal-input" id="homeJournalInput" placeholder="Reflect on today…" spellcheck="true" rows="1">${esc(text)}</textarea>
-    <div class="home-journal-mood"><div id="homeMoodRow">${homeMoodRowHTML(e)}</div></div>`;
+  return `<div class="home-subsection">
+      <div class="home-subsection-h">Daily Reflection</div>
+      <textarea class="home-journal-input" id="homeJournalInput" placeholder="Reflect on today…" spellcheck="true" rows="1">${esc(text)}</textarea>
+      <div class="home-journal-mood"><div id="homeMoodRow">${homeMoodRowHTML(e)}</div></div>
+    </div>
+    <div class="home-subsection">
+      <div class="home-subsection-h">Today I Learned</div>
+      <textarea class="home-journal-input" id="homeLearningInput" placeholder="One thing you learned today…" spellcheck="true" rows="1">${esc(learning)}</textarea>
+    </div>`;
 }
 function homeAutoGrow(el) {
   if (!el) return;
@@ -433,9 +485,12 @@ async function hydrateHomeToday() {
     // Prefill the reflection box + mood row once loaded. Don't clobber the
     // textarea while typing — in that case just repaint the mood row.
     const ji = document.getElementById('homeJournalInput');
-    if (!ji || document.activeElement !== ji) {
+    const li = document.getElementById('homeLearningInput');
+    const activelyTyping = (ji && document.activeElement === ji) || (li && document.activeElement === li);
+    if (!activelyTyping) {
       refreshHomeSection('homeJournal', homeJournalInnerHTML(entry));
       homeAutoGrow(document.getElementById('homeJournalInput'));
+      homeAutoGrow(document.getElementById('homeLearningInput'));
     } else {
       const moodEl = document.getElementById('homeMoodRow');
       if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
@@ -643,6 +698,8 @@ function homeWireOnce() {
       if (typeof saveJournalEntry === 'function') saveJournalEntry(today, { mood: newMood });
       const entry = (typeof journalState !== 'undefined' && journalState.entries.get(today)) || { mood: newMood };
       refreshHomeSection('homeMoodRow', homeMoodRowHTML(entry));
+      // Tier 1 realtime: mood label in the brief recomputes from live state.
+      if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
       return;
     }
     // Tasks (data-task-action) and habits (data-habit-action) are handled by
@@ -650,18 +707,32 @@ function homeWireOnce() {
     // refreshHomeData to repaint the Home sections.
   });
 
-  // Inline journal reflection — edits save straight to today's journal entry
-  // (same scheduleSave path as the Journal tab) and the box auto-grows.
+  // Inline journal reflection + Today I Learned — edits save straight to today's
+  // journal entry (same scheduleSave path as the Journal tab) and the box
+  // auto-grows.
   document.addEventListener('input', e => {
-    if (e.target.id !== 'homeJournalInput') return;
-    const today = homeToday();
-    const val = e.target.value;
-    if (typeof journalState !== 'undefined') {
-      const entry = journalState.entries.get(today) || { entry_date: today, reflections: '', mood: null, photos: [] };
-      journalState.entries.set(today, { ...entry, reflections: val });
+    if (e.target.id === 'homeJournalInput') {
+      const today = homeToday();
+      const val = e.target.value;
+      if (typeof journalState !== 'undefined') {
+        const entry = journalState.entries.get(today) || { entry_date: today, reflections: '', mood: null, photos: [], learning: '' };
+        journalState.entries.set(today, { ...entry, reflections: val });
+      }
+      if (typeof scheduleSave === 'function') scheduleSave(today, { reflections: val });
+      homeAutoGrow(e.target);
+      return;
     }
-    if (typeof scheduleSave === 'function') scheduleSave(today, { reflections: val });
-    homeAutoGrow(e.target);
+    if (e.target.id === 'homeLearningInput') {
+      const today = homeToday();
+      const val = e.target.value;
+      if (typeof journalState !== 'undefined') {
+        const entry = journalState.entries.get(today) || { entry_date: today, reflections: '', mood: null, photos: [], learning: '' };
+        journalState.entries.set(today, { ...entry, learning: val });
+      }
+      if (typeof scheduleSave === 'function') scheduleSave(today, { learning: val });
+      homeAutoGrow(e.target);
+      return;
+    }
   });
 
   // Add Photo — funnels into the Journal entry's photos for today via the same

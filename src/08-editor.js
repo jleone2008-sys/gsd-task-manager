@@ -144,11 +144,15 @@ function toggleDone_t(id) {
   // next due date is already today/past, spawn now; otherwise wait for
   // the load-time / day-change check.
   if (t.done && t.recur) ensureRecurringSpawns();
+  // Tier 1 realtime: brief task_counts recompute from live tasks state.
+  if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);
   if (!t) return;
   t.top3=!t.top3; render(); saveTask(t);
+  // Tier 1 realtime: priority count in the brief reflects the new top3 flag.
+  if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
 }
 function delTask(id) {
   const t = tasks.find(t=>t.id===id);

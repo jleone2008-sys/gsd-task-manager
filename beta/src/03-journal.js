@@ -119,7 +119,7 @@ async function loadJournalMonth(year, month) {
   const end = `${year}-${String(month+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, updated_at')
+      .select('entry_date, reflections, mood, photos, learning, updated_at')
       .gte('entry_date', start).lte('entry_date', end);
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
@@ -132,7 +132,7 @@ async function loadJournalMonth(year, month) {
 async function loadJournalRange(startDate, endDate) {
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, updated_at')
+      .select('entry_date, reflections, mood, photos, learning, updated_at')
       .gte('entry_date', startDate).lte('entry_date', endDate);
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
@@ -153,7 +153,7 @@ async function loadJournalEntry(dateStr) {
   if (journalState.entries.has(dateStr)) return journalState.entries.get(dateStr);
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, updated_at')
+      .select('entry_date, reflections, mood, photos, learning, updated_at')
       .eq('entry_date', dateStr).maybeSingle();
     if (error) throw error;
     if (data) journalState.entries.set(dateStr, data);
@@ -166,7 +166,7 @@ async function loadJournalEntry(dateStr) {
 }
 
 async function saveJournalEntry(dateStr, patch) {
-  const existing = journalState.entries.get(dateStr) || { entry_date: dateStr, reflections: '', mood: null, photos: [] };
+  const existing = journalState.entries.get(dateStr) || { entry_date: dateStr, reflections: '', mood: null, photos: [], learning: '' };
   const merged = { ...existing, ...patch };
   journalState.entries.set(dateStr, merged);
   updateJournalBadge();
@@ -181,6 +181,7 @@ async function saveJournalEntry(dateStr, patch) {
       reflections: merged.reflections || null,
       mood: merged.mood ?? null,
       photos: merged.photos || [],
+      learning: merged.learning || null,
       updated_at: new Date().toISOString()
     };
     const { error } = await db.from('journal_entries').upsert(row, { onConflict: 'user_id,entry_date' });
@@ -746,7 +747,7 @@ function escapeHtml(s) {
 
 function isEntryEmpty(entry) {
   if (!entry) return true;
-  return !((entry.reflections && entry.reflections.trim()) || entry.mood || (entry.photos && entry.photos.length));
+  return !((entry.reflections && entry.reflections.trim()) || entry.mood || (entry.photos && entry.photos.length) || (entry.learning && entry.learning.trim()));
 }
 
 // Journal nav badge: ✓ when today's entry is filled, ! when it isn't.
@@ -1090,7 +1091,7 @@ function renderTasksSection(ds) {
 }
 
 function renderEditModalBody(ds) {
-  const entry = journalState.entries.get(ds) || { reflections: '', mood: null, photos: [] };
+  const entry = journalState.entries.get(ds) || { reflections: '', mood: null, photos: [], learning: '' };
   const photosHtml = (entry.photos || []).map((src, i) =>
     `<div class="j-photo"><img src="${src}" alt="" data-jlightbox="${ds}|${i}" /><button class="j-photo-del" data-jphoto-del="${i}" title="Remove">×</button></div>`
   ).join('');
@@ -1100,8 +1101,12 @@ function renderEditModalBody(ds) {
   }).join('');
   return `
     <div class="j-section">
-      <div class="j-section-h">Reflection</div>
+      <div class="j-section-h">Daily Reflection</div>
       <textarea class="j-textarea" id="jReflections" placeholder="How did today go? What's on your mind?" spellcheck="true">${escapeHtml(entry.reflections || '')}</textarea>
+    </div>
+    <div class="j-section">
+      <div class="j-section-h">Today I Learned</div>
+      <textarea class="j-textarea" id="jLearning" placeholder="One thing you learned today…" spellcheck="true">${escapeHtml(entry.learning || '')}</textarea>
     </div>
     <div class="j-section">
       <div class="j-section-h">Mood</div>
@@ -1678,9 +1683,17 @@ document.addEventListener('input', e => {
   if (e.target.id === 'jReflections') {
     const ds = journalState.editingDate;
     if (!ds) return;
-    const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[] };
+    const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[], learning:'' };
     journalState.entries.set(ds, { ...entry, reflections: e.target.value });
     scheduleSave(ds, { reflections: e.target.value });
+    return;
+  }
+  if (e.target.id === 'jLearning') {
+    const ds = journalState.editingDate;
+    if (!ds) return;
+    const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[], learning:'' };
+    journalState.entries.set(ds, { ...entry, learning: e.target.value });
+    scheduleSave(ds, { learning: e.target.value });
     return;
   }
   if (e.target.id === 'jSearchInput') {
