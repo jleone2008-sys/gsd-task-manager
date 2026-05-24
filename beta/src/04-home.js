@@ -96,10 +96,11 @@ function homeEnsureSubStyles() {
     }
     /* No separator line between buckets — the uppercase heading of the next
        bucket is enough of a break. The default #homeTasks .task-item rule
-       paints border-bottom on every row; this kills it on the last task in
-       each subsection so PRIORITY's tail flows cleanly into OVERDUE's head.
-       Lines between rows WITHIN a bucket are kept; they group the list. */
-    .home-subsection .task-group:last-child .task-item { border-bottom: 0; }
+       (1 ID + 1 class) outranks a plain-class override, so this selector
+       includes #homeTasks to win on specificity. Drops the border on the
+       last task in each subsection so PRIORITY's tail flows cleanly into
+       OVERDUE's head. Lines WITHIN a bucket are kept; they group the list. */
+    #homeTasks .home-subsection .task-group:last-child .task-item { border-bottom: 0; }
     .home-task-due-inline {
       display: inline-flex; align-items: center;
       margin-right: 8px; flex-shrink: 0;
