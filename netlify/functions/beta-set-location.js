@@ -12,6 +12,48 @@
 const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const GEOCODE_URL  = 'https://geocoding-api.open-meteo.com/v1/search';
 
+// US state code → full name. Open-Meteo returns admin1 as the full state name
+// (e.g. "Michigan"), so we expand 2-letter codes before filtering candidates.
+const US_STATE_NAME_BY_CODE = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+  CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
+  HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+  KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+  MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri',
+  MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey',
+  NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio',
+  OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina',
+  SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont',
+  VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+  DC: 'District of Columbia',
+};
+
+// Parse "City, ST" or "City, State Name" into parts. Single-token input is
+// treated as city with no state filter.
+function parseCityInput(input) {
+  const parts = input.split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length === 1) return { city: parts[0], state: null };
+  return { city: parts[0], state: parts.slice(1).join(', ') };
+}
+
+// Expand "MI" → "Michigan"; pass through "Michigan" unchanged.
+function expandStateName(state) {
+  if (!state) return null;
+  const trimmed = state.trim();
+  if (trimmed.length === 2) return US_STATE_NAME_BY_CODE[trimmed.toUpperCase()] || trimmed;
+  return trimmed;
+}
+
+// Pick the best candidate from Open-Meteo's results. Prefer exact admin1
+// (state) match when the user supplied a state; otherwise take the first.
+function pickBestMatch(results, state) {
+  if (!Array.isArray(results) || !results.length) return null;
+  if (!state) return results[0];
+  const expandedState = (expandStateName(state) || '').toLowerCase();
+  const match = results.find(r => r.admin1 && r.admin1.toLowerCase() === expandedState);
+  return match || results[0];
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
   if (event.httpMethod !== 'POST')    return cors(json(405, { error: 'method_not_allowed' }));
@@ -41,18 +83,27 @@ exports.handler = async (event) => {
   if (!cityInput) return cors(json(400, { error: 'missing_city' }));
   if (cityInput.length > 200) return cors(json(400, { error: 'city_too_long' }));
 
-  // Geocode
+  // Parse "City, State" — Open-Meteo's geocoder expects just the city name
+  // (state in the input confuses it). We strip the state for the query and
+  // use it to filter results client-side.
+  const { city: cityOnly, state } = parseCityInput(cityInput);
+
+  // Geocode (count=10 to give us candidates to filter by state)
   let geo;
   try {
-    const r = await fetch(`${GEOCODE_URL}?name=${encodeURIComponent(cityInput)}&count=1&language=en&format=json`);
+    const r = await fetch(`${GEOCODE_URL}?name=${encodeURIComponent(cityOnly)}&count=10&language=en&format=json`);
     if (!r.ok) return cors(json(502, { error: 'geocode_failed', detail: `HTTP ${r.status}` }));
     geo = await r.json();
   } catch (err) {
     return cors(json(502, { error: 'geocode_unreachable', detail: err.message }));
   }
-  const hit = (geo?.results || [])[0];
+  const hit = pickBestMatch(geo?.results, state);
   if (!hit || hit.latitude == null || hit.longitude == null) {
-    return cors(json(404, { error: 'city_not_found', city: cityInput }));
+    return cors(json(404, {
+      error:  'city_not_found',
+      detail: `No location matches "${cityInput}". Try "City, ST" (e.g. "Birmingham, MI"), the full state name, or just the city.`,
+      input:  cityInput,
+    }));
   }
 
   // Build a human-readable label: "Name, Admin1, Country" (e.g. "Birmingham, Michigan, US")
