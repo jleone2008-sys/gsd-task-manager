@@ -241,6 +241,14 @@ function briefInjectStyles() {
       margin-top: 14px; font-size: var(--t-xs); color: var(--ink-4);
       display: flex; align-items: center; gap: 8px;
     }
+    /* "Last updated at H:MM PM" — small, right-aligned, same gray as the
+       home-card empty states (var(--ink-4)). */
+    .brief-updated-stamp {
+      margin-top: 10px;
+      text-align: right;
+      font-size: var(--t-xs);
+      color: var(--ink-4);
+    }
 
     .brief-legacy-para {
       font-size: var(--t-sm); line-height: 1.55; color: var(--ink);
@@ -431,6 +439,18 @@ function briefStaleNoteHTML(brief) {
   </div>`;
 }
 
+// Small "Last updated at H:MM AM/PM" stamp pinned to the bottom-right of
+// the brief card. Reads brief.generated_at (UTC ISO from the daily-brief
+// function) and formats in the user's local time. Bails silently if the
+// field is missing (legacy briefs).
+function briefUpdatedStampHTML(brief) {
+  if (!brief?.generated_at) return '';
+  const dt = new Date(brief.generated_at);
+  if (isNaN(dt.getTime())) return '';
+  const timeStr = dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return `<div class="brief-updated-stamp">Last updated at ${briefEsc(timeStr)}</div>`;
+}
+
 function briefStructuredHTML(brief) {
   const s = brief.structured || {};
   const mode = s.mode || brief.mode || 'morning';
@@ -459,7 +479,8 @@ function briefStructuredHTML(brief) {
     ${briefPillsHTML(s.evidence_pills)}
     <div class="brief-divider"></div>
     ${bottomHtml}
-    ${briefStaleNoteHTML(brief)}`;
+    ${briefStaleNoteHTML(brief)}
+    ${briefUpdatedStampHTML(brief)}`;
 }
 
 // Legacy play renderer kept for back-compat (old briefs in DB before the
@@ -478,7 +499,8 @@ function briefLegacyHTML(brief) {
   const paragraphs = String(brief.narrative || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
   return `${briefHeadHTML('', briefBadgeHTML(brief))}
     ${paragraphs.map(p => `<p class="brief-legacy-para">${briefEsc(p)}</p>`).join('')}
-    ${briefStaleNoteHTML(brief)}`;
+    ${briefStaleNoteHTML(brief)}
+    ${briefUpdatedStampHTML(brief)}`;
 }
 
 function briefRender() {
