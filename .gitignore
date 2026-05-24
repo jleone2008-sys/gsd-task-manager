@@ -1,0 +1,11 @@
+# Local Netlify folder
+.netlify
+
+# Local env files — never commit secrets. Includes the Supabase
+# Personal Access Token used by scripts/apply-migration.mjs.
+.env
+.env.local
+.env.*.local
+
+# Node / scripts
+node_modules/
