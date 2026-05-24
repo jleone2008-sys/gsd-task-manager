@@ -445,13 +445,15 @@ async function fetchWeather(lat, lng, dateLocal, tz, label) {
     const j = await r.json();
     const d = j?.daily;
     if (!d || !d.time || !d.time.length) return null;
+    const code = d.weather_code?.[0];
     return {
-      location:    label || null,
-      temp_high_f: d.temperature_2m_max?.[0] ?? null,
-      temp_low_f:  d.temperature_2m_min?.[0] ?? null,
-      condition:   weatherCodeToText(d.weather_code?.[0]),
-      sunrise:     d.sunrise?.[0] ?? null,
-      sunset:      d.sunset?.[0] ?? null,
+      location:      label || null,
+      temp_high_f:   d.temperature_2m_max?.[0] ?? null,
+      temp_low_f:    d.temperature_2m_min?.[0] ?? null,
+      condition:     weatherCodeToText(code),
+      weather_emoji: weatherCodeToEmoji(code),
+      sunrise:       d.sunrise?.[0] ?? null,
+      sunset:        d.sunset?.[0] ?? null,
     };
   } catch (err) {
     console.warn('weather fetch failed:', err.message);
@@ -470,6 +472,25 @@ function weatherCodeToText(code) {
   if (c <= 82) return 'rain showers';
   if (c <= 86) return 'snow showers';
   if (c <= 99) return 'thunderstorm';
+  return null;
+}
+
+// WMO weather codes → condition emoji. Same banding as weatherCodeToText so
+// the two stay in lockstep. Returns null for unknown codes so the chip
+// renders without an emoji rather than a wrong one.
+function weatherCodeToEmoji(code) {
+  if (code == null) return null;
+  const c = Number(code);
+  if (c === 0) return '☀️';     // clear sky
+  if (c <= 2) return '⛅';       // partly cloudy
+  if (c === 3) return '☁️';     // overcast
+  if (c <= 48) return '🌫️';    // fog
+  if (c <= 57) return '🌦️';    // drizzle
+  if (c <= 67) return '🌧️';    // rain
+  if (c <= 77) return '❄️';     // snow
+  if (c <= 82) return '🌧️';    // rain showers
+  if (c <= 86) return '🌨️';    // snow showers
+  if (c <= 99) return '⛈️';     // thunderstorm
   return null;
 }
 function weekdayInTz(dateStr, tz) {
@@ -539,11 +560,11 @@ function inferEventIcon(summary) {
 }
 
 // Examples:
-//   morning: "53°/51° · Pelham"
-//   evening: "Tmrw 53°/51° · Pelham"
+//   morning: "☀️ 53°/51° · Pelham"
+//   evening: "☀️ Tmrw 53°/51° · Pelham"
 // Showing both high and low removes the "is that the high or low?" ambiguity
-// users hit when only one number is shown (a single number reads as either
-// current temp or yesterday's high depending on app conventions).
+// users hit when only one number is shown. The condition emoji (☀️/⛅/🌧️/❄️
+// etc.) is prefixed to make the chip scannable at a glance.
 function buildWeatherChip(weather, mode) {
   if (!weather || weather.temp_high_f == null) return null;
   const high  = `${Math.round(weather.temp_high_f)}°`;
@@ -551,7 +572,9 @@ function buildWeatherChip(weather, mode) {
   const temps = low ? `${high}/${low}` : high;
   const place = (weather.location || '').split(',')[0].trim();
   const core  = place ? `${temps} · ${place}` : temps;
-  return mode === 'evening' ? `Tmrw ${core}` : core;
+  const tempsBlock = mode === 'evening' ? `Tmrw ${core}` : core;
+  const emoji = weather.weather_emoji;
+  return emoji ? `${emoji} ${tempsBlock}` : tempsBlock;
 }
 
 // Pick the hero metric: respect Claude's override if valid, else use the
@@ -592,26 +615,46 @@ function buildHeroMetric(claudeKey, ctx) {
 // metric. All numbers are pulled from the raw recovery/activity rows. Deltas
 // are computed against the 7-day baseline. Notes are computed for special
 // cases (sleep score, HRV banding, RHR elevation).
+// Metrics where a LOWER value is better. The stat-row builder uses this set
+// to label the delta direction so the client renders RHR ↓4 (good) green and
+// RHR ↑4 (bad) red — the inverse of the default mapping.
+const LOWER_IS_BETTER_METRICS = new Set(['Resting HR', 'Stress', 'Sleep latency']);
+
 function buildStats(heroKey, ctx) {
   const r  = sanitizeScores(ctx.yesterday?.recovery || {});
   const a  = sanitizeScores(ctx.yesterday?.activity || {});
   const b7 = ctx.baselines_7d || {};
+  // fmtDelta returns both the display string and the signed integer so the
+  // direction tagger downstream can apply per-metric "lower is better" rules.
   const fmtDelta = (today, base) => {
-    if (today == null || base == null) return null;
+    if (today == null || base == null) return { text: null, signed: 0 };
     const d = Math.round(Number(today) - Number(base));
-    if (d === 0) return null;
-    return d > 0 ? `↑${d}` : `↓${Math.abs(d)}`;
+    if (d === 0) return { text: null, signed: 0 };
+    return {
+      text:   d > 0 ? `↑${d}` : `↓${Math.abs(d)}`,
+      signed: d,
+    };
+  };
+  const tagDir = (label, signed) => {
+    if (!signed) return null;
+    const lowerBetter = LOWER_IS_BETTER_METRICS.has(label);
+    // good = direction the user wants. Higher-is-better metric + positive
+    // delta → good. Lower-is-better metric + negative delta → good.
+    if (lowerBetter) return signed < 0 ? 'good' : 'bad';
+    return signed > 0 ? 'good' : 'bad';
   };
   const rows = [];
 
   // Sleep row: duration as value, score as note (if available)
   if (heroKey !== 'sleep_score' && (r.total_sleep_min != null || r.sleep_score != null)) {
     const dur = formatMinutes(r.total_sleep_min);
+    const dd  = fmtDelta(r.total_sleep_min, b7.total_sleep_min_median);
     rows.push({
-      label: 'Sleep',
-      value: dur || (r.sleep_score != null ? String(r.sleep_score) : '—'),
-      delta: fmtDelta(r.total_sleep_min, b7.total_sleep_min_median),
-      note:  (dur && r.sleep_score != null) ? `score ${r.sleep_score}` : null,
+      label:     'Sleep',
+      value:     dur || (r.sleep_score != null ? String(r.sleep_score) : '—'),
+      delta:     dd.text,
+      delta_dir: tagDir('Sleep', dd.signed),
+      note:      (dur && r.sleep_score != null) ? `score ${r.sleep_score}` : null,
     });
   }
 
@@ -625,34 +668,41 @@ function buildStats(heroKey, ctx) {
     } else if (a.steps != null) {
       note = `${a.steps.toLocaleString()} steps · yesterday`;
     }
+    const dd = fmtDelta(a.activity_score, b7.activity_score_median);
     rows.push({
-      label: 'Activity',
-      value: a.activity_score != null ? String(a.activity_score) : '—',
-      delta: fmtDelta(a.activity_score, b7.activity_score_median),
+      label:     'Activity',
+      value:     a.activity_score != null ? String(a.activity_score) : '—',
+      delta:     dd.text,
+      delta_dir: tagDir('Activity', dd.signed),
       note,
     });
   }
 
   // Readiness row (only if not the hero)
   if (heroKey !== 'readiness_score' && r.readiness_score != null) {
+    const dd = fmtDelta(r.readiness_score, b7.readiness_score_median);
     rows.push({
-      label: 'Readiness',
-      value: String(r.readiness_score),
-      delta: fmtDelta(r.readiness_score, b7.readiness_score_median),
-      note:  null,
+      label:     'Readiness',
+      value:     String(r.readiness_score),
+      delta:     dd.text,
+      delta_dir: tagDir('Readiness', dd.signed),
+      note:      null,
     });
   }
 
-  // Resting HR row: number as value, "elevated" / "+N vs norm" as note
+  // Resting HR row: number as value, "elevated" / "low" as note. Lower is
+  // better — a negative delta should render GREEN (good), positive RED.
   if (r.resting_hr != null) {
     const diff = b7.resting_hr_median != null ? Math.round(r.resting_hr - Number(b7.resting_hr_median)) : null;
     let note = null;
     if (diff != null && diff > 5) note = 'elevated';
     else if (diff != null && diff < -5) note = 'low';
+    const dd = fmtDelta(r.resting_hr, b7.resting_hr_median);
     rows.push({
-      label: 'Resting HR',
-      value: String(Math.round(r.resting_hr)),
-      delta: fmtDelta(r.resting_hr, b7.resting_hr_median),
+      label:     'Resting HR',
+      value:     String(Math.round(r.resting_hr)),
+      delta:     dd.text,
+      delta_dir: tagDir('Resting HR', dd.signed),
       note,
     });
   }
@@ -666,15 +716,96 @@ function buildStats(heroKey, ctx) {
       else if (pct < 0.9) note = 'below norm';
       else if (pct > 1.2) note = 'above norm';
     }
+    const dd = fmtDelta(r.hrv_ms, b7.hrv_ms_median);
     rows.push({
-      label: 'HRV',
-      value: String(Math.round(r.hrv_ms)),
-      delta: fmtDelta(r.hrv_ms, b7.hrv_ms_median),
+      label:     'HRV',
+      value:     String(Math.round(r.hrv_ms)),
+      delta:     dd.text,
+      delta_dir: tagDir('HRV', dd.signed),
       note,
     });
   }
 
   return rows.slice(0, 4);
+}
+
+// Compute the time the user got into bed from Oura's sleep midpoint and total
+// sleep duration. Returns "10:45 PM" / "11:20 PM" / null. Oura's
+// sleep_midpoint_offset_min is signed minutes from midnight of the date col
+// (the day the sleep ENDED): negative = before midnight, positive = after.
+// Bed-time offset = midpoint − duration/2. Normalize to 0-1439 then format.
+function computeBedtime(recovery) {
+  if (!recovery) return null;
+  const mid = recovery.sleep_midpoint_offset_min;
+  const dur = recovery.total_sleep_min;
+  if (mid == null || dur == null) return null;
+  let minOfDay = Math.round(Number(mid) - Number(dur) / 2);
+  while (minOfDay < 0)     minOfDay += 1440;
+  while (minOfDay >= 1440) minOfDay -= 1440;
+  const h   = Math.floor(minOfDay / 60);
+  const m   = minOfDay % 60;
+  const pm  = h >= 12;
+  const h12 = ((h + 11) % 12) + 1;        // 0→12, 13→1, …
+  return `${h12}:${String(m).padStart(2, '0')} ${pm ? 'PM' : 'AM'}`;
+}
+
+// Build the Yesterday/Today recap pair the client renders as a two-column
+// grid. Everything here is deterministic: habits %, task counts, bedtime
+// time, mood label, sleep target. Claude touches none of it. The left block
+// shows what just finished (habits closed, tasks done, bedtime, mood); the
+// right block shows what's coming (events, task counts, habits in-flight,
+// sleep target). For evening mode, "left" is today's recap (now finalized)
+// and "right" is tomorrow's setup; the client picks the labels off
+// `left.label`/`right.label`.
+function buildRecap(mode, ctx, sleepTargetTime) {
+  // Habits percentage from {done, due} shape. Returns null when no data, 0%
+  // when due > 0 but done = 0 (we still want to render the 0/N row).
+  const habitsPct = (h) => {
+    if (!h || !h.due) return null;
+    const done = Number(h.done) || 0;
+    const due  = Number(h.due);
+    return { pct: Math.round((done / due) * 100), done, due };
+  };
+
+  // Morning: left = yesterday (yday data), right = today (today plan).
+  // Evening: left = today (today recap from ctx.today_recap, plus yday data
+  //          for habits/bedtime which finalize only after the day rolls
+  //          over), right = tomorrow (tomorrow plan).
+  if (mode === 'morning') {
+    const left = {
+      label:       'Yesterday',
+      habits:      habitsPct(ctx.yesterday?.habits),
+      tasks_done:  ctx.yesterday?.tasks_completed_count ?? null,
+      bedtime:     computeBedtime(ctx.yesterday?.recovery),
+      mood_label:  ctx.yesterday?.mood?.value_label ?? null,
+    };
+    const right = {
+      label:        'Today',
+      events:       (ctx.today_plan?.calendar_events || []).length,
+      task_counts:  ctx.today_plan?.task_counts || null,
+      habits_today: null,        // client recomputes from live habitsArr (Tier 1)
+      sleep_target: sleepTargetTime,
+    };
+    return { left, right };
+  }
+  // Evening
+  const left = {
+    label:       'Today',
+    // Today's habits don't fully finalize until midnight; fall back to
+    // yesterday's snapshot when journal_habit_summary hasn't been written yet.
+    habits:      habitsPct(ctx.yesterday?.habits),
+    tasks_done:  ctx.today_recap?.tasks_completed_today ?? null,
+    bedtime:     null,           // yesterday's bedtime is stale by evening
+    mood_label:  ctx.today_recap?.mood_label ?? null,
+  };
+  const right = {
+    label:        'Tomorrow',
+    events:       (ctx.tomorrow_plan?.calendar_events || []).length,
+    task_counts:  ctx.tomorrow_plan?.task_counts || null,
+    habits_today: null,
+    sleep_target: sleepTargetTime,
+  };
+  return { left, right };
 }
 
 // Build the play list deterministically from facts. Morning shows today's plan
@@ -971,8 +1102,7 @@ function normalizeStructured(raw, mode, ctx) {
   // Falls back to Claude's value only if the server rules return null.
   const serverSleepTarget = recommendSleepTarget(ctx.yesterday?.recovery, mode, ctx.baselines_7d);
   const sleepTarget = serverSleepTarget || (raw.sleep_target_time ? String(raw.sleep_target_time).trim().slice(0, 24) : null);
-  const playRows     = buildPlayRows(mode, ctx, sleepTarget);
-  const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
+  const recap        = buildRecap(mode, ctx, sleepTarget);
 
   const confidence = ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low';
 
@@ -984,7 +1114,7 @@ function normalizeStructured(raw, mode, ctx) {
     hero_metric,
     stats,
     evidence_pills: pills,
-    [playKey]: playRows,
+    recap,
     confidence,
   };
 }
@@ -994,10 +1124,28 @@ function normalizeStructured(raw, mode, ctx) {
 function buildFlatNarrative(s) {
   const lines = [s.headline, s.subhead];
   if (s.evidence_pills?.length) lines.push(s.evidence_pills.join(' · '));
-  const playKey = s.mode === 'morning' ? 'today_play' : 'tomorrow_setup';
-  if (Array.isArray(s[playKey]) && s[playKey].length) {
-    lines.push((s.mode === 'morning' ? "Today's Play:" : "Tomorrow's Setup:"));
-    for (const r of s[playKey]) lines.push(`  ${r.scope} — ${r.content}`);
+  // Recap blocks: flatten left + right columns into prose for the legacy
+  // narrative column. Order matches the rendered grid (left first).
+  const r = s.recap;
+  if (r?.left || r?.right) {
+    const fmtCol = (col) => {
+      if (!col) return null;
+      const bits = [];
+      if (col.habits)      bits.push(`Habits ${col.habits.pct}% · ${col.habits.done}/${col.habits.due}`);
+      if (col.tasks_done != null) bits.push(`${col.tasks_done} tasks done`);
+      if (col.bedtime)     bits.push(`Bed ${col.bedtime}`);
+      if (col.mood_label)  bits.push(`Mood ${col.mood_label}`);
+      if (col.events != null) bits.push(`${col.events} events`);
+      if (col.task_counts) {
+        const tc = col.task_counts;
+        bits.push(`${tc.priority}p · ${tc.due_today}d · ${tc.overdue}o`);
+      }
+      if (col.sleep_target) bits.push(`Sleep ${col.sleep_target}`);
+      return bits.length ? `${col.label}: ${bits.join(' · ')}` : null;
+    };
+    const L = fmtCol(r.left), R = fmtCol(r.right);
+    if (L) lines.push(L);
+    if (R) lines.push(R);
   }
   return lines.filter(Boolean).join('\n');
 }
@@ -1012,8 +1160,8 @@ function buildFallback({ reason, context, mode }) {
   const stats        = buildStats(hero_metric.key, ctxSafe);
   const weatherSrc   = mode === 'evening' ? ctxSafe.tomorrow_plan?.weather : ctxSafe.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
-  const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
-  const playRows     = buildPlayRows(mode, ctxSafe, null);
+  const serverSleepTarget = recommendSleepTarget(ctxSafe.yesterday?.recovery, mode, ctxSafe.baselines_7d);
+  const recap        = buildRecap(mode, ctxSafe, serverSleepTarget);
 
   const structured = {
     mode,
@@ -1023,7 +1171,7 @@ function buildFallback({ reason, context, mode }) {
     hero_metric,
     stats,
     evidence_pills: [],
-    [playKey]:      playRows,
+    recap,
     confidence:     'low',
   };
 

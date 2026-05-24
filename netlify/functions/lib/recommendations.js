@@ -5,14 +5,17 @@
 // Future entries (e.g. recommendIntensity, recommendHydrationFlag) follow
 // the same pattern: take context, return deterministic value.
 
-// Sleep target — when to be in bed. Returns null for morning mode (the
-// morning brief doesn't push a specific bedtime; subhead handles framing).
-// Evening rules pivot on recovery:
+// Sleep target — when to be in bed. Returns a target for BOTH modes now:
+// the morning brief surfaces it in the Today recap ("Tonight 10:30 PM"),
+// the evening brief surfaces it in the wind-down row ("In bed by 10:30 PM").
+// Rules pivot on the most recent recovery read:
 //   readiness <= 60 OR HRV well below 7d median (< 70%) → 9:30 PM (push earlier)
 //   readiness <= 75                                      → 10:00 PM
 //   else                                                 → 10:30 PM (default)
+// mode is kept in the signature for back-compat with existing callers and so
+// future variants (e.g. weekend defaults) can branch on it without an API
+// change.
 function recommendSleepTarget(recovery, mode, baselines7d) {
-  if (mode !== 'evening') return null;
   if (!recovery) return '10:30 PM';
   const readiness = recovery.readiness_score;
   const hrv       = recovery.hrv_ms;

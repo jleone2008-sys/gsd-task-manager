@@ -180,6 +180,12 @@ function briefInjectStyles() {
     }
     .brief-stat-num { font-weight: 700; }
     .brief-stat-delta { font-size: var(--t-xs); font-weight: 700; }
+    /* is-good / is-bad are the new server-driven classes (delta_dir field).
+       is-up / is-down are kept for back-compat with briefs generated before
+       the recap migration; they encode "arrow direction" rather than
+       "good/bad" so they read wrong on lower-is-better metrics like RHR. */
+    .brief-stat-delta.is-good { color: #5e8c4f; }
+    .brief-stat-delta.is-bad  { color: var(--guava-700); }
     .brief-stat-delta.is-up   { color: #5e8c4f; }
     .brief-stat-delta.is-down { color: var(--guava-700); }
     .brief-stat-note { font-size: var(--t-xs); color: var(--ink-4); font-weight: 500; }
@@ -241,6 +247,37 @@ function briefInjectStyles() {
       margin: 0 0 10px 0;
     }
     .brief-legacy-para:last-child { margin-bottom: 0; }
+
+    /* ── Recap grid (Yesterday/Today or Today/Tomorrow). Two columns side
+          by side; each row icon + label + value. The forward-side fields
+          (events, task counts, sleep target) and past-side fields (habits
+          closed, tasks done, bedtime, mood) share the same row markup —
+          the rows present depend on what data was set in structured.recap. */
+    .brief-recap-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    .brief-recap-col { display: flex; flex-direction: column; }
+    .brief-recap-col-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase; margin: 0 0 8px 0;
+    }
+    .brief-recap-row {
+      display: grid; grid-template-columns: 18px 1fr auto; gap: 8px;
+      align-items: baseline; padding: 6px 0; font-size: var(--t-sm);
+    }
+    .brief-recap-row + .brief-recap-row { border-top: 1px dashed var(--edge); }
+    .brief-recap-icon { font-size: 14px; line-height: 1; }
+    .brief-recap-name { color: var(--ink-3); }
+    .brief-recap-value {
+      color: var(--ink); font-weight: 600; text-align: right;
+      font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    @media (max-width: 420px) {
+      /* Narrow phones: collapse the grid to stacked sections so the values
+         don't wrap to two rows each. */
+      .brief-recap-grid { grid-template-columns: 1fr; gap: 4px; }
+      .brief-recap-col + .brief-recap-col { margin-top: 10px; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -301,8 +338,14 @@ function briefStatsHTML(stats) {
   const hasAnyDelta = stats.some(s => !!s.delta);
   return `<div class="brief-stats">${stats.map(s => {
     const value = (s.value == null) ? '—' : s.value;
-    const deltaCls = String(s.delta || '').startsWith('↑') ? 'is-up'
-                   : String(s.delta || '').startsWith('↓') ? 'is-down' : '';
+    // Server now sends delta_dir: 'good' | 'bad' | null. Fall back to the
+    // legacy ↑/↓ sniff for old briefs that haven't been regenerated yet
+    // (and for fixed positive-is-better metrics where the arrow is the cue).
+    let deltaCls = '';
+    if (s.delta_dir === 'good')      deltaCls = 'is-good';
+    else if (s.delta_dir === 'bad')  deltaCls = 'is-bad';
+    else if (String(s.delta || '').startsWith('↑')) deltaCls = 'is-good';
+    else if (String(s.delta || '').startsWith('↓')) deltaCls = 'is-bad';
     const deltaHtml = s.delta ? `<span class="brief-stat-delta ${deltaCls}">${briefEsc(s.delta)}</span>` : '';
     const noteHtml  = s.note  ? `<span class="brief-stat-note">${briefEsc(s.note)}</span>` : '';
     return `<div class="brief-stat-row">
@@ -321,14 +364,63 @@ function briefPillsHTML(pills) {
   return `<div class="brief-pills">${pills.map(p => `<span class="brief-pill">${briefEsc(p)}</span>`).join('')}</div>`;
 }
 
-function briefPlayHTML(rows, label) {
-  if (!Array.isArray(rows) || rows.length === 0) return '';
-  return `<div class="brief-play-label">${briefEsc(label)}</div>
-    <div class="brief-play">${rows.map(r => `<div class="brief-play-row">
-      <span class="brief-play-icon">${playIconSVG(r.icon)}</span>
-      <span class="brief-play-scope">${briefEsc(r.scope || '')}</span>
-      <span class="brief-play-content">${briefEsc(r.content || '')}</span>
-    </div>`).join('')}</div>`;
+// Format a task_counts {priority, due_today, overdue, total_open} block
+// into the brief's compact "1p · 0d · 1o" shorthand. Hides the row when
+// no tasks are open at all (returns null so the caller can skip rendering).
+function briefRecapTaskCountsText(tc) {
+  if (!tc || !tc.total_open) return null;
+  return `${tc.priority || 0}p · ${tc.due_today || 0}d · ${tc.overdue || 0}o`;
+}
+
+// Format a habits {pct, done, due} block into "20% · 1/5". Returns null
+// when there's nothing to render (no habits due that day).
+function briefRecapHabitsText(h) {
+  if (!h || !h.due) return null;
+  return `${h.pct || 0}% · ${h.done || 0}/${h.due}`;
+}
+
+// Two-column Yesterday/Today recap grid. Replaces the old Today's Play /
+// Tomorrow's Setup row list. Server emits structured.recap = { left, right }
+// where each side has its own label and a fixed set of optional fields.
+// Rendering is purely client-side from the data; Tier 1 mutations patch
+// the structured.recap fields in place and call briefRender again.
+function briefRecapHTML(recap, structured) {
+  if (!recap || (!recap.left && !recap.right)) return '';
+  const renderCol = (col) => {
+    if (!col) return '';
+    const rows = [];
+    // Past-side fields (habits closed, tasks done, bedtime, mood).
+    const habitsTxt = briefRecapHabitsText(col.habits);
+    if (habitsTxt != null) rows.push({ icon: '🔥', name: 'Habits',     value: habitsTxt });
+    if (col.tasks_done != null) rows.push({ icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
+    if (col.bedtime)            rows.push({ icon: '🌙', name: 'In bed',     value: col.bedtime });
+    if (col.mood_label)         rows.push({ icon: '😊', name: 'Mood',       value: col.mood_label });
+    // Forward-side fields (events, task counts, today's habits, sleep target).
+    if (col.events != null && (col.label === 'Today' || col.label === 'Tomorrow')) {
+      rows.push({ icon: '📅', name: 'Events', value: String(col.events) });
+    }
+    const tcTxt = briefRecapTaskCountsText(col.task_counts);
+    if (tcTxt != null) rows.push({ icon: '☐', name: 'Tasks', value: tcTxt });
+    const habitsTodayTxt = briefRecapHabitsText(col.habits_today);
+    if (habitsTodayTxt != null) rows.push({ icon: '🔥', name: 'Habits', value: habitsTodayTxt });
+    if (col.sleep_target) {
+      const tonightLabel = (col.label === 'Tomorrow') ? 'Tomorrow' : 'Tonight';
+      rows.push({ icon: '🌙', name: tonightLabel, value: col.sleep_target });
+    }
+    if (!rows.length) return '';
+    return `<div class="brief-recap-col">
+      <div class="brief-recap-col-label">${briefEsc(col.label || '')}</div>
+      ${rows.map(r => `<div class="brief-recap-row">
+        <span class="brief-recap-icon">${briefEsc(r.icon)}</span>
+        <span class="brief-recap-name">${briefEsc(r.name)}</span>
+        <span class="brief-recap-value">${briefEsc(r.value)}</span>
+      </div>`).join('')}
+    </div>`;
+  };
+  return `<div class="brief-recap-grid">
+    ${renderCol(recap.left)}
+    ${renderCol(recap.right)}
+  </div>`;
 }
 
 function briefStaleNoteHTML(brief) {
@@ -344,8 +436,18 @@ function briefStructuredHTML(brief) {
   const mode = s.mode || brief.mode || 'morning';
   const hero = s.hero_metric || {};
   const heroHtml = briefHeroRingSVG(hero.value, hero.label, hero.delta_vs_7d, hero.key);
-  const playKey   = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
-  const playLabel = mode === 'morning' ? "TODAY'S PLAY" : "TOMORROW'S SETUP";
+  // Prefer the new recap grid (Yesterday/Today or Today/Tomorrow). For old
+  // briefs in the DB that still carry today_play / tomorrow_setup, fall back
+  // to the legacy single-column play list so they render until the hourly
+  // cron regenerates them in the new shape.
+  let bottomHtml = '';
+  if (s.recap && (s.recap.left || s.recap.right)) {
+    bottomHtml = briefRecapHTML(s.recap, s);
+  } else {
+    const playKey   = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
+    const playLabel = mode === 'morning' ? "TODAY'S PLAY" : "TOMORROW'S SETUP";
+    bottomHtml = briefPlayHTML(s[playKey], playLabel);
+  }
   return `${briefHeadHTML(briefWeatherChipHTML(s.weather_chip), briefBadgeHTML(brief))}
     <h2 class="brief-headline">${briefEsc(s.headline || '')}</h2>
     ${s.subhead ? `<p class="brief-subhead">${briefEsc(s.subhead)}</p>` : ''}
@@ -356,8 +458,20 @@ function briefStructuredHTML(brief) {
     </div>
     ${briefPillsHTML(s.evidence_pills)}
     <div class="brief-divider"></div>
-    ${briefPlayHTML(s[playKey], playLabel)}
+    ${bottomHtml}
     ${briefStaleNoteHTML(brief)}`;
+}
+
+// Legacy play renderer kept for back-compat (old briefs in DB before the
+// recap migration). Removed when the cron has refreshed every brief.
+function briefPlayHTML(rows, label) {
+  if (!Array.isArray(rows) || rows.length === 0) return '';
+  return `<div class="brief-play-label">${briefEsc(label)}</div>
+    <div class="brief-play">${rows.map(r => `<div class="brief-play-row">
+      <span class="brief-play-icon">${playIconSVG(r.icon)}</span>
+      <span class="brief-play-scope">${briefEsc(r.scope || '')}</span>
+      <span class="brief-play-content">${briefEsc(r.content || '')}</span>
+    </div>`).join('')}</div>`;
 }
 
 function briefLegacyHTML(brief) {
@@ -488,35 +602,60 @@ function homeBriefRecompute() {
   if (!s) return;                   // brief not loaded yet — nothing to patch
   const mode  = s.mode || brief.mode || 'morning';
 
-  if (mode === 'morning') {
-    const ref    = briefTodayLocal();
-    const counts = briefComputeTaskCounts(ref);
-    s.today_plan = s.today_plan || {};
-    s.today_plan.task_counts = counts;
-    s.today_play = briefPatchTaskRow(s.today_play || [], briefTaskCountsRow(counts));
-    s.today_play = briefPatchHabitsRow(s.today_play);
-  } else {
-    const ref    = briefTomorrowLocal();
-    const counts = briefComputeTaskCounts(ref);
-    s.tomorrow_plan = s.tomorrow_plan || {};
-    s.tomorrow_plan.task_counts = counts;
-    s.tomorrow_setup = briefPatchTaskRow(s.tomorrow_setup || [], briefTaskCountsRow(counts));
-    s.tomorrow_setup = briefPatchHabitsRow(s.tomorrow_setup);
+  // ── New recap shape (structured.recap.right) ────────────────────────────
+  // The forward-side column (Today on morning, Tomorrow on evening) carries
+  // task_counts and habits_today. Both are deterministic from live globals;
+  // recompute and patch in place so the user sees instant feedback after
+  // toggling a task or checking off a habit.
+  if (s.recap && s.recap.right) {
+    const ref = mode === 'morning' ? briefTodayLocal() : briefTomorrowLocal();
+    s.recap.right.task_counts  = briefComputeTaskCounts(ref);
+    // Habits done today: server can't see in-progress days; client always wins.
+    const hToday = briefComputeHabitsToday();
+    s.recap.right.habits_today = hToday
+      ? { pct: Math.round((hToday.done / hToday.due) * 100), done: hToday.done, due: hToday.due }
+      : null;
   }
 
-  // Mood-evidence pill refresh: if any pill mentions a mood label, swap it for
-  // the current label. Best-effort — silent no-op if no mood pill is present.
+  // ── Legacy shape (today_play / tomorrow_setup) ──────────────────────────
+  // Keep patching the old fields too — old briefs in the DB still render
+  // via that path until the hourly cron regenerates them in the new shape.
+  if (mode === 'morning') {
+    const counts = briefComputeTaskCounts(briefTodayLocal());
+    s.today_plan = s.today_plan || {};
+    s.today_plan.task_counts = counts;
+    if (Array.isArray(s.today_play)) {
+      s.today_play = briefPatchTaskRow(s.today_play, briefTaskCountsRow(counts));
+      s.today_play = briefPatchHabitsRow(s.today_play);
+    }
+  } else {
+    const counts = briefComputeTaskCounts(briefTomorrowLocal());
+    s.tomorrow_plan = s.tomorrow_plan || {};
+    s.tomorrow_plan.task_counts = counts;
+    if (Array.isArray(s.tomorrow_setup)) {
+      s.tomorrow_setup = briefPatchTaskRow(s.tomorrow_setup, briefTaskCountsRow(counts));
+      s.tomorrow_setup = briefPatchHabitsRow(s.tomorrow_setup);
+    }
+  }
+
+  // Mood: refresh the live label across (a) the evidence pill if present
+  // and (b) the recap.left.mood_label slot. Evening mode reflects TODAY's
+  // mood (since recap.left.label === 'Today' there); morning mode's left
+  // column shows yesterday's mood which doesn't change in-session, so we
+  // skip the recap patch for it.
   if (typeof journalState !== 'undefined') {
-    const today = briefTodayLocal();
-    const entry = journalState.entries.get(today);
+    const todayStr = briefTodayLocal();
+    const entry = journalState.entries.get(todayStr);
     const label = entry ? briefMoodLabel(entry.mood) : null;
     if (label && Array.isArray(s.evidence_pills)) {
       s.evidence_pills = s.evidence_pills.map(p => {
         if (!p) return p;
-        // Match labels case-insensitively, only within a "Mood:" prefix pill.
         if (/^mood\s*[:|-]/i.test(p)) return `Mood: ${label}`;
         return p;
       });
+    }
+    if (mode === 'evening' && s.recap && s.recap.left && s.recap.left.label === 'Today') {
+      s.recap.left.mood_label = label;
     }
   }
 

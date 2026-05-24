@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brief redesign — mockups</title>
+<style>
+  :root {
+    --bg: #f6f2ea; --surface: #ffffff; --surface-2: #f0eadd;
+    --edge: #ddd6c7; --edge-strong: #c8bfae;
+    --ink: #1a1714; --ink-2: #3d3730; --ink-3: #6e6559; --ink-4: #a8a094;
+    --guava-50: #fbeaec; --guava-100: #fde8ea; --guava-500: #d65b6b;
+    --guava-700: #b82d3b; --guava-800: #99232f;
+    --moss-fg: #5e8c4f;
+    --t-xs: 11px; --t-sm: 13px; --t-md: 15px;
+    --r-md: 4px; --r-lg: 10px;
+    --shadow-card: 0 1px 2px rgba(20,15,10,.04), 0 4px 16px rgba(20,15,10,.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+    color: var(--ink); line-height: 1.5;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(246, 242, 234, 0.95);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--edge);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .topbar-title {
+    font-size: 13px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .topbar-nav {
+    display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap;
+  }
+  .topbar-link {
+    font-size: 11px; font-weight: 600;
+    color: var(--ink-3); text-decoration: none;
+    padding: 4px 10px; border: 1px solid var(--edge);
+    border-radius: 999px; background: var(--surface);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .topbar-link:hover {
+    background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong);
+  }
+  .page {
+    max-width: 720px; margin: 0 auto;
+    padding: 32px 20px 80px;
+    display: flex; flex-direction: column; gap: 56px;
+  }
+  .variant {
+    scroll-margin-top: 64px;
+  }
+  .variant-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--guava-700);
+    margin-bottom: 10px;
+  }
+  .variant-note {
+    font-size: 12px; color: var(--ink-3);
+    margin-top: 12px; line-height: 1.55;
+  }
+
+  /* ── Shared brief card scaffolding ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); box-shadow: var(--shadow-card);
+    padding: 20px 18px;
+  }
+  .brief-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 14px;
+  }
+  .brief-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase;
+  }
+  .brief-head-right { display: inline-flex; align-items: center; gap: 8px; }
+  .brief-weather-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border: 1px solid var(--edge); border-radius: 999px;
+    font-size: var(--t-xs); color: var(--ink-2); white-space: nowrap;
+  }
+  .brief-weather-emoji { font-size: 13px; line-height: 1; }
+  .brief-weather-temp { font-weight: 700; color: var(--ink); }
+  .brief-headline {
+    font-size: 22px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 6px 0;
+  }
+  .brief-subhead {
+    font-size: var(--t-sm); color: var(--ink-2); line-height: 1.45;
+    margin: 0 0 16px 0;
+  }
+  .brief-divider { height: 1px; background: var(--edge); margin: 16px 0; }
+  .brief-hero-grid {
+    display: grid; grid-template-columns: 132px 1fr; gap: 16px;
+    align-items: center;
+  }
+  .brief-hero-svg { width: 120px; height: 120px; display: block; }
+  .brief-hero-value { font-size: 26px; font-weight: 700; fill: var(--ink); }
+  .brief-hero-label { font-size: 9px; font-weight: 700; letter-spacing: .08em; fill: var(--ink-3); }
+  .brief-hero-delta { font-size: 11px; font-weight: 700; fill: var(--guava-700); font-variant-numeric: tabular-nums; }
+  .brief-stats { display: flex; flex-direction: column; }
+  .brief-stat-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px;
+    align-items: baseline; padding: 6px 0; font-size: var(--t-sm);
+  }
+  .brief-stat-row + .brief-stat-row { border-top: 1px dashed var(--edge); }
+  .brief-stat-label { color: var(--ink-2); }
+  .brief-stat-value {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  .brief-stat-num { font-weight: 700; }
+  .brief-stat-delta { font-size: var(--t-xs); font-weight: 700; }
+  .brief-stat-delta.is-good { color: var(--moss-fg); }
+  .brief-stat-delta.is-bad  { color: var(--guava-700); }
+  .brief-stat-note { font-size: var(--t-xs); color: var(--ink-4); font-weight: 500; }
+  .brief-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .brief-pill {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border: 1px solid var(--guava-50); border-radius: 999px;
+    background: var(--guava-50); color: var(--guava-700);
+    font-size: var(--t-xs); white-space: nowrap;
+  }
+
+  /* ── Variation A: two-column grid ── */
+  .recap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .recap-col { display: flex; flex-direction: column; }
+  .recap-col-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin: 0 0 8px 0;
+  }
+  .recap-grid-row {
+    display: grid; grid-template-columns: 18px 1fr auto; gap: 8px;
+    align-items: baseline; padding: 6px 0; font-size: var(--t-sm);
+  }
+  .recap-grid-row + .recap-grid-row { border-top: 1px dashed var(--edge); }
+  .recap-grid-icon { font-size: 14px; line-height: 1; }
+  .recap-grid-name { color: var(--ink-3); }
+  .recap-grid-value {
+    color: var(--ink); font-weight: 600; text-align: right;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+
+  /* ── Variation B: stacked sections (matches current today_play row) ── */
+  .recap-stacked-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin: 0 0 8px 0;
+  }
+  .recap-stacked-section + .recap-stacked-section { margin-top: 14px; }
+  .recap-stacked-row {
+    display: grid; grid-template-columns: 22px 96px 1fr; gap: 10px;
+    align-items: baseline; padding: 8px 0; font-size: var(--t-sm);
+  }
+  .recap-stacked-row + .recap-stacked-row { border-top: 1px solid var(--edge); }
+  .recap-stacked-icon { font-size: 16px; line-height: 1; text-align: center; }
+  .recap-stacked-scope { font-size: var(--t-xs); color: var(--ink-3); font-weight: 600; white-space: nowrap; }
+  .recap-stacked-content { color: var(--ink); }
+
+  /* ── Variation C: inline one-liners ── */
+  .recap-inline-row {
+    display: grid; grid-template-columns: 80px 1fr; gap: 10px;
+    align-items: baseline; padding: 8px 0; font-size: var(--t-sm);
+  }
+  .recap-inline-row + .recap-inline-row { border-top: 1px solid var(--edge); }
+  .recap-inline-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase;
+  }
+  .recap-inline-value { color: var(--ink); line-height: 1.7; }
+  .recap-inline-sep { color: var(--ink-4); margin: 0 6px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-title">Brief redesign — 3 variations</span>
+  <nav class="topbar-nav">
+    <a class="topbar-link" href="#variant-a">A · Grid</a>
+    <a class="topbar-link" href="#variant-b">B · Stacked</a>
+    <a class="topbar-link" href="#variant-c">C · Inline</a>
+  </nav>
+</div>
+
+<div class="page">
+
+  <!-- ═══════════════ VARIATION A: TWO-COLUMN GRID ═══════════════ -->
+  <section id="variant-a" class="variant">
+    <div class="variant-label">Variation A — Two-column grid</div>
+    <div class="card">
+      <div class="brief-head">
+        <span class="brief-eyebrow">SATURDAY BRIEF</span>
+        <span class="brief-head-right">
+          <span class="brief-weather-chip">
+            <span class="brief-weather-emoji">☀️</span>
+            <span class="brief-weather-temp">64°</span> · Pelham
+          </span>
+        </span>
+      </div>
+      <h2 class="brief-headline">Recovery day.</h2>
+      <p class="brief-subhead">Pull back on intensity. Protect tonight's sleep.</p>
+      <div class="brief-divider"></div>
+      <div class="brief-hero-grid">
+        <div>
+          <svg viewBox="0 0 120 120" class="brief-hero-svg">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#f0eadd" stroke-width="8"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#bf9c47" stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="176.4" transform="rotate(-90 60 60)"/>
+            <text x="60" y="56" text-anchor="middle" dominant-baseline="central" class="brief-hero-value">46</text>
+            <text x="60" y="76" text-anchor="middle" dominant-baseline="central" class="brief-hero-label">READINESS</text>
+            <text x="60" y="92" text-anchor="middle" dominant-baseline="central" class="brief-hero-delta">↓23</text>
+          </svg>
+        </div>
+        <div class="brief-stats">
+          <div class="brief-stat-row"><span class="brief-stat-label">Sleep</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">75</span>
+              <span class="brief-stat-delta is-good">↑6</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">Activity</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">94</span>
+              <span class="brief-stat-delta is-good">↑8</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">Resting HR</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">52</span>
+              <span class="brief-stat-delta is-good">↓4</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">HRV</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">38</span>
+              <span class="brief-stat-note">low · 2nd this wk</span></span></div>
+        </div>
+      </div>
+      <div class="brief-pills">
+        <span class="brief-pill">Body still cleaning up</span>
+        <span class="brief-pill">Late night Friday</span>
+      </div>
+      <div class="brief-divider"></div>
+
+      <div class="recap-grid">
+        <div class="recap-col">
+          <div class="recap-col-label">Yesterday</div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">🔥</span>
+            <span class="recap-grid-name">Habits</span>
+            <span class="recap-grid-value">80% · 4/5</span>
+          </div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">✓</span>
+            <span class="recap-grid-name">Tasks done</span>
+            <span class="recap-grid-value">6</span>
+          </div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">🌙</span>
+            <span class="recap-grid-name">In bed</span>
+            <span class="recap-grid-value">10:45 PM</span>
+          </div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">😊</span>
+            <span class="recap-grid-name">Mood</span>
+            <span class="recap-grid-value">Good</span>
+          </div>
+        </div>
+        <div class="recap-col">
+          <div class="recap-col-label">Today</div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">📅</span>
+            <span class="recap-grid-name">Events</span>
+            <span class="recap-grid-value">3</span>
+          </div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">☐</span>
+            <span class="recap-grid-name">Tasks</span>
+            <span class="recap-grid-value">1p · 0d · 1o</span>
+          </div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">🔥</span>
+            <span class="recap-grid-name">Habits</span>
+            <span class="recap-grid-value">20% · 1/5</span>
+          </div>
+          <div class="recap-grid-row">
+            <span class="recap-grid-icon">🌙</span>
+            <span class="recap-grid-name">Tonight</span>
+            <span class="recap-grid-value">10:30 PM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="variant-note">
+      Tightest layout, side-by-side metric comparison across the two timeframes.
+      Risk: narrow phone widths squeeze the values into 2-row wraps.
+    </div>
+  </section>
+
+  <!-- ═══════════════ VARIATION B: STACKED SECTIONS ═══════════════ -->
+  <section id="variant-b" class="variant">
+    <div class="variant-label">Variation B — Stacked sections (closest to current play layout)</div>
+    <div class="card">
+      <div class="brief-head">
+        <span class="brief-eyebrow">SATURDAY BRIEF</span>
+        <span class="brief-head-right">
+          <span class="brief-weather-chip">
+            <span class="brief-weather-emoji">☀️</span>
+            <span class="brief-weather-temp">64°</span> · Pelham
+          </span>
+        </span>
+      </div>
+      <h2 class="brief-headline">Recovery day.</h2>
+      <p class="brief-subhead">Pull back on intensity. Protect tonight's sleep.</p>
+      <div class="brief-divider"></div>
+      <div class="brief-hero-grid">
+        <div>
+          <svg viewBox="0 0 120 120" class="brief-hero-svg">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#f0eadd" stroke-width="8"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#bf9c47" stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="176.4" transform="rotate(-90 60 60)"/>
+            <text x="60" y="56" text-anchor="middle" dominant-baseline="central" class="brief-hero-value">46</text>
+            <text x="60" y="76" text-anchor="middle" dominant-baseline="central" class="brief-hero-label">READINESS</text>
+            <text x="60" y="92" text-anchor="middle" dominant-baseline="central" class="brief-hero-delta">↓23</text>
+          </svg>
+        </div>
+        <div class="brief-stats">
+          <div class="brief-stat-row"><span class="brief-stat-label">Sleep</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">75</span>
+              <span class="brief-stat-delta is-good">↑6</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">Activity</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">94</span>
+              <span class="brief-stat-delta is-good">↑8</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">Resting HR</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">52</span>
+              <span class="brief-stat-delta is-good">↓4</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">HRV</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">38</span>
+              <span class="brief-stat-note">low · 2nd this wk</span></span></div>
+        </div>
+      </div>
+      <div class="brief-pills">
+        <span class="brief-pill">Body still cleaning up</span>
+        <span class="brief-pill">Late night Friday</span>
+      </div>
+      <div class="brief-divider"></div>
+
+      <div class="recap-stacked-section">
+        <div class="recap-stacked-label">Yesterday</div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">🔥</span>
+          <span class="recap-stacked-scope">Habits</span>
+          <span class="recap-stacked-content">80% · 4 of 5 closed</span>
+        </div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">✓</span>
+          <span class="recap-stacked-scope">Tasks</span>
+          <span class="recap-stacked-content">6 done</span>
+        </div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">🌙</span>
+          <span class="recap-stacked-scope">Bed</span>
+          <span class="recap-stacked-content">In bed 10:45 PM</span>
+        </div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">😊</span>
+          <span class="recap-stacked-scope">Mood</span>
+          <span class="recap-stacked-content">Good</span>
+        </div>
+      </div>
+
+      <div class="recap-stacked-section">
+        <div class="recap-stacked-label">Today</div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">📅</span>
+          <span class="recap-stacked-scope">Events</span>
+          <span class="recap-stacked-content">3 on the calendar</span>
+        </div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">☐</span>
+          <span class="recap-stacked-scope">Tasks</span>
+          <span class="recap-stacked-content">1 priority · 0 due today · 1 overdue</span>
+        </div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">🔥</span>
+          <span class="recap-stacked-scope">Habits</span>
+          <span class="recap-stacked-content">20% · 1 of 5 done so far</span>
+        </div>
+        <div class="recap-stacked-row">
+          <span class="recap-stacked-icon">🌙</span>
+          <span class="recap-stacked-scope">Tonight</span>
+          <span class="recap-stacked-content">In bed by 10:30 PM</span>
+        </div>
+      </div>
+    </div>
+    <div class="variant-note">
+      Most readable. The icon · scope · content row reuses the current today_play
+      markup so the implementation diff is small. Trades vertical height for clarity.
+    </div>
+  </section>
+
+  <!-- ═══════════════ VARIATION C: INLINE ONE-LINERS ═══════════════ -->
+  <section id="variant-c" class="variant">
+    <div class="variant-label">Variation C — Inline one-liners (most compact)</div>
+    <div class="card">
+      <div class="brief-head">
+        <span class="brief-eyebrow">SATURDAY BRIEF</span>
+        <span class="brief-head-right">
+          <span class="brief-weather-chip">
+            <span class="brief-weather-emoji">☀️</span>
+            <span class="brief-weather-temp">64°</span> · Pelham
+          </span>
+        </span>
+      </div>
+      <h2 class="brief-headline">Recovery day.</h2>
+      <p class="brief-subhead">Pull back on intensity. Protect tonight's sleep.</p>
+      <div class="brief-divider"></div>
+      <div class="brief-hero-grid">
+        <div>
+          <svg viewBox="0 0 120 120" class="brief-hero-svg">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#f0eadd" stroke-width="8"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#bf9c47" stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="326.7" stroke-dashoffset="176.4" transform="rotate(-90 60 60)"/>
+            <text x="60" y="56" text-anchor="middle" dominant-baseline="central" class="brief-hero-value">46</text>
+            <text x="60" y="76" text-anchor="middle" dominant-baseline="central" class="brief-hero-label">READINESS</text>
+            <text x="60" y="92" text-anchor="middle" dominant-baseline="central" class="brief-hero-delta">↓23</text>
+          </svg>
+        </div>
+        <div class="brief-stats">
+          <div class="brief-stat-row"><span class="brief-stat-label">Sleep</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">75</span>
+              <span class="brief-stat-delta is-good">↑6</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">Activity</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">94</span>
+              <span class="brief-stat-delta is-good">↑8</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">Resting HR</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">52</span>
+              <span class="brief-stat-delta is-good">↓4</span></span></div>
+          <div class="brief-stat-row"><span class="brief-stat-label">HRV</span>
+            <span class="brief-stat-value"><span class="brief-stat-num">38</span>
+              <span class="brief-stat-note">low · 2nd this wk</span></span></div>
+        </div>
+      </div>
+      <div class="brief-pills">
+        <span class="brief-pill">Body still cleaning up</span>
+        <span class="brief-pill">Late night Friday</span>
+      </div>
+      <div class="brief-divider"></div>
+
+      <div class="recap-inline-row">
+        <span class="recap-inline-label">Yesterday</span>
+        <span class="recap-inline-value">
+          🔥 4/5 (80%)<span class="recap-inline-sep">·</span>
+          ✓ 6 tasks<span class="recap-inline-sep">·</span>
+          🌙 10:45 PM<span class="recap-inline-sep">·</span>
+          😊 Good
+        </span>
+      </div>
+      <div class="recap-inline-row">
+        <span class="recap-inline-label">Today</span>
+        <span class="recap-inline-value">
+          📅 3 events<span class="recap-inline-sep">·</span>
+          ☐ 1p·0d·1o<span class="recap-inline-sep">·</span>
+          🔥 1/5 (20%)<span class="recap-inline-sep">·</span>
+          🌙 10:30 PM
+        </span>
+      </div>
+    </div>
+    <div class="variant-note">
+      Half the vertical height of B. Risk: on mobile (~360px) each line will wrap
+      to two rows and individual metrics get harder to scan.
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
