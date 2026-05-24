@@ -138,6 +138,9 @@ function openHabitEdit(habitId) {
   document.getElementById('habitEditExtrasToggle').style.display = isEditQuotaFreq ? '' : 'none';
   document.getElementById('habitEditAllowExtras').checked = h.allowExtras || false;
   editHabitTags = new Set(h.tags);
+  // Phase 4 habit library — pre-select the current link (if any).
+  const libSel = document.getElementById('habitEditLibraryKind');
+  if (libSel) libSel.value = h.libraryKind || '';
   document.getElementById('habitEditOverlay').classList.add('open');
 }
 function closeHabitEdit() {
@@ -170,6 +173,10 @@ function saveHabitEdit() {
     h.allowExtras = false;
   }
   h.tags = [...editHabitTags];
+  // Phase 4 — habit library link. Empty string from the select means
+  // "Not linked"; map that to null so the FK stays clean.
+  const libSel = document.getElementById('habitEditLibraryKind');
+  if (libSel) h.libraryKind = libSel.value || null;
   closeHabitEdit();
   renderHabits();
   saveHabitToDB(h);

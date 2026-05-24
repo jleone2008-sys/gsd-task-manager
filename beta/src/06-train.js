@@ -966,11 +966,64 @@ const TRAIN_LIBRARY_DISPLAY = {
   progress: { name: 'Progress pic', emoji: '📸' },
 };
 
-// One-time prompt offering to link an existing user habit (e.g. "Cardio"
-// or "Lifting") to the matching library kind after the relevant session
-// type submits. Match by name substring (case-insensitive). Dismissal is
-// stored per-habit in localStorage so the user can decline once and not
-// be re-prompted for the same habit.
+// Curated synonyms / related terms used to detect a likely link between
+// a user habit's name and a library kind. Case-insensitive word-boundary
+// match — keeps "running shoes" from matching but lets "Lift Weights"
+// and "Bike Ride" both link cleanly. Synonyms err toward false-positive;
+// the prompt is always opt-in and per-habit dismissible.
+const TRAIN_LIBRARY_SYNONYMS = {
+  lifting: [
+    'lifting','lift','lifts','weights','weight training','weight-training',
+    'strength','strength training','resistance','gym','barbell','dumbbell',
+    'pump','iron','squats','squat','press','bench','deadlift','workout',
+    'workouts',
+  ],
+  cardio: [
+    'cardio','cardiovascular','aerobic',
+    'run','runs','running','jog','jogging','sprint','sprints','treadmill',
+    'bike','biking','cycle','cycling','spin','spinning',
+    'swim','swims','swimming','laps',
+    'walk','walks','walking','steps',
+    'hike','hiking','trail',
+    'row','rowing','erg',
+    'hiit',
+  ],
+  activity: [
+    'activity','activities','outdoor','outdoors',
+    'climb','climbing','bouldering','rock climbing',
+    'yoga','pilates','mobility','stretching','stretch','flexibility',
+    'sport','sports','pickup','recreation','play','games',
+  ],
+  progress: [
+    'progress','progress pic','progress photo','pic','photo','photos',
+    'body comp','body composition','composition',
+    'measure','measurement','measurements','weigh','weigh-in','scale',
+  ],
+};
+
+function trainEscapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Word-boundary match. "lift weights" matches against the 'lifting' kind
+// via the 'lift' synonym; "running shoes" intentionally does NOT match
+// 'lifting' because 'shoes' isn't there and 'lift' isn't a substring.
+function trainHabitMatchesKind(habitName, kind) {
+  if (!habitName) return false;
+  const synonyms = TRAIN_LIBRARY_SYNONYMS[kind] || [];
+  for (const syn of synonyms) {
+    const re = new RegExp(`\\b${trainEscapeRegex(syn)}\\b`, 'i');
+    if (re.test(habitName)) return true;
+  }
+  return false;
+}
+
+// One-time prompt offering to link an existing user habit (e.g. "Cardio",
+// "Lift Weights", "Bike Ride") to the matching library kind after the
+// relevant session type submits. Synonyms above drive the match — a
+// habit named "Lift Weights" still gets offered for 'lifting' even
+// though "Lifting" isn't a substring of it. Dismissal is stored
+// per-habit in localStorage so declining doesn't re-prompt forever.
 function renderHabitLinkPrompts(session) {
   if (!session) return '';
   const kinds = trainSessionToLibraryKinds(session);
@@ -984,11 +1037,8 @@ function renderHabitLinkPrompts(session) {
     let dismissed = false;
     try { dismissed = !!localStorage.getItem(`gsd_habit_link_dismissed:${h.id}`); } catch (_) {}
     if (dismissed) continue;
-    const nameLower = (h.name || '').toLowerCase();
     for (const k of kinds) {
-      const libName = TRAIN_LIBRARY_DISPLAY[k]?.name.toLowerCase();
-      if (!libName) continue;
-      if (nameLower.includes(libName) || libName.includes(nameLower)) {
+      if (trainHabitMatchesKind(h.name, k)) {
         candidates.push({ habit: h, kind: k });
         break;
       }

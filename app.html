@@ -729,6 +729,19 @@
           Allow extras beyond goal
         </label>
       </div>
+      <!-- Phase 4 — habit library link picker. Lets users wire ANY habit
+           to ANY kind regardless of name (the post-submit prompt only
+           offers links it can name-match). -->
+      <div style="margin-top:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Auto-complete from</div>
+        <select id="habitEditLibraryKind" style="width:100%;padding:7px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
+          <option value="">Not linked (manual only)</option>
+          <option value="lifting">🏋️ Lifting · auto-marks when you submit a lift in Train</option>
+          <option value="cardio">🏃 Cardio · auto-marks when you submit cardio in Train</option>
+          <option value="activity">🧗 Activity · auto-marks when you log a Bonus activity</option>
+          <option value="progress">📸 Progress pic · auto-marks when you log a body-comp entry</option>
+        </select>
+      </div>
     </div>
     <div class="habit-edit-actions">
       <div class="habit-edit-danger">
