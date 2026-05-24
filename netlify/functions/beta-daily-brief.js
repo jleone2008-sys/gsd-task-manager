@@ -427,12 +427,15 @@ async function callClaude(ctx, anthropicKey) {
   const baselineN  = Math.max(n_sleep, n_mood);
   const coldStart  = baselineN < 14;
 
-  const weekday = ctx.today_plan?.weekday || 'today';
+  const hasWeather = !!(ctx.today_plan?.weather);
   const systemPrompt = [
     'You are the user\'s calm morning briefing partner. Conversational, warm but direct. No emojis. No exclamation points. No medical claims.',
-    `Write 1-2 short paragraphs (50-120 words total). Open with "Your ${weekday} Brief." followed by a sentence that weaves in weather (if available), today's date, and either last night's sleep or a quick recovery read.`,
-    'Then reference today\'s plan: scheduled events count, key meetings, priority tasks count, habits due. Point to the SHAPE of the day — do not list every event.',
-    'If you notice an interesting pattern in the 7-day data (sleep trend, mood shift, habit streak, repeated event, anomaly) include it as a SECOND short paragraph. Only if it is genuinely worth saying. No forced callout — silence is fine.',
+    'Write 1-2 short paragraphs (50-120 words total). Do NOT open with "Your [Weekday] Brief" or any greeting — the card header already shows that. Lead directly with substance.',
+    hasWeather
+      ? 'First paragraph: today\'s weather (one phrase, e.g. "Light rain and 58° today") + last night\'s sleep/recovery read in plain language. At most, you may reference the SHAPE of today (e.g. "a busy morning ahead", "a light day", "a workout day").'
+      : 'First paragraph: last night\'s sleep/recovery read in plain language. Optionally reference the SHAPE of today (e.g. "a busy morning ahead", "a light day"). DO NOT mention weather at all — no "weather unavailable", no "no forecast today", just skip it cleanly. (If you want to nudge: a brief one-liner like "tip — set your location in Settings to get weather" is fine, but only if the rest of the paragraph reads naturally without it.)',
+    'CRITICAL: do NOT name specific calendar events, task titles, or habit counts. Those are listed in the Events / Priority Tasks / Habits sections directly below the brief — repeating them is redundant. You may say "a busy morning" but not "your 10am with Phil". You may say "habits to finish" but not "3 of 4 yesterday".',
+    'If you notice an interesting pattern in the 7-day data (sleep trend, mood shift, habit streak, anomaly) include it as a SECOND short paragraph. Only if it is genuinely worth saying. No forced callout — silence is fine.',
     'Recovery metrics in `yesterday.recovery` reflect LAST NIGHT\'S sleep (the sleep that ended this morning). Use phrasing like "last night" or "this morning" for sleep_score, readiness_score, HRV, resting HR, total sleep. NEVER call these "yesterday\'s sleep" — that would semantically mean the night before last.',
     'Activity metrics in `yesterday.activity` reflect YESTERDAY (the calendar day that ended). Use "yesterday" for activity_score, steps, stress.',
     'Format sleep duration as "Xh Ym" (e.g. "8h 30m") or "X.Yh" (e.g. "8.5h"). Never raw minutes ("510 min").',
@@ -464,7 +467,7 @@ async function callClaude(ctx, anthropicKey) {
         properties: {
           paragraphs: {
             type: 'array',
-            description: '1 or 2 short paragraphs of conversational morning briefing prose. ~50-120 words total. First paragraph opens with "Your [Weekday] Brief." then weaves weather + last night + today\'s plan. Optional second paragraph for a pattern callout if something stands out.',
+            description: '1 or 2 short paragraphs of conversational morning briefing prose. ~50-120 words total. The card HEADER already shows "Your [Weekday] Brief" — do NOT repeat it in the prose. Lead with substance: weather (if available) + last night\'s recovery + the SHAPE of today. NEVER name specific events, task titles, or habit counts (those appear below). Optional second paragraph for a pattern callout if something stands out.',
             items: { type: 'string' },
             minItems: 1,
             maxItems: 2,
