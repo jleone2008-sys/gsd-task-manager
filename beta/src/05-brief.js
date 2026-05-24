@@ -685,6 +685,21 @@ async function homeBriefLoad() {
 
       if (error) throw error;
 
+      // Auto-migrate old-shape briefs. A row written before the recap
+      // redesign has structured.today_play / structured.tomorrow_setup but
+      // no structured.recap. On first view we force a fresh generation so
+      // the user sees the new layout immediately instead of waiting for
+      // the top-of-hour cron tick. Idempotent — once the row has recap,
+      // this branch never fires again for that brief_date+mode.
+      if (data && data.structured && !data.structured.recap) {
+        _briefState = { status: 'loading', brief: data, error: null };
+        briefRender();
+        const brief = await briefGenerate({ force: true, mode });
+        _briefState = { status: 'ok', brief, error: null };
+        briefRender();
+        return;
+      }
+
       if (data) {
         _briefState = { status: 'ok', brief: data, error: null };
         briefRender();
