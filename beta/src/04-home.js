@@ -91,7 +91,10 @@ function homeEnsureSubStyles() {
       color: var(--ink-4); letter-spacing: 0.08em;
       text-transform: uppercase; margin: 0 0 8px 0;
     }
-    .home-task-due { margin-top: 4px; }
+    .home-task-due-inline {
+      display: inline-flex; align-items: center;
+      margin-right: 8px; flex-shrink: 0;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -110,7 +113,7 @@ function renderHome() {
       <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
     </div>
     <div class="home-card home-section">
-      ${homeSectionHead('Priority Tasks', '<button class="home-pill-btn home-pill-btn--icon" data-task-action="open-create" title="Add task">+</button>')}
+      ${homeSectionHead('Tasks', '<button class="home-pill-btn home-pill-btn--icon" data-task-action="open-create" title="Add task">+</button>')}
       <div id="homeTasks">${homeTasksInnerHTML()}</div>
     </div>
     <div class="home-card home-section">
@@ -257,16 +260,19 @@ function homeTaskCardHTML(t) {
   if (t.top3) cardCls.push('top3', 'is-priority');
   if (t.done) cardCls.push('done', 'is-done');
   const title = (typeof linkify === 'function') ? linkify(t.text) : hEsc(t.text || '');
+  // Due badge sits to the LEFT of the complete button (Home only; the Tasks
+  // tab keeps its own layout). Inline-flex wrapper keeps it vertically
+  // centered with the checkbox.
   const dueHtml = (t.due && typeof dueBadgeHTML === 'function')
-    ? `<div class="home-task-due">${dueBadgeHTML(t.due)}</div>`
+    ? `<span class="home-task-due-inline">${dueBadgeHTML(t.due)}</span>`
     : '';
   return `<div class="task-group"><div class="${cardCls.join(' ')}" id="ti-${t.id}" data-id="${t.id}">
       <span class="strip" data-task-action="toggle-top3" title="Toggle priority"></span>
       <div class="card-head">
         <div class="card-body task-content" data-task-action="open-edit">
           <div class="card__title task-text">${title}</div>
-          ${dueHtml}
         </div>
+        ${dueHtml}
         <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done ? 'Reopen' : 'Complete'}">
           <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
@@ -300,7 +306,7 @@ function homeTasksInnerHTML() {
        </div>`
     : '';
   const activeHtml = (overdue.length || dueToday.length || priority.length)
-    ? `${bucket('Overdue', overdue)}${bucket('Due today', dueToday)}${bucket('Priority', priority)}`
+    ? `${bucket('Priority', priority)}${bucket('Due today', dueToday)}${bucket('Overdue', overdue)}`
     : `<div class="home-empty">No priority tasks. Tap + to add one, or star tasks in the Tasks tab.</div>`;
   const doneHtml = doneToday.length
     ? `<div class="home-done-toggle" data-home-done-toggle role="button" tabindex="0">
@@ -367,11 +373,14 @@ function homeJournalInnerHTML(entry) {
   return `<div class="home-subsection">
       <div class="home-subsection-h">Daily Reflection</div>
       <textarea class="home-journal-input" id="homeJournalInput" placeholder="Reflect on today…" spellcheck="true" rows="1">${esc(text)}</textarea>
-      <div class="home-journal-mood"><div id="homeMoodRow">${homeMoodRowHTML(e)}</div></div>
     </div>
     <div class="home-subsection">
       <div class="home-subsection-h">Today I Learned</div>
       <textarea class="home-journal-input" id="homeLearningInput" placeholder="One thing you learned today…" spellcheck="true" rows="1">${esc(learning)}</textarea>
+    </div>
+    <div class="home-subsection">
+      <div class="home-subsection-h">Mood</div>
+      <div class="home-journal-mood"><div id="homeMoodRow">${homeMoodRowHTML(e)}</div></div>
     </div>`;
 }
 function homeAutoGrow(el) {
