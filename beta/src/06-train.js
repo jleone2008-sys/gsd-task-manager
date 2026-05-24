@@ -1766,9 +1766,13 @@ async function loadTrainProgressData() {
     const since = trainShiftDate(trainTodayLocalDate(), -90);
 
     const [profRes, entryRes, goalRes] = await Promise.all([
+      // user_profiles canonical key is `email` (legacy rows can have
+      // supabase_user_id null). Matching on supabase_user_id was
+      // returning 0 rows and silently 0-affecting on update, which is
+      // why the wizard re-fired on every reload.
       db.from('user_profiles')
         .select('sex,dob,height_in,activity_level,activity_level_override,units,body_comp_profile_set_at')
-        .eq('supabase_user_id', currentUser.id)
+        .eq('email', currentUser.email)
         .maybeSingle(),
       db.from('progress_pics')
         .select('id,captured_date,weight_lbs,neck_in,waist_in,chest_in,arms_in,hips_in,thighs_in,notes,body_fat_pct,body_fat_method,body_fat_confidence')
@@ -1925,10 +1929,17 @@ async function saveWizardProfile() {
       units:          d.units || 'imperial',
       body_comp_profile_set_at: new Date().toISOString(),
     };
-    const { error } = await db.from('user_profiles')
+    // .select() so we can confirm the update actually hit a row — a
+    // silent 0-row update (mis-matched filter or RLS deny) used to
+    // present as a "successful save" but the wizard re-fired next load.
+    const { data: updated, error } = await db.from('user_profiles')
       .update(patch)
-      .eq('supabase_user_id', currentUser.id);
+      .eq('email', currentUser.email)
+      .select('email,sex,dob,height_in,activity_level,units,body_comp_profile_set_at');
     if (error) throw error;
+    if (!updated || updated.length === 0) {
+      throw new Error('profile row not found for ' + currentUser.email);
+    }
     _trainProgressState.profile = { ...(_trainProgressState.profile || {}), ...patch };
     _trainProgressState.wizardDraft = null;
     _trainProgressState.view = 'dashboard';
