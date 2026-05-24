@@ -116,7 +116,22 @@ async function retrySyncAll() {
   hideToast();
   try {
     await saveAllHabitsToDB();
-    for (const n of notesArr) await saveNoteToDB(n);
+    // Batch the notes upsert instead of N sequential round-trips. Per-row
+    // upsert in a loop scales O(n) RTTs on a slow link; a single upsert with
+    // the same on_conflict target writes all rows in one request. noteToRow
+    // preserves each row's own updated_at, so timestamps don't get clobbered.
+    if (Array.isArray(notesArr) && notesArr.length) {
+      setStatus('syncing');
+      const rows = notesArr.map(noteToRow);
+      const { data, error } = await db.from('notes')
+        .upsert(rows, { onConflict: 'user_id,client_id' })
+        .select('id, client_id');
+      setStatus(error ? 'error' : 'saved');
+      if (error) { console.error('retrySyncAll notes:', error.message); }
+      else if (data) {
+        for (const r of data) noteRowIdMap.set(r.id, r.client_id);
+      }
+    }
   } catch(e) { console.error('retrySyncAll:', e); setStatus('error'); }
 }
 

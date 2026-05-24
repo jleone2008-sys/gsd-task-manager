@@ -519,8 +519,13 @@ async function syncCalendarHistory() {
     for (const [date, events] of Object.entries(byDate)) {
       journalState.calendarEvents.set(date, events);
     }
-    // Re-render timeline so backfilled events show on cards
-    if (document.getElementById('jTimeline')) rerenderTimeline();
+    // Re-render only the cards whose events changed — avoids a full timeline
+    // rebuild for what's often a handful of affected dates. rerenderTimelineCard
+    // is a no-op when the card isn't in the DOM yet (i.e. older than the
+    // currently-loaded window), so iterating every byDate key is cheap.
+    if (document.getElementById('jTimeline')) {
+      for (const date of Object.keys(byDate)) rerenderTimelineCard(date);
+    }
   } catch (e) { console.warn('[journal] history sync failed', e); }
 }
 
@@ -954,8 +959,35 @@ function rerenderTimeline() {
   const root = document.getElementById('jTimeline');
   if (!root) return;
   const dates = getTimelineDateList();
-  root.innerHTML = dates.map(renderDayCard).join('') + `<div class="j-load-sentinel" id="jLoadSentinel">${journalState.timelineLoading ? 'Loading older entries…' : 'Scroll for more'}</div>`;
-  setupScrollObserver();
+  const sentinel = document.getElementById('jLoadSentinel');
+  const sentinelText = journalState.timelineLoading ? 'Loading older entries…' : 'Scroll for more';
+
+  // Cold start (or root was cleared) — build everything in one shot, attach
+  // the IntersectionObserver to the new sentinel.
+  if (!sentinel || sentinel.parentNode !== root) {
+    root.innerHTML = dates.map(renderDayCard).join('')
+      + `<div class="j-load-sentinel" id="jLoadSentinel">${sentinelText}</div>`;
+    setupScrollObserver();
+    return;
+  }
+
+  // Incremental: append only dates not already in the DOM. Dates are returned
+  // newest-first; missing ones are guaranteed older than the last-rendered
+  // card and go before the sentinel. The sentinel stays as the same node, so
+  // the IntersectionObserver doesn't have to re-attach on every scroll-load.
+  const rendered = new Set();
+  root.querySelectorAll('[data-jcard-date]').forEach(el => rendered.add(el.dataset.jcardDate));
+  const toAppend = dates.filter(d => !rendered.has(d));
+  if (toAppend.length === 0) {
+    sentinel.textContent = sentinelText;
+    return;
+  }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = toAppend.map(renderDayCard).join('');
+  const frag = document.createDocumentFragment();
+  while (tmp.firstElementChild) frag.appendChild(tmp.firstElementChild);
+  root.insertBefore(frag, sentinel);
+  sentinel.textContent = sentinelText;
 }
 
 async function loadInitialTimeline() {
@@ -1432,6 +1464,14 @@ function renderSearchResults() {
 /* ── EVENT HANDLERS ──────────────────────────────────────── */
 
 document.addEventListener('click', async e => {
+  // Early-out: this handler does ~20 selector checks per click. When the user
+  // is on any other tab and no journal modal/lightbox is open, none of them
+  // can match — skip the entire chain. Keeps Home/Tasks/Habits click latency
+  // off the journal accumulated state.
+  if (typeof activeTool !== 'undefined' && activeTool !== 'journal'
+      && !journalState.editingDate && !journalState.viewingDate
+      && !journalState.lightboxPhotos && !journalState.calendarOpen) return;
+
   // Calendar date click → jump to that date in timeline
   const dateBtn = e.target.closest('[data-jcal-date]');
   if (dateBtn && !dateBtn.disabled) {

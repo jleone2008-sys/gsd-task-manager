@@ -418,7 +418,10 @@
 <!-- Per-tool filter pills — exactly one visible at a time (switchTool toggles via [data-tool-view]) -->
 <!-- All per-tool pill-bars live inside the sticky topbar. switchTool toggles
      visibility via the [data-tool-view] selector so exactly one shows at a time. -->
-<div class="pill-bar" data-tool-view="tasks">
+<!-- Tasks pill-bar starts hidden so it doesn't flash during cold load while the
+     beta init pipeline (auth + load) is in flight; switchTool('tasks') sets
+     display back to ''. Matches the habits pill-bar pattern below. -->
+<div class="pill-bar" data-tool-view="tasks" style="display:none">
   <div class="pill-bar-inner">
     <button class="pill active" data-filter="all">All<span class="pill-count" id="pc-all">0</span></button>
     <button class="pill" data-filter="overdue">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
@@ -530,8 +533,9 @@
   </button>
 </nav>
 
-<!-- FLOATING SEARCH BAR -->
-<div class="floating-search" id="floatingSearch">
+<!-- FLOATING SEARCH BAR — start hidden; switchTool/updateFloatingSearch unhides
+     when entering a tab that uses it (Tasks/Notes). -->
+<div class="floating-search hidden" id="floatingSearch">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
   <input type="text" id="floatingSearchInput" placeholder="Search tasks...">
   <button class="fs-clear" id="fsClear">
@@ -539,8 +543,9 @@
   </button>
 </div>
 
-<!-- FLOATING NEW TASK BUTTON -->
-<button class="fab" id="fabBtn">
+<!-- FLOATING NEW TASK BUTTON — start hidden; switchTool toggles the .hidden class
+     based on the active tab so it appears only where appropriate. -->
+<button class="fab hidden" id="fabBtn">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
