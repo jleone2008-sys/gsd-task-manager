@@ -207,6 +207,87 @@ function trainWireOnce() {
       renderTrain();
       return;
     }
+
+    // ── Progress subtab actions ────────────────────────────────────
+    if (action === 'progress-reload') {
+      _trainProgressState.loaded = false;
+      loadTrainProgressData();
+      return;
+    }
+    if (action === 'progress-edit-profile') {
+      _trainProgressState.wizardDraft = null;
+      _trainProgressState.view = 'wizard';
+      renderTrain();
+      return;
+    }
+    if (action === 'progress-new-entry') {
+      _trainProgressState.entryDraft = null;
+      _trainProgressState.view = 'new-entry';
+      renderTrain();
+      return;
+    }
+    if (action === 'progress-edit-goal') {
+      const kind = actionEl.dataset.kind;
+      _trainProgressState.goalDraft = null;
+      ensureGoalDraft(kind);
+      _trainProgressState.view = 'goal';
+      renderTrain();
+      return;
+    }
+    if (action === 'progress-back') {
+      _trainProgressState.view = 'dashboard';
+      _trainProgressState.entryDraft = null;
+      _trainProgressState.goalDraft  = null;
+      renderTrain();
+      return;
+    }
+    if (action === 'progress-detail') {
+      // V1: detail view is the dashboard's recent-entries row. Open the
+      // edit form pre-filled so the user can correct or extend the entry.
+      const id = actionEl.dataset.id;
+      const entry = _trainProgressState.entries.find(e => e.id === id);
+      if (entry) {
+        _trainProgressState.entryDraft = {
+          captured_date: entry.captured_date,
+          weight_lbs:    entry.weight_lbs   != null ? String(entry.weight_lbs)   : '',
+          neck_in:       entry.neck_in      != null ? String(entry.neck_in)      : '',
+          waist_in:      entry.waist_in     != null ? String(entry.waist_in)     : '',
+          chest_in:      entry.chest_in     != null ? String(entry.chest_in)     : '',
+          arms_in:       entry.arms_in      != null ? String(entry.arms_in)      : '',
+          hips_in:       entry.hips_in      != null ? String(entry.hips_in)      : '',
+          thighs_in:     entry.thighs_in    != null ? String(entry.thighs_in)    : '',
+          notes:         entry.notes        || '',
+        };
+        _trainProgressState.view = 'new-entry';
+        renderTrain();
+      }
+      return;
+    }
+
+    // Wizard pills
+    if (action === 'wizard-sex') {
+      ensureWizardDraft();
+      _trainProgressState.wizardDraft.sex = actionEl.dataset.val;
+      renderTrain();
+      return;
+    }
+    if (action === 'wizard-activity') {
+      ensureWizardDraft();
+      _trainProgressState.wizardDraft.activity_level = actionEl.dataset.val;
+      renderTrain();
+      return;
+    }
+    if (action === 'wizard-save')   { saveWizardProfile(); return; }
+    if (action === 'wizard-cancel') {
+      _trainProgressState.wizardDraft = null;
+      _trainProgressState.view = 'dashboard';
+      renderTrain();
+      return;
+    }
+
+    if (action === 'entry-save') { saveProgressEntry(); return; }
+    if (action === 'goal-save')   { saveProgressGoal(); return; }
+    if (action === 'goal-delete') { deleteProgressGoal(); return; }
   });
 
   // Input handler for the Today subtab text inputs. Separate listener so
@@ -240,6 +321,31 @@ function trainWireOnce() {
     if (action === 'activity-duration') {
       const i = Number(el.dataset.i);
       if (_trainTodayState.bonusActivities[i]) _trainTodayState.bonusActivities[i].duration = v;
+      return;
+    }
+
+    // ── Progress subtab inputs ────────────────────────────────────
+    if (action === 'wizard-dob') {
+      ensureWizardDraft();
+      _trainProgressState.wizardDraft.dob = v;
+      return;
+    }
+    if (action === 'wizard-height') {
+      ensureWizardDraft();
+      _trainProgressState.wizardDraft.height_in = v;
+      return;
+    }
+    if (action === 'entry-input') {
+      ensureEntryDraft();
+      const key = el.dataset.key;
+      _trainProgressState.entryDraft[key] = v;
+      // For neck / waist / hips, re-render so the live BF preview updates.
+      if (['neck_in','waist_in','hips_in'].includes(key)) renderTrain();
+      return;
+    }
+    if (action === 'goal-input') {
+      if (!_trainProgressState.goalDraft) return;
+      _trainProgressState.goalDraft[el.dataset.key] = v;
       return;
     }
   });
@@ -1408,8 +1514,9 @@ async function trainSubmitTodaySession() {
 function trainSessionToLibraryKinds(session) {
   const dayType = session.day_type;
   const dayName = String(session.day_name || '').toLowerCase();
-  if (dayType === 'lift')   return ['lifting'];
-  if (dayType === 'cardio') return ['cardio'];
+  if (dayType === 'lift')     return ['lifting'];
+  if (dayType === 'cardio')   return ['cardio'];
+  if (dayType === 'progress') return ['progress'];
   if (dayType === 'bonus') {
     if (dayName.includes('activity')) return ['activity'];
     return ['lifting'];   // Bonus Lifting
@@ -1538,14 +1645,710 @@ function trainBuildFormulaicFeedback(st, setRows) {
   };
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   PROGRESS SUBTAB — body composition dashboard.
+
+   Flow:
+     1. First visit → setup wizard collects sex / DOB / height / activity.
+        These four feed Mifflin-St Jeor BMR and the TDEE multiplier.
+     2. After setup → dashboard: latest entry stats, BMR/TDEE/calorie
+        target, macros, optional active goal with progress bar, and the
+        last 5 logged entries.
+     3. "Log new entry" → full-page form (weight + measurements + notes).
+        Submit inserts a progress_pics row and auto-marks any habit linked
+        to library kind 'progress' for that date.
+
+   Everything in this subtab traces to a pure function in the
+   deterministic-math block at the bottom of this file. No AI calls —
+   the AI vision layer for actual photos lands alongside commit 6.
+════════════════════════════════════════════════════════════════════════ */
+
+const _trainProgressState = {
+  loaded:        false,
+  loading:       false,
+  error:         null,
+  profile:       null,     // { sex, dob, height_in, activity_level, activity_level_override, units }
+  entries:       [],       // last 90 days of progress_pics rows, desc by captured_date
+  goals:         [],       // active body_comp_goals rows
+  view:          'dashboard', // 'dashboard' | 'wizard' | 'new-entry' | 'goal'
+  // In-flight new-entry form state — survives action handler renders.
+  entryDraft:    null,     // { captured_date, weight_lbs, neck_in, waist_in, … }
+  // In-flight wizard state.
+  wizardDraft:   null,     // { sex, dob, height_in, activity_level }
+  // In-flight goal-editor state.
+  goalDraft:     null,     // { kind, start_value, target_value, end_date }
+  saving:        false,
+};
+
+async function loadTrainProgressData() {
+  _trainProgressState.loading = true;
+  _trainProgressState.error   = null;
+  try {
+    const since = trainShiftDate(trainTodayLocalDate(), -90);
+
+    const [profRes, entryRes, goalRes] = await Promise.all([
+      db.from('user_profiles')
+        .select('sex,dob,height_in,activity_level,activity_level_override,units,body_comp_profile_set_at')
+        .eq('supabase_user_id', currentUser.id)
+        .maybeSingle(),
+      db.from('progress_pics')
+        .select('id,captured_date,weight_lbs,neck_in,waist_in,chest_in,arms_in,hips_in,thighs_in,notes,body_fat_pct,body_fat_method,body_fat_confidence')
+        .eq('user_id', currentUser.id)
+        .gte('captured_date', since)
+        .order('captured_date', { ascending: false }),
+      db.from('body_comp_goals')
+        .select('id,kind,start_date,end_date,start_value,target_value,is_active')
+        .eq('user_id', currentUser.id)
+        .eq('is_active', true),
+    ]);
+
+    if (profRes.error)  throw profRes.error;
+    if (entryRes.error) throw entryRes.error;
+    if (goalRes.error)  throw goalRes.error;
+
+    _trainProgressState.profile = profRes.data || null;
+    _trainProgressState.entries = entryRes.data || [];
+    _trainProgressState.goals   = goalRes.data  || [];
+    _trainProgressState.loaded  = true;
+  } catch (e) {
+    console.warn('[train] progress load failed', e);
+    _trainProgressState.error = e?.message || 'Failed to load progress.';
+  } finally {
+    _trainProgressState.loading = false;
+    if (_trainActiveView === 'progress') renderTrain();
+  }
+}
+
+function trainProgressNeedsSetup() {
+  const p = _trainProgressState.profile;
+  if (!p) return true;
+  return !p.sex || !p.dob || p.height_in == null || !p.activity_level;
+}
+
 function renderTrainProgress(root) {
-  root.innerHTML = `
-    <div class="train-shell">
-      <div class="train-empty">
-        <div class="train-empty-title">Progress</div>
-        <div class="train-empty-msg">Body composition dashboard lands in commit 5.</div>
+  if (!_trainProgressState.loaded && !_trainProgressState.loading) loadTrainProgressData();
+
+  if (_trainProgressState.loading && !_trainProgressState.loaded) {
+    root.innerHTML = `<div class="train-shell"><div class="train-loading">Loading…</div></div>`;
+    return;
+  }
+  if (_trainProgressState.error) {
+    root.innerHTML = `<div class="train-shell"><div class="train-error">${trainEsc(_trainProgressState.error)}
+      <button class="train-retry" data-train-action="progress-reload">Retry</button></div></div>`;
+    return;
+  }
+
+  // Wizard takes priority over other views when the profile is incomplete.
+  if (trainProgressNeedsSetup() || _trainProgressState.view === 'wizard') {
+    root.innerHTML = `<div class="train-shell">${renderProgressWizard()}</div>`;
+    return;
+  }
+
+  if (_trainProgressState.view === 'new-entry') {
+    root.innerHTML = `<div class="train-shell">${renderProgressNewEntry()}</div>`;
+    return;
+  }
+
+  if (_trainProgressState.view === 'goal') {
+    root.innerHTML = `<div class="train-shell">${renderProgressGoalEditor()}</div>`;
+    return;
+  }
+
+  root.innerHTML = `<div class="train-shell">${renderProgressDashboard()}</div>`;
+}
+
+/* ── Setup wizard ─────────────────────────────────────────────────── */
+
+function ensureWizardDraft() {
+  if (_trainProgressState.wizardDraft) return;
+  const p = _trainProgressState.profile || {};
+  _trainProgressState.wizardDraft = {
+    sex:             p.sex || '',
+    dob:             p.dob || '',
+    height_in:       p.height_in != null ? String(p.height_in) : '',
+    activity_level:  p.activity_level || '',
+    units:           p.units || 'imperial',
+  };
+}
+
+function renderProgressWizard() {
+  ensureWizardDraft();
+  const d = _trainProgressState.wizardDraft;
+  const isEdit = !trainProgressNeedsSetup();
+
+  const sexPills = ['male','female'].map(s => `
+    <button class="train-choice-pill ${d.sex === s ? 'is-active' : ''}" data-train-action="wizard-sex" data-val="${s}">
+      ${s === 'male' ? '♂ Male' : '♀ Female'}
+    </button>`).join('');
+
+  const actChoices = Object.entries(TRAIN_ACTIVITY).map(([key, a]) => `
+    <button class="train-choice-card ${d.activity_level === key ? 'is-active' : ''}" data-train-action="wizard-activity" data-val="${key}">
+      <div class="train-choice-card-title">${trainEsc(a.label)}</div>
+      <div class="train-choice-card-desc">${trainEsc(a.desc)}</div>
+      <div class="train-choice-card-meta">×${a.mult} multiplier</div>
+    </button>`).join('');
+
+  const canSave = d.sex && d.dob && d.height_in && d.activity_level;
+
+  return `<div class="progress-wizard">
+    <div class="progress-wizard-head">
+      <div class="progress-wizard-title">${isEdit ? 'Edit your profile' : 'Let’s set you up'}</div>
+      <div class="progress-wizard-msg">${isEdit
+        ? 'Update the values that feed your calorie target and body-fat math. All numbers are stored on your own row only.'
+        : 'Four quick questions so the calorie target, BMR and body-fat math actually mean something. You can edit any of these later.'}</div>
+    </div>
+
+    <div class="train-form-card">
+      <div class="train-form-section">
+        <div class="train-form-label">Sex (for BMR formula)</div>
+        <div class="train-choice-row">${sexPills}</div>
+      </div>
+
+      <div class="train-form-section">
+        <div class="train-form-label">Date of birth</div>
+        <input class="form-input" type="date" value="${trainEsc(d.dob)}" data-train-action="wizard-dob" max="${trainTodayLocalDate()}">
+        <div class="train-form-hint">Used to compute your current age (re-derived every BMR call, so it stays accurate).</div>
+      </div>
+
+      <div class="train-form-section">
+        <div class="train-form-label">Height (inches)</div>
+        <input class="form-input" type="number" inputmode="decimal" step="0.1" min="36" max="96" placeholder="70" value="${trainEsc(d.height_in)}" data-train-action="wizard-height">
+        <div class="train-form-hint">1 ft = 12 in. e.g. 5'10" = 70 in. Metric support comes in commit 6.</div>
+      </div>
+
+      <div class="train-form-section">
+        <div class="train-form-label">Activity level</div>
+        <div class="train-choice-stack">${actChoices}</div>
+        <div class="train-form-hint">Multiplies BMR to get your daily energy expenditure. We auto-suggest based on your Train sessions later; you can always override.</div>
+      </div>
+
+      <div class="train-form-actions">
+        ${isEdit ? `<button class="train-btn-secondary" data-train-action="wizard-cancel">Cancel</button>` : ''}
+        <button class="train-btn-primary" data-train-action="wizard-save" ${canSave ? '' : 'disabled'}>
+          ${_trainProgressState.saving ? 'Saving…' : (isEdit ? 'Save changes' : 'Save & continue')}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveWizardProfile() {
+  const d = _trainProgressState.wizardDraft;
+  if (!d) return;
+  if (!d.sex || !d.dob || !d.height_in || !d.activity_level) return;
+  _trainProgressState.saving = true; renderTrain();
+  try {
+    const patch = {
+      sex:            d.sex,
+      dob:            d.dob,
+      height_in:      Number(d.height_in),
+      activity_level: d.activity_level,
+      units:          d.units || 'imperial',
+      body_comp_profile_set_at: new Date().toISOString(),
+    };
+    const { error } = await db.from('user_profiles')
+      .update(patch)
+      .eq('supabase_user_id', currentUser.id);
+    if (error) throw error;
+    _trainProgressState.profile = { ...(_trainProgressState.profile || {}), ...patch };
+    _trainProgressState.wizardDraft = null;
+    _trainProgressState.view = 'dashboard';
+  } catch (e) {
+    console.warn('[train] wizard save failed', e);
+    showTrainToast('Save failed — ' + (e.message || 'try again'));
+  } finally {
+    _trainProgressState.saving = false;
+    renderTrain();
+  }
+}
+
+/* ── Dashboard ────────────────────────────────────────────────────── */
+
+function renderProgressDashboard() {
+  const p = _trainProgressState.profile;
+  const entries = _trainProgressState.entries;
+  const latest = entries[0] || null;
+
+  // Compute the deterministic stack: BMR → TDEE → daily target.
+  const age = trainAgeYears(p.dob);
+  const weightLbs = latest?.weight_lbs != null ? Number(latest.weight_lbs) : null;
+  const bmr = trainBMR(p.sex, weightLbs, p.height_in, age);
+  const tdee = trainTDEE(bmr, p.activity_level);
+
+  const weightGoal = _trainProgressState.goals.find(g => g.kind === 'weight') || null;
+  const fatGoal    = _trainProgressState.goals.find(g => g.kind === 'body_fat') || null;
+  const calMath = (tdee != null && weightGoal && weightLbs != null)
+    ? trainCalorieTargetForGoal(tdee, weightLbs, Number(weightGoal.target_value), trainTodayLocalDate(), weightGoal.end_date)
+    : null;
+  const dailyCal = calMath?.daily_target ?? tdee;
+  const macros = (dailyCal != null && weightLbs != null) ? trainMacros(dailyCal, weightLbs) : null;
+
+  // Latest body fat from Navy formula if measurements present.
+  const bfPct = latest
+    ? trainNavyBodyFat(p.sex, latest.neck_in, latest.waist_in, latest.hips_in, p.height_in)
+    : null;
+
+  return `
+    ${renderDashboardHeader(p)}
+    ${latest ? renderDashboardLatestCard(latest, bfPct) : renderDashboardEmptyCard()}
+    ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
+    ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct)}
+    ${entries.length > 1 ? renderDashboardTrendCard(entries) : ''}
+    ${renderDashboardEntriesList(entries)}
+  `;
+}
+
+function renderDashboardHeader(p) {
+  const ageTxt = p.dob ? `${trainAgeYears(p.dob)} y` : '—';
+  const heightTxt = p.height_in
+    ? `${Math.floor(p.height_in / 12)}'${Math.round(p.height_in % 12)}" (${p.height_in}\")`
+    : '—';
+  const actLabel = TRAIN_ACTIVITY[p.activity_level]?.label || '—';
+  return `<div class="progress-header">
+    <div class="progress-header-stats">
+      <span><strong>${trainEsc(String(p.sex || '—'))}</strong> · ${trainEsc(ageTxt)}</span>
+      <span class="progress-header-sep">·</span>
+      <span>${trainEsc(heightTxt)}</span>
+      <span class="progress-header-sep">·</span>
+      <span>${trainEsc(actLabel)}</span>
+    </div>
+    <button class="train-btn-link" data-train-action="progress-edit-profile">Edit profile ↗</button>
+  </div>`;
+}
+
+function renderDashboardLatestCard(latest, bfPct) {
+  const today = trainTodayLocalDate();
+  const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / 86400_000);
+  const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
+  const bfTxt = bfPct != null
+    ? `${bfPct}% <span class="latest-stat-method">Navy</span>`
+    : `<span class="latest-stat-method">log neck + waist for body fat %</span>`;
+  return `<div class="progress-card progress-latest-card">
+    <div class="progress-card-head">
+      <div>
+        <div class="progress-card-label">Latest entry</div>
+        <div class="progress-card-meta">Logged ${trainEsc(ageTxt)}</div>
+      </div>
+      <button class="train-btn-primary" data-train-action="progress-new-entry">+ Log entry</button>
+    </div>
+    <div class="latest-stats-grid">
+      <div class="latest-stat">
+        <div class="latest-stat-num">${latest.weight_lbs != null ? Number(latest.weight_lbs).toFixed(1) : '—'}</div>
+        <div class="latest-stat-label">Weight (lbs)</div>
+      </div>
+      <div class="latest-stat">
+        <div class="latest-stat-num">${bfTxt}</div>
+        <div class="latest-stat-label">Body fat</div>
+      </div>
+      <div class="latest-stat">
+        <div class="latest-stat-num">${latest.waist_in != null ? Number(latest.waist_in).toFixed(1) + '"' : '—'}</div>
+        <div class="latest-stat-label">Waist</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDashboardEmptyCard() {
+  return `<div class="progress-card progress-empty-card">
+    <div class="progress-empty-title">No entries yet</div>
+    <div class="progress-empty-msg">Log your first body-composition entry to start seeing weight, body fat % and macro targets here.</div>
+    <button class="train-btn-primary" style="margin-top:12px" data-train-action="progress-new-entry">+ Log first entry</button>
+  </div>`;
+}
+
+function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) {
+  const deficit = calMath?.deficit_per_day || 0;
+  const deficitTxt = deficit > 0
+    ? `<span class="cal-deficit">−${deficit} cal/day deficit</span>`
+    : deficit < 0
+      ? `<span class="cal-deficit cal-surplus">+${Math.abs(deficit)} cal/day surplus</span>`
+      : `<span class="cal-deficit cal-maintain">Maintenance</span>`;
+
+  const macroRow = macros ? `<div class="cal-macros">
+    <div class="cal-macro"><div class="cal-macro-g">${macros.protein.g}g</div><div class="cal-macro-l">Protein · ${macros.protein.pct}%</div></div>
+    <div class="cal-macro"><div class="cal-macro-g">${macros.carbs.g}g</div><div class="cal-macro-l">Carbs · ${macros.carbs.pct}%</div></div>
+    <div class="cal-macro"><div class="cal-macro-g">${macros.fat.g}g</div><div class="cal-macro-l">Fat · ${macros.fat.pct}%</div></div>
+  </div>` : '';
+
+  return `<div class="progress-card">
+    <div class="progress-card-head">
+      <div>
+        <div class="progress-card-label">Daily calorie target</div>
+        <div class="progress-card-meta">Mifflin-St Jeor · ${TRAIN_ACTIVITY[_trainProgressState.profile.activity_level]?.label || ''}</div>
+      </div>
+      ${deficitTxt}
+    </div>
+    <div class="cal-target-grid">
+      <div class="cal-target"><div class="cal-target-num">${dailyCal != null ? dailyCal.toLocaleString() : '—'}</div><div class="cal-target-l">Daily target</div></div>
+      <div class="cal-target"><div class="cal-target-num">${tdee != null ? tdee.toLocaleString() : '—'}</div><div class="cal-target-l">TDEE</div></div>
+      <div class="cal-target"><div class="cal-target-num">${bmr != null ? bmr.toLocaleString() : '—'}</div><div class="cal-target-l">BMR</div></div>
+    </div>
+    ${macroRow}
+  </div>`;
+}
+
+function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct) {
+  const bar = (goal, current, kind) => {
+    if (!goal) return '';
+    const pct = Math.max(0, Math.min(100, trainProgressPct(goal.start_value, current, goal.target_value) || 0));
+    const startTxt = Number(goal.start_value).toFixed(kind === 'weight' ? 1 : 1);
+    const tgtTxt = Number(goal.target_value).toFixed(kind === 'weight' ? 1 : 1);
+    const curTxt = current != null ? Number(current).toFixed(kind === 'weight' ? 1 : 1) : '—';
+    const daysLeft = Math.max(0, Math.round((new Date(goal.end_date) - new Date()) / 86400_000));
+    const unit = kind === 'weight' ? 'lbs' : '%';
+    return `<div class="goal-row">
+      <div class="goal-row-head">
+        <div class="goal-row-title">${kind === 'weight' ? 'Weight' : 'Body fat'} · <strong>${tgtTxt}${unit}</strong> by ${trainEsc(goal.end_date)}</div>
+        <div class="goal-row-cur">${curTxt}${unit} <span class="goal-row-pct">${pct}%</span></div>
+      </div>
+      <div class="goal-bar"><div class="goal-bar-fill" style="width:${pct}%"></div></div>
+      <div class="goal-row-meta">Started at ${startTxt}${unit} · ${daysLeft} days left</div>
+    </div>`;
+  };
+
+  const haveAny = !!(weightGoal || fatGoal);
+  if (!haveAny) {
+    return `<div class="progress-card">
+      <div class="progress-card-head">
+        <div>
+          <div class="progress-card-label">Goals</div>
+          <div class="progress-card-meta">No active goal yet</div>
+        </div>
+        <button class="train-btn-secondary" data-train-action="progress-edit-goal" data-kind="weight">Set weight goal</button>
       </div>
     </div>`;
+  }
+
+  return `<div class="progress-card">
+    <div class="progress-card-head">
+      <div>
+        <div class="progress-card-label">Goals</div>
+        <div class="progress-card-meta">Progress vs. start value</div>
+      </div>
+      <button class="train-btn-link" data-train-action="progress-edit-goal" data-kind="${weightGoal ? 'weight' : 'body_fat'}">Edit ↗</button>
+    </div>
+    ${bar(weightGoal, latest?.weight_lbs, 'weight')}
+    ${bar(fatGoal, bfPct, 'body_fat')}
+    ${!weightGoal ? `<button class="train-btn-secondary" style="margin-top:8px" data-train-action="progress-edit-goal" data-kind="weight">+ Add weight goal</button>` : ''}
+    ${!fatGoal    ? `<button class="train-btn-secondary" style="margin-top:8px" data-train-action="progress-edit-goal" data-kind="body_fat">+ Add body fat goal</button>` : ''}
+  </div>`;
+}
+
+function renderDashboardTrendCard(entries) {
+  // Mini sparkline for weight only (most reliably filled). Last 8 entries
+  // newest-first; reverse for time-going-right.
+  const points = entries.slice(0, 8).reverse().filter(e => e.weight_lbs != null);
+  if (points.length < 2) return '';
+  const W = 280, H = 60, pad = 4;
+  const vals = points.map(p => Number(p.weight_lbs));
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max - min) || 1;
+  const xs = points.map((_, i) => pad + (i * (W - 2 * pad)) / (points.length - 1));
+  const ys = vals.map(v => H - pad - ((v - min) / range) * (H - 2 * pad));
+  const d = points.map((_, i) => `${i === 0 ? 'M' : 'L'}${xs[i].toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const dots = xs.map((x, i) => `<circle cx="${x.toFixed(1)}" cy="${ys[i].toFixed(1)}" r="2.5" fill="var(--guava-700)"/>`).join('');
+  const first = vals[0], last = vals[vals.length - 1];
+  const delta = last - first;
+  const deltaCls = delta < 0 ? 'is-down' : delta > 0 ? 'is-up' : '';
+  const deltaTxt = delta === 0 ? '±0.0 lbs' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)} lbs`;
+  return `<div class="progress-card">
+    <div class="progress-card-head">
+      <div>
+        <div class="progress-card-label">Weight trend</div>
+        <div class="progress-card-meta">Last ${points.length} entries</div>
+      </div>
+      <span class="trend-delta ${deltaCls}">${deltaTxt}</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
+      <path d="${d}" fill="none" stroke="var(--guava-700)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg>
+  </div>`;
+}
+
+function renderDashboardEntriesList(entries) {
+  if (!entries.length) return '';
+  const rows = entries.slice(0, 6).map(e => `<div class="entry-row" data-train-action="progress-detail" data-id="${e.id}">
+    <div class="entry-row-date">${trainEsc(e.captured_date)}</div>
+    <div class="entry-row-stats">
+      ${e.weight_lbs != null ? `<span><strong>${Number(e.weight_lbs).toFixed(1)}</strong> lbs</span>` : ''}
+      ${e.waist_in != null ? `<span>${Number(e.waist_in).toFixed(1)}" waist</span>` : ''}
+      ${e.body_fat_pct != null ? `<span>${Number(e.body_fat_pct).toFixed(1)}% BF</span>` : ''}
+    </div>
+  </div>`).join('');
+  return `<div class="progress-card">
+    <div class="progress-card-head">
+      <div>
+        <div class="progress-card-label">Recent entries</div>
+        <div class="progress-card-meta">Tap to view details</div>
+      </div>
+    </div>
+    <div class="entries-list">${rows}</div>
+  </div>`;
+}
+
+/* ── New entry form ───────────────────────────────────────────────── */
+
+function ensureEntryDraft() {
+  if (_trainProgressState.entryDraft) return;
+  const latest = _trainProgressState.entries[0];
+  // Pre-fill measurements from the most recent entry to make repeat
+  // logging fast — user typically only updates 1-2 numbers each week.
+  _trainProgressState.entryDraft = {
+    captured_date: trainTodayLocalDate(),
+    weight_lbs:    '',
+    neck_in:       latest?.neck_in   != null ? String(latest.neck_in)   : '',
+    waist_in:      latest?.waist_in  != null ? String(latest.waist_in)  : '',
+    chest_in:      latest?.chest_in  != null ? String(latest.chest_in)  : '',
+    arms_in:       latest?.arms_in   != null ? String(latest.arms_in)   : '',
+    hips_in:       latest?.hips_in   != null ? String(latest.hips_in)   : '',
+    thighs_in:     latest?.thighs_in != null ? String(latest.thighs_in) : '',
+    notes:         '',
+  };
+}
+
+function renderProgressNewEntry() {
+  ensureEntryDraft();
+  const d = _trainProgressState.entryDraft;
+  const p = _trainProgressState.profile;
+
+  // Live preview: if neck + waist are filled, compute body fat now so the
+  // user sees the result as they type.
+  const bfPreview = (d.neck_in && d.waist_in && (p.sex === 'male' || (p.sex === 'female' && d.hips_in)))
+    ? trainNavyBodyFat(p.sex, Number(d.neck_in), Number(d.waist_in), d.hips_in ? Number(d.hips_in) : null, p.height_in)
+    : null;
+  const bfTxt = bfPreview != null
+    ? `Body fat preview: <strong>${bfPreview}%</strong> <span class="train-form-hint" style="display:inline">(Navy formula)</span>`
+    : `Body fat will compute when you fill in neck + waist${p.sex === 'female' ? ' + hips' : ''}.`;
+
+  const meas = (key, label, suffix, required = false) => `<div class="train-form-field">
+    <label class="train-form-label-inline">${label}${required ? ' <span class="req">*</span>' : ''}</label>
+    <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0"
+      placeholder="${trainEsc(suffix)}" value="${trainEsc(d[key] || '')}"
+      data-train-action="entry-input" data-key="${key}">
+  </div>`;
+
+  return `<div class="progress-new-entry">
+    <div class="progress-wizard-head">
+      <button class="train-btn-link" data-train-action="progress-back" style="margin-bottom:6px">← Back to dashboard</button>
+      <div class="progress-wizard-title">Log entry</div>
+      <div class="progress-wizard-msg">Weight + a few measurements. Neck and waist (plus hips for women) unlock the Navy body-fat formula.</div>
+    </div>
+
+    <div class="train-form-card">
+      <div class="train-form-section">
+        <div class="train-form-label">Entry date</div>
+        <input class="form-input" type="date" value="${trainEsc(d.captured_date)}" max="${trainTodayLocalDate()}" data-train-action="entry-input" data-key="captured_date">
+      </div>
+
+      <div class="train-form-section">
+        <div class="train-form-label">Weight</div>
+        <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="lbs" value="${trainEsc(d.weight_lbs || '')}" data-train-action="entry-input" data-key="weight_lbs">
+      </div>
+
+      <div class="train-form-section">
+        <div class="train-form-label">Measurements (inches)</div>
+        <div class="entry-meas-grid">
+          ${meas('neck_in',   'Neck',   'in', true)}
+          ${meas('waist_in',  'Waist',  'in', true)}
+          ${p.sex === 'female' ? meas('hips_in', 'Hips', 'in', true) : meas('hips_in', 'Hips', 'in')}
+          ${meas('chest_in',  'Chest',  'in')}
+          ${meas('arms_in',   'Arms',   'in')}
+          ${meas('thighs_in', 'Thighs', 'in')}
+        </div>
+        <div class="train-form-hint">${bfTxt}</div>
+      </div>
+
+      <div class="train-form-section">
+        <div class="train-form-label">Notes</div>
+        <textarea class="train-notes-input" placeholder="How are you feeling? Anything to flag for next entry?" data-train-action="entry-input" data-key="notes">${trainEsc(d.notes || '')}</textarea>
+      </div>
+
+      <div class="train-form-actions">
+        <button class="train-btn-secondary" data-train-action="progress-back">Cancel</button>
+        <button class="train-btn-primary" data-train-action="entry-save" ${_trainProgressState.saving ? 'disabled' : ''}>
+          ${_trainProgressState.saving ? 'Saving…' : 'Save entry'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveProgressEntry() {
+  const d = _trainProgressState.entryDraft;
+  const p = _trainProgressState.profile;
+  if (!d || !d.captured_date) return;
+  _trainProgressState.saving = true; renderTrain();
+  try {
+    // Compute body fat now (deterministic). Falls back to null when
+    // neck + waist (+ hips for women) aren't all filled.
+    const neck = d.neck_in ? Number(d.neck_in) : null;
+    const waist = d.waist_in ? Number(d.waist_in) : null;
+    const hips  = d.hips_in ? Number(d.hips_in) : null;
+    const bfPct = trainNavyBodyFat(p.sex, neck, waist, hips, p.height_in);
+    const bfMethod = bfPct != null ? 'navy_formula' : null;
+    const bfConf   = bfPct != null ? 'high' : null;
+
+    const row = {
+      user_id:       currentUser.id,
+      captured_date: d.captured_date,
+      weight_lbs:    d.weight_lbs ? Number(d.weight_lbs) : null,
+      neck_in:       neck,
+      waist_in:      waist,
+      chest_in:      d.chest_in ? Number(d.chest_in) : null,
+      arms_in:       d.arms_in ? Number(d.arms_in) : null,
+      hips_in:       hips,
+      thighs_in:     d.thighs_in ? Number(d.thighs_in) : null,
+      notes:         d.notes || null,
+      body_fat_pct:  bfPct,
+      body_fat_method: bfMethod,
+      body_fat_confidence: bfConf,
+    };
+    // Upsert so re-logging on the same day updates the existing row
+    // (matches the unique index in the migration).
+    const { data: saved, error } = await db.from('progress_pics')
+      .upsert(row, { onConflict: 'user_id,captured_date' })
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Patch the local cache so the dashboard refreshes immediately.
+    const existIdx = _trainProgressState.entries.findIndex(e => e.captured_date === saved.captured_date);
+    if (existIdx >= 0) _trainProgressState.entries[existIdx] = saved;
+    else _trainProgressState.entries.unshift(saved);
+    _trainProgressState.entries.sort((a, b) => b.captured_date.localeCompare(a.captured_date));
+
+    // Auto-mark any habit linked to 'progress' for this entry's date.
+    autoMarkLinkedHabitsForSession({
+      day_type:     'progress',
+      day_name:     'Progress entry',
+      session_date: saved.captured_date,
+    }).catch(err => console.warn('[train] progress auto-mark failed', err));
+
+    _trainProgressState.entryDraft = null;
+    _trainProgressState.view = 'dashboard';
+  } catch (e) {
+    console.warn('[train] save progress entry failed', e);
+    showTrainToast('Save failed — ' + (e.message || 'try again'));
+  } finally {
+    _trainProgressState.saving = false;
+    renderTrain();
+  }
+}
+
+/* ── Goal editor ──────────────────────────────────────────────────── */
+
+function ensureGoalDraft(kind) {
+  if (_trainProgressState.goalDraft && _trainProgressState.goalDraft.kind === kind) return;
+  const existing = _trainProgressState.goals.find(g => g.kind === kind);
+  const latest = _trainProgressState.entries[0];
+  const today = trainTodayLocalDate();
+  const inTwelveWeeks = trainShiftDate(today, 84);
+  let startVal = existing?.start_value;
+  if (startVal == null) {
+    if (kind === 'weight') startVal = latest?.weight_lbs ?? '';
+    else startVal = latest?.body_fat_pct ?? '';
+  }
+  _trainProgressState.goalDraft = {
+    kind,
+    start_value:  startVal != null ? String(startVal) : '',
+    target_value: existing?.target_value != null ? String(existing.target_value) : '',
+    end_date:     existing?.end_date || inTwelveWeeks,
+    existing_id:  existing?.id || null,
+  };
+}
+
+function renderProgressGoalEditor() {
+  const g = _trainProgressState.goalDraft;
+  if (!g) return '';
+  const unit = g.kind === 'weight' ? 'lbs' : '%';
+  const title = g.kind === 'weight' ? 'Weight goal' : 'Body fat goal';
+
+  return `<div class="progress-wizard">
+    <div class="progress-wizard-head">
+      <button class="train-btn-link" data-train-action="progress-back" style="margin-bottom:6px">← Back to dashboard</button>
+      <div class="progress-wizard-title">${title}</div>
+      <div class="progress-wizard-msg">Sets the deficit/surplus per day so your calorie target makes sense. Start value snapshots today's number — change it only if you're catching up an older starting point.</div>
+    </div>
+    <div class="train-form-card">
+      <div class="train-form-section">
+        <div class="train-form-label">Start value (${unit})</div>
+        <input class="form-input" type="number" step="0.1" min="0" value="${trainEsc(g.start_value)}" data-train-action="goal-input" data-key="start_value">
+      </div>
+      <div class="train-form-section">
+        <div class="train-form-label">Target value (${unit})</div>
+        <input class="form-input" type="number" step="0.1" min="0" value="${trainEsc(g.target_value)}" data-train-action="goal-input" data-key="target_value">
+      </div>
+      <div class="train-form-section">
+        <div class="train-form-label">Target date</div>
+        <input class="form-input" type="date" value="${trainEsc(g.end_date)}" min="${trainTodayLocalDate()}" data-train-action="goal-input" data-key="end_date">
+      </div>
+      <div class="train-form-actions">
+        <button class="train-btn-secondary" data-train-action="progress-back">Cancel</button>
+        ${g.existing_id ? `<button class="train-btn-secondary" data-train-action="goal-delete">Remove goal</button>` : ''}
+        <button class="train-btn-primary" data-train-action="goal-save" ${_trainProgressState.saving ? 'disabled' : ''}>
+          ${_trainProgressState.saving ? 'Saving…' : 'Save goal'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveProgressGoal() {
+  const g = _trainProgressState.goalDraft;
+  if (!g || !g.kind || !g.start_value || !g.target_value || !g.end_date) return;
+  _trainProgressState.saving = true; renderTrain();
+  try {
+    // Deactivate any existing active goal of this kind.
+    await db.from('body_comp_goals')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('user_id', currentUser.id)
+      .eq('kind', g.kind)
+      .eq('is_active', true);
+
+    const { data, error } = await db.from('body_comp_goals').insert({
+      user_id:      currentUser.id,
+      kind:         g.kind,
+      start_date:   trainTodayLocalDate(),
+      end_date:     g.end_date,
+      start_value:  Number(g.start_value),
+      target_value: Number(g.target_value),
+      is_active:    true,
+    }).select().single();
+    if (error) throw error;
+
+    _trainProgressState.goals = _trainProgressState.goals.filter(x => x.kind !== g.kind);
+    _trainProgressState.goals.push(data);
+    _trainProgressState.goalDraft = null;
+    _trainProgressState.view = 'dashboard';
+  } catch (e) {
+    console.warn('[train] save goal failed', e);
+    showTrainToast('Save failed — ' + (e.message || 'try again'));
+  } finally {
+    _trainProgressState.saving = false;
+    renderTrain();
+  }
+}
+
+async function deleteProgressGoal() {
+  const g = _trainProgressState.goalDraft;
+  if (!g || !g.existing_id) return;
+  _trainProgressState.saving = true; renderTrain();
+  try {
+    const { error } = await db.from('body_comp_goals')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', g.existing_id);
+    if (error) throw error;
+    _trainProgressState.goals = _trainProgressState.goals.filter(x => x.id !== g.existing_id);
+    _trainProgressState.goalDraft = null;
+    _trainProgressState.view = 'dashboard';
+  } catch (e) {
+    console.warn('[train] remove goal failed', e);
+    showTrainToast('Remove failed — ' + (e.message || 'try again'));
+  } finally {
+    _trainProgressState.saving = false;
+    renderTrain();
+  }
 }
 
 /* ── Styles (injected once) ──────────────────────────────────────────── */
@@ -2100,6 +2903,201 @@ function ensureTrainStyles() {
     .train-habit-prompt-actions .train-btn-primary {
       padding: 6px 12px; font-size: 12px;
     }
+
+    /* ── Progress subtab ──────────────────────────────────────────── */
+    .progress-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 0 2px 4px;
+      flex-wrap: wrap;
+    }
+    .progress-header-stats {
+      font-size: 12px; color: var(--ink-3);
+      display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .progress-header-stats strong { color: var(--ink); font-weight: 700; text-transform: capitalize; }
+    .progress-header-sep { color: var(--ink-4); }
+
+    .progress-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 14px 16px;
+      box-shadow: var(--shadow-card);
+    }
+    .progress-card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .progress-card-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase;
+    }
+    .progress-card-meta { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+
+    .progress-empty-card { text-align: center; padding: 28px 18px; }
+    .progress-empty-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+    .progress-empty-msg { font-size: 13px; color: var(--ink-3); line-height: 1.5; max-width: 380px; margin: 0 auto; }
+
+    .latest-stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .latest-stat {
+      background: var(--surface-2); border-radius: var(--r-sm);
+      padding: 10px 8px; text-align: center;
+    }
+    .latest-stat-num {
+      font-size: 20px; font-weight: 700; color: var(--ink);
+      letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+    }
+    .latest-stat-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase; margin-top: 4px;
+    }
+    .latest-stat-method {
+      font-size: 11px; font-weight: 500; color: var(--ink-4); display: block;
+      margin-top: 2px;
+    }
+
+    .cal-target-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-bottom: 10px;
+    }
+    .cal-target {
+      background: var(--surface-2); border-radius: var(--r-sm);
+      padding: 10px 8px; text-align: center;
+    }
+    .cal-target-num {
+      font-size: 20px; font-weight: 700; color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .cal-target-l {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase; margin-top: 4px;
+    }
+    .cal-deficit {
+      font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--guava-50); color: var(--guava-700);
+    }
+    .cal-surplus { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
+    .cal-maintain { background: var(--surface-2); color: var(--ink-3); }
+    .cal-macros {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    }
+    .cal-macro {
+      background: var(--surface); border: 1px dashed var(--edge);
+      border-radius: var(--r-sm); padding: 8px 6px; text-align: center;
+    }
+    .cal-macro-g { font-size: 14px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .cal-macro-l { font-size: 10px; color: var(--ink-4); margin-top: 2px; }
+
+    .goal-row { padding: 8px 0; }
+    .goal-row + .goal-row { border-top: 1px dashed var(--edge); }
+    .goal-row-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 8px; font-size: 12px;
+    }
+    .goal-row-title { color: var(--ink-2); }
+    .goal-row-title strong { color: var(--ink); }
+    .goal-row-cur { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .goal-row-pct {
+      font-size: 11px; font-weight: 700; color: var(--guava-700);
+      padding: 2px 6px; background: var(--guava-50); border-radius: 999px;
+      margin-left: 6px;
+    }
+    .goal-bar {
+      background: var(--surface-2); border-radius: 999px; height: 8px;
+      margin: 8px 0 4px; overflow: hidden;
+    }
+    .goal-bar-fill {
+      background: var(--guava-700); height: 100%; border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+    .goal-row-meta { font-size: 11px; color: var(--ink-4); }
+
+    .trend-svg { width: 100%; height: 60px; display: block; }
+    .trend-delta {
+      font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+      padding: 3px 8px; border-radius: 999px; background: var(--surface-2);
+      color: var(--ink-2);
+    }
+    .trend-delta.is-down { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
+    .trend-delta.is-up   { background: var(--guava-50); color: var(--guava-700); }
+
+    .entries-list { display: flex; flex-direction: column; }
+    .entry-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 4px; cursor: pointer; gap: 10px;
+      transition: background 0.12s ease;
+    }
+    .entry-row + .entry-row { border-top: 1px dashed var(--edge); }
+    .entry-row:hover { background: var(--surface-2); }
+    .entry-row-date {
+      font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+    .entry-row-stats {
+      display: inline-flex; gap: 10px; font-size: 12px; color: var(--ink-2);
+      flex-wrap: wrap; justify-content: flex-end;
+    }
+    .entry-row-stats strong { color: var(--ink); font-weight: 700; }
+
+    /* ── Wizard + form chrome ─────────────────────────────────────── */
+    .progress-wizard { display: flex; flex-direction: column; gap: 14px; }
+    .progress-wizard-head { padding: 0 2px; }
+    .progress-wizard-title {
+      font-size: 20px; font-weight: 700; color: var(--ink);
+      letter-spacing: -0.02em; margin-bottom: 4px;
+    }
+    .progress-wizard-msg { font-size: 13px; color: var(--ink-3); line-height: 1.5; }
+    .train-form-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 16px;
+      box-shadow: var(--shadow-card);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .train-form-section { display: flex; flex-direction: column; gap: 6px; }
+    .train-form-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase;
+    }
+    .train-form-label-inline { font-size: 11px; color: var(--ink-3); }
+    .train-form-label-inline .req { color: var(--guava-700); }
+    .train-form-hint { font-size: 11px; color: var(--ink-4); line-height: 1.45; }
+    .train-choice-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .train-choice-pill {
+      background: var(--surface); border: 1px solid var(--edge-strong);
+      border-radius: 999px; padding: 6px 14px; cursor: pointer;
+      font-family: inherit; font-size: 13px; color: var(--ink-2);
+    }
+    .train-choice-pill.is-active {
+      background: var(--guava-50); border-color: var(--guava-700); color: var(--guava-700);
+      font-weight: 700;
+    }
+    .train-choice-stack { display: flex; flex-direction: column; gap: 6px; }
+    .train-choice-card {
+      background: var(--surface); border: 1px solid var(--edge-strong);
+      border-radius: var(--r-md); padding: 10px 12px; cursor: pointer;
+      text-align: left; font-family: inherit;
+    }
+    .train-choice-card.is-active {
+      background: var(--guava-50); border-color: var(--guava-700);
+    }
+    .train-choice-card-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .train-choice-card-desc { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .train-choice-card-meta {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); margin-top: 4px; text-transform: uppercase;
+    }
+    .train-choice-card.is-active .train-choice-card-meta { color: var(--guava-700); }
+    .train-form-actions {
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+    }
+    .entry-meas-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    @media (max-width: 500px) {
+      .entry-meas-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .train-form-field { display: flex; flex-direction: column; gap: 4px; }
   `;
   document.head.appendChild(s);
 }
