@@ -1015,6 +1015,117 @@
     display: inline-block; width: 10px; height: 2px; vertical-align: middle;
   }
 
+  /* ════════════════════════════════════════════════════════════════════════
+     TODAY · Cardio + Bonus day UI
+  ════════════════════════════════════════════════════════════════════════ */
+  /* Day-type indicator inside the day pill. Lift days use ink (default);
+     cardio days use moss-fg so "today is a cardio day" reads at a glance. */
+  .day-pill-card.is-cardio .day-pill-name { color: var(--moss-fg); }
+  .day-pill-card.is-cardio.is-active { border-color: var(--moss-fg); border-width: 2px; padding: 5px 1px; }
+  .day-pill-card.is-cardio.is-active .day-pill-name { color: var(--moss-fg); }
+
+  /* Session-type toggle on bonus days (Bonus Lifting | Activity Log). */
+  .session-type-row {
+    display: flex; gap: 8px; margin-bottom: 4px;
+  }
+  .session-type-pill {
+    background: var(--surface-2); color: var(--ink-3);
+    border: 1px solid var(--edge); border-radius: 999px;
+    padding: 7px 14px; font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  .session-type-pill.is-active {
+    background: var(--moss-bg); border-color: var(--moss-fg); color: var(--moss-fg);
+  }
+
+  /* When & What card on bonus / cardio (date + session type chooser). */
+  .when-what-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px;
+    margin-bottom: 12px;
+  }
+  .when-what-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .when-what-row {
+    display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;
+  }
+
+  /* Cardio activity card — single primary entry per cardio day. */
+  .cardio-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px; margin-bottom: 12px;
+  }
+  .cardio-card-head { margin-bottom: 12px; }
+  .cardio-card-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .cardio-card-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+  .cardio-type-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 6px; margin-bottom: 12px;
+  }
+  .cardio-type-pill {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 8px 4px;
+    font-family: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2);
+    cursor: pointer; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .cardio-type-pill.is-selected {
+    background: var(--moss-bg); border-color: var(--moss-fg); color: var(--moss-fg);
+  }
+  .cardio-type-emoji { font-size: 18px; line-height: 1; }
+  .cardio-type-label { font-size: 10px; font-weight: 700; }
+
+  .cardio-stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+    gap: 8px;
+  }
+  /* Activity Log row (Bonus mode): name + duration + remove. */
+  .activity-row {
+    display: grid; grid-template-columns: 1fr 80px 30px;
+    gap: 8px; align-items: end;
+    padding: 8px 0;
+  }
+  .activity-row + .activity-row { border-top: 1px dashed var(--edge); }
+  .activity-row-add {
+    width: 100%;
+    background: var(--surface); border: 1px dashed var(--edge-strong);
+    border-radius: var(--r-md); padding: 10px;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    color: var(--moss-fg); cursor: pointer; margin-top: 8px;
+  }
+  .activity-row-remove {
+    background: none; border: 0; cursor: pointer;
+    color: var(--ink-4); font-size: 18px; line-height: 1;
+    padding: 8px 4px;
+  }
+  .activity-row-remove:hover { color: var(--guava-700); }
+
+  /* Empty-state for Bonus Lifting (no exercises yet). */
+  .bonus-lift-empty {
+    background: var(--surface); border: 1px dashed var(--edge-strong);
+    border-radius: var(--r-md); padding: 18px 14px;
+    text-align: center; margin-bottom: 12px;
+  }
+  .bonus-lift-empty-msg {
+    font-size: 12px; color: var(--ink-3); margin-bottom: 10px;
+  }
+  .bonus-lift-add {
+    background: var(--guava-700); color: #fff; border: 0;
+    border-radius: var(--r-md); padding: 9px 16px;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+
+  /* State-block wrapper for showing three states stacked in this mockup. */
+  .state-block { margin-bottom: 32px; }
+  .state-block-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--moss-fg);
+    margin-bottom: 8px;
+  }
+
   /* ── Setup card on dashboard ── */
   .setup-summary {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
@@ -1161,7 +1272,8 @@
   <span class="topbar-title">Train tab — Phase 4 mockup</span>
   <nav class="topbar-nav">
     <a class="topbar-link" href="#plan">Plan</a>
-    <a class="topbar-link" href="#today-c">Today</a>
+    <a class="topbar-link" href="#today-c">Today · Lift</a>
+    <a class="topbar-link" href="#today-cardio-bonus">Today · Cardio + Bonus</a>
     <a class="topbar-link" href="#progress-dashboard">Progress · Dash</a>
     <a class="topbar-link" href="#progress-setup">Progress · Setup</a>
     <a class="topbar-link" href="#progress-log">Progress · New</a>
@@ -1521,6 +1633,355 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════════════
+       TODAY · Cardio + Bonus day UI (3 states)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section id="today-cardio-bonus" class="section">
+    <div class="section-label">Today subtab · Cardio day + Bonus day states</div>
+
+    <!-- ── STATE A — Cardio day (planned in the user's mixed plan) ── -->
+    <div class="state-block">
+      <div class="state-block-label">A — Cardio day (a planned cardio day in a 3 lift + 2 cardio week)</div>
+      <div class="train-shell">
+        <div class="train-topbar">
+          <button class="train-pill">Plan</button>
+          <button class="train-pill is-active">Today</button>
+          <button class="train-pill">Progress</button>
+        </div>
+        <div class="train-content">
+
+          <!-- Day picker showing a mixed-modality plan. Cardio days
+               render their name in moss-green so the day type reads at
+               a glance without an extra label row. -->
+          <div class="day-row">
+            <div class="day-pill-card"><span class="day-pill-dow">Mon</span><span class="day-pill-name">Full A</span></div>
+            <div class="day-pill-card is-cardio is-active"><span class="day-pill-dow">Tue</span><span class="day-pill-name">Cardio</span></div>
+            <div class="day-pill-card"><span class="day-pill-dow">Wed</span><span class="day-pill-name">Full B</span></div>
+            <div class="day-pill-card is-cardio"><span class="day-pill-dow">Thu</span><span class="day-pill-name">Cardio</span></div>
+            <div class="day-pill-card"><span class="day-pill-dow">Fri</span><span class="day-pill-name">Full C</span></div>
+            <div class="day-pill-card is-rest"><span class="day-pill-dow">Sat</span><span class="day-pill-name">Rest</span></div>
+            <div class="day-pill-card is-rest"><span class="day-pill-dow">Sun</span><span class="day-pill-name">Rest</span></div>
+            <div class="day-pill-card is-any"><span class="day-pill-dow">+</span><span class="day-pill-name">Any</span></div>
+          </div>
+
+          <div class="session-head">
+            <div>
+              <div class="session-name">Cardio · Tuesday</div>
+              <div class="session-meta">Planned · 30-45 min · moderate intensity</div>
+            </div>
+            <span class="session-status" style="background:var(--moss-bg);border-color:var(--moss-edge);color:var(--moss-fg);">In progress</span>
+          </div>
+
+          <div class="cardio-card">
+            <div class="cardio-card-head">
+              <div class="cardio-card-title">Pick your modality</div>
+              <div class="cardio-card-meta">Last cardio: Bike · 32 min · avg HR 142</div>
+            </div>
+            <div class="cardio-type-grid">
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">🏃</span><span class="cardio-type-label">Run</span></div>
+              <div class="cardio-type-pill is-selected"><span class="cardio-type-emoji">🚴</span><span class="cardio-type-label">Bike</span></div>
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">🚣</span><span class="cardio-type-label">Row</span></div>
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">🏊</span><span class="cardio-type-label">Swim</span></div>
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">🚶</span><span class="cardio-type-label">Walk</span></div>
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">🔥</span><span class="cardio-type-label">HIIT</span></div>
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">🥾</span><span class="cardio-type-label">Hike</span></div>
+              <div class="cardio-type-pill"><span class="cardio-type-emoji">⋯</span><span class="cardio-type-label">Other</span></div>
+            </div>
+            <div class="cardio-stats-grid">
+              <div class="form-field">
+                <label class="form-label">Duration (min)</label>
+                <input class="form-input" type="text" value="35">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Distance (mi)</label>
+                <input class="form-input" type="text" value="8.2">
+              </div>
+            </div>
+            <div class="formula-note" style="margin-top:10px;border-left-color:var(--moss-fg);">
+              <strong>Two inputs only.</strong> Heart rate auto-syncs from Oura / Whoop after the session. Calories are computed from METs × duration × bodyweight (formula, not manual) and shown in the feedback — no double-entry.<br>
+              <strong>Distance units</strong> follow your profile (set in Setup → Units). Toggling imperial ⇄ metric in Settings re-renders this label as "Distance (km)".
+            </div>
+          </div>
+
+          <div class="session-footer">
+            <div class="session-footer-label">Session notes</div>
+            <textarea class="session-notes-input" placeholder="How did it feel? Effort, route, anything off?"></textarea>
+
+            <div class="feel-row">
+              <div class="session-footer-label">How'd the session feel?</div>
+              <div class="mood-grid">
+                <button class="mood-btn"><span class="mood-emoji">🤩</span><span class="mood-label">Great</span></button>
+                <button class="mood-btn is-selected"><span class="mood-emoji">😊</span><span class="mood-label">Good</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😐</span><span class="mood-label">Okay</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😔</span><span class="mood-label">Low</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😢</span><span class="mood-label">Bad</span></button>
+              </div>
+            </div>
+
+            <div class="session-totals">
+              <div><div class="session-total-num">35</div><div class="session-total-label">Minutes</div></div>
+              <div><div class="session-total-num">8.2</div><div class="session-total-label">Miles</div></div>
+              <div><div class="session-total-num">4:16</div><div class="session-total-label">Pace /mi</div></div>
+            </div>
+
+            <button class="session-submit">Submit + Get Feedback</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STATE B — Any-day Bonus · Bonus Lifting mode ── -->
+    <div class="state-block">
+      <div class="state-block-label">B — Any-day bonus · Bonus Lifting (off-plan freeform lift)</div>
+      <div class="train-shell">
+        <div class="train-topbar">
+          <button class="train-pill">Plan</button>
+          <button class="train-pill is-active">Today</button>
+          <button class="train-pill">Progress</button>
+        </div>
+        <div class="train-content">
+          <div class="day-row">
+            <div class="day-pill-card"><span class="day-pill-dow">Mon</span><span class="day-pill-name">Full A</span></div>
+            <div class="day-pill-card is-cardio"><span class="day-pill-dow">Tue</span><span class="day-pill-name">Cardio</span></div>
+            <div class="day-pill-card"><span class="day-pill-dow">Wed</span><span class="day-pill-name">Full B</span></div>
+            <div class="day-pill-card is-cardio"><span class="day-pill-dow">Thu</span><span class="day-pill-name">Cardio</span></div>
+            <div class="day-pill-card"><span class="day-pill-dow">Fri</span><span class="day-pill-name">Full C</span></div>
+            <div class="day-pill-card is-rest"><span class="day-pill-dow">Sat</span><span class="day-pill-name">Rest</span></div>
+            <div class="day-pill-card is-rest"><span class="day-pill-dow">Sun</span><span class="day-pill-name">Rest</span></div>
+            <div class="day-pill-card is-any is-active"><span class="day-pill-dow">+</span><span class="day-pill-name">Any</span></div>
+          </div>
+
+          <div class="when-what-card">
+            <div class="when-what-label">When &amp; What</div>
+            <div class="when-what-row">
+              <label class="form-label">Date</label>
+              <input class="form-input" type="text" value="05/24/2026" readonly>
+            </div>
+            <div class="when-what-label">Session type</div>
+            <div class="session-type-row">
+              <button class="session-type-pill is-active">Bonus Lifting</button>
+              <button class="session-type-pill">Activity Log</button>
+            </div>
+          </div>
+
+          <!-- Bonus Lifting: starts empty with one exercise added inline. -->
+          <div class="ex-card">
+            <div class="ex-card-head">
+              <div>
+                <div class="ex-card-name">Deadlift</div>
+                <div class="ex-card-meta">Custom · 2-3 min rest</div>
+              </div>
+              <span class="ex-target target-hold">→ off-plan</span>
+            </div>
+            <div class="ex-table-head">
+              <span>Set</span><span>Last session</span>
+              <span class="col-today"><span>Today · 3 × 5</span></span>
+            </div>
+            <div class="ex-set-row">
+              <span class="ex-set-num">S1</span>
+              <span class="ex-set-last">315 × 5</span>
+              <div class="ex-set-today">
+                <span class="ex-set-cell">lbs</span>
+                <span class="ex-set-cell">reps</span>
+              </div>
+            </div>
+            <div class="ex-set-row">
+              <span class="ex-set-num">S2</span>
+              <span class="ex-set-last">315 × 5</span>
+              <div class="ex-set-today">
+                <span class="ex-set-cell">lbs</span>
+                <span class="ex-set-cell">reps</span>
+              </div>
+            </div>
+            <div class="ex-set-row">
+              <span class="ex-set-num">S3</span>
+              <span class="ex-set-last">315 × 4</span>
+              <div class="ex-set-today">
+                <span class="ex-set-cell">lbs</span>
+                <span class="ex-set-cell">reps</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bonus-lift-empty">
+            <div class="bonus-lift-empty-msg">Add another lift to today's bonus session</div>
+            <button class="bonus-lift-add">+ Add exercise</button>
+          </div>
+
+          <div class="session-footer">
+            <div class="session-footer-label">Session notes</div>
+            <textarea class="session-notes-input" placeholder="Felt strong today, hit a PR…"></textarea>
+
+            <div class="feel-row">
+              <div class="session-footer-label">How'd the session feel?</div>
+              <div class="mood-grid">
+                <button class="mood-btn is-selected"><span class="mood-emoji">🤩</span><span class="mood-label">Great</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😊</span><span class="mood-label">Good</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😐</span><span class="mood-label">Okay</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😔</span><span class="mood-label">Low</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😢</span><span class="mood-label">Bad</span></button>
+              </div>
+            </div>
+
+            <div class="session-totals">
+              <div><div class="session-total-num">0</div><div class="session-total-label">Sets</div></div>
+              <div><div class="session-total-num">0</div><div class="session-total-label">Volume (lbs)</div></div>
+            </div>
+
+            <button class="session-submit">Submit + Get Feedback</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STATE C — Any-day Bonus · Activity Log mode ── -->
+    <div class="state-block">
+      <div class="state-block-label">C — Any-day bonus · Activity Log (freeform multi-activity)</div>
+      <div class="train-shell">
+        <div class="train-topbar">
+          <button class="train-pill">Plan</button>
+          <button class="train-pill is-active">Today</button>
+          <button class="train-pill">Progress</button>
+        </div>
+        <div class="train-content">
+          <div class="day-row">
+            <div class="day-pill-card"><span class="day-pill-dow">Mon</span><span class="day-pill-name">Full A</span></div>
+            <div class="day-pill-card is-cardio"><span class="day-pill-dow">Tue</span><span class="day-pill-name">Cardio</span></div>
+            <div class="day-pill-card"><span class="day-pill-dow">Wed</span><span class="day-pill-name">Full B</span></div>
+            <div class="day-pill-card is-cardio"><span class="day-pill-dow">Thu</span><span class="day-pill-name">Cardio</span></div>
+            <div class="day-pill-card"><span class="day-pill-dow">Fri</span><span class="day-pill-name">Full C</span></div>
+            <div class="day-pill-card is-rest"><span class="day-pill-dow">Sat</span><span class="day-pill-name">Rest</span></div>
+            <div class="day-pill-card is-rest"><span class="day-pill-dow">Sun</span><span class="day-pill-name">Rest</span></div>
+            <div class="day-pill-card is-any is-active"><span class="day-pill-dow">+</span><span class="day-pill-name">Any</span></div>
+          </div>
+
+          <div class="when-what-card">
+            <div class="when-what-label">When &amp; What</div>
+            <div class="when-what-row">
+              <label class="form-label">Date</label>
+              <input class="form-input" type="text" value="05/24/2026" readonly>
+            </div>
+            <div class="when-what-label">Session type</div>
+            <div class="session-type-row">
+              <button class="session-type-pill">Bonus Lifting</button>
+              <button class="session-type-pill is-active">Activity Log</button>
+            </div>
+          </div>
+
+          <div class="cardio-card">
+            <div class="cardio-card-head">
+              <div class="cardio-card-title">Freeform activity</div>
+              <div class="cardio-card-meta">Hikes, climbing, walks, pickup sports — anything outside the program</div>
+            </div>
+
+            <div class="activity-row">
+              <div class="form-field">
+                <label class="form-label">Activity</label>
+                <input class="form-input" type="text" value="Hiked Mt. Monadnock">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Duration (min)</label>
+                <input class="form-input" type="text" value="180">
+              </div>
+              <button class="activity-row-remove" title="Remove">×</button>
+            </div>
+            <div class="activity-row">
+              <div class="form-field">
+                <label class="form-label">Activity</label>
+                <input class="form-input" type="text" value="Evening walk">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Duration (min)</label>
+                <input class="form-input" type="text" value="25">
+              </div>
+              <button class="activity-row-remove" title="Remove">×</button>
+            </div>
+
+            <button class="activity-row-add">+ Add another activity</button>
+          </div>
+
+          <div class="session-footer">
+            <div class="session-footer-label">Session notes</div>
+            <textarea class="session-notes-input" placeholder="Knees felt good. Beautiful day."></textarea>
+
+            <div class="feel-row">
+              <div class="session-footer-label">How'd the session feel?</div>
+              <div class="mood-grid">
+                <button class="mood-btn is-selected"><span class="mood-emoji">🤩</span><span class="mood-label">Great</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😊</span><span class="mood-label">Good</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😐</span><span class="mood-label">Okay</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😔</span><span class="mood-label">Low</span></button>
+                <button class="mood-btn"><span class="mood-emoji">😢</span><span class="mood-label">Bad</span></button>
+              </div>
+            </div>
+
+            <div class="session-totals">
+              <div><div class="session-total-num">2</div><div class="session-total-label">Activities</div></div>
+              <div><div class="session-total-num">205</div><div class="session-total-label">Total min</div></div>
+            </div>
+
+            <button class="session-submit">Submit + Get Feedback</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-note">
+      <strong>Three Today renderers, one tab.</strong> The Today subtab picks
+      its layout off the day's <code>day_type</code> (or, for the Any-day
+      bonus pill, the user's session-type pill toggle):
+      <ul style="margin:8px 0;padding-left:20px;line-height:1.6;">
+        <li><strong>lift</strong> → the exercise-cards UI (already designed under "Today · Lift")</li>
+        <li><strong>cardio</strong> → modality pills + duration / distance / avg HR / calories (State A above)</li>
+        <li><strong>bonus + Bonus Lifting</strong> → empty lift UI with "+ Add exercise" so the user composes a one-off session (State B)</li>
+        <li><strong>bonus + Activity Log</strong> → name + duration rows, multi-add for chained activities (State C)</li>
+        <li><strong>rest</strong> → "Rest day — no logging" with a "Log a bonus instead?" link that jumps to the Any-day pill</li>
+      </ul>
+      <strong>Day picker</strong> visually differentiates the modality of
+      each day in the active plan: cardio day names render in moss-green, lift
+      days in default ink, rest days muted. The dashed-border "+" pill on the
+      right is always the Any-day bonus slot regardless of plan shape.
+      <br><br>
+      <strong>Habit library integration</strong> (Strategy B from the prior
+      thread) hooks into submit-time:
+      <ul style="margin:8px 0;padding-left:20px;line-height:1.6;">
+        <li>Lift / Bonus-Lifting submit → marks any linked <em>lifting</em>-library habit complete for the day</li>
+        <li>Cardio submit → marks any linked <em>cardio</em>-library habit complete</li>
+        <li>Bonus + Activity Log submit → marks any linked <em>activity</em>-library habit complete</li>
+      </ul>
+      The unique constraint on <code>habit_completions(user_id, habit_id, completed_date)</code> means re-submits or manual taps before/after the auto-mark are all idempotent — historical data is never overwritten.
+      <br><br>
+
+      <strong>"Submit + Get Feedback" — formulaic first, AI on top</strong>
+      <br><br>
+      The feedback panel that opens after Submit has two layers stacked
+      vertically. The formulaic layer always runs and always shows
+      identical output for identical inputs (so screenshots, history,
+      and trust all stay consistent). The AI layer is a single short
+      narrative that ties the formulaic facts together — purely
+      qualitative; nothing it says contradicts a number above.
+
+      <table style="border-collapse:collapse;font-size:11px;width:100%;margin-top:8px;">
+        <tr style="border-bottom:1px solid var(--edge);">
+          <td style="padding:4px 8px 4px 0;font-weight:700;color:var(--ink-2);width:38%">Layer</td>
+          <td style="padding:4px 0;font-weight:700;color:var(--ink-2)">What it produces</td>
+        </tr>
+        <tr><td style="padding:4px 8px 4px 0">Formulaic — Lift</td><td style="padding:4px 0">Total volume (lbs) vs last session of same day · per-exercise PRs (new top set) · sets that hit target vs missed · suggested next-week target weights (rule-based: hit target → +2.5/+5 lbs; missed → repeat; readiness ≤ 60 → deload 10 %) · days since last lifting the same muscle group</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Formulaic — Cardio</td><td style="padding:4px 0">Pace = duration / distance · pace vs your last same-modality session · estimated calories = METs(activity) × bodyweight(kg) × hours · weekly cardio totals (sessions, minutes)</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Formulaic — Activity Log</td><td style="padding:4px 0">Total minutes across all activities today · running 7-day activity count · variety chip if &gt; 2 distinct activity types this week</td></tr>
+        <tr><td style="padding:4px 8px 4px 0">Recovery alignment</td><td style="padding:4px 0">Joins today's readiness / HRV / sleep_score from oura_daily with the session feel rating. Calls out misalignment ("you rated this 'Great' on a 46 readiness — solid push despite low recovery" or the inverse).</td></tr>
+        <tr style="border-top:1px solid var(--edge);background:var(--amber-bg)">
+          <td style="padding:4px 8px 4px 0;color:var(--amber-fg)">AI insight (top layer)</td><td style="padding:4px 0;color:var(--amber-fg)">One paragraph max. Pattern observations across the last ~4 weeks of sessions that the formulas alone can't surface (e.g. "Set 4 of squats has dropped reps three weeks in a row — try shorter rest", "Notes mention shoulder twice this week"). Tagged with confidence (high/medium/low). Falls back gracefully to empty if Claude is unavailable; the formulaic layer is always visible.</td></tr>
+      </table>
+
+      <strong>Consistency guarantee:</strong> every number in the feedback
+      panel is a pure function of session data + recent history. The same
+      inputs produce the same output every time. AI is constrained to
+      narrative observations only — it never overrides or contradicts a
+      number, and the formulaic layer renders even if Claude fails.
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
        PROGRESS · Dashboard (Goals + Body Comp + Trends)
   ════════════════════════════════════════════════════════════════════════ -->
   <section id="progress-dashboard" class="section">
@@ -1864,6 +2325,21 @@
             These five values feed the BMR, TDEE, and daily calorie target
             math. Set them once; we'll keep what we can fresh from data you
             already log. Change them any time from the dashboard's Profile card.
+          </div>
+        </div>
+
+        <!-- ── Units ──────────────────────────────────────────────────── -->
+        <div class="wiz-section">
+          <div class="wiz-section-head">
+            <span class="wiz-section-label">Units</span>
+            <span class="wiz-section-source is-static">Set once, change any time</span>
+          </div>
+          <div class="radio-row">
+            <div class="radio-pill is-selected">Imperial · lbs / mi / in</div>
+            <div class="radio-pill">Metric · kg / km / cm</div>
+          </div>
+          <div class="formula-note" style="margin-top:10px;">
+            Drives every weight, distance, and length input across Train + Progress (lift weights, cardio distance, body measurements). Change later in Settings → conversions re-render in place; stored data stays in canonical SI internally so no rounding drift.
           </div>
         </div>
 

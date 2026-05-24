@@ -20,4 +20,13 @@ alter table public.user_profiles
   add column if not exists activity_level            text
     check (activity_level in ('sedentary','light','moderate','active','very_active')),
   add column if not exists activity_level_override   boolean default false,
+  add column if not exists units                     text default 'imperial'
+    check (units in ('imperial','metric')),
   add column if not exists body_comp_profile_set_at  timestamptz;
+
+-- Units note: storage stays in canonical fields (height_in in inches,
+-- progress_pics.weight_lbs in pounds, workout_sets.actual_weight in pounds,
+-- cardio_distance in miles). The 'units' column only controls how those
+-- canonical values are rendered + accepted in the UI. Conversion happens
+-- at the form-field and display layer, never at the storage layer — so
+-- toggling between imperial and metric never re-writes any historical row.
