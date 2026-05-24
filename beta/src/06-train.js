@@ -31,6 +31,11 @@ const _trainState = {
   templates:   [],       // built-in is_template=true plans
   userPlans:   [],       // user's own plans (forked + custom)
   activePlan:  null,     // the user's currently-active plan, or null
+  // Recent-session cache so the Today picker can surface sessions that
+  // were already logged for the date currently being viewed (e.g. a
+  // Saturday bonus). Last 14 days, refreshed after each submit.
+  sessionsByDate: {},    // 'YYYY-MM-DD' → [session row, …]
+  setsBySession:  {},    // session_id → [set row, …]
 };
 
 function renderTrain() {
@@ -674,6 +679,72 @@ async function loadLastSetsForActivePlan() {
   }
 }
 
+// Fetch the last 14 days of workout_sessions + their sets so the Today
+// picker can show "already logged for this date" cards. The day picker
+// otherwise re-renders the plan template for every pill, which made
+// previously-logged bonus sessions invisible. Cheap query: ≤ ~30 rows
+// total for most users.
+async function loadRecentTrainSessions() {
+  try {
+    const today = trainTodayLocalDate();
+    const since = trainShiftDate(today, -13);   // 14-day window inclusive
+    const { data: sessions, error: sErr } = await db.from('workout_sessions')
+      .select('id,session_date,day_name,day_type,feel,session_notes,plan_id,submitted_at,status')
+      .eq('user_id', currentUser.id)
+      .gte('session_date', since)
+      .lte('session_date', today)
+      .order('submitted_at', { ascending: false });
+    if (sErr) throw sErr;
+
+    const byDate = {};
+    const sessionIds = [];
+    for (const row of sessions || []) {
+      if (!byDate[row.session_date]) byDate[row.session_date] = [];
+      byDate[row.session_date].push(row);
+      sessionIds.push(row.id);
+    }
+
+    const setsBySession = {};
+    if (sessionIds.length) {
+      const { data: sets, error: stErr } = await db.from('workout_sets')
+        .select('session_id,exercise_name,set_index,actual_weight,actual_reps,is_bodyweight,completed_at')
+        .in('session_id', sessionIds)
+        .order('set_index', { ascending: true });
+      if (stErr) throw stErr;
+      for (const row of sets || []) {
+        if (!setsBySession[row.session_id]) setsBySession[row.session_id] = [];
+        setsBySession[row.session_id].push(row);
+      }
+    }
+    _trainState.sessionsByDate = byDate;
+    _trainState.setsBySession  = setsBySession;
+  } catch (e) {
+    console.warn('[train] load recent sessions failed', e);
+    _trainState.sessionsByDate = {};
+    _trainState.setsBySession  = {};
+  }
+}
+
+// The date the Today subtab is currently displaying. Bonus mode uses the
+// explicit bonusDate picker; planned-day pills are interpreted as "the
+// nearest occurrence of that DOW going backward" so tapping Sat shows
+// last Saturday's logged session if today is e.g. Wed.
+function trainCurrentViewDate(st) {
+  if (!st) return null;
+  if (st.isBonus) return st.bonusDate || st.date;
+  if (!st.selectedDow) return st.date;
+  const todayDow = trainTodayDow();
+  if (st.selectedDow === todayDow) return st.date;
+  // Walk back up to 6 days to find the most recent occurrence of selectedDow.
+  for (let i = 1; i <= 7; i++) {
+    const d = trainShiftDate(st.date, -i);
+    const [y, m, day] = d.split('-').map(Number);
+    const dow = DOW_ORDER[(new Date(y, m - 1, day).getDay() + 6) % 7];
+    if (dow === st.selectedDow) return d;
+  }
+  return st.date;
+}
+
 function renderTrainToday(root) {
   if (_trainState.loading && !_trainState.loaded) {
     root.innerHTML = `<div class="train-shell"><div class="train-loading">Loading…</div></div>`;
@@ -701,9 +772,26 @@ function renderTrainToday(root) {
     _trainState.lastSetsByExercise = {};
     loadLastSetsForActivePlan();
   }
+  // Lazy-fetch the last-14-days session list so the date currently being
+  // viewed (planned-day or bonus) surfaces any already-logged sessions.
+  if (!_trainState.sessionsLoaded) {
+    _trainState.sessionsLoaded = true;
+    loadRecentTrainSessions().then(() => renderTrain());
+  }
 
   const st = _trainTodayState;
   const dayPickerHtml = renderTodayDayPicker(st);
+
+  // If there are already-logged sessions for the date the user is viewing,
+  // surface them above the form so a bonus they logged on Saturday isn't
+  // "lost" when they tap the Sat pill again.
+  const viewDate = trainCurrentViewDate(st);
+  const loggedSessions = (viewDate && _trainState.sessionsByDate)
+    ? (_trainState.sessionsByDate[viewDate] || [])
+    : [];
+  const loggedBanner = (!st.submittedFeedback && loggedSessions.length)
+    ? renderTodayLoggedSessions(loggedSessions, viewDate, st.date)
+    : '';
 
   let body;
   if (st.submittedFeedback) {
@@ -725,8 +813,63 @@ function renderTrainToday(root) {
 
   root.innerHTML = `<div class="train-shell">
     ${dayPickerHtml}
+    ${loggedBanner}
     ${body}
     ${footer}
+  </div>`;
+}
+
+// Read-only summary cards for sessions already logged on the viewed date.
+// Each card shows the session's day_name + day_type badge, a one-line
+// summary of the sets, and the optional notes/feel. Below it lives the
+// usual "log another session" form so users can add a second activity.
+function renderTodayLoggedSessions(sessions, viewDate, todayStr) {
+  const label = trainDateLabel(viewDate, todayStr);
+  const typeBadge = {
+    lift:   { txt: 'Lift',   cls: 'is-lift'   },
+    cardio: { txt: 'Cardio', cls: 'is-cardio' },
+    bonus:  { txt: 'Bonus',  cls: 'is-bonus'  },
+    rest:   { txt: 'Rest',   cls: 'is-rest'   },
+  };
+  const cards = sessions.map(s => {
+    const sets = (_trainState.setsBySession || {})[s.id] || [];
+    let summary;
+    if (s.day_type === 'cardio' || (s.day_type === 'bonus' && /cardio/i.test(s.day_name))) {
+      const row  = sets[0] || {};
+      const dur  = row.actual_reps;
+      const dist = row.actual_weight;
+      summary = `${row.exercise_name || 'Cardio'} · ${dur != null ? dur + ' min' : '—'}${dist != null ? ' · ' + dist + ' mi' : ''}`;
+    } else if (s.day_type === 'bonus' && /activity/i.test(s.day_name)) {
+      const total = sets.reduce((acc, r) => acc + (Number(r.actual_reps) || 0), 0);
+      summary = `${sets.length} activit${sets.length === 1 ? 'y' : 'ies'} · ${total} min`;
+    } else {
+      // Lift / bonus lifting
+      const exerciseNames = Array.from(new Set(sets.map(r => r.exercise_name)));
+      const volume = sets.reduce((acc, r) => {
+        if (r.is_bodyweight) return acc;
+        return acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0);
+      }, 0);
+      summary = `${sets.length} set${sets.length === 1 ? '' : 's'} across ${exerciseNames.length} lift${exerciseNames.length === 1 ? '' : 's'}${volume ? ' · ' + volume.toLocaleString() + ' lbs vol' : ''}`;
+    }
+    const badge = typeBadge[s.day_type] || { txt: s.day_type, cls: '' };
+    const feel = (typeof s.feel === 'number')
+      ? ['🤩','😊','😐','😔','😢'][s.feel - 1] || ''
+      : '';
+    const notes = s.session_notes
+      ? `<div class="logged-session-notes">${trainEsc(s.session_notes)}</div>`
+      : '';
+    return `<div class="logged-session-card">
+      <div class="logged-session-head">
+        <div class="logged-session-name">${trainEsc(s.day_name)} ${feel ? `<span class="logged-session-feel">${feel}</span>` : ''}</div>
+        <span class="day-detail-badge ${badge.cls}">${badge.txt}</span>
+      </div>
+      <div class="logged-session-summary">${trainEsc(summary)}</div>
+      ${notes}
+    </div>`;
+  }).join('');
+  return `<div class="logged-session-block">
+    <div class="logged-session-label">Already logged · ${trainEsc(label)}</div>
+    ${cards}
   </div>`;
 }
 
@@ -1248,6 +1391,9 @@ async function trainSubmitTodaySession() {
     // Refresh the last-session cache so the next session's render uses
     // these new numbers.
     loadLastSetsForActivePlan();
+    // Also refresh the recent-sessions cache so the "Already logged" banner
+    // picks up this submission when the user navigates back to its date.
+    loadRecentTrainSessions().then(() => renderTrain());
   } catch (e) {
     console.warn('[train] submit failed', e);
     st.submitting = false;
@@ -1490,6 +1636,12 @@ function ensureTrainStyles() {
       display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
       margin-bottom: 12px;
     }
+    /* Match the Today day-picker breakpoint — below 600px the 7-cell row
+       squeezes the day names too tight in the side-panel preview and
+       narrow phones. Drop to a 4-column grid so each card has room. */
+    @media (max-width: 600px) {
+      .plan-week-grid { grid-template-columns: repeat(4, 1fr); }
+    }
     .plan-day {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-sm); padding: 6px 4px;
@@ -1614,6 +1766,35 @@ function ensureTrainStyles() {
     .day-detail-empty {
       font-size: 13px; color: var(--ink-4); padding: 14px 0;
       text-align: center;
+    }
+
+    /* ── Already-logged session cards (Today subtab) ───────────────── */
+    .logged-session-block { margin-bottom: 14px; }
+    .logged-session-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase; margin-bottom: 8px;
+    }
+    .logged-session-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 12px 14px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-card);
+    }
+    .logged-session-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 6px;
+    }
+    .logged-session-name {
+      font-size: 14px; font-weight: 700; color: var(--ink);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .logged-session-feel { font-size: 16px; }
+    .logged-session-head .day-detail-badge { margin-bottom: 0; }
+    .logged-session-summary { font-size: 12px; color: var(--ink-2); }
+    .logged-session-notes {
+      font-size: 12px; color: var(--ink-3); margin-top: 6px;
+      padding-top: 6px; border-top: 1px dashed var(--edge);
+      font-style: italic;
     }
 
     /* ── Today subtab ───────────────────────────────────────────────── */

@@ -697,6 +697,21 @@
       <button data-emoji-target="edit" data-emoji="🙏">🙏</button><button data-emoji-target="edit" data-emoji="🌱">🌱</button>
       <button data-emoji-target="edit" data-emoji="☀️">☀️</button><button data-emoji-target="edit" data-emoji="✅">✅</button>
     </div>
+    <!-- Phase 4 — habit library link picker. Lifted OUT of the Frequency
+         field so it's discoverable. Wires ANY habit to ANY library kind
+         regardless of name; the post-Train-submit prompt only offers
+         links it can name-match, but here the user can pick manually. -->
+    <div class="habit-edit-field">
+      <label>Auto-complete from Train</label>
+      <select id="habitEditLibraryKind" style="width:100%;padding:8px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
+        <option value="">Not linked (manual only)</option>
+        <option value="lifting">🏋️ Lifting · auto-marks when you submit a lift in Train</option>
+        <option value="cardio">🏃 Cardio · auto-marks when you submit cardio in Train</option>
+        <option value="activity">🧗 Activity · auto-marks when you log a Bonus activity</option>
+        <option value="progress">📸 Progress pic · auto-marks when you log a body-comp entry</option>
+      </select>
+      <div style="font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4">Links this habit to Train so submitting the matching session auto-marks it complete for that day.</div>
+    </div>
     <div class="habit-edit-field">
       <label>Frequency</label>
       <div class="freq-options" id="habitEditFreqOptions">
@@ -728,19 +743,6 @@
           <input type="checkbox" id="habitEditAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
           Allow extras beyond goal
         </label>
-      </div>
-      <!-- Phase 4 — habit library link picker. Lets users wire ANY habit
-           to ANY kind regardless of name (the post-submit prompt only
-           offers links it can name-match). -->
-      <div style="margin-top:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Auto-complete from</div>
-        <select id="habitEditLibraryKind" style="width:100%;padding:7px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
-          <option value="">Not linked (manual only)</option>
-          <option value="lifting">🏋️ Lifting · auto-marks when you submit a lift in Train</option>
-          <option value="cardio">🏃 Cardio · auto-marks when you submit cardio in Train</option>
-          <option value="activity">🧗 Activity · auto-marks when you log a Bonus activity</option>
-          <option value="progress">📸 Progress pic · auto-marks when you log a body-comp entry</option>
-        </select>
       </div>
     </div>
     <div class="habit-edit-actions">
