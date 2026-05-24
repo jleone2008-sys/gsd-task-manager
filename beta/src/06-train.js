@@ -111,6 +111,113 @@ function trainWireOnce() {
       trainCloseDayDetail();
       return;
     }
+
+    // ── Today subtab actions ──────────────────────────────────────────
+    if (action === 'goto-plan') {
+      trainSwitchView('plan');
+      return;
+    }
+    if (action === 'pick-day') {
+      const dow = actionEl.dataset.dow;
+      const st = _trainTodayState;
+      st.isBonus = false;
+      st.selectedDow = dow;
+      st.day = trainFindDay(dow);
+      st.liftSets = trainSeedSetsFromDay(st.day);
+      st.cardio = { modality: null, duration: '', distance: '' };
+      st.submittedFeedback = null;
+      renderTrain();
+      return;
+    }
+    if (action === 'pick-any') {
+      const st = _trainTodayState;
+      st.isBonus = true;
+      st.selectedDow = null;
+      st.day = null;
+      st.submittedFeedback = null;
+      renderTrain();
+      return;
+    }
+    if (action === 'bonus-type') {
+      _trainTodayState.bonusType = actionEl.dataset.type;
+      renderTrain();
+      return;
+    }
+    if (action === 'activity-add') {
+      _trainTodayState.bonusActivities.push({ name: '', duration: '' });
+      renderTrain();
+      return;
+    }
+    if (action === 'activity-remove') {
+      const i = Number(actionEl.dataset.i);
+      _trainTodayState.bonusActivities.splice(i, 1);
+      if (_trainTodayState.bonusActivities.length === 0) {
+        _trainTodayState.bonusActivities.push({ name: '', duration: '' });
+      }
+      renderTrain();
+      return;
+    }
+    if (action === 'cardio-modality') {
+      _trainTodayState.cardio.modality = actionEl.dataset.modality;
+      renderTrain();
+      return;
+    }
+    if (action === 'toggle-done') {
+      const ex = actionEl.dataset.ex, i = Number(actionEl.dataset.i);
+      const row = _trainTodayState.liftSets[ex]?.[i];
+      if (row) { row.done = !row.done; renderTrain(); }
+      return;
+    }
+    if (action === 'feel') {
+      _trainTodayState.feel = Number(actionEl.dataset.val);
+      renderTrain();
+      return;
+    }
+    if (action === 'submit-session') {
+      trainSubmitTodaySession();
+      return;
+    }
+    if (action === 'start-new') {
+      _trainTodayState.initialized = false;
+      ensureTrainTodayInit();
+      renderTrain();
+      return;
+    }
+  });
+
+  // Input handler for the Today subtab text inputs. Separate listener so
+  // every keystroke doesn't blow through the click dispatch above. Uses the
+  // same data-train-action attributes for routing.
+  document.addEventListener('input', e => {
+    if (typeof activeTool !== 'undefined' && activeTool !== 'train') return;
+    const el = e.target.closest('[data-train-action]');
+    if (!el) return;
+    const action = el.dataset.trainAction;
+    const v = el.value;
+    if (action === 'set-weight') {
+      const ex = el.dataset.ex, i = Number(el.dataset.i);
+      if (_trainTodayState.liftSets[ex]?.[i]) _trainTodayState.liftSets[ex][i].weight = v;
+      // Don't re-render on every keystroke — the inline cell already shows the value.
+      return;
+    }
+    if (action === 'set-reps') {
+      const ex = el.dataset.ex, i = Number(el.dataset.i);
+      if (_trainTodayState.liftSets[ex]?.[i]) _trainTodayState.liftSets[ex][i].reps = v;
+      return;
+    }
+    if (action === 'cardio-duration') { _trainTodayState.cardio.duration = v; return; }
+    if (action === 'cardio-distance') { _trainTodayState.cardio.distance = v; return; }
+    if (action === 'notes')           { _trainTodayState.notes          = v; return; }
+    if (action === 'activity-name') {
+      const i = Number(el.dataset.i);
+      if (_trainTodayState.bonusActivities[i]) _trainTodayState.bonusActivities[i].name = v;
+      return;
+    }
+    if (action === 'activity-duration') {
+      const i = Number(el.dataset.i);
+      if (_trainTodayState.bonusActivities[i]) _trainTodayState.bonusActivities[i].duration = v;
+      return;
+    }
   });
 }
 
@@ -401,16 +508,594 @@ function renderPlanTemplatesList(templates, active) {
   </div>`;
 }
 
-/* ── Today / Progress stubs (filled in by commits 3 and 5) ──────────── */
+/* ════════════════════════════════════════════════════════════════════════
+   TODAY SUBTAB — V1
+   - Day picker (this-week, today active by default).
+   - Per-day-type body renderer: lift / cardio / bonus / rest.
+   - Inline set entry on lift days; tap a cell, type weight/reps.
+   - Session footer: notes textarea + 5-emoji feel + Submit + Get Feedback.
+   - Submit creates a workout_sessions row + all workout_sets rows in one
+     batch and shows the formulaic feedback inline.
+
+   Deferred (follow-up commit): focus-sheet entry, day-picker backfill,
+   Bonus + Activity-Log full UX, AI feedback narrative.
+════════════════════════════════════════════════════════════════════════ */
+
+// In-flight session state. Reset whenever the user changes the day or
+// successfully submits. All fields live in memory until Submit.
+const _trainTodayState = {
+  initialized: false,
+  date:        null,          // 'YYYY-MM-DD' (user-local today)
+  selectedDow: null,          // 'Mon' .. 'Sun' — pill the user has selected
+  isBonus:     false,         // true when Any-day pill is selected
+  day:         null,          // plan.day_template entry for selectedDow (or null for bonus)
+  // Per-exercise set entries: { [exerciseName]: [{ weight: '', reps: '', done: false }, ...] }
+  liftSets:    {},
+  cardio:      { modality: null, duration: '', distance: '' },
+  bonusType:   'lift',        // 'lift' | 'activity' — when isBonus
+  bonusActivities: [{ name: '', duration: '' }],
+  feel:        null,          // 1=Great .. 5=Bad
+  notes:       '',
+  submitting:  false,
+  submittedFeedback: null,    // formulaic feedback object after submit
+};
+
+function trainTodayLocalDate() {
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+}
+
+// Initialize today state if first render OR the day-of-week changed
+// (e.g., user left the app open overnight). Re-uses any work-in-progress
+// state for the same day.
+function ensureTrainTodayInit() {
+  const today = trainTodayLocalDate();
+  const dow   = trainTodayDow();
+  if (_trainTodayState.initialized && _trainTodayState.date === today) return;
+  _trainTodayState.initialized = true;
+  _trainTodayState.date = today;
+  _trainTodayState.selectedDow = dow;
+  _trainTodayState.isBonus = false;
+  _trainTodayState.day = trainFindDay(dow);
+  _trainTodayState.liftSets = trainSeedSetsFromDay(_trainTodayState.day);
+  _trainTodayState.cardio = { modality: null, duration: '', distance: '' };
+  _trainTodayState.bonusType = 'lift';
+  _trainTodayState.bonusActivities = [{ name: '', duration: '' }];
+  _trainTodayState.feel = null;
+  _trainTodayState.notes = '';
+  _trainTodayState.submittedFeedback = null;
+}
+
+function trainFindDay(dow) {
+  const active = _trainState.activePlan;
+  if (!active || !Array.isArray(active.day_template)) return null;
+  return active.day_template.find(d => d.dow === dow) || null;
+}
+
+// Build an empty liftSets shape from a day's exercises so the UI has
+// one editable row per prescribed set.
+function trainSeedSetsFromDay(day) {
+  const out = {};
+  if (!day || day.type !== 'lift' || !Array.isArray(day.exercises)) return out;
+  for (const ex of day.exercises) {
+    const n = Math.max(1, Number(ex.sets) || 1);
+    out[ex.name] = Array.from({ length: n }, () => ({
+      weight: '', reps: '', done: false, is_bodyweight: !!ex.bodyweight,
+    }));
+  }
+  return out;
+}
+
+// Tail-recursive load: fetch the last ~300 sets across every exercise
+// in the active plan, group by exercise, take only the most recent
+// session's sets per exercise. Cache on _trainState.lastSetsByExercise
+// so all subtab renders can reference it without re-querying.
+async function loadLastSetsForActivePlan() {
+  if (!_trainState.activePlan) return;
+  const exercises = new Set();
+  for (const day of (_trainState.activePlan.day_template || [])) {
+    if (day && day.type === 'lift' && Array.isArray(day.exercises)) {
+      for (const ex of day.exercises) exercises.add(ex.name);
+    }
+  }
+  if (exercises.size === 0) { _trainState.lastSetsByExercise = {}; return; }
+
+  try {
+    const { data, error } = await db.from('workout_sets')
+      .select('exercise_name,set_index,actual_weight,actual_reps,is_bodyweight,completed_at,session_id')
+      .eq('user_id', currentUser.id)
+      .in('exercise_name', Array.from(exercises))
+      .not('actual_reps', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(300);
+    if (error) throw error;
+
+    const byEx = {};
+    for (const row of data || []) {
+      if (!byEx[row.exercise_name]) {
+        byEx[row.exercise_name] = { sessionId: row.session_id, sets: [] };
+      }
+      if (byEx[row.exercise_name].sessionId === row.session_id) {
+        byEx[row.exercise_name].sets.push(row);
+      }
+    }
+    for (const k of Object.keys(byEx)) byEx[k].sets.sort((a, b) => a.set_index - b.set_index);
+    _trainState.lastSetsByExercise = byEx;
+  } catch (e) {
+    console.warn('[train] load last sets failed', e);
+    _trainState.lastSetsByExercise = {};
+  }
+}
 
 function renderTrainToday(root) {
-  root.innerHTML = `
-    <div class="train-shell">
+  if (_trainState.loading && !_trainState.loaded) {
+    root.innerHTML = `<div class="train-shell"><div class="train-loading">Loading…</div></div>`;
+    return;
+  }
+  if (_trainState.error) {
+    root.innerHTML = `<div class="train-shell"><div class="train-error">${trainEsc(_trainState.error)}
+      <button class="train-retry" data-train-action="reload">Retry</button></div></div>`;
+    return;
+  }
+  if (!_trainState.activePlan) {
+    root.innerHTML = `<div class="train-shell">
       <div class="train-empty">
-        <div class="train-empty-title">Today</div>
-        <div class="train-empty-msg">Session logging lands in commit 3.</div>
+        <div class="train-empty-title">No active plan</div>
+        <div class="train-empty-msg">Fork a starter template from the Plan subtab to start logging sessions. You can still log a one-off bonus session via the Any pill.</div>
+        <button class="train-btn-primary" style="margin-top:12px" data-train-action="goto-plan">Go to Plan →</button>
       </div>
     </div>`;
+    return;
+  }
+
+  ensureTrainTodayInit();
+  // Lazy-fetch the per-exercise last-session reference data once.
+  if (!_trainState.lastSetsByExercise) {
+    _trainState.lastSetsByExercise = {};
+    loadLastSetsForActivePlan();
+  }
+
+  const st = _trainTodayState;
+  const dayPickerHtml = renderTodayDayPicker(st);
+
+  let body;
+  if (st.submittedFeedback) {
+    body = renderTodayFeedback(st);
+  } else if (st.isBonus) {
+    body = renderTodayBonus(st);
+  } else if (!st.day || st.day.type === 'rest') {
+    body = renderTodayRest(st);
+  } else if (st.day.type === 'cardio') {
+    body = renderTodayCardio(st);
+  } else {
+    body = renderTodayLift(st);
+  }
+
+  // Footer only renders when there's a session to log (skip on rest day).
+  const isLoggable = st.submittedFeedback ? false
+                   : (st.isBonus || (st.day && st.day.type !== 'rest'));
+  const footer = isLoggable ? renderTodayFooter(st) : '';
+
+  root.innerHTML = `<div class="train-shell">
+    ${dayPickerHtml}
+    ${body}
+    ${footer}
+  </div>`;
+}
+
+function renderTodayDayPicker(st) {
+  const plan = _trainState.activePlan;
+  const days = Array.isArray(plan?.day_template) ? plan.day_template : [];
+  const dayByDow = {};
+  days.forEach(d => { dayByDow[d.dow] = d; });
+  const todayDow = trainTodayDow();
+
+  const pills = DOW_ORDER.map(dow => {
+    const d = dayByDow[dow];
+    const cls = ['day-pill-card'];
+    if (!st.isBonus && st.selectedDow === dow) cls.push('is-active');
+    if (!d || d.type === 'rest') cls.push('is-rest');
+    if (d?.type === 'cardio') cls.push('is-cardio');
+    const name = d ? d.name : 'Rest';
+    const isToday = dow === todayDow;
+    return `<div class="${cls.join(' ')}" data-train-action="pick-day" data-dow="${dow}">
+      <span class="day-pill-dow">${dow}${isToday ? ' •' : ''}</span>
+      <span class="day-pill-name">${trainEsc(name)}</span>
+    </div>`;
+  }).join('');
+
+  const anyCls = ['day-pill-card','is-any'];
+  if (st.isBonus) anyCls.push('is-active');
+
+  return `<div class="train-day-picker">
+    ${pills}
+    <div class="${anyCls.join(' ')}" data-train-action="pick-any">
+      <span class="day-pill-dow">+</span><span class="day-pill-name">Any</span>
+    </div>
+  </div>`;
+}
+
+function renderTodayLift(st) {
+  const day = st.day;
+  const exercises = Array.isArray(day.exercises) ? day.exercises : [];
+  if (exercises.length === 0) {
+    return `<div class="train-empty">
+      <div class="train-empty-title">No exercises prescribed</div>
+      <div class="train-empty-msg">Edit this day in Plan → Manage to add exercises.</div>
+    </div>`;
+  }
+  const cards = exercises.map(ex => renderTodayLiftCard(ex, st)).join('');
+  return `<div class="train-today-body">${cards}</div>`;
+}
+
+function renderTodayLiftCard(ex, st) {
+  const sets = st.liftSets[ex.name] || [];
+  const last = (_trainState.lastSetsByExercise || {})[ex.name];
+  const lastSummary = last && last.sets.length
+    ? last.sets.map(s => s.is_bodyweight
+        ? `${s.actual_reps} reps`
+        : `${s.actual_weight}×${s.actual_reps}`).join(', ')
+    : 'No prior data';
+
+  const target = ex.target_text
+    ? `<span class="ex-target target-${ex.target_kind || 'hold'}">${trainEsc(ex.target_text)}</span>`
+    : '';
+
+  const rows = sets.map((s, i) => {
+    const lastSet = last && last.sets[i];
+    const lastCell = lastSet
+      ? (lastSet.is_bodyweight ? `${lastSet.actual_reps} reps` : `${lastSet.actual_weight}×${lastSet.actual_reps}`)
+      : '—';
+    const weightInput = ex.bodyweight && !s.weight
+      ? `<input class="ex-cell-input is-bw" type="text" placeholder="BW" value="${trainEsc(s.weight)}" data-train-action="set-weight" data-ex="${trainEsc(ex.name)}" data-i="${i}">`
+      : `<input class="ex-cell-input" type="text" inputmode="decimal" placeholder="lbs" value="${trainEsc(s.weight)}" data-train-action="set-weight" data-ex="${trainEsc(ex.name)}" data-i="${i}">`;
+    const repsInput = `<input class="ex-cell-input" type="text" inputmode="numeric" placeholder="reps" value="${trainEsc(s.reps)}" data-train-action="set-reps" data-ex="${trainEsc(ex.name)}" data-i="${i}">`;
+    const check = s.done
+      ? `<button class="ex-set-check is-done" data-train-action="toggle-done" data-ex="${trainEsc(ex.name)}" data-i="${i}" title="Mark not done">✓</button>`
+      : `<button class="ex-set-check" data-train-action="toggle-done" data-ex="${trainEsc(ex.name)}" data-i="${i}" title="Mark complete"></button>`;
+    return `<div class="ex-set-row ${s.done ? 'is-done' : ''}">
+      <span class="ex-set-num">S${i + 1}</span>
+      <span class="ex-set-last">${trainEsc(lastCell)}</span>
+      <div class="ex-set-today">${weightInput}${repsInput}</div>
+      ${check}
+    </div>`;
+  }).join('');
+
+  return `<div class="ex-card">
+    <div class="ex-card-head">
+      <div>
+        <div class="ex-card-name">${trainEsc(ex.name)}</div>
+        <div class="ex-card-meta">${trainEsc(ex.muscle_group || '')}${ex.rest_s ? ` · ${ex.rest_s}s rest` : ''}</div>
+      </div>
+      ${target}
+    </div>
+    <div class="ex-table-head">
+      <span>Set</span><span>Last session</span>
+      <span class="col-today"><span>Today · ${ex.sets} × ${trainEsc(String(ex.reps || ''))}</span></span>
+      <span></span>
+    </div>
+    ${rows}
+  </div>`;
+}
+
+function renderTodayCardio(st) {
+  const c = st.cardio;
+  const modalities = ['Run','Bike','Row','Swim','Walk','HIIT','Hike','Other'];
+  const emojis = { Run:'🏃', Bike:'🚴', Row:'🚣', Swim:'🏊', Walk:'🚶', HIIT:'🔥', Hike:'🥾', Other:'⋯' };
+  const pills = modalities.map(m => `
+    <button class="cardio-type-pill ${c.modality === m ? 'is-selected' : ''}" data-train-action="cardio-modality" data-modality="${m}">
+      <span class="cardio-type-emoji">${emojis[m]}</span>
+      <span class="cardio-type-label">${m}</span>
+    </button>`).join('');
+  return `<div class="train-today-body">
+    <div class="cardio-card">
+      <div class="cardio-card-head">
+        <div class="cardio-card-title">${trainEsc(st.day.name)}</div>
+        <div class="cardio-card-meta">Pick your modality, then log duration + distance.</div>
+      </div>
+      <div class="cardio-type-grid">${pills}</div>
+      <div class="cardio-stats-grid">
+        <div class="form-field">
+          <label class="form-label">Duration (min)</label>
+          <input class="form-input" type="text" inputmode="numeric" placeholder="30" value="${trainEsc(c.duration)}" data-train-action="cardio-duration">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Distance (mi)</label>
+          <input class="form-input" type="text" inputmode="decimal" placeholder="—" value="${trainEsc(c.distance)}" data-train-action="cardio-distance">
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTodayBonus(st) {
+  // V1: only Bonus Lifting is implemented; Activity Log placeholder.
+  if (st.bonusType === 'activity') {
+    const rows = st.bonusActivities.map((a, i) => `
+      <div class="activity-row">
+        <div class="form-field">
+          <label class="form-label">Activity</label>
+          <input class="form-input" type="text" placeholder="e.g. Hiked Mt. Monadnock" value="${trainEsc(a.name)}" data-train-action="activity-name" data-i="${i}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Duration (min)</label>
+          <input class="form-input" type="text" inputmode="numeric" placeholder="60" value="${trainEsc(a.duration)}" data-train-action="activity-duration" data-i="${i}">
+        </div>
+        <button class="activity-row-remove" data-train-action="activity-remove" data-i="${i}" title="Remove">×</button>
+      </div>`).join('');
+    return `<div class="train-today-body">
+      ${renderBonusTypeToggle(st)}
+      <div class="cardio-card">
+        <div class="cardio-card-head">
+          <div class="cardio-card-title">Freeform activity</div>
+          <div class="cardio-card-meta">Hikes, walks, climbing, pickup sports — anything off-program.</div>
+        </div>
+        ${rows}
+        <button class="activity-row-add" data-train-action="activity-add">+ Add another activity</button>
+      </div>
+    </div>`;
+  }
+  // Bonus Lifting — empty by default, user adds exercises.
+  // V1: prompt user to fork from a template's day or start blank.
+  return `<div class="train-today-body">
+    ${renderBonusTypeToggle(st)}
+    <div class="train-empty">
+      <div class="train-empty-title">Bonus lifting</div>
+      <div class="train-empty-msg">Custom exercise add lands in a follow-up commit. For now, log a planned day from the picker or use Activity Log for cardio.</div>
+    </div>
+  </div>`;
+}
+
+function renderBonusTypeToggle(st) {
+  return `<div class="when-what-card" style="margin-bottom:12px">
+    <div class="when-what-label">Session type</div>
+    <div class="session-type-row">
+      <button class="session-type-pill ${st.bonusType === 'lift' ? 'is-active' : ''}" data-train-action="bonus-type" data-type="lift">Bonus Lifting</button>
+      <button class="session-type-pill ${st.bonusType === 'activity' ? 'is-active' : ''}" data-train-action="bonus-type" data-type="activity">Activity Log</button>
+    </div>
+  </div>`;
+}
+
+function renderTodayRest(st) {
+  return `<div class="train-empty">
+    <div class="train-empty-title">Rest day</div>
+    <div class="train-empty-msg">No session prescribed for ${trainEsc(st.selectedDow)}. Tap <strong>+ Any</strong> above to log a bonus session anyway.</div>
+  </div>`;
+}
+
+function renderTodayFooter(st) {
+  const moodEmojis = ['🤩','😊','😐','😔','😢'];
+  const moodLabels = ['Great','Good','Okay','Low','Bad'];
+  const mood = moodEmojis.map((e, i) => `
+    <button class="mood-btn ${st.feel === i + 1 ? 'is-selected' : ''}" data-train-action="feel" data-val="${i + 1}">
+      <span class="mood-emoji">${e}</span><span class="mood-label">${moodLabels[i]}</span>
+    </button>`).join('');
+  // Live totals
+  const totals = trainComputeLiveTotals(st);
+  return `<div class="train-session-footer">
+    <div class="train-footer-label">Session notes</div>
+    <textarea class="train-notes-input" placeholder="How did it go? PRs, anything felt off?" data-train-action="notes">${trainEsc(st.notes)}</textarea>
+    <div class="train-feel-block">
+      <div class="train-footer-label">How'd the session feel?</div>
+      <div class="train-mood-grid">${mood}</div>
+    </div>
+    <div class="train-totals">
+      <div><div class="train-total-num">${totals.left.num}</div><div class="train-total-label">${totals.left.label}</div></div>
+      <div><div class="train-total-num">${totals.right.num}</div><div class="train-total-label">${totals.right.label}</div></div>
+    </div>
+    <button class="train-submit-btn" data-train-action="submit-session" ${st.submitting ? 'disabled' : ''}>
+      ${st.submitting ? 'Saving…' : 'Submit + Get Feedback'}
+    </button>
+  </div>`;
+}
+
+function trainComputeLiveTotals(st) {
+  if (st.isBonus && st.bonusType === 'activity') {
+    const count = st.bonusActivities.filter(a => a.name.trim()).length;
+    const mins  = st.bonusActivities.reduce((s, a) => s + (Number(a.duration) || 0), 0);
+    return { left: { num: count, label: 'Activities' }, right: { num: mins, label: 'Total min' } };
+  }
+  if (st.day && st.day.type === 'cardio') {
+    const mins = Number(st.cardio.duration) || 0;
+    const dist = Number(st.cardio.distance) || 0;
+    return { left: { num: mins, label: 'Minutes' }, right: { num: dist || '—', label: 'Miles' } };
+  }
+  // Lift session: total sets done + total volume (sum of weight × reps for completed sets)
+  let setsDone = 0, volume = 0;
+  for (const exName of Object.keys(st.liftSets || {})) {
+    for (const s of st.liftSets[exName]) {
+      if (!s.done) continue;
+      setsDone += 1;
+      const w = Number(s.weight) || 0;
+      const r = Number(s.reps)   || 0;
+      if (!s.is_bodyweight) volume += w * r;
+    }
+  }
+  return {
+    left:  { num: setsDone, label: 'Sets' },
+    right: { num: volume.toLocaleString(), label: 'Volume (lbs)' },
+  };
+}
+
+function renderTodayFeedback(st) {
+  const fb = st.submittedFeedback;
+  if (!fb) return '';
+  const stats = (fb.stats || []).map(s => `<div class="fb-stat">
+      <div class="fb-stat-num">${trainEsc(String(s.value))}</div>
+      <div class="fb-stat-label">${trainEsc(s.label)}</div>
+    </div>`).join('');
+  const lines = (fb.observations || []).map(o => `<li>${trainEsc(o)}</li>`).join('');
+  return `<div class="train-today-body">
+    <div class="ex-card">
+      <div class="ex-card-head">
+        <div>
+          <div class="ex-card-name">Session logged ✓</div>
+          <div class="ex-card-meta">${trainEsc(fb.session_summary)}</div>
+        </div>
+      </div>
+      <div class="fb-stats-grid">${stats}</div>
+      ${lines ? `<ul class="fb-observations">${lines}</ul>` : ''}
+      <button class="train-btn-secondary" style="margin-top:12px" data-train-action="start-new">Start another session</button>
+    </div>
+  </div>`;
+}
+
+// ── Submit: persist session + sets and compute formulaic feedback ────────
+async function trainSubmitTodaySession() {
+  const st = _trainTodayState;
+  if (st.submitting) return;
+  st.submitting = true; renderTrain();
+  try {
+    const dayName = st.isBonus ? (st.bonusType === 'activity' ? 'Bonus Activity' : 'Bonus Lifting') : (st.day?.name || '');
+    const dayType = st.isBonus ? (st.bonusType === 'activity' ? 'bonus' : 'bonus') : (st.day?.type || 'lift');
+
+    const sessionInsert = {
+      user_id:       currentUser.id,
+      plan_id:       _trainState.activePlan?.id || null,
+      session_date:  st.date,
+      day_name:      dayName,
+      day_type:      dayType,
+      status:        'submitted',
+      feel:          st.feel,
+      session_notes: st.notes || null,
+      submitted_at:  new Date().toISOString(),
+    };
+    const { data: session, error: sErr } = await db.from('workout_sessions')
+      .insert(sessionInsert).select().single();
+    if (sErr) throw sErr;
+
+    // Build the rows to insert into workout_sets. Lift sessions: all entered
+    // sets (whether or not "done" was checked, as long as reps were entered).
+    // Cardio sessions: a single synthetic row recording duration + distance
+    // (exercise_name = the modality). Activity Log: one row per activity.
+    const setRows = [];
+    if (st.isBonus && st.bonusType === 'activity') {
+      st.bonusActivities.forEach((a, i) => {
+        if (!a.name.trim() && !a.duration) return;
+        setRows.push({
+          session_id:    session.id,
+          user_id:       currentUser.id,
+          exercise_name: a.name.trim() || `Activity ${i + 1}`,
+          set_index:     1,
+          actual_reps:   Number(a.duration) || null,   // duration parked in reps for now
+          actual_weight: null,
+          is_bodyweight: true,
+          completed_at:  new Date().toISOString(),
+        });
+      });
+    } else if (st.day && st.day.type === 'cardio') {
+      const dur  = Number(st.cardio.duration) || null;
+      const dist = Number(st.cardio.distance) || null;
+      setRows.push({
+        session_id:    session.id,
+        user_id:       currentUser.id,
+        exercise_name: st.cardio.modality || 'Cardio',
+        set_index:     1,
+        actual_reps:   dur,           // minutes parked in reps
+        actual_weight: dist,          // distance parked in weight
+        is_bodyweight: true,
+        completed_at:  new Date().toISOString(),
+      });
+    } else {
+      // Lift session
+      for (const exName of Object.keys(st.liftSets)) {
+        const sets = st.liftSets[exName];
+        sets.forEach((s, i) => {
+          if (!s.reps && !s.weight) return;
+          setRows.push({
+            session_id:    session.id,
+            user_id:       currentUser.id,
+            exercise_name: exName,
+            set_index:     i + 1,
+            actual_reps:   Number(s.reps) || null,
+            actual_weight: s.is_bodyweight ? null : (Number(s.weight) || null),
+            is_bodyweight: !!s.is_bodyweight,
+            completed_at:  new Date().toISOString(),
+          });
+        });
+      }
+    }
+
+    if (setRows.length) {
+      const { error: stErr } = await db.from('workout_sets').insert(setRows);
+      if (stErr) throw stErr;
+    }
+
+    // Compute formulaic feedback inline. Cheap; everything we need is in
+    // memory already. AI insight layer ships in commit 6.
+    st.submittedFeedback = trainBuildFormulaicFeedback(st, setRows);
+    st.submitting = false;
+    renderTrain();
+    // Refresh the last-session cache so the next session's render uses
+    // these new numbers.
+    loadLastSetsForActivePlan();
+  } catch (e) {
+    console.warn('[train] submit failed', e);
+    st.submitting = false;
+    renderTrain();
+    showTrainToast('Submit failed — ' + (e.message || 'try again'));
+  }
+}
+
+function trainBuildFormulaicFeedback(st, setRows) {
+  // V1: simple stat grid + a couple of observations. Comparison vs last
+  // session lands in commit 6 alongside the AI narrative.
+  const stats = [];
+  const observations = [];
+  if (st.isBonus && st.bonusType === 'activity') {
+    const totalMin = setRows.reduce((s, r) => s + (Number(r.actual_reps) || 0), 0);
+    stats.push({ label: 'Activities', value: setRows.length });
+    stats.push({ label: 'Total min',  value: totalMin });
+    return {
+      session_summary: `${setRows.length} activities · ${totalMin} min`,
+      stats, observations,
+    };
+  }
+  if (st.day && st.day.type === 'cardio') {
+    const row = setRows[0] || {};
+    const min  = Number(row.actual_reps)   || 0;
+    const dist = Number(row.actual_weight) || 0;
+    const pace = (dist > 0 && min > 0) ? (min / dist).toFixed(1) + ' min/mi' : '—';
+    stats.push({ label: 'Minutes', value: min });
+    stats.push({ label: 'Miles',   value: dist || '—' });
+    stats.push({ label: 'Pace',    value: pace });
+    if (dist) observations.push(`Pace was ${pace} — heart rate auto-syncs from your wearable when available.`);
+    return {
+      session_summary: `${st.cardio.modality || 'Cardio'} · ${min} min`,
+      stats, observations,
+    };
+  }
+  // Lift
+  let totalSets = 0, totalVolume = 0;
+  const prs = [];
+  for (const row of setRows) {
+    totalSets += 1;
+    if (!row.is_bodyweight) totalVolume += (Number(row.actual_weight) || 0) * (Number(row.actual_reps) || 0);
+    // PR check: compare this row's weight×reps to the last-session top set for the same exercise
+    const last = (_trainState.lastSetsByExercise || {})[row.exercise_name];
+    if (last && !row.is_bodyweight) {
+      const lastTop = last.sets.reduce((max, s) =>
+        ((s.actual_weight || 0) * (s.actual_reps || 0) > max
+          ? (s.actual_weight || 0) * (s.actual_reps || 0)
+          : max), 0);
+      const thisVol = (Number(row.actual_weight) || 0) * (Number(row.actual_reps) || 0);
+      if (thisVol > lastTop && lastTop > 0 && !prs.includes(row.exercise_name)) {
+        prs.push(row.exercise_name);
+      }
+    }
+  }
+  stats.push({ label: 'Sets',          value: totalSets });
+  stats.push({ label: 'Volume (lbs)',  value: totalVolume.toLocaleString() });
+  stats.push({ label: 'Exercises',     value: Object.keys(st.liftSets || {}).filter(k => (st.liftSets[k] || []).some(s => s.reps)).length });
+  if (prs.length) observations.push(`PR on ${prs.join(' + ')} (heaviest single set this week)`);
+  if (st.feel === 1) observations.push("Great session feel. Keep the recovery dialed and progression should hold.");
+  if (st.feel >= 4)  observations.push("Session felt rough. Check sleep / hydration; deload candidates if it persists 2+ weeks.");
+  return {
+    session_summary: `${st.day?.name || 'Session'} · ${totalSets} sets · ${totalVolume.toLocaleString()} lb volume`,
+    stats, observations,
+  };
 }
 
 function renderTrainProgress(root) {
@@ -635,6 +1320,260 @@ function ensureTrainStyles() {
     .day-detail-empty {
       font-size: 13px; color: var(--ink-4); padding: 14px 0;
       text-align: center;
+    }
+
+    /* ── Today subtab ───────────────────────────────────────────────── */
+    .train-day-picker {
+      display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+      padding: 4px 0 14px;
+    }
+    @media (max-width: 360px) {
+      .train-day-picker { grid-template-columns: repeat(4, 1fr); }
+    }
+    .train-day-picker .day-pill-card {
+      border: 1px solid var(--edge); border-radius: var(--r-md);
+      background: var(--surface); padding: 6px 2px; cursor: pointer;
+      text-align: center; min-width: 0; overflow: hidden;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .train-day-picker .day-pill-card.is-active {
+      border-color: var(--guava-700); border-width: 2px; padding: 5px 1px;
+    }
+    .train-day-picker .day-pill-card.is-rest   { background: var(--surface-2); }
+    .train-day-picker .day-pill-card.is-any    { border-style: dashed; background: var(--surface-2); }
+    .train-day-picker .day-pill-dow {
+      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      letter-spacing: .04em; text-transform: uppercase; line-height: 1.1;
+    }
+    .train-day-picker .day-pill-name {
+      font-size: 10px; font-weight: 700; color: var(--ink); line-height: 1.15;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .train-day-picker .day-pill-card.is-active .day-pill-name { color: var(--guava-700); }
+    .train-day-picker .day-pill-card.is-cardio .day-pill-name { color: var(--moss-fg, #5e8c4f); }
+    .train-day-picker .day-pill-card.is-rest .day-pill-name   { color: var(--ink-4); }
+    .train-day-picker .day-pill-card.is-any .day-pill-name    { color: var(--ink-3); }
+
+    .train-today-body { display: flex; flex-direction: column; gap: 10px; }
+    .ex-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 12px 12px 8px;
+      box-shadow: var(--shadow-card);
+    }
+    .ex-card-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 10px; margin-bottom: 10px;
+    }
+    .ex-card-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .ex-card-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .ex-target {
+      flex-shrink: 0;
+      font-size: 10px; font-weight: 600;
+      padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+    }
+    .ex-target.target-up      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); border: 1px solid var(--moss-edge, #c2d1aa); }
+    .ex-target.target-hold    { background: var(--guava-50); color: var(--guava-700); border: 1px solid var(--guava-100); }
+    .ex-target.target-warning { background: var(--amber-bg, #faf1dc); color: var(--amber-fg, #a87622); border: 1px solid var(--amber-edge, #e2c98c); }
+
+    .ex-table-head {
+      display: grid; grid-template-columns: 28px 80px 1fr 28px; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid var(--edge);
+      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      letter-spacing: .08em; text-transform: uppercase;
+    }
+    .ex-set-row {
+      display: grid; grid-template-columns: 28px 80px 1fr 28px; gap: 8px;
+      padding: 7px 0; align-items: center;
+    }
+    .ex-set-row + .ex-set-row { border-top: 1px dashed var(--edge); }
+    .ex-set-num { font-size: 11px; font-weight: 700; color: var(--ink-3); }
+    .ex-set-last { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+    .ex-set-today { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .ex-cell-input {
+      background: var(--surface-2); border: 1px solid var(--edge);
+      border-radius: var(--r-sm); padding: 5px 8px;
+      font-family: inherit; font-size: 13px; color: var(--ink);
+      width: 100%; text-align: center; box-sizing: border-box;
+      font-variant-numeric: tabular-nums;
+    }
+    .ex-cell-input:focus {
+      outline: none; background: var(--surface);
+      border-color: var(--guava-700); box-shadow: 0 0 0 2px var(--guava-50);
+    }
+    .ex-cell-input.is-bw { color: var(--ink-4); }
+    .ex-set-row.is-done .ex-cell-input { background: var(--moss-bg, #eaf0e3); color: var(--ink-2); }
+    .ex-set-check {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--edge-strong); background: var(--surface);
+      cursor: pointer; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: inherit; font-size: 12px; color: transparent;
+    }
+    .ex-set-check.is-done {
+      background: var(--moss-fg, #5e8c4f); border-color: var(--moss-fg, #5e8c4f);
+      color: #fff;
+    }
+
+    /* Cardio card */
+    .cardio-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 14px; box-shadow: var(--shadow-card);
+    }
+    .cardio-card-head { margin-bottom: 12px; }
+    .cardio-card-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .cardio-card-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .cardio-type-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+      margin-bottom: 12px;
+    }
+    .cardio-type-pill {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 8px 4px;
+      font-family: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      cursor: pointer; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .cardio-type-pill:hover { background: var(--surface-2); }
+    .cardio-type-pill.is-selected {
+      background: var(--moss-bg, #eaf0e3); border-color: var(--moss-fg, #5e8c4f); color: var(--moss-fg, #5e8c4f);
+    }
+    .cardio-type-emoji { font-size: 18px; line-height: 1; }
+    .cardio-type-label { font-size: 10px; font-weight: 700; }
+    .cardio-stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+
+    /* Bonus type toggle */
+    .when-what-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 14px;
+    }
+    .when-what-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase; margin-bottom: 8px;
+    }
+    .session-type-row { display: flex; gap: 8px; }
+    .session-type-pill {
+      background: var(--surface-2); color: var(--ink-3);
+      border: 1px solid var(--edge); border-radius: 999px;
+      padding: 7px 14px; font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer;
+    }
+    .session-type-pill.is-active {
+      background: var(--moss-bg, #eaf0e3); border-color: var(--moss-fg, #5e8c4f); color: var(--moss-fg, #5e8c4f);
+    }
+
+    /* Activity Log rows */
+    .activity-row {
+      display: grid; grid-template-columns: 1fr 100px 30px; gap: 8px;
+      align-items: end; padding: 8px 0;
+    }
+    .activity-row + .activity-row { border-top: 1px dashed var(--edge); }
+    .activity-row-add {
+      width: 100%;
+      background: var(--surface); border: 1px dashed var(--edge-strong);
+      border-radius: var(--r-md); padding: 10px;
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      color: var(--moss-fg, #5e8c4f); cursor: pointer; margin-top: 8px;
+    }
+    .activity-row-remove {
+      background: none; border: 0; cursor: pointer;
+      color: var(--ink-4); font-size: 18px; line-height: 1;
+      padding: 8px 4px;
+    }
+
+    /* Session footer */
+    .train-session-footer {
+      background: var(--surface-2); border-radius: var(--r-md);
+      padding: 14px; margin-top: 6px;
+    }
+    .train-footer-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase; margin-bottom: 6px;
+    }
+    .train-notes-input {
+      width: 100%; min-height: 56px; box-sizing: border-box;
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-sm); padding: 8px 10px;
+      font-family: inherit; font-size: 12px; color: var(--ink);
+      resize: vertical;
+    }
+    .train-feel-block { margin-top: 12px; }
+    .train-mood-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+      margin-top: 6px;
+    }
+    .mood-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 8px 4px;
+      font-family: inherit; cursor: pointer;
+    }
+    .mood-btn:hover { background: var(--surface-2); }
+    .mood-btn.is-selected { background: var(--guava-50); border-color: var(--guava-700); }
+    .mood-emoji { font-size: 20px; line-height: 1; }
+    .mood-label {
+      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .train-totals {
+      display: flex; gap: 18px; margin-top: 12px; align-items: baseline;
+    }
+    .train-total-num { font-size: 18px; font-weight: 800; color: var(--ink); }
+    .train-total-label {
+      font-size: 9px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-4); text-transform: uppercase;
+    }
+    .train-submit-btn {
+      width: 100%; background: var(--guava-700); color: #fff;
+      border: 0; border-radius: var(--r-md);
+      padding: 13px 16px; font-family: inherit; font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-top: 14px;
+    }
+    .train-submit-btn:hover { background: var(--guava-800); }
+    .train-submit-btn:disabled { background: var(--ink-4); cursor: progress; }
+
+    /* Form-field reused inside cardio + activity rows */
+    .form-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .form-label {
+      font-size: 10px; font-weight: 700; color: var(--ink-3);
+      letter-spacing: .05em; text-transform: uppercase;
+    }
+    .form-input {
+      width: 100%; box-sizing: border-box;
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 8px 10px;
+      font-family: inherit; font-size: 13px; color: var(--ink);
+    }
+    .form-input:focus {
+      outline: none; border-color: var(--guava-700);
+      box-shadow: 0 0 0 2px var(--guava-50);
+    }
+
+    /* Feedback panel after submit */
+    .fb-stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px;
+      margin: 10px 0;
+    }
+    .fb-stat {
+      background: var(--surface-2); border-radius: var(--r-sm);
+      padding: 10px 8px; text-align: center;
+    }
+    .fb-stat-num {
+      font-size: 18px; font-weight: 800; color: var(--guava-700);
+      font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .fb-stat-label {
+      font-size: 9px; font-weight: 700; letter-spacing: .05em;
+      color: var(--ink-4); text-transform: uppercase; margin-top: 4px;
+    }
+    .fb-observations {
+      list-style: none; padding: 0; margin: 8px 0 0;
+      font-size: 12px; color: var(--ink-2); line-height: 1.55;
+    }
+    .fb-observations li {
+      padding: 6px 10px; background: var(--guava-50); border-left: 3px solid var(--guava-700);
+      border-radius: var(--r-sm); margin-bottom: 6px;
     }
   `;
   document.head.appendChild(s);
