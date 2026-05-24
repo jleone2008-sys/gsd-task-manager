@@ -183,6 +183,20 @@ function trainWireOnce() {
       renderTrain();
       return;
     }
+    if (action === 'habit-link') {
+      const habitId = Number(actionEl.dataset.habitId);
+      const kind = actionEl.dataset.kind;
+      const sessionDate = _trainTodayState.submittedFeedback?._session?.session_date
+                       || _trainTodayState.date;
+      trainLinkHabitToLibrary(habitId, kind, sessionDate);
+      return;
+    }
+    if (action === 'habit-link-dismiss') {
+      const habitId = actionEl.dataset.habitId;
+      try { localStorage.setItem(`gsd_habit_link_dismissed:${habitId}`, '1'); } catch (_) {}
+      renderTrain();
+      return;
+    }
   });
 
   // Input handler for the Today subtab text inputs. Separate listener so
@@ -937,9 +951,103 @@ function renderTodayFeedback(st) {
       </div>
       <div class="fb-stats-grid">${stats}</div>
       ${lines ? `<ul class="fb-observations">${lines}</ul>` : ''}
+      ${renderHabitLinkPrompts(fb._session)}
       <button class="train-btn-secondary" style="margin-top:12px" data-train-action="start-new">Start another session</button>
     </div>
   </div>`;
+}
+
+// Library kind → display props. Mirrors habit_library rows but client-side
+// so we don't need a round-trip just to render the prompt.
+const TRAIN_LIBRARY_DISPLAY = {
+  lifting:  { name: 'Lifting',      emoji: '🏋️' },
+  cardio:   { name: 'Cardio',       emoji: '🏃' },
+  activity: { name: 'Activity',     emoji: '🧗' },
+  progress: { name: 'Progress pic', emoji: '📸' },
+};
+
+// One-time prompt offering to link an existing user habit (e.g. "Cardio"
+// or "Lifting") to the matching library kind after the relevant session
+// type submits. Match by name substring (case-insensitive). Dismissal is
+// stored per-habit in localStorage so the user can decline once and not
+// be re-prompted for the same habit.
+function renderHabitLinkPrompts(session) {
+  if (!session) return '';
+  const kinds = trainSessionToLibraryKinds(session);
+  if (!kinds.length) return '';
+  if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return '';
+
+  const candidates = [];
+  for (const h of habitsArr) {
+    if (h.archived) continue;
+    if (h.libraryKind) continue;
+    let dismissed = false;
+    try { dismissed = !!localStorage.getItem(`gsd_habit_link_dismissed:${h.id}`); } catch (_) {}
+    if (dismissed) continue;
+    const nameLower = (h.name || '').toLowerCase();
+    for (const k of kinds) {
+      const libName = TRAIN_LIBRARY_DISPLAY[k]?.name.toLowerCase();
+      if (!libName) continue;
+      if (nameLower.includes(libName) || libName.includes(nameLower)) {
+        candidates.push({ habit: h, kind: k });
+        break;
+      }
+    }
+  }
+  if (!candidates.length) return '';
+
+  return candidates.map(c => {
+    const lib = TRAIN_LIBRARY_DISPLAY[c.kind];
+    return `<div class="train-habit-prompt">
+      <div class="train-habit-prompt-icon">${lib.emoji}</div>
+      <div class="train-habit-prompt-body">
+        <div class="train-habit-prompt-title">Auto-complete <strong>${trainEsc(c.habit.name)}</strong> from now on?</div>
+        <div class="train-habit-prompt-msg">Link it to Train · ${trainEsc(lib.name)} so future ${trainEsc(c.kind)} sessions mark it complete. Past completions stay as they were.</div>
+      </div>
+      <div class="train-habit-prompt-actions">
+        <button class="train-btn-secondary" data-train-action="habit-link-dismiss" data-habit-id="${c.habit.id}">No thanks</button>
+        <button class="train-btn-primary" data-train-action="habit-link" data-habit-id="${c.habit.id}" data-kind="${c.kind}">Link it</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Link a habit to a library kind. Persists via the existing saveHabitToDB
+// path so any other client (or the Habits tab) refreshes via Supabase
+// realtime. Also marks the habit complete for the just-submitted session's
+// date so the auto-mark "catches up" the linking moment.
+async function trainLinkHabitToLibrary(habitId, kind, sessionDate) {
+  const habit = habitsArr.find(h => h.id === habitId);
+  if (!habit) return;
+  habit.libraryKind = kind;
+  if (typeof saveHabitToDB === 'function') saveHabitToDB(habit);
+
+  // Find the server-side habit_id for the completion insert.
+  let habitSid = null;
+  for (const [sid, cid] of habitRowIdMap) {
+    if (cid === habit.id) { habitSid = sid; break; }
+  }
+  if (habitSid != null && sessionDate) {
+    try {
+      await db.from('habit_completions').upsert(
+        { user_id: currentUser.id, habit_id: habitSid, completed_date: sessionDate },
+        { onConflict: 'user_id,habit_id,completed_date', ignoreDuplicates: true }
+      );
+      if (typeof habitCompletions !== 'undefined' && Array.isArray(habitCompletions)
+          && !habitCompletions.some(x => x.habitId === habitSid && x.completedDate === sessionDate)) {
+        habitCompletions.push({
+          id: -Date.now() - Math.random(),
+          habitId: habitSid,
+          completedDate: sessionDate,
+        });
+      }
+    } catch (e) {
+      console.warn('[train] habit link completion insert failed', e);
+    }
+  }
+  if (typeof renderHabits === 'function') renderHabits();
+  if (typeof refreshHomeData === 'function') refreshHomeData();
+  renderTrain();
 }
 
 // ── Submit: persist session + sets and compute formulaic feedback ────────
@@ -1026,6 +1134,16 @@ async function trainSubmitTodaySession() {
     // Compute formulaic feedback inline. Cheap; everything we need is in
     // memory already. AI insight layer ships in commit 6.
     st.submittedFeedback = trainBuildFormulaicFeedback(st, setRows);
+    // Stash the session row on the feedback object so the habit-link
+    // prompt can read its day_type + session_date.
+    st.submittedFeedback._session = session;
+    // Phase 4 commit 4 — auto-mark any habit linked to the matching
+    // library kind (lifting / cardio / activity). Idempotent via the
+    // habit_completions unique constraint on (user_id, habit_id,
+    // completed_date), so re-submits or manual marks before/after this
+    // call don't create duplicates or overwrite anything.
+    autoMarkLinkedHabitsForSession(session)
+      .catch(err => console.warn('[train] auto-mark habits failed', err));
     st.submitting = false;
     renderTrain();
     // Refresh the last-session cache so the next session's render uses
@@ -1037,6 +1155,83 @@ async function trainSubmitTodaySession() {
     renderTrain();
     showTrainToast('Submit failed — ' + (e.message || 'try again'));
   }
+}
+
+// Map a workout_sessions row to the habit_library kind(s) it should
+// trigger. Returns an array (most sessions trigger exactly one kind, but
+// the model leaves room for future multi-kind sessions).
+function trainSessionToLibraryKinds(session) {
+  const dayType = session.day_type;
+  const dayName = String(session.day_name || '').toLowerCase();
+  if (dayType === 'lift')   return ['lifting'];
+  if (dayType === 'cardio') return ['cardio'];
+  if (dayType === 'bonus') {
+    if (dayName.includes('activity')) return ['activity'];
+    return ['lifting'];   // Bonus Lifting
+  }
+  return [];
+}
+
+// Mark every habit whose library_kind matches this session as complete
+// for the session's date. Uses upsert with ignoreDuplicates so the
+// unique constraint on habit_completions never throws — and never
+// overwrites a manual mark the user already toggled.
+async function autoMarkLinkedHabitsForSession(session) {
+  const kinds = trainSessionToLibraryKinds(session);
+  if (!kinds.length) return;
+  if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return;
+
+  const matches = habitsArr.filter(h =>
+    !h.archived && h.libraryKind && kinds.includes(h.libraryKind)
+  );
+  if (!matches.length) return;
+
+  // habit_completions.habit_id is the DB row id (bigint), not the
+  // client-side id. Resolve via habitRowIdMap which holds server→client.
+  const completions = [];
+  for (const h of matches) {
+    let habitSid = null;
+    for (const [sid, cid] of habitRowIdMap) {
+      if (cid === h.id) { habitSid = sid; break; }
+    }
+    if (habitSid == null) continue;
+    completions.push({
+      user_id:        currentUser.id,
+      habit_id:       habitSid,
+      completed_date: session.session_date,
+    });
+  }
+  if (!completions.length) return;
+
+  const { error } = await db.from('habit_completions').upsert(
+    completions,
+    { onConflict: 'user_id,habit_id,completed_date', ignoreDuplicates: true }
+  );
+  if (error) {
+    console.warn('[train] auto-mark insert failed', error);
+    return;
+  }
+  // Patch local habitCompletions so the Habits / Home cards reflect
+  // immediately without a refetch. Skip rows we already have.
+  if (typeof habitCompletions !== 'undefined' && Array.isArray(habitCompletions)) {
+    for (const c of completions) {
+      const exists = habitCompletions.some(x =>
+        x.habitId === c.habit_id && x.completedDate === c.completed_date
+      );
+      if (!exists) {
+        habitCompletions.push({
+          id:             -Date.now() - Math.random(),   // temp id; realtime backfills
+          habitId:        c.habit_id,
+          completedDate:  c.completed_date,
+        });
+      }
+    }
+    if (typeof renderHabits === 'function') renderHabits();
+    if (typeof refreshHomeData === 'function') refreshHomeData();
+  }
+  // Tier 1 brief recompute so the daily brief's habit row picks up
+  // the new completion without a full reload.
+  if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
 }
 
 function trainBuildFormulaicFeedback(st, setRows) {
@@ -1577,6 +1772,38 @@ function ensureTrainStyles() {
     .fb-observations li {
       padding: 6px 10px; background: var(--guava-50); border-left: 3px solid var(--guava-700);
       border-radius: var(--r-sm); margin-bottom: 6px;
+    }
+
+    /* Habit library link prompt (post-submit banner). Offers to wire an
+       existing user habit ("Cardio", "Lifting") to auto-complete from
+       this session type going forward. */
+    .train-habit-prompt {
+      display: grid; grid-template-columns: 38px 1fr; gap: 12px;
+      background: var(--moss-bg, #eaf0e3);
+      border: 1px solid var(--moss-edge, #c2d1aa);
+      border-radius: var(--r-md); padding: 12px;
+      margin-top: 12px;
+    }
+    .train-habit-prompt-icon {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--moss-edge, #c2d1aa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .train-habit-prompt-body {
+      min-width: 0; display: flex; flex-direction: column; gap: 4px;
+    }
+    .train-habit-prompt-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .train-habit-prompt-msg { font-size: 11px; color: var(--ink-3); line-height: 1.45; }
+    .train-habit-prompt-actions {
+      grid-column: 1 / -1;
+      display: flex; gap: 8px; justify-content: flex-end;
+      margin-top: 4px;
+    }
+    .train-habit-prompt-actions .train-btn-secondary,
+    .train-habit-prompt-actions .train-btn-primary {
+      padding: 6px 12px; font-size: 12px;
     }
   `;
   document.head.appendChild(s);

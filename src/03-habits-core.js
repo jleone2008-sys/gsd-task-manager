@@ -25,6 +25,8 @@ function rowToHabit(r) {
     archived: r.archived || false,
     order: r.order || 0,
     allowExtras: r.allow_extras || false,
+    // Phase 4 habit library — null = unlinked (default, manual-only).
+    libraryKind: r.library_kind || null,
   };
 }
 function habitToRow(h) {
@@ -40,6 +42,7 @@ function habitToRow(h) {
     archived: h.archived,
     "order": h.order,
     allow_extras: h.allowExtras || false,
+    library_kind: h.libraryKind || null,
     updated_at: new Date().toISOString(),
   };
 }
