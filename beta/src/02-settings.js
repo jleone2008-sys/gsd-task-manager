@@ -633,6 +633,11 @@ async function saveLocationFromInput(btn) {
     flashSettingsSaved('settingsLocationSaved');
     if (typeof showToast === 'function') showToast(`Location set to ${data.weather_label}`, 'ok');
     if (activeTool === 'settings') renderSettingsPage();
+    // Auto-regenerate today's brief so the weather line picks up the new location
+    // immediately instead of waiting for the next cron tick or manual cache bust.
+    if (typeof homeBriefRefresh === 'function') {
+      homeBriefRefresh(true).catch(e => console.warn('[settings] brief regen after location save failed', e));
+    }
   } catch (err) {
     console.error('[settings] save location failed', err);
     if (typeof showToast === 'function') showToast(`Could not save location: ${err.message}`, 'offline');
