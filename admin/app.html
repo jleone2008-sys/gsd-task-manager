@@ -208,6 +208,7 @@ select.field-input:focus, input.field-input:focus { outline: none; border-color:
         <div>Total users: <strong id="statTotal">—</strong></div>
         <div>Active: <strong id="statActive">—</strong></div>
         <div>Disabled: <strong id="statDisabled">—</strong></div>
+        <div>Pending approval: <strong id="statPending">—</strong></div>
         <div>Admins: <strong id="statAdmins">—</strong></div>
         <div>Tokens stored: <strong id="statTokens">—</strong></div>
       </div>
@@ -394,6 +395,7 @@ function renderUserTable() {
       </td>
       <td><span class="badge badge-${u.role}">${u.role}</span></td>
       <td><span class="badge badge-${u.status}">${u.status}</span></td>
+      <td><span class="badge badge-access-${u.access_status || 'pending'}" style="${u.access_status === 'active' ? 'background:#1f5740;color:#d6f0dd' : u.access_status === 'revoked' ? 'background:#612424;color:#f4cdcd' : 'background:#5c4a1f;color:#f0e3c2'}">${u.access_status || 'pending'}</span></td>
       <td><div class="tab-icons">${tabs.join('')}</div></td>
       <td style="color:#9aaabb">
         <div>${lastSeen}</div>
@@ -415,7 +417,7 @@ function renderUserTable() {
   document.getElementById('userTableWrap').innerHTML = `
     <table class="user-table">
       <thead><tr>
-        <th></th><th>User</th><th>Role</th><th>Status</th><th>Tabs</th><th>Last Sign-in</th><th></th>
+        <th></th><th>User</th><th>Role</th><th>Status</th><th>Access</th><th>Tabs</th><th>Last Sign-in</th><th></th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -429,6 +431,7 @@ function updateSidebar() {
   document.getElementById('statTotal').textContent    = allUsers.length;
   document.getElementById('statActive').textContent   = allUsers.filter(u => u.status === 'active').length;
   document.getElementById('statDisabled').textContent = allUsers.filter(u => u.status === 'disabled').length;
+  document.getElementById('statPending').textContent  = allUsers.filter(u => (u.access_status || 'pending') === 'pending').length;
   document.getElementById('statAdmins').textContent   = allUsers.filter(u => u.role === 'admin').length;
   document.getElementById('statTokens').textContent   = allUsers.filter(u => u.has_refresh_token).length;
 }
@@ -494,6 +497,14 @@ function renderProfileTab(body) {
       <select class="field-input" id="editStatus">
         <option value="active"   ${u.status==='active'?'selected':''}>Active</option>
         <option value="disabled" ${u.status==='disabled'?'selected':''}>Disabled</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Access</div>
+      <select class="field-input" id="editAccessStatus">
+        <option value="pending" ${(u.access_status||'pending')==='pending'?'selected':''}>Pending (waitlist)</option>
+        <option value="active"  ${u.access_status==='active'?'selected':''}>Active (can use app)</option>
+        <option value="revoked" ${u.access_status==='revoked'?'selected':''}>Revoked</option>
       </select>
     </div>
     <div class="field-row">
@@ -1575,23 +1586,24 @@ async function loadGoogleTasks(area, token) {
    ACTIONS
 ════════════════════════════════════════ */
 async function saveProfile(email) {
-  const role   = document.getElementById('editRole').value;
-  const status = document.getElementById('editStatus').value;
-  const perms  = VALID_TABS.filter(t => document.getElementById(`perm-${t}`)?.checked);
+  const role          = document.getElementById('editRole').value;
+  const status        = document.getElementById('editStatus').value;
+  const access_status = document.getElementById('editAccessStatus').value;
+  const perms         = VALID_TABS.filter(t => document.getElementById(`perm-${t}`)?.checked);
 
   const btn = document.getElementById('btnSaveProfile');
   btn.textContent = 'Saving…';
   btn.disabled = true;
 
   try {
-    const res = await adminFetch('POST', { action: 'update-user', email, role, status, tab_permissions: perms });
+    const res = await adminFetch('POST', { action: 'update-user', email, role, status, access_status, tab_permissions: perms });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
     // Update local cache
     const u = allUsers.find(u => u.email === email);
-    if (u) { u.role = role; u.status = status; u.tab_permissions = perms; }
-    if (selectedUser?.email === email) { selectedUser = { ...selectedUser, role, status, tab_permissions: perms }; }
+    if (u) { u.role = role; u.status = status; u.access_status = access_status; u.tab_permissions = perms; }
+    if (selectedUser?.email === email) { selectedUser = { ...selectedUser, role, status, access_status, tab_permissions: perms }; }
     renderUserTable();
     updateSidebar();
     showToast('Changes saved');

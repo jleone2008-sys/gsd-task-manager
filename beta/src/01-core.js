@@ -307,19 +307,48 @@ async function handleBetaOAuthCallback() {
   return true;
 }
 
-/* ── BETA: Show not-invited screen ── */
-function showBetaNotInvitedScreen() {
+/* ── Phase 3 / Stage 3: access-status screens ──
+   Three terminal screens for users whose access_status isn't 'active':
+   - 'pending'  → "You're on the list" waitlist screen
+   - 'revoked'  → "Access revoked" screen
+   - 'disabled' → existing showAccountDisabledScreen further below
+   Each tears down the standard auth card and replaces it with a one-shot
+   message; the session is signed out at the call site so a refresh re-runs
+   the gate (which lands here again until an admin flips the row).
+*/
+function showWaitlistScreen() {
   const authCard = document.querySelector('.auth-card');
   if (authCard) {
     authCard.innerHTML = `
       <div style="text-align:center;padding:2.5rem 1.5rem;">
-        <div style="font-size:2.5rem;margin-bottom:1rem;">🔒</div>
-        <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;">Beta Access Required</div>
-        <p style="color:#888;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.5;">
-          Your account hasn't been invited to the GSD beta yet.
+        <div style="font-size:2.5rem;margin-bottom:1rem;">👋</div>
+        <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;color:var(--ink);">You're on the list</div>
+        <p style="color:var(--ink-3);margin-bottom:1.5rem;font-size:0.9rem;line-height:1.55;">
+          Thanks for signing in. Your account is awaiting approval — we'll
+          let you know as soon as you have access.
         </p>
-        <a href="https://gsdtasks.com/app" style="display:inline-block;color:#1e3a5f;font-weight:600;font-size:0.9rem;text-decoration:none;border:1px solid #1e3a5f;padding:0.5rem 1.25rem;border-radius:8px;">
-          ← Back to GSD Tasks
+        <a href="mailto:support@gsdtasks.com" style="display:inline-block;color:var(--ink-3);font-weight:500;font-size:0.85rem;text-decoration:underline;text-underline-offset:2px;">
+          Questions? support@gsdtasks.com
+        </a>
+      </div>
+    `;
+  }
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+function showAccessRevokedScreen() {
+  const authCard = document.querySelector('.auth-card');
+  if (authCard) {
+    authCard.innerHTML = `
+      <div style="text-align:center;padding:2.5rem 1.5rem;">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">🚫</div>
+        <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;color:var(--ink);">Access removed</div>
+        <p style="color:var(--ink-3);margin-bottom:1.5rem;font-size:0.9rem;line-height:1.55;">
+          Your access to GSD has been removed. If this is a mistake,
+          please reach out.
+        </p>
+        <a href="mailto:support@gsdtasks.com" style="display:inline-block;color:var(--ink-3);font-weight:500;font-size:0.85rem;text-decoration:underline;text-underline-offset:2px;">
+          support@gsdtasks.com
         </a>
       </div>
     `;
@@ -353,22 +382,37 @@ async function _signInUser(user) {
     return;
   }
 
-  const { data } = await db.from('beta_users')
-    .select('email')
+  // Phase 3 / Stage 3: access gate via user_profiles.access_status. The legacy
+  // beta_users check is gone — anyone who used to be in beta_users has been
+  // backfilled to access_status='active' by user_profiles_access_status.sql,
+  // and new signups arrive in 'pending' by virtue of the column default.
+  //
+  // Ensure a user_profiles row exists before reading it, otherwise a brand-new
+  // signin would return null from the select and we couldn't tell "pending"
+  // from "missing row" cleanly. upsert_user_profile_id is idempotent —
+  // creates the row if absent (inheriting access_status='pending' from the
+  // column default), no-ops otherwise.
+  await db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id })
+    .then(null, e => console.warn('[access] upsert_user_profile_id failed', e));
+
+  const { data: profile } = await db.from('user_profiles')
+    .select('access_status, role, status, tab_permissions, supabase_user_id, timezone')
     .eq('email', user.email)
     .maybeSingle();
 
-  if (!data) {
-    showBetaNotInvitedScreen();
+  const accessStatus = profile?.access_status || 'pending';
+  if (accessStatus === 'revoked') {
+    showAccessRevokedScreen();
     db.auth.signOut();
     return;
   }
-
-  // Check user profile for role/status/tab permissions
-  const { data: profile } = await db.from('user_profiles')
-    .select('role, status, tab_permissions, supabase_user_id, timezone')
-    .eq('email', user.email)
-    .maybeSingle();
+  if (accessStatus !== 'active') {
+    // 'pending' (or any unexpected value) → waitlist. Admin flips to 'active'
+    // in the admin UI to grant access.
+    showWaitlistScreen();
+    db.auth.signOut();
+    return;
+  }
 
   if (profile?.status === 'disabled') {
     showAccountDisabledScreen();

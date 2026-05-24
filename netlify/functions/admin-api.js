@@ -87,7 +87,7 @@ exports.handler = async (event) => {
 async function listUsers(serviceKey) {
   // Get all user_profiles
   const profilesRes = await supabaseFetch(
-    '/rest/v1/user_profiles?select=email,role,status,tab_permissions,display_name,supabase_user_id,updated_at,google_refresh_token_enc,dropbox_refresh_token_enc,dropbox_account_email',
+    '/rest/v1/user_profiles?select=email,role,status,access_status,tab_permissions,display_name,supabase_user_id,updated_at,google_refresh_token_enc,dropbox_refresh_token_enc,dropbox_account_email',
     'GET', null, null, serviceKey
   );
   const profiles = await profilesRes.json();
@@ -137,12 +137,20 @@ async function listUsers(serviceKey) {
 }
 
 async function updateUser(body, serviceKey) {
-  const { email, role, status, tab_permissions } = body;
+  const { email, role, status, access_status, tab_permissions } = body;
   if (!email) return json(400, { error: 'email_required' });
 
   const updates = { updated_at: new Date().toISOString() };
   if (role !== undefined)            updates.role = role;
   if (status !== undefined)          updates.status = status;
+  if (access_status !== undefined) {
+    // Phase 3 / Stage 3: validate the enum here so a bad value can't sneak
+    // past the column's check constraint and 500 the request.
+    if (!['pending', 'active', 'revoked'].includes(access_status)) {
+      return json(400, { error: 'invalid_access_status' });
+    }
+    updates.access_status = access_status;
+  }
   if (tab_permissions !== undefined) updates.tab_permissions = tab_permissions;
 
   const res = await supabaseFetch(
