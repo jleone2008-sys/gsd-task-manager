@@ -366,7 +366,7 @@ async function _signInUser(user) {
 
   // Check user profile for role/status/tab permissions
   const { data: profile } = await db.from('user_profiles')
-    .select('role, status, tab_permissions, supabase_user_id')
+    .select('role, status, tab_permissions, supabase_user_id, timezone')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -381,6 +381,23 @@ async function _signInUser(user) {
   // Populate supabase_user_id in user_profiles if not already set
   if (!profile?.supabase_user_id) {
     db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id }).then(null, () => {});
+  }
+
+  // Auto-detect timezone on first load. Only writes when stored value is
+  // NULL so manual overrides in Settings (future) aren't clobbered. Used by
+  // the per-user daily-brief cron to fire in each user's local morning
+  // window (06-14 local) instead of one global UTC time.
+  if (!profile?.timezone) {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz) {
+        db.from('user_profiles').update({ timezone: tz, updated_at: new Date().toISOString() })
+          .eq('email', user.email)
+          .then(null, e => console.warn('[timezone autodetect]', e));
+      }
+    } catch (e) {
+      console.warn('[timezone autodetect] failed:', e);
+    }
   }
 
   // Auto-grant any new core tabs that weren't in this user's tab_permissions yet.
