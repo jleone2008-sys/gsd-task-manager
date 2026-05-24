@@ -517,14 +517,19 @@ function inferEventIcon(summary) {
   return 'other';
 }
 
-// "64° · Pelham" (morning) or "Tmrw 64° · Pelham" (evening, forecast).
-// Null when no weather data. The "Tmrw" prefix prevents the chip from being
-// read as current weather when it's actually tomorrow's forecast.
+// Examples:
+//   morning: "53°/51° · Pelham"
+//   evening: "Tmrw 53°/51° · Pelham"
+// Showing both high and low removes the "is that the high or low?" ambiguity
+// users hit when only one number is shown (a single number reads as either
+// current temp or yesterday's high depending on app conventions).
 function buildWeatherChip(weather, mode) {
   if (!weather || weather.temp_high_f == null) return null;
-  const temp = `${Math.round(weather.temp_high_f)}°`;
+  const high  = `${Math.round(weather.temp_high_f)}°`;
+  const low   = weather.temp_low_f != null ? `${Math.round(weather.temp_low_f)}°` : null;
+  const temps = low ? `${high}/${low}` : high;
   const place = (weather.location || '').split(',')[0].trim();
-  const core = place ? `${temp} · ${place}` : temp;
+  const core  = place ? `${temps} · ${place}` : temps;
   return mode === 'evening' ? `Tmrw ${core}` : core;
 }
 
