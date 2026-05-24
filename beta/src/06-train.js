@@ -143,6 +143,11 @@ function trainWireOnce() {
       renderTrain();
       return;
     }
+    if (action === 'bonus-date') {
+      _trainTodayState.bonusDate = actionEl.dataset.date;
+      renderTrain();
+      return;
+    }
     if (action === 'activity-add') {
       _trainTodayState.bonusActivities.push({ name: '', duration: '' });
       renderTrain();
@@ -542,6 +547,10 @@ const _trainTodayState = {
   date:        null,          // 'YYYY-MM-DD' (user-local today)
   selectedDow: null,          // 'Mon' .. 'Sun' — pill the user has selected
   isBonus:     false,         // true when Any-day pill is selected
+  bonusDate:   null,          // when isBonus=true, the date the bonus is
+                              //   being logged for (defaults to today; the
+                              //   date picker allows the last 7 days for
+                              //   backfilling a missed entry)
   day:         null,          // plan.day_template entry for selectedDow (or null for bonus)
   // Per-exercise set entries: { [exerciseName]: [{ weight: '', reps: '', done: false }, ...] }
   liftSets:    {},
@@ -570,6 +579,7 @@ function ensureTrainTodayInit() {
   if (_trainTodayState.initialized && _trainTodayState.date === today) return;
   _trainTodayState.initialized = true;
   _trainTodayState.date = today;
+  _trainTodayState.bonusDate = today;
   _trainTodayState.selectedDow = dow;
   _trainTodayState.isBonus = false;
   _trainTodayState.day = trainFindDay(dow);
@@ -580,6 +590,27 @@ function ensureTrainTodayInit() {
   _trainTodayState.feel = null;
   _trainTodayState.notes = '';
   _trainTodayState.submittedFeedback = null;
+}
+
+// "YYYY-MM-DD" shifted by N days from a base date string. Negative N
+// goes backward. Local-tz safe: parses as midnight local, adds 86_400s
+// per day, formats back to local YYYY-MM-DD.
+function trainShiftDate(dateStr, deltaDays) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+// Pretty label for a date string. Today / Yesterday / "Mon Nov 18".
+function trainDateLabel(dateStr, todayStr) {
+  if (dateStr === todayStr) return 'Today';
+  if (dateStr === trainShiftDate(todayStr, -1)) return 'Yesterday';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function trainFindDay(dow) {
@@ -863,8 +894,23 @@ function renderTodayBonus(st) {
 }
 
 function renderBonusTypeToggle(st) {
+  const today = st.date;
+  // Build the 7-day backfill picker: today + 6 days back. Tap any day
+  // to log the bonus session for that date; defaults to today.
+  const dateOpts = [];
+  for (let i = 0; i < 7; i++) {
+    const d = trainShiftDate(today, -i);
+    dateOpts.push({ date: d, label: trainDateLabel(d, today) });
+  }
+  const datePills = dateOpts.map(o => `
+    <button class="bonus-date-pill ${st.bonusDate === o.date ? 'is-active' : ''}" data-train-action="bonus-date" data-date="${o.date}">
+      ${trainEsc(o.label)}
+    </button>`).join('');
+
   return `<div class="when-what-card" style="margin-bottom:12px">
-    <div class="when-what-label">Session type</div>
+    <div class="when-what-label">When</div>
+    <div class="bonus-date-row">${datePills}</div>
+    <div class="when-what-label" style="margin-top:12px">Session type</div>
     <div class="session-type-row">
       <button class="session-type-pill ${st.bonusType === 'lift' ? 'is-active' : ''}" data-train-action="bonus-type" data-type="lift">Bonus Lifting</button>
       <button class="session-type-pill ${st.bonusType === 'activity' ? 'is-active' : ''}" data-train-action="bonus-type" data-type="activity">Activity Log</button>
@@ -1109,10 +1155,13 @@ async function trainSubmitTodaySession() {
     const dayName = st.isBonus ? (st.bonusType === 'activity' ? 'Bonus Activity' : 'Bonus Lifting') : (st.day?.name || '');
     const dayType = st.isBonus ? (st.bonusType === 'activity' ? 'bonus' : 'bonus') : (st.day?.type || 'lift');
 
+    // Bonus sessions can backfill the last 7 days; planned-day sessions
+    // always use today's date.
+    const sessionDate = st.isBonus ? (st.bonusDate || st.date) : st.date;
     const sessionInsert = {
       user_id:       currentUser.id,
       plan_id:       _trainState.activePlan?.id || null,
-      session_date:  st.date,
+      session_date:  sessionDate,
       day_name:      dayName,
       day_type:      dayType,
       status:        'submitted',
@@ -1709,6 +1758,21 @@ function ensureTrainStyles() {
     }
     .session-type-pill.is-active {
       background: var(--moss-bg, #eaf0e3); border-color: var(--moss-fg, #5e8c4f); color: var(--moss-fg, #5e8c4f);
+    }
+    /* Bonus backfill date picker (last 7 days). Horizontally scrolls on
+       very narrow widths but on standard mobile the 7 pills fit. */
+    .bonus-date-row {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .bonus-date-pill {
+      background: var(--surface); color: var(--ink-3);
+      border: 1px solid var(--edge); border-radius: var(--r-md);
+      padding: 6px 10px; font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+    }
+    .bonus-date-pill:hover { background: var(--surface-2); }
+    .bonus-date-pill.is-active {
+      background: var(--guava-50); border-color: var(--guava-700); color: var(--guava-700);
     }
 
     /* Activity Log rows */
