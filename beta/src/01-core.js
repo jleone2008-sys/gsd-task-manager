@@ -387,6 +387,16 @@ async function _signInUser(user) {
   // backfilled to access_status='active' by user_profiles_access_status.sql,
   // and new signups arrive in 'pending' by virtue of the column default.
   //
+  // ── CONVENTION FOR user_profiles QUERIES ────────────────────────────
+  // ALWAYS match user_profiles rows by EMAIL, not supabase_user_id.
+  // Reason: legacy rows from the beta_users backfill have supabase_user_id
+  // null. The upsert_user_profile_id RPC populates it on sign-in but is
+  // fire-and-forget — silent failure mode. A backfill migration
+  // (user_profiles_backfill_uid.sql) joins auth.users → user_profiles by
+  // email to populate every existing row, but email remains the canonical
+  // key for any future code. Filtering by supabase_user_id is fragile.
+  // Updates by supabase_user_id silently 0-affect without throwing.
+  //
   // Ensure a user_profiles row exists before reading it, otherwise a brand-new
   // signin would return null from the select and we couldn't tell "pending"
   // from "missing row" cleanly. upsert_user_profile_id is idempotent —
@@ -422,9 +432,15 @@ async function _signInUser(user) {
 
   currentUserProfile = profile || { role: 'standard', status: 'active', tab_permissions: VALID_TABS };
 
-  // Populate supabase_user_id in user_profiles if not already set
+  // Populate supabase_user_id in user_profiles if not already set. After
+  // the user_profiles_backfill_uid.sql migration this branch shouldn't
+  // fire for any existing user — every row now has supabase_user_id set.
+  // Kept as a defensive backstop for any edge case (e.g. row created
+  // between migrations). Log instead of swallowing so a silent regression
+  // surfaces in DevTools.
   if (!profile?.supabase_user_id) {
-    db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id }).then(null, () => {});
+    db.rpc('upsert_user_profile_id', { p_email: user.email, p_uid: user.id })
+      .then(null, e => console.warn('[access] backfill upsert_user_profile_id failed', e));
   }
 
   // Auto-detect timezone on first load. Only writes when stored value is

@@ -279,10 +279,15 @@ async function handleEmailAuth() {
 
 async function maybeRedirectToBeta(user) {
   try {
+    // Match on email — the canonical user_profiles key. Some legacy rows
+    // had supabase_user_id null (the access_status migration inserted by
+    // email only; the upsert_user_profile_id RPC was supposed to backfill
+    // on sign-in but is fire-and-forget). Matching on email is the
+    // pattern used everywhere else in the app and survives those rows.
     const { data: profile } = await db
       .from('user_profiles')
       .select('role')
-      .eq('supabase_user_id', user.id)
+      .eq('email', user.email)
       .maybeSingle();
     const role = profile?.role;
 
