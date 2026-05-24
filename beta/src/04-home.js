@@ -85,7 +85,10 @@ function homeEnsureSubStyles() {
   style.id = 'homeSubsectionStyles';
   style.textContent = `
     .home-subsection { margin-top: 2px; }
-    .home-subsection + .home-subsection { margin-top: 14px; }
+    /* No vertical gap between adjacent subsections — the uppercase heading
+       is enough of a visual break by itself, and the extra margin was
+       making the Tasks card feel sparse. */
+    .home-subsection + .home-subsection .home-subsection-h { margin-top: 0; }
     .home-subsection-h {
       font-size: 10px; font-weight: 700;
       color: var(--ink-4); letter-spacing: 0.08em;
