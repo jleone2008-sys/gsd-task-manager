@@ -578,7 +578,7 @@ function switchTool(tool) {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
   // Home shows the greeting as its heading (set in renderHome), so its topbar title is blank.
-  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Notes', journal: 'Journal', settings: 'Settings' };
+  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Notes', journal: 'Journal', train: 'Train', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
