@@ -457,10 +457,13 @@ async function homeBriefRefresh(force = true, resyncOura = false) {
     const brief = await briefGenerate({ force, mode: briefCurrentMode() });
     _briefState = { status: 'ok', brief, error: null };
     briefRender();
+    // Dismiss the in-progress "Syncing..." toast now that work is complete.
+    if (typeof hideToast === 'function') hideToast();
   } catch (e) {
     console.warn('[brief] refresh failed', e);
     _briefState = { status: 'error', brief: null, error: e?.message || 'refresh_failed' };
     briefRender();
+    if (typeof hideToast === 'function') hideToast();
   }
 }
 

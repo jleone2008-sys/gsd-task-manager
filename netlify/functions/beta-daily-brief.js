@@ -28,6 +28,8 @@ const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const OPEN_METEO_URL  = 'https://api.open-meteo.com/v1/forecast';
 
+const { recommendSleepTarget } = require('./lib/recommendations');
+
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
 // response is rejected and the deterministic fallback is stored instead.
@@ -258,7 +260,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
 
   const [
     ouraToday, ouraYesterday, whoopY, oTagsY, oWorkoutsY, journalY, tasksAll,
-    calY, calT, habitsY, baselines30, baselines7, tasksTopOpen,
+    calY, calT, habitsY, baselines30, baselines7, tasksTopOpen, tasksOpen,
   ] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${today}&select=${ouraRecoveryCols}`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=${ouraActivityCols}`, hdr),
@@ -273,6 +275,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_30d?user_id=eq.${user.user_id}&select=*`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_7d?user_id=eq.${user.user_id}&select=*`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&top3=eq.true&select=text&limit=5`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&select=text,top3,due&limit=200`, hdr),
   ]);
 
   // Evening mode needs tomorrow's calendar + today's data for the recap row
@@ -372,6 +375,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
         summary: e.summary, start: e.start, allDay: !!e.isAllDay,
       })),
       priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
+      task_counts: computeTaskCounts(tasksOpen, today),
     },
     tomorrow_plan: (mode === 'evening') ? {
       date: tomorrow,
@@ -382,6 +386,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       })),
       // Priority tasks carry forward (top3 open = persistent until done)
       priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
+      task_counts: computeTaskCounts(tasksOpen, tomorrow),
     } : null,
     // Evening-only: lightweight recap of TODAY for the "Today" row above
     // Tomorrow's Setup. Counts/mood are real values pulled from data, never
@@ -486,6 +491,22 @@ function countTasksInLocalDay(tasksAll, dateStr, tz) {
   const start = localDayStartUtcMs(dateStr, tz);
   const end   = start + 86400_000;
   return tasksAll.filter(t => t.completed_at && t.completed_at >= start && t.completed_at < end).length;
+}
+
+// Tally open tasks into priority/due_today/overdue buckets relative to a
+// date string (YYYY-MM-DD). Uses the user-local date the caller supplies so
+// "due today" is honest regardless of UTC vs local boundaries.
+function computeTaskCounts(openTasks, refDate) {
+  const arr = Array.isArray(openTasks) ? openTasks : [];
+  let priority = 0, due_today = 0, overdue = 0;
+  for (const t of arr) {
+    const isOver = !!(t.due && t.due < refDate);
+    const isToday = !!(t.due && t.due === refDate);
+    if (isOver) overdue++;
+    else if (isToday) due_today++;
+    if (t.top3) priority++;
+  }
+  return { priority, due_today, overdue, total_open: arr.length };
 }
 
 function formatMinutes(m) {
@@ -602,7 +623,7 @@ function buildStats(heroKey, ctx) {
     if (a.activity_score != null && a.steps != null && a.activity_score >= 80 && a.steps < 4000) {
       note = 'low-movement day';
     } else if (a.steps != null) {
-      note = `${a.steps.toLocaleString()} steps`;
+      note = `${a.steps.toLocaleString()} steps · yesterday`;
     }
     rows.push({
       label: 'Activity',
@@ -676,19 +697,11 @@ function buildPlayRows(mode, ctx, sleepTargetTime) {
         content: title,
       });
     }
-    // Priority tasks — ONE row, verbatim titles joined with " · " (max 2)
-    const tasks = (ctx.today_plan?.priority_tasks || []).slice(0, 2);
-    if (tasks.length > 0) {
-      const titles = tasks.map(t => String(t.text || '').trim()).filter(Boolean);
-      if (titles.length > 0) {
-        const allTasks = ctx.today_plan?.priority_tasks || [];
-        rows.push({
-          icon:    'tasks',
-          scope:   `${allTasks.length} task${allTasks.length === 1 ? '' : 's'}`,
-          content: titles.join(' · '),
-        });
-      }
-    }
+    // Tasks row: count summary, not titles. Phase 1.8 — drops individual
+    // task names in favor of "3 priority · 2 due today · 1 overdue" so the
+    // brief and the Tasks card stop duplicating each other.
+    const tcRow = buildTaskCountsRow(ctx.today_plan?.task_counts);
+    if (tcRow) rows.push(tcRow);
     // Yesterday's habit snapshot (clear timeframe: "Y'day 3/4")
     const habits = ctx.yesterday?.habits;
     if (habits && habits.due > 0) {
@@ -750,22 +763,30 @@ function buildPlayRows(mode, ctx, sleepTargetTime) {
         content: title,
       });
     }
-    // Persistent priority tasks (carry into tomorrow)
-    const tasks = (ctx.tomorrow_plan?.priority_tasks || []).slice(0, 2);
-    if (tasks.length > 0) {
-      const titles = tasks.map(t => String(t.text || '').trim()).filter(Boolean);
-      if (titles.length > 0) {
-        const allTasks = ctx.tomorrow_plan?.priority_tasks || [];
-        rows.push({
-          icon:    'tasks',
-          scope:   `${allTasks.length} task${allTasks.length === 1 ? '' : 's'}`,
-          content: titles.join(' · '),
-        });
-      }
-    }
+    // Tasks row: count summary based on tomorrow's frame (overdue and
+    // due-today both reckoned against tomorrow's date).
+    const tcRow2 = buildTaskCountsRow(ctx.tomorrow_plan?.task_counts);
+    if (tcRow2) rows.push(tcRow2);
   }
 
   return rows.slice(0, 5);
+}
+
+// Build a tasks play-row from a task_counts block. Returns null when there
+// are no open tasks worth surfacing. Format example: "3 priority · 2 due
+// today · 1 overdue" — zero-count buckets are omitted.
+function buildTaskCountsRow(counts) {
+  if (!counts || !counts.total_open) return null;
+  const parts = [];
+  if (counts.priority   > 0) parts.push(`${counts.priority} priority`);
+  if (counts.due_today  > 0) parts.push(`${counts.due_today} due today`);
+  if (counts.overdue    > 0) parts.push(`${counts.overdue} overdue`);
+  if (parts.length === 0)    parts.push(`${counts.total_open} open`);
+  return {
+    icon:    'tasks',
+    scope:   `${counts.total_open} open`,
+    content: parts.join(' · '),
+  };
 }
 
 // ── Claude call ───────────────────────────────────────────────────────────
@@ -946,7 +967,10 @@ function normalizeStructured(raw, mode, ctx) {
   const stats        = buildStats(hero_metric.key, ctx);
   const weatherSrc   = mode === 'evening' ? ctx.tomorrow_plan?.weather : ctx.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
-  const sleepTarget  = raw.sleep_target_time ? String(raw.sleep_target_time).trim().slice(0, 24) : null;
+  // Server-side deterministic sleep target wins over Claude's varying output.
+  // Falls back to Claude's value only if the server rules return null.
+  const serverSleepTarget = recommendSleepTarget(ctx.yesterday?.recovery, mode, ctx.baselines_7d);
+  const sleepTarget = serverSleepTarget || (raw.sleep_target_time ? String(raw.sleep_target_time).trim().slice(0, 24) : null);
   const playRows     = buildPlayRows(mode, ctx, sleepTarget);
   const playKey      = mode === 'morning' ? 'today_play' : 'tomorrow_setup';
 
