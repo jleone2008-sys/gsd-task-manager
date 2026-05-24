@@ -1024,13 +1024,14 @@ function updateHabitStatsBar(active) {
   let tNum = 0, tDen = 0;
   active.forEach(h => { const c = todayContribution(h, todayStr_); tNum += c.num; tDen += c.den; });
   const tPct = tDen > 0 ? Math.round((tNum / tDen) * 100) : 100;
-  // Nav badge: beta shows today's completion % in the red pill; prod shows the
-  // habit count. Empty (0) hides the pill — only when there are no habits.
-  const isBeta = typeof location !== 'undefined' && location.pathname.startsWith('/beta');
-  const badgeVal = isBeta ? (active.length ? tPct + '%' : 0) : active.length;
+  // Nav badge: canonical app (/app, the former beta) shows today's completion
+  // % in the red pill; the archived legacy surface (/legacy-app.html) shows
+  // the habit count. Empty (0) hides the pill — only when there are no habits.
+  const isCanonical = typeof location !== 'undefined' && !location.pathname.startsWith('/legacy');
+  const badgeVal = isCanonical ? (active.length ? tPct + '%' : 0) : active.length;
   paintBadge('habitsBadgeMobile', badgeVal);
   const sbc = document.getElementById('sidebarHabitsCount');
-  if (sbc) sbc.textContent = isBeta ? (active.length ? tPct + '%' : '0') : active.length;
+  if (sbc) sbc.textContent = isCanonical ? (active.length ? tPct + '%' : '0') : active.length;
   const pcHT = document.getElementById('pc-habit-today'); if (pcHT) pcHT.textContent = tPct + '%';
   const pcHA = document.getElementById('pc-habit-all');   if (pcHA) pcHA.textContent = active.length;
 }

@@ -237,14 +237,12 @@
     });
 
     // ── Sign-in target ──
-    // Stage 2 of Phase 3 will flip this to '/app' once the beta promotion lands.
-    const SIGNED_IN_TARGET = '/beta/app';
+    // Phase 3 / Stage 2: beta promoted to canonical /app.
+    const SIGNED_IN_TARGET = '/app';
 
-    // ── Google OAuth — replicates beta/src/01-core.js signInWithGoogle. ──
-    // The beta-auth Netlify function expects the same client_id + scopes + state
-    // dance the beta uses, then redirects to /beta/app with id_token in the
-    // URL hash. Keeping these constants in lockstep is important; if either
-    // drifts, the beta-auth function rejects the callback.
+    // ── Google OAuth — same flow as beta/src/01-core.js signInWithGoogle. ──
+    // The beta-auth Netlify function expects this client_id + scope set, then
+    // redirects to /app#id_token=... once token exchange succeeds.
     const BETA_GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
     const GOOGLE_SCOPES = [
       'openid', 'email', 'profile',

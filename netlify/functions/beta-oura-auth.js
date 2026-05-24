@@ -3,7 +3,7 @@
 // stores it in user_profiles.oura_refresh_token_enc.
 //
 // On success: kicks off a 30-day backfill into oura_daily, then redirects to
-// /beta/app#oura=connected.
+// /app#oura=connected.
 
 const { createCipheriv, randomBytes } = require('crypto');
 
@@ -18,8 +18,8 @@ exports.handler = async (event) => {
   const host  = event.headers.host;
   const redirectUri = `${proto}://${host}/.netlify/functions/beta-oura-auth`;
 
-  if (error) return redirect(`/beta/app#oura_error=${encodeURIComponent(error)}`);
-  if (!code || !state) return redirect('/beta/app#oura_error=missing_code_or_state');
+  if (error) return redirect(`/app#oura_error=${encodeURIComponent(error)}`);
+  if (!code || !state) return redirect('/app#oura_error=missing_code_or_state');
 
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   const clientId   = process.env.BETA_OURA_CLIENT_ID;
@@ -27,7 +27,7 @@ exports.handler = async (event) => {
   const encKey     = process.env.ADMIN_ENCRYPTION_KEY;
   if (!serviceKey || !clientId || !clientSec || !encKey) {
     console.error('oura-auth: missing required env var');
-    return redirect('/beta/app#oura_error=server_misconfiguration');
+    return redirect('/app#oura_error=server_misconfiguration');
   }
 
   let callerEmail;
@@ -35,13 +35,13 @@ exports.handler = async (event) => {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${state}` },
     });
-    if (!userRes.ok) return redirect('/beta/app#oura_error=invalid_state');
+    if (!userRes.ok) return redirect('/app#oura_error=invalid_state');
     callerEmail = (await userRes.json()).email;
   } catch (err) {
     console.error('oura-auth: state validation failed:', err.message);
-    return redirect('/beta/app#oura_error=state_validation_failed');
+    return redirect('/app#oura_error=state_validation_failed');
   }
-  if (!callerEmail) return redirect('/beta/app#oura_error=state_no_email');
+  if (!callerEmail) return redirect('/app#oura_error=state_no_email');
 
   let tokens;
   try {
@@ -61,12 +61,12 @@ exports.handler = async (event) => {
     tokens = await res.json();
   } catch (err) {
     console.error('oura-auth: token exchange fetch failed:', err.message);
-    return redirect('/beta/app#oura_error=token_exchange_failed');
+    return redirect('/app#oura_error=token_exchange_failed');
   }
 
   if (tokens.error || !tokens.refresh_token) {
     console.error('oura-auth: token error:', tokens.error, tokens.error_description);
-    return redirect(`/beta/app#oura_error=${encodeURIComponent(tokens.error || 'no_refresh_token')}`);
+    return redirect(`/app#oura_error=${encodeURIComponent(tokens.error || 'no_refresh_token')}`);
   }
 
   let ouraEmail = null;
@@ -86,7 +86,7 @@ exports.handler = async (event) => {
     await storeOuraRefreshToken(callerEmail, tokens.refresh_token, ouraEmail, encKey, serviceKey);
   } catch (err) {
     console.error('oura-auth: store failed:', err.message);
-    return redirect('/beta/app#oura_error=store_failed');
+    return redirect('/app#oura_error=store_failed');
   }
 
   try {
@@ -94,7 +94,7 @@ exports.handler = async (event) => {
     fetch(backfillUrl, { headers: { 'X-Internal-Auth': process.env.INTERNAL_FN_SECRET || '' } }).catch(() => {});
   } catch {}
 
-  return redirect('/beta/app#oura=connected');
+  return redirect('/app#oura=connected');
 };
 
 function redirect(location) {

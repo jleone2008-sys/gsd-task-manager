@@ -286,16 +286,18 @@ async function maybeRedirectToBeta(user) {
       .maybeSingle();
     const role = profile?.role;
 
-    // role='beta' → strict redirect, no escape. Beta users are corralled into
-    // /beta/app so they can't accidentally test against prod. To let one out,
-    // change their role in user_profiles.
+    // role='beta' → strict redirect to the canonical app, no escape. This
+    // function runs in the legacy task UI (/legacy-app.html); anyone whose
+    // role says "beta" gets bounced to /app so they don't accidentally edit
+    // data against the archived legacy surface.
     if (role === 'beta') {
-      location.replace('/beta/app');
+      location.replace('/app');
       return true;
     }
 
     // role='admin' → opt-in via user_settings.beta_enabled, with ?prod=1
-    // escape for the rare time we want to test prod despite the toggle.
+    // escape for the rare time we want to land on the legacy surface despite
+    // the toggle.
     if (role === 'admin') {
       try {
         if (new URL(location.href).searchParams.has('prod')) return false;
@@ -305,7 +307,7 @@ async function maybeRedirectToBeta(user) {
         .select('beta_enabled')
         .maybeSingle();
       if (settings?.beta_enabled === true) {
-        location.replace('/beta/app' + location.search);
+        location.replace('/app' + location.search);
         return true;
       }
     }

@@ -18,10 +18,10 @@ exports.handler = async (event) => {
   const redirectUri = `${proto}://${host}/.netlify/functions/beta-dropbox-auth`;
 
   if (error) {
-    return redirect(`/beta/app#dropbox_error=${encodeURIComponent(error)}`);
+    return redirect(`/app#dropbox_error=${encodeURIComponent(error)}`);
   }
   if (!code || !state) {
-    return redirect('/beta/app#dropbox_error=missing_code_or_state');
+    return redirect('/app#dropbox_error=missing_code_or_state');
   }
 
   // Identify the GSD user by asking Supabase to validate the access_token
@@ -29,7 +29,7 @@ exports.handler = async (event) => {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   if (!serviceKey) {
     console.error('Missing SUPABASE_SERVICE_KEY env var');
-    return redirect('/beta/app#dropbox_error=server_misconfiguration_supabase');
+    return redirect('/app#dropbox_error=server_misconfiguration_supabase');
   }
 
   let callerEmail;
@@ -42,22 +42,22 @@ exports.handler = async (event) => {
     });
     if (!userRes.ok) {
       console.error('Supabase /auth/v1/user rejected state token:', userRes.status, await userRes.text().catch(() => ''));
-      return redirect('/beta/app#dropbox_error=invalid_state');
+      return redirect('/app#dropbox_error=invalid_state');
     }
     const userData = await userRes.json();
     callerEmail = userData.email;
   } catch (err) {
     console.error('State validation fetch failed:', err.message);
-    return redirect('/beta/app#dropbox_error=state_validation_failed');
+    return redirect('/app#dropbox_error=state_validation_failed');
   }
   if (!callerEmail) {
-    return redirect('/beta/app#dropbox_error=state_no_email');
+    return redirect('/app#dropbox_error=state_no_email');
   }
 
   const clientSecret = process.env.BETA_DROPBOX_CLIENT_SECRET;
   if (!clientSecret) {
     console.error('Missing BETA_DROPBOX_CLIENT_SECRET env var');
-    return redirect('/beta/app#dropbox_error=server_misconfiguration');
+    return redirect('/app#dropbox_error=server_misconfiguration');
   }
 
   // Exchange auth code for tokens
@@ -77,12 +77,12 @@ exports.handler = async (event) => {
     tokens = await res.json();
   } catch (err) {
     console.error('Dropbox token exchange fetch failed:', err);
-    return redirect('/beta/app#dropbox_error=token_exchange_failed');
+    return redirect('/app#dropbox_error=token_exchange_failed');
   }
 
   if (tokens.error || !tokens.refresh_token) {
     console.error('Dropbox token error:', tokens.error, tokens.error_description);
-    return redirect(`/beta/app#dropbox_error=${encodeURIComponent(tokens.error || 'no_refresh_token')}`);
+    return redirect(`/app#dropbox_error=${encodeURIComponent(tokens.error || 'no_refresh_token')}`);
   }
 
   // Fetch the Dropbox account email for display
@@ -105,10 +105,10 @@ exports.handler = async (event) => {
     await storeDropboxRefreshToken(callerEmail, tokens.refresh_token, dropboxAccountEmail);
   } catch (err) {
     console.error('Failed to store Dropbox refresh token:', err.message);
-    return redirect('/beta/app#dropbox_error=store_failed');
+    return redirect('/app#dropbox_error=store_failed');
   }
 
-  return redirect('/beta/app#dropbox=connected');
+  return redirect('/app#dropbox=connected');
 };
 
 function redirect(location) {

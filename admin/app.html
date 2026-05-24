@@ -484,7 +484,7 @@ function renderProfileTab(body) {
       <div class="field-label">Role</div>
       <select class="field-input" id="editRole">
         <option value="standard"   ${u.role==='standard'?'selected':''}>Standard</option>
-        <option value="beta"       ${u.role==='beta'?'selected':''}>Beta (forced to /beta/app)</option>
+        <option value="beta"       ${u.role==='beta'?'selected':''}>Beta (forced to /app)</option>
         <option value="admin"      ${u.role==='admin'?'selected':''}>Admin</option>
         <option value="restricted" ${u.role==='restricted'?'selected':''}>Restricted</option>
       </select>
@@ -1625,7 +1625,7 @@ async function handleViewAsUser(email) {
       admin_auth_token:      adminToken,
     }));
 
-    window.open('/beta/app?admin_view=1', '_blank');
+    window.open('/app?admin_view=1', '_blank');
   } catch (err) {
     showToast(`View as user failed: ${err.message}`);
   }

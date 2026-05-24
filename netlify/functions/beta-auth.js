@@ -1,6 +1,6 @@
-// OAuth proxy for /beta — exchanges Google auth code for tokens server-side
-// so the beta Google client secret never touches the browser.
-// Flow: browser → Google → here → /beta/app#id_token=...&access_token=...
+// OAuth proxy — exchanges Google auth code for tokens server-side so the
+// Google client secret never touches the browser.
+// Flow: browser → Google → here → /app#id_token=...&access_token=...
 // Also captures the Google refresh_token (encrypted) into user_profiles for admin use.
 
 const { createCipheriv, randomBytes } = require('crypto');
@@ -13,7 +13,7 @@ exports.handler = async (event) => {
   const redirectUri = `${proto}://${host}/.netlify/functions/beta-auth`;
 
   if (error) {
-    return redirect(`/beta/app#error=${encodeURIComponent(error)}&state=${state || ''}`);
+    return redirect(`/app#error=${encodeURIComponent(error)}&state=${state || ''}`);
   }
 
   if (!code) {
@@ -25,7 +25,7 @@ exports.handler = async (event) => {
 
   if (!clientSecret) {
     console.error('Missing BETA_GOOGLE_CLIENT_SECRET env var');
-    return redirect(`/beta/app#error=server_misconfiguration&state=${state || ''}`);
+    return redirect(`/app#error=server_misconfiguration&state=${state || ''}`);
   }
 
   let tokens;
@@ -44,12 +44,12 @@ exports.handler = async (event) => {
     tokens = await res.json();
   } catch (err) {
     console.error('Token exchange fetch failed:', err);
-    return redirect(`/beta/app#error=token_exchange_failed&state=${state || ''}`);
+    return redirect(`/app#error=token_exchange_failed&state=${state || ''}`);
   }
 
   if (tokens.error) {
     console.error('Google token error:', tokens.error, tokens.error_description);
-    return redirect(`/beta/app#error=${encodeURIComponent(tokens.error)}&state=${state || ''}`);
+    return redirect(`/app#error=${encodeURIComponent(tokens.error)}&state=${state || ''}`);
   }
 
   // Store encrypted refresh_token for admin "view as user" feature (non-fatal if it fails)
@@ -67,7 +67,7 @@ exports.handler = async (event) => {
     state:         state               || '',
   });
 
-  return redirect(`/beta/app#${params}`);
+  return redirect(`/app#${params}`);
 };
 
 function redirect(location) {

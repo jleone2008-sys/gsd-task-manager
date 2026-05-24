@@ -1,8 +1,8 @@
 /* ══════════════════════════════════════════════════════════════
-   ROUTER — bookmarkable URLs for /beta/app/*
-   Identical to prod 00-router.js except:
-     - All routes use /beta/app/* prefix
-     - localStorage key is gsd_beta_last_tool (isolated from prod)
+   ROUTER — bookmarkable URLs for /app/*
+   Phase 3 / Stage 2: beta promoted to canonical /app. Old /beta/app/*
+   URLs 301 to /app/* at the Netlify edge (see netlify.toml).
+   The bookmarkable URL pattern is now /app/{tool}/{view-or-date}.
 ═══════════════════════════════════════════════════════════════ */
 const GSD_LAST_TOOL_KEY = 'gsd_beta_last_tool';
 const GSD_HABIT_VIEWS = ['today', 'all', 'stats'];
@@ -11,11 +11,11 @@ const GSD_TOOLS = ['home', 'tasks', 'habits', 'notes', 'journal', 'settings'];
 function parseAppRoute() {
   const path = location.pathname;
   const q = new URLSearchParams(location.search);
-  const m = path.match(/^\/beta\/app(?:\/([^/?#]+))?(?:\/([^/?#]+))?\/?$/);
+  const m = path.match(/^\/app(?:\/([^/?#]+))?(?:\/([^/?#]+))?\/?$/);
   if (!m) return null;
   const [, seg1, seg2] = m;
   if (!seg1) {
-    // Bare /beta/app URL always lands on Home (the daily brief). GSD_LAST_TOOL_KEY
+    // Bare /app URL always lands on Home (the daily brief). GSD_LAST_TOOL_KEY
     // is still written on navigation so deep-links round-trip, but the bare URL is
     // intentionally anchored to Home.
     return { tool: 'home', _bare: true };
@@ -36,18 +36,18 @@ function parseAppRoute() {
 }
 
 function buildAppRoute(r) {
-  if (!r || !r.tool) return '/beta/app';
-  if (r.tool === 'home') return '/beta/app';
+  if (!r || !r.tool) return '/app';
+  if (r.tool === 'home') return '/app';
   if (r.tool === 'tasks') {
-    return r.filter ? `/beta/app/tasks?filter=${encodeURIComponent(r.filter)}` : '/beta/app/tasks';
+    return r.filter ? `/app/tasks?filter=${encodeURIComponent(r.filter)}` : '/app/tasks';
   }
   if (r.tool === 'habits') {
-    return r.view && r.view !== 'today' ? `/beta/app/habits/${r.view}` : '/beta/app/habits';
+    return r.view && r.view !== 'today' ? `/app/habits/${r.view}` : '/app/habits';
   }
   if (r.tool === 'journal') {
-    return r.date ? `/beta/app/journal/${r.date}` : '/beta/app/journal';
+    return r.date ? `/app/journal/${r.date}` : '/app/journal';
   }
-  return `/beta/app/${r.tool}`;
+  return `/app/${r.tool}`;
 }
 
 function routerSyncUrl(route, opts) {

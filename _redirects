@@ -1,7 +1,12 @@
 /app/*         /app.html          200
 /app           /app.html          200
-/beta/app/*    /beta/app.html     200
-/beta/app      /beta/app.html     200
-/beta          /beta/app.html     200
+/legacy        /legacy-app.html   200
+/legacy/*      /legacy-app.html   200
+# Phase 3 / Stage 2: old beta URLs 301 to canonical /app.
+# URL hash (#id_token=...) is preserved by browsers across 301, so OAuth
+# callbacks redirecting to /beta/app#... still land at /app#... cleanly.
+/beta/app/*    /app/:splat        301
+/beta/app      /app               301
+/beta          /app               301
 /terms         /terms.html        200
 /privacy       /privacy.html      200

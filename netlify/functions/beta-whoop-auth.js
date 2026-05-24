@@ -5,7 +5,7 @@
 // credentials, exchanges the code for tokens, and stores the refresh token.
 //
 // On success: kicks off a 30-day backfill into whoop_daily, then redirects to
-// /beta/app#whoop=connected.
+// /app#whoop=connected.
 
 const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
 
@@ -20,14 +20,14 @@ exports.handler = async (event) => {
   const host  = event.headers.host;
   const redirectUri = `${proto}://${host}/.netlify/functions/beta-whoop-auth`;
 
-  if (error)            return redirect(`/beta/app#whoop_error=${encodeURIComponent(error)}`);
-  if (!code || !state)  return redirect('/beta/app#whoop_error=missing_code_or_state');
+  if (error)            return redirect(`/app#whoop_error=${encodeURIComponent(error)}`);
+  if (!code || !state)  return redirect('/app#whoop_error=missing_code_or_state');
 
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   const encKey     = process.env.ADMIN_ENCRYPTION_KEY;
   if (!serviceKey || !encKey) {
     console.error('whoop-auth: missing SUPABASE_SERVICE_KEY or ADMIN_ENCRYPTION_KEY');
-    return redirect('/beta/app#whoop_error=server_misconfiguration');
+    return redirect('/app#whoop_error=server_misconfiguration');
   }
 
   // Validate state → caller email
@@ -36,13 +36,13 @@ exports.handler = async (event) => {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${state}` },
     });
-    if (!userRes.ok) return redirect('/beta/app#whoop_error=invalid_state');
+    if (!userRes.ok) return redirect('/app#whoop_error=invalid_state');
     callerEmail = (await userRes.json()).email;
   } catch (err) {
     console.error('whoop-auth: state validation failed:', err.message);
-    return redirect('/beta/app#whoop_error=state_validation_failed');
+    return redirect('/app#whoop_error=state_validation_failed');
   }
-  if (!callerEmail) return redirect('/beta/app#whoop_error=state_no_email');
+  if (!callerEmail) return redirect('/app#whoop_error=state_no_email');
 
   // Look up this user's stored Whoop credentials
   let clientId, clientSecret;
@@ -54,13 +54,13 @@ exports.handler = async (event) => {
     const rows = await credRes.json();
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row?.whoop_client_id || !row?.whoop_client_secret_enc) {
-      return redirect('/beta/app#whoop_error=no_credentials');
+      return redirect('/app#whoop_error=no_credentials');
     }
     clientId     = row.whoop_client_id;
     clientSecret = decryptToken(row.whoop_client_secret_enc, encKey);
   } catch (err) {
     console.error('whoop-auth: credentials lookup failed:', err.message);
-    return redirect('/beta/app#whoop_error=credentials_lookup_failed');
+    return redirect('/app#whoop_error=credentials_lookup_failed');
   }
 
   // Exchange auth code for tokens using the user's own credentials
@@ -80,12 +80,12 @@ exports.handler = async (event) => {
     tokens = await res.json();
   } catch (err) {
     console.error('whoop-auth: token exchange fetch failed:', err.message);
-    return redirect('/beta/app#whoop_error=token_exchange_failed');
+    return redirect('/app#whoop_error=token_exchange_failed');
   }
 
   if (tokens.error || !tokens.refresh_token) {
     console.error('whoop-auth: token error:', tokens.error, tokens.error_description);
-    return redirect(`/beta/app#whoop_error=${encodeURIComponent(tokens.error || 'no_refresh_token')}`);
+    return redirect(`/app#whoop_error=${encodeURIComponent(tokens.error || 'no_refresh_token')}`);
   }
 
   // Fetch profile for display + user_id
@@ -107,7 +107,7 @@ exports.handler = async (event) => {
     await storeWhoopRefreshToken(callerEmail, tokens.refresh_token, whoopEmail, whoopUserId, encKey, serviceKey);
   } catch (err) {
     console.error('whoop-auth: store failed:', err.message);
-    return redirect('/beta/app#whoop_error=store_failed');
+    return redirect('/app#whoop_error=store_failed');
   }
 
   // Fire-and-forget 30-day backfill so the user has history immediately.
@@ -116,7 +116,7 @@ exports.handler = async (event) => {
     fetch(backfillUrl, { headers: { 'X-Internal-Auth': process.env.INTERNAL_FN_SECRET || '' } }).catch(() => {});
   } catch {}
 
-  return redirect('/beta/app#whoop=connected');
+  return redirect('/app#whoop=connected');
 };
 
 function redirect(location) {
