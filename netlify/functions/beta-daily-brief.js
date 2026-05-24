@@ -705,8 +705,12 @@ function buildPlayRows(mode, ctx, sleepTargetTime) {
         const verb = (w.activity || 'workout').toLowerCase();
         parts.push(`${verb} done`);
       }
-      if (recap.tasks_completed_today > 0) parts.push(`${recap.tasks_completed_today} done`);
-      if (recap.open_priority_tasks > 0)   parts.push(`${recap.open_priority_tasks} open`);
+      if (recap.tasks_completed_today > 0) {
+        parts.push(`${recap.tasks_completed_today} task${recap.tasks_completed_today === 1 ? '' : 's'} done`);
+      }
+      if (recap.open_priority_tasks > 0) {
+        parts.push(`${recap.open_priority_tasks} priority left`);
+      }
       if (parts.length > 0) {
         rows.push({
           icon:    'other',
