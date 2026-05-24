@@ -16,7 +16,7 @@ const BETA_OURA_CLIENT_ID    = '718bad26-5171-4dc7-addc-ca20cd1a4f73';
 // no Whoop client_id constant here — it's read from userSettings at runtime.
 
 const SETTINGS_DEFAULTS = {
-  enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal'],
+  enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal', 'train'],
   integrations: {},
   beta_enabled: false
 };
@@ -26,7 +26,8 @@ const SETTINGS_DEFAULTS = {
 const TAB_META = {
   habits:  { label: 'Habits',  desc: 'Track recurring habits and streaks.' },
   notes:   { label: 'Notes',   desc: 'Long-form notes organized by notebook.' },
-  journal: { label: 'Journal', desc: 'Daily reflections, photos, and mood.' }
+  journal: { label: 'Journal', desc: 'Daily reflections, photos, and mood.' },
+  train:   { label: 'Train',   desc: 'Workout plans, sessions, and body composition.' }
 };
 
 const INTEGRATIONS_META = [
@@ -53,6 +54,22 @@ async function loadUserSettings() {
   } catch (e) {
     console.warn('[settings] load failed', e);
     userSettings = { ...SETTINGS_DEFAULTS };
+  }
+  // Auto-grant any new tabs that have shipped since the user's enabled_tools
+  // was last written. Without this, a brand-new tab (Train, etc.) renders in
+  // the HTML at first paint then hides itself once applyEffectiveTabs runs
+  // because the user's stored enabled_tools doesn't list it yet. Skips
+  // 'scratch' since it's not a user-toggleable tab anymore.
+  if (Array.isArray(userSettings.enabled_tools)) {
+    const toggleable = SETTINGS_DEFAULTS.enabled_tools.filter(t => t !== 'scratch');
+    const missing = toggleable.filter(t => !userSettings.enabled_tools.includes(t));
+    if (missing.length) {
+      userSettings.enabled_tools = [...userSettings.enabled_tools, ...missing];
+      // Persist asynchronously; the local var is already updated so the
+      // first render after this returns has the new tabs visible.
+      saveUserSettings({ enabled_tools: userSettings.enabled_tools })
+        .catch(err => console.warn('[settings] auto-grant tabs persist failed', err));
+    }
   }
   // Layer in live integration status from the server (per-integration status
   // lives in user_profiles, not user_settings).
