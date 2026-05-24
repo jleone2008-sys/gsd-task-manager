@@ -535,10 +535,24 @@ function buildWeatherChip(weather, mode) {
 
 // Pick the hero metric: respect Claude's override if valid, else use the
 // largest-deviation server hint. Always fill value/label/delta from raw data.
+// Oura scores (sleep/readiness/activity) are 1-100 in practice. A literal 0
+// means Oura hasn't finalized the day yet (common in the early-morning sync
+// window — the user's Oura app shows real numbers because it pulls live from
+// the ring; our DB has whatever the last cron sync grabbed). Treat 0 as
+// "not yet finalized" so we render "—" instead of misleading "0".
+function sanitizeScores(row) {
+  if (!row) return row;
+  const out = { ...row };
+  for (const k of ['sleep_score', 'readiness_score', 'activity_score']) {
+    if (out[k] === 0) out[k] = null;
+  }
+  return out;
+}
+
 function buildHeroMetric(claudeKey, ctx) {
   const allowed = HERO_METRIC_KEYS.includes(claudeKey) ? claudeKey : (ctx.hero_hint || 'readiness_score');
-  const r = ctx.yesterday?.recovery || {};
-  const a = ctx.yesterday?.activity || {};
+  const r  = sanitizeScores(ctx.yesterday?.recovery || {});
+  const a  = sanitizeScores(ctx.yesterday?.activity || {});
   const b7 = ctx.baselines_7d || {};
   let value = null, baseline = null;
   if (allowed === 'sleep_score')     { value = r.sleep_score;     baseline = b7.sleep_score_median; }
@@ -547,7 +561,7 @@ function buildHeroMetric(claudeKey, ctx) {
   const delta = (value != null && baseline != null) ? Math.round(Number(value) - Number(baseline)) : 0;
   return {
     key: allowed,
-    value: value == null ? 0 : Math.round(Number(value)),
+    value: value == null ? null : Math.round(Number(value)),     // null lets UI render "—"
     label: HERO_METRIC_LABELS[allowed] || allowed.toUpperCase(),
     delta_vs_7d: delta,
   };
@@ -558,8 +572,8 @@ function buildHeroMetric(claudeKey, ctx) {
 // are computed against the 7-day baseline. Notes are computed for special
 // cases (sleep score, HRV banding, RHR elevation).
 function buildStats(heroKey, ctx) {
-  const r  = ctx.yesterday?.recovery || {};
-  const a  = ctx.yesterday?.activity || {};
+  const r  = sanitizeScores(ctx.yesterday?.recovery || {});
+  const a  = sanitizeScores(ctx.yesterday?.activity || {});
   const b7 = ctx.baselines_7d || {};
   const fmtDelta = (today, base) => {
     if (today == null || base == null) return null;

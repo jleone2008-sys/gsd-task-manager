@@ -439,10 +439,21 @@ async function briefGenerate({ force, mode }) {
   return j;
 }
 
-async function homeBriefRefresh(force = true) {
+async function homeBriefRefresh(force = true, resyncOura = false) {
   try {
     _briefState = { status: 'loading', brief: _briefState.brief, error: null };
     briefRender();
+    // User-initiated Refresh on a preliminary brief: re-pull Oura first so
+    // we regenerate against actual fresh data, not the same stale DB rows.
+    if (resyncOura) {
+      try {
+        if (typeof showToast === 'function') showToast('Syncing wearable data…', 'ok');
+        await briefResyncOura();
+      } catch (e) {
+        console.warn('[brief] Oura resync failed; regenerating anyway', e);
+        if (typeof showToast === 'function') showToast('Sync failed — regenerating with existing data', 'offline');
+      }
+    }
     const brief = await briefGenerate({ force, mode: briefCurrentMode() });
     _briefState = { status: 'ok', brief, error: null };
     briefRender();
@@ -450,6 +461,23 @@ async function homeBriefRefresh(force = true) {
     console.warn('[brief] refresh failed', e);
     _briefState = { status: 'error', brief: null, error: e?.message || 'refresh_failed' };
     briefRender();
+  }
+}
+
+// Trigger a fresh Oura sync via the existing beta-sync-now endpoint
+// (which calls cron-health-sync backfill server-side using the internal
+// secret). 2-day window is enough to catch today's row that's mid-day
+// stale; longer windows just slow things down for the user.
+async function briefResyncOura() {
+  const session = (await db.auth.getSession()).data?.session;
+  const token   = session?.access_token;
+  if (!token) throw new Error('not_authenticated');
+  const res = await fetch('/.netlify/functions/beta-sync-now?provider=oura&days=2', {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j?.error || `sync_http_${res.status}`);
   }
 }
 
@@ -465,7 +493,9 @@ function briefWireOnce() {
     if (action === 'generate' || action === 'retry') {
       homeBriefLoad();
     } else if (action === 'refresh') {
-      homeBriefRefresh(true);
+      // The "Refresh" affordance on a preliminary brief means the user wants
+      // fresh data, not just a fresh narrative. Trigger Oura resync first.
+      homeBriefRefresh(true, true);
     }
   });
 }
