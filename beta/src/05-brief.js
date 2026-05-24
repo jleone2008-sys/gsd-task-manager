@@ -183,6 +183,10 @@ function briefInjectStyles() {
     .brief-stat-delta.is-up   { color: #5e8c4f; }
     .brief-stat-delta.is-down { color: var(--guava-700); }
     .brief-stat-note { font-size: var(--t-xs); color: var(--ink-4); font-weight: 500; }
+    .brief-stats-baseline {
+      font-size: 10px; color: var(--ink-4); margin-top: 6px;
+      text-align: right; letter-spacing: .02em; font-style: italic;
+    }
 
     .brief-pills {
       display: flex; flex-wrap: wrap; gap: 6px;
@@ -294,6 +298,7 @@ function briefWeatherChipHTML(chip) {
 
 function briefStatsHTML(stats) {
   if (!Array.isArray(stats) || stats.length === 0) return '';
+  const hasAnyDelta = stats.some(s => !!s.delta);
   return `<div class="brief-stats">${stats.map(s => {
     const value = (s.value == null) ? '—' : s.value;
     const deltaCls = String(s.delta || '').startsWith('↑') ? 'is-up'
@@ -308,7 +313,7 @@ function briefStatsHTML(stats) {
         ${noteHtml}
       </span>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}${hasAnyDelta ? `<div class="brief-stats-baseline">Δ vs 7-day avg</div>` : ''}</div>`;
 }
 
 function briefPillsHTML(pills) {
