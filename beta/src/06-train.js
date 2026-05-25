@@ -19,8 +19,13 @@
 ═══════════════════════════════════════════════════════════════ */
 
 let _trainWired = false;
-let _trainActiveView = 'today';        // 'plan' | 'today' | 'progress'
-const TRAIN_VIEWS = ['plan', 'today', 'progress'];
+// Pill order: Workout / History / My Progress. Plan management moved
+// behind a "Manage Plans" button on the Workout sub-view (_workoutSubview
+// flips between 'pick' = day picker + session UI and 'plans' = the
+// existing plan management UI that used to be its own pill).
+let _trainActiveView = 'workout';      // 'workout' | 'history' | 'progress'
+const TRAIN_VIEWS = ['workout', 'history', 'progress'];
+let _workoutSubview = 'pick';          // 'pick' | 'plans'
 
 // In-flight Manage Plan sheet state. The draft holds a deep-cloned copy
 // of the plan being edited; committed on Save, discarded on Close.
@@ -51,7 +56,7 @@ function renderTrain() {
   const root = document.getElementById('trainContainer');
   if (!root) return;
 
-  if (!TRAIN_VIEWS.includes(_trainActiveView)) _trainActiveView = 'today';
+  if (!TRAIN_VIEWS.includes(_trainActiveView)) _trainActiveView = 'workout';
 
   // Set the subtab pill-bar's visible-active state.
   document.querySelectorAll('.train-sub-pills .train-pill').forEach(p => {
@@ -61,15 +66,29 @@ function renderTrain() {
   // Lazy-load the plan data the first time the Train tab is opened.
   if (!_trainState.loaded && !_trainState.loading) loadTrainPlans();
 
-  if (_trainActiveView === 'plan')          renderTrainPlan(root);
-  else if (_trainActiveView === 'today')    renderTrainToday(root);
-  else                                       renderTrainProgress(root);
+  if (_trainActiveView === 'workout') {
+    // The Workout pill has a sub-mode: 'pick' (normal day picker +
+    // session UI) and 'plans' (the plan-management surface that used
+    // to live in its own pill). The Manage Plans button at the bottom
+    // of the day-picker section toggles to 'plans'; a back link
+    // returns to 'pick'.
+    if (_workoutSubview === 'plans') renderTrainPlan(root);
+    else                              renderTrainToday(root);
+  } else if (_trainActiveView === 'history') {
+    renderTrainHistory(root);
+  } else {
+    renderTrainProgress(root);
+  }
 }
 
 function trainSwitchView(view) {
   if (!TRAIN_VIEWS.includes(view)) return;
   if (view === _trainActiveView) return;
   _trainActiveView = view;
+  // Always reset the Workout sub-view to the day picker when switching
+  // pills — coming back to Workout shouldn't dump the user into Manage
+  // Plans mid-session.
+  _workoutSubview = 'pick';
   renderTrain();
 }
 
@@ -136,7 +155,32 @@ function trainWireOnce() {
 
     // ── Today subtab actions ──────────────────────────────────────────
     if (action === 'goto-plan') {
-      trainSwitchView('plan');
+      // Legacy alias kept for any in-flight callers. Routes through the
+      // new sub-view since the Plan pill no longer exists.
+      _workoutSubview = 'plans';
+      renderTrain();
+      return;
+    }
+    if (action === 'manage-plans-open') {
+      _workoutSubview = 'plans';
+      renderTrain();
+      return;
+    }
+    if (action === 'manage-plans-back') {
+      _workoutSubview = 'pick';
+      renderTrain();
+      return;
+    }
+    if (action === 'history-recap') {
+      openHistoryRecap(actionEl.dataset.sessionId);
+      return;
+    }
+    if (action === 'history-recap-close') {
+      closeHistoryRecap();
+      return;
+    }
+    if (action === 'history-rerun-ai') {
+      historyRecapRerunAI(actionEl.dataset.sessionId);
       return;
     }
     if (action === 'pick-day') {
@@ -883,11 +927,11 @@ function trainTodayDow() {
 
 function renderTrainPlan(root) {
   if (_trainState.loading && !_trainState.loaded) {
-    root.innerHTML = `<div class="train-shell"><div class="train-loading">Loading plans…</div></div>`;
+    root.innerHTML = `<div class="train-shell">${planSubviewHeader()}<div class="train-loading">Loading plans…</div></div>`;
     return;
   }
   if (_trainState.error) {
-    root.innerHTML = `<div class="train-shell"><div class="train-error">${trainEsc(_trainState.error)}
+    root.innerHTML = `<div class="train-shell">${planSubviewHeader()}<div class="train-error">${trainEsc(_trainState.error)}
       <button class="train-retry" data-train-action="reload">Retry</button></div></div>`;
     return;
   }
@@ -902,9 +946,20 @@ function renderTrainPlan(root) {
   const inactivePlans = (_trainState.userPlans || []).filter(p => !p.is_active);
 
   root.innerHTML = `<div class="train-shell">
+    ${planSubviewHeader()}
     ${active ? renderPlanActiveCard(active, todayDow) : renderPlanEmptyCard()}
     ${inactivePlans.length ? renderPlanInactiveList(inactivePlans) : ''}
     ${renderPlanTemplatesList(_trainState.templates, active)}
+  </div>`;
+}
+
+// Header row shown when the Plan management surface is reached via the
+// Manage Plans button on the Workout pill. Back link returns to the
+// day picker.
+function planSubviewHeader() {
+  return `<div class="train-subview-head">
+    <button class="train-btn-link" data-train-action="manage-plans-back">← Back to workout</button>
+    <div class="train-subview-title">Manage plans</div>
   </div>`;
 }
 
@@ -1364,7 +1419,9 @@ function renderTodayLoggedSessions(sessions, viewDate, todayStr) {
     const notes = s.session_notes
       ? `<div class="logged-session-notes">${trainEsc(s.session_notes)}</div>`
       : '';
-    return `<div class="logged-session-card">
+    // Tappable — opens the same recap modal the History tab uses, so
+    // a session logged earlier today still has a single drill-in path.
+    return `<div class="logged-session-card is-clickable" data-train-action="history-recap" data-session-id="${trainEsc(s.id)}">
       <div class="logged-session-head">
         <div class="logged-session-name">${trainEsc(s.day_name)} ${feel ? `<span class="logged-session-feel">${feel}</span>` : ''}</div>
         <span class="day-detail-badge ${badge.cls}">${badge.txt}</span>
@@ -1403,10 +1460,19 @@ function renderTodayDayPicker(st) {
   const anyCls = ['day-pill-card','is-any'];
   if (st.isBonus) anyCls.push('is-active');
 
-  return `<div class="train-day-picker">
-    ${pills}
-    <div class="${anyCls.join(' ')}" data-train-action="pick-any">
-      <span class="day-pill-dow">+</span><span class="day-pill-name">Bonus</span>
+  // Day picker grid + the Manage Plans entry-point in the bottom-right
+  // corner. The button used to be a pill ("Plan") in the subtab bar;
+  // this brings it inside the Workout surface so the structural-edit
+  // affordance lives next to the structure it edits.
+  return `<div class="train-day-picker-wrap">
+    <div class="train-day-picker">
+      ${pills}
+      <div class="${anyCls.join(' ')}" data-train-action="pick-any">
+        <span class="day-pill-dow">+</span><span class="day-pill-name">Bonus</span>
+      </div>
+    </div>
+    <div class="train-day-picker-actions">
+      <button class="train-btn-link" data-train-action="manage-plans-open">Manage plans ↗</button>
     </div>
   </div>`;
 }
@@ -1949,6 +2015,10 @@ async function trainSubmitTodaySession() {
     // Also refresh the recent-sessions cache so the "Already logged" banner
     // picks up this submission when the user navigates back to its date.
     loadRecentTrainSessions().then(() => renderTrain());
+    // Invalidate the History tab cache so the new session shows up next
+    // time the user taps the History pill. Forces a re-fetch rather
+    // than serving stale data.
+    _trainHistoryState.loaded = false;
   } catch (e) {
     console.warn('[train] submit failed', e);
     st.submitting = false;
@@ -2224,6 +2294,323 @@ function trainProgressNeedsSetup() {
   if (!p) return true;
   return !p.sex || !p.dob || p.height_in == null || !p.activity_level;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   HISTORY SUBTAB — list every logged workout as a tappable card.
+
+   Reads workout_sessions + workout_sets via the existing client RLS path
+   and renders newest-first. Tap a card → opens a recap modal that
+   surfaces the full session detail + the persisted AI feedback (or a
+   "Run analysis" button when ai_feedback is null on a legacy row).
+
+   Shares state across the History list and the Workout pill's
+   "Already logged" cards — both routes hit openHistoryRecap(sessionId).
+════════════════════════════════════════════════════════════════════════ */
+
+const _trainHistoryState = {
+  loaded:   false,
+  loading:  false,
+  error:    null,
+  sessions: [],   // workout_sessions with workout_sets[] embedded
+};
+
+async function loadTrainHistory() {
+  _trainHistoryState.loading = true;
+  _trainHistoryState.error = null;
+  try {
+    const { data, error } = await db.from('workout_sessions')
+      .select('id,session_date,day_name,day_type,feel,session_notes,ai_feedback,submitted_at,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)')
+      .eq('user_id', currentUser.id)
+      .order('session_date', { ascending: false })
+      .order('submitted_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    _trainHistoryState.sessions = data || [];
+    _trainHistoryState.loaded = true;
+  } catch (e) {
+    console.warn('[train] history load failed', e);
+    _trainHistoryState.error = e?.message || 'Failed to load history.';
+  } finally {
+    _trainHistoryState.loading = false;
+    if (_trainActiveView === 'history') renderTrain();
+  }
+}
+
+function renderTrainHistory(root) {
+  if (!_trainHistoryState.loaded && !_trainHistoryState.loading) loadTrainHistory();
+  if (_trainHistoryState.loading && !_trainHistoryState.loaded) {
+    root.innerHTML = `<div class="train-shell"><div class="train-loading">Loading history…</div></div>`;
+    return;
+  }
+  if (_trainHistoryState.error) {
+    root.innerHTML = `<div class="train-shell"><div class="train-error">${trainEsc(_trainHistoryState.error)}</div></div>`;
+    return;
+  }
+  const sessions = _trainHistoryState.sessions;
+  if (!sessions.length) {
+    root.innerHTML = `<div class="train-shell">
+      <div class="train-empty">
+        <div class="train-empty-title">No logged sessions yet</div>
+        <div class="train-empty-msg">Log a workout from the Workout tab and it'll appear here. Tap any past entry to see the recap + AI insight.</div>
+      </div>
+    </div>`;
+    return;
+  }
+  const cards = sessions.map(renderHistoryCard).join('');
+  root.innerHTML = `<div class="train-shell">
+    <div class="history-list">${cards}</div>
+  </div>`;
+}
+
+function renderHistoryCard(s) {
+  const typeBadge = {
+    lift:     { txt: 'Lift',     cls: 'is-lift' },
+    cardio:   { txt: 'Cardio',   cls: 'is-cardio' },
+    bonus:    { txt: 'Bonus',    cls: 'is-bonus' },
+    progress: { txt: 'Progress', cls: '' },
+    rest:     { txt: 'Rest',     cls: 'is-rest' },
+  }[s.day_type] || { txt: s.day_type, cls: '' };
+  // Mood scale: 1=Bad..5=Great (post invert_mood_scale).
+  const feel = (typeof s.feel === 'number') ? (['😢','😔','😐','😊','🤩'][s.feel - 1] || '') : '';
+  const sets = Array.isArray(s.workout_sets) ? s.workout_sets : [];
+  // Per-type summary line.
+  let summary;
+  if (s.day_type === 'cardio') {
+    const row = sets[0] || {};
+    const dur = row.actual_reps;
+    const dist = row.actual_weight;
+    summary = `${row.exercise_name || 'Cardio'} · ${dur != null ? dur + ' min' : '—'}${dist != null ? ' · ' + dist + ' mi' : ''}`;
+  } else if (s.day_type === 'bonus') {
+    if (sets.length === 1) {
+      const row = sets[0];
+      summary = `${row.exercise_name || 'Activity'} · ${row.actual_reps != null ? row.actual_reps + ' min' : '—'}`;
+    } else {
+      const total = sets.reduce((acc, r) => acc + (Number(r.actual_reps) || 0), 0);
+      summary = `${sets.length} entries · ${total} min`;
+    }
+  } else {
+    const exerciseNames = Array.from(new Set(sets.map(r => r.exercise_name)));
+    const volume = sets.reduce((acc, r) => {
+      if (r.is_bodyweight) return acc;
+      return acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0);
+    }, 0);
+    summary = `${sets.length} set${sets.length === 1 ? '' : 's'} across ${exerciseNames.length} lift${exerciseNames.length === 1 ? '' : 's'}${volume ? ' · ' + volume.toLocaleString() + ' lbs vol' : ''}`;
+  }
+  return `<div class="history-card" data-train-action="history-recap" data-session-id="${trainEsc(s.id)}">
+    <div class="history-card-head">
+      <div class="history-card-date">${trainEsc(historyFormatDate(s.session_date))}</div>
+      <span class="day-detail-badge ${typeBadge.cls}">${typeBadge.txt}</span>
+    </div>
+    <div class="history-card-name">${trainEsc(s.day_name)} ${feel ? `<span class="history-card-feel">${feel}</span>` : ''}</div>
+    <div class="history-card-summary">${trainEsc(summary)}</div>
+  </div>`;
+}
+
+function historyFormatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/* ── History recap modal ──────────────────────────────────────────────
+   Shared by the History list AND the "Already logged" cards on the
+   Workout pill. Always loads the full session row + its sets so it
+   never depends on partial state cached elsewhere. */
+function openHistoryRecap(sessionId) {
+  if (!sessionId) return;
+  closeHistoryRecap();
+  // Build a placeholder overlay first; populate once the row loads.
+  const html = `<div class="train-modal-overlay" id="trainHistoryRecapModal">
+    <div class="train-modal history-recap-modal" data-modal-stop>
+      <div class="train-modal-head">
+        <div>
+          <div class="day-detail-dow">Session recap</div>
+          <div class="day-detail-name" id="historyRecapTitle">Loading…</div>
+        </div>
+        <button class="train-modal-close" data-train-action="history-recap-close" title="Close">×</button>
+      </div>
+      <div class="history-recap-body" id="historyRecapBody">
+        <div class="train-loading">Loading session…</div>
+      </div>
+    </div>
+  </div>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  const overlay = wrap.firstElementChild;
+  document.body.appendChild(overlay);
+  // Click-outside closes; .train-modal stops bubble so inner clicks
+  // don't reach the overlay handler.
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHistoryRecap(); });
+  overlay.querySelector('[data-modal-stop]')?.addEventListener('click', (e) => e.stopPropagation());
+  // Esc closes.
+  const esc = (e) => { if (e.key === 'Escape') closeHistoryRecap(); };
+  document.addEventListener('keydown', esc);
+  overlay._escHandler = esc;
+  // Fetch the row.
+  (async () => {
+    try {
+      const { data, error } = await db.from('workout_sessions')
+        .select('id,session_date,day_name,day_type,feel,session_notes,ai_feedback,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)')
+        .eq('id', sessionId)
+        .single();
+      if (error) throw error;
+      const titleEl = document.getElementById('historyRecapTitle');
+      const bodyEl  = document.getElementById('historyRecapBody');
+      if (titleEl) titleEl.innerHTML = renderHistoryRecapTitle(data);
+      if (bodyEl)  bodyEl.innerHTML  = renderHistoryRecapBody(data);
+    } catch (e) {
+      console.warn('[train] history recap load failed', e);
+      const bodyEl = document.getElementById('historyRecapBody');
+      if (bodyEl) bodyEl.innerHTML = `<div class="train-error">Couldn't load this session.</div>`;
+    }
+  })();
+}
+
+function closeHistoryRecap() {
+  const overlay = document.getElementById('trainHistoryRecapModal');
+  if (overlay?._escHandler) document.removeEventListener('keydown', overlay._escHandler);
+  overlay?.remove();
+}
+
+function renderHistoryRecapTitle(s) {
+  const date = historyFormatDate(s.session_date);
+  return `${trainEsc(s.day_name)} <span class="history-recap-date">· ${trainEsc(date)}</span>`;
+}
+
+function renderHistoryRecapBody(s) {
+  const feel = (typeof s.feel === 'number') ? (['😢','😔','😐','😊','🤩'][s.feel - 1] || '') : '';
+  const feelLabel = (typeof s.feel === 'number') ? (['Bad','Low','Okay','Good','Great'][s.feel - 1] || '') : '';
+  const sets = Array.isArray(s.workout_sets) ? [...s.workout_sets] : [];
+  sets.sort((a, b) => (a.set_index || 0) - (b.set_index || 0));
+  // Group sets by exercise.
+  const byEx = {};
+  for (const x of sets) {
+    if (!byEx[x.exercise_name]) byEx[x.exercise_name] = [];
+    byEx[x.exercise_name].push(x);
+  }
+
+  // Per-type body shape.
+  let bodyBlock = '';
+  if (s.day_type === 'cardio' || (s.day_type === 'bonus' && sets.length === 1)) {
+    const row = sets[0] || {};
+    const dur  = row.actual_reps;
+    const dist = row.actual_weight;
+    bodyBlock = `<div class="history-recap-stat-grid">
+      <div class="history-recap-stat"><div class="history-recap-stat-num">${row.exercise_name || (s.day_type === 'cardio' ? 'Cardio' : 'Activity')}</div><div class="history-recap-stat-label">Modality</div></div>
+      <div class="history-recap-stat"><div class="history-recap-stat-num">${dur != null ? dur : '—'}</div><div class="history-recap-stat-label">Minutes</div></div>
+      <div class="history-recap-stat"><div class="history-recap-stat-num">${dist != null ? dist : '—'}</div><div class="history-recap-stat-label">Miles</div></div>
+    </div>`;
+  } else {
+    // Lift / multi-row bonus → per-exercise table.
+    const totalSets = sets.length;
+    const totalVolume = sets.reduce((acc, r) => acc + (r.is_bodyweight ? 0 : (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0)), 0);
+    const exCount = Object.keys(byEx).length;
+    const stats = `<div class="history-recap-stat-grid">
+      <div class="history-recap-stat"><div class="history-recap-stat-num">${totalSets}</div><div class="history-recap-stat-label">Sets</div></div>
+      <div class="history-recap-stat"><div class="history-recap-stat-num">${totalVolume.toLocaleString()}</div><div class="history-recap-stat-label">Volume (lbs)</div></div>
+      <div class="history-recap-stat"><div class="history-recap-stat-num">${exCount}</div><div class="history-recap-stat-label">Exercises</div></div>
+    </div>`;
+    const exBlocks = Object.entries(byEx).map(([name, list]) => {
+      const rows = list.map((r, i) => {
+        const w = r.is_bodyweight ? 'BW' : (r.actual_weight != null ? r.actual_weight : '—');
+        const reps = r.actual_reps != null ? r.actual_reps : '—';
+        return `<div class="history-recap-set-row">
+          <span class="history-recap-set-num">S${(r.set_index || (i + 1))}</span>
+          <span class="history-recap-set-w">${trainEsc(String(w))}</span>
+          <span class="history-recap-set-x">×</span>
+          <span class="history-recap-set-r">${trainEsc(String(reps))}</span>
+        </div>`;
+      }).join('');
+      return `<div class="history-recap-ex">
+        <div class="history-recap-ex-name">${trainEsc(name)}</div>
+        ${rows}
+      </div>`;
+    }).join('');
+    bodyBlock = `${stats}<div class="history-recap-ex-list">${exBlocks}</div>`;
+  }
+
+  const feelBlock = feel
+    ? `<div class="history-recap-row"><span class="history-recap-row-label">How it felt</span><span>${feel} ${trainEsc(feelLabel)}</span></div>`
+    : '';
+  const notesBlock = s.session_notes
+    ? `<div class="history-recap-notes"><div class="history-recap-row-label">Notes</div><div>${trainEsc(s.session_notes)}</div></div>`
+    : '';
+  const aiBlock = renderHistoryRecapAI(s);
+
+  return `${bodyBlock}
+    ${feelBlock}
+    ${notesBlock}
+    ${aiBlock}`;
+}
+
+function renderHistoryRecapAI(s) {
+  const ai = s.ai_feedback;
+  if (!ai) {
+    return `<div class="train-ai-block" style="margin-top:14px">
+      <div class="train-ai-head">
+        <div class="train-ai-label">Coach insight</div>
+        <button class="train-btn-link" data-train-action="history-rerun-ai" data-session-id="${trainEsc(s.id)}">Run analysis</button>
+      </div>
+      <div class="train-ai-msg">No AI analysis on file for this session yet.</div>
+    </div>`;
+  }
+  if (ai.status === 'fallback') {
+    return `<div class="train-ai-block" style="margin-top:14px">
+      <div class="train-ai-head">
+        <div class="train-ai-label">Coach insight</div>
+        <span class="train-ai-tag">deterministic</span>
+      </div>
+      ${ai.insight ? `<div class="train-ai-insight">${trainEsc(ai.insight)}</div>` : ''}
+    </div>`;
+  }
+  const obs = Array.isArray(ai.observations) && ai.observations.length
+    ? `<ul class="train-ai-observations">${ai.observations.map(o => `<li>${trainEsc(o)}</li>`).join('')}</ul>`
+    : '';
+  return `<div class="train-ai-block" style="margin-top:14px">
+    <div class="train-ai-head">
+      <div class="train-ai-label">Coach insight</div>
+      <span class="train-ai-tag is-ai">AI · Claude</span>
+    </div>
+    ${ai.insight ? `<div class="train-ai-insight">${trainEsc(ai.insight)}</div>` : ''}
+    ${obs}
+  </div>`;
+}
+
+async function historyRecapRerunAI(sessionId) {
+  const bodyEl = document.getElementById('historyRecapBody');
+  if (!bodyEl) return;
+  // Inline loading state inside the AI block area.
+  const aiBlock = bodyEl.querySelector('.train-ai-block');
+  if (aiBlock) aiBlock.innerHTML = `<div class="train-ai-label">Coach insight</div><div class="train-ai-skel"></div><div class="train-ai-skel" style="width:70%"></div>`;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error('not signed in');
+    const r = await fetch('/.netlify/functions/beta-train-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `http_${r.status}`);
+    // Refetch the row so we render with the now-persisted ai_feedback.
+    const { data: refreshed } = await db.from('workout_sessions')
+      .select('id,session_date,day_name,day_type,feel,session_notes,ai_feedback,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)')
+      .eq('id', sessionId)
+      .single();
+    if (refreshed) bodyEl.innerHTML = renderHistoryRecapBody(refreshed);
+    // Also patch the in-memory history list so the next render shows
+    // the new ai_feedback without a full reload.
+    const idx = _trainHistoryState.sessions.findIndex(x => x.id === sessionId);
+    if (idx >= 0 && refreshed) _trainHistoryState.sessions[idx] = refreshed;
+  } catch (e) {
+    console.warn('[train] history re-run AI failed', e);
+    if (aiBlock) aiBlock.innerHTML = `<div class="train-ai-label">Coach insight</div><div class="train-ai-msg">Couldn't reach the coach. Try again.</div>`;
+  }
+}
+
+
 
 function renderTrainProgress(root) {
   if (!_trainProgressState.loaded && !_trainProgressState.loading) loadTrainProgressData();
@@ -3384,15 +3771,19 @@ function ensureTrainStyles() {
     }
     .train-empty-msg { font-size: 13px; color: var(--ink-3); }
 
-    /* Train subtab pill-bar (Plan / Today / Progress). Same chrome as
-       habits sub-pills but recoloured to match the tab. */
+    /* Train subtab pill-bar (Workout / History / My Progress). Same
+       chrome as habits sub-pills with an inline icon prepended to each
+       label. Icon inherits currentColor so the active black-on-pill
+       state flips it automatically. */
     .train-sub-pills .train-pill {
       background: var(--surface); border: 1px solid var(--edge);
       color: var(--ink-3);
+      display: inline-flex; align-items: center; gap: 6px;
     }
     .train-sub-pills .train-pill.active {
       background: var(--ink); color: #fff; border-color: var(--ink);
     }
+    .train-pill-icon { width: 14px; height: 14px; flex-shrink: 0; }
 
     /* ── Shared train tab chrome ──────────────────────────────────── */
     .train-loading, .train-error {
@@ -3659,6 +4050,97 @@ function ensureTrainStyles() {
       margin-bottom: 8px;
       box-shadow: var(--shadow-card);
     }
+    .logged-session-card.is-clickable { cursor: pointer; transition: background 0.12s ease, border-color 0.12s ease; }
+    .logged-session-card.is-clickable:hover { background: var(--surface-2); border-color: var(--edge-strong); }
+    /* Day-picker wrap (Workout pill, pick subview): the day grid grows
+       horizontally; below it sits the Manage plans link in the bottom-right
+       corner. Replaces what used to be the standalone "Plan" pill. */
+    .train-day-picker-wrap { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 6px; }
+    .train-day-picker-actions { display: flex; justify-content: flex-end; padding: 2px 4px 0; }
+    /* Plan-management sub-view header (shown when Manage Plans is open). */
+    .train-subview-head {
+      display: flex; align-items: center; gap: 12px; padding: 0 2px 8px;
+      flex-wrap: wrap;
+    }
+    .train-subview-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase;
+    }
+    /* ── History tab list + cards ────────────────────────────────── */
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+    .history-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 12px 14px;
+      box-shadow: var(--shadow-card); cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+    .history-card:hover { background: var(--surface-2); border-color: var(--edge-strong); }
+    .history-card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 4px;
+    }
+    .history-card-date {
+      font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      color: var(--ink-3); text-transform: uppercase;
+    }
+    .history-card-head .day-detail-badge { margin-bottom: 0; }
+    .history-card-name {
+      font-size: 14px; font-weight: 700; color: var(--ink);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .history-card-feel { font-size: 16px; }
+    .history-card-summary { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+    /* ── History recap modal ──────────────────────────────────────── */
+    .history-recap-modal { max-width: 560px; }
+    .history-recap-body { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+    .history-recap-date { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+    .history-recap-stat-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin: 10px 0;
+    }
+    .history-recap-stat {
+      background: var(--surface-2); border-radius: var(--r-sm);
+      padding: 10px 8px; text-align: center;
+    }
+    .history-recap-stat-num {
+      font-size: 18px; font-weight: 700; color: var(--ink);
+      font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+    }
+    .history-recap-stat-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase; margin-top: 3px;
+    }
+    .history-recap-ex-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .history-recap-ex {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 10px 12px;
+    }
+    .history-recap-ex-name {
+      font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px;
+    }
+    .history-recap-set-row {
+      display: grid; grid-template-columns: 28px auto 16px auto;
+      align-items: baseline; gap: 6px;
+      font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums;
+      padding: 2px 0;
+    }
+    .history-recap-set-num { font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: .05em; }
+    .history-recap-set-x   { color: var(--ink-4); text-align: center; }
+    .history-recap-row {
+      display: flex; gap: 10px; align-items: baseline;
+      padding: 10px 0; border-top: 1px dashed var(--edge);
+      font-size: 13px; color: var(--ink-2);
+    }
+    .history-recap-row-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase;
+      min-width: 86px; flex-shrink: 0;
+    }
+    .history-recap-notes {
+      padding-top: 10px; margin-top: 10px; border-top: 1px dashed var(--edge);
+      font-size: 13px; color: var(--ink-2); line-height: 1.55;
+    }
+    .history-recap-notes .history-recap-row-label { display: block; margin-bottom: 4px; }
     .logged-session-head {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; margin-bottom: 6px;

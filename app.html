@@ -474,9 +474,18 @@
      the habits sub-pills; switchTool toggles this via [data-tool-view]. -->
 <div class="pill-bar train-sub-pills" data-tool-view="train" style="display:none">
   <div class="pill-bar-inner">
-    <button class="pill train-pill" data-train-view="plan">Plan</button>
-    <button class="pill train-pill active" data-train-view="today">Today</button>
-    <button class="pill train-pill" data-train-view="progress">Progress</button>
+    <button class="pill train-pill active" data-train-view="workout">
+      <svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="8" rx="1"/><rect x="19" y="8" width="3" height="8" rx="1"/><rect x="5" y="10" width="2" height="4"/><rect x="17" y="10" width="2" height="4"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+      Workout
+    </button>
+    <button class="pill train-pill" data-train-view="history">
+      <svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/><polyline points="12 7 12 12 15 14"/></svg>
+      History
+    </button>
+    <button class="pill train-pill" data-train-view="progress">
+      <svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      My Progress
+    </button>
   </div>
 </div>
 <!-- Notes filter pill-bar removed per user direction — filtering happens

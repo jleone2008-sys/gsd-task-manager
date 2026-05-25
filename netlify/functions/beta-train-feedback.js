@@ -75,6 +75,11 @@ exports.handler = async (event) => {
       console.error('[train-feedback] claude call failed:', err.message);
       result = buildFallback(session, sets, priorSessions, priorSetsMap, `claude_error: ${err.message}`);
     }
+    // Persist the AI feedback to workout_sessions.ai_feedback so the
+    // History tab can read it back without re-spending tokens. Best-effort
+    // — log + continue on failure, the client still gets the result.
+    persistAiFeedback(sessionId, userId, result, serviceKey)
+      .catch(err => console.warn('[train-feedback] persist failed:', err.message));
     return cors(json(200, result));
   } catch (err) {
     console.error('[train-feedback] handler error:', err.message);
@@ -124,6 +129,24 @@ async function fetchSetsForSessions(sessionIds, userId, serviceKey) {
     out[row.session_id].push(row);
   }
   return out;
+}
+
+// Persist the generated feedback onto workout_sessions.ai_feedback so
+// the History tab (and any future surface) can read it back without
+// re-spending tokens.
+async function persistAiFeedback(sessionId, userId, result, serviceKey) {
+  const url = `${SUPABASE_URL}/rest/v1/workout_sessions?id=eq.${encodeURIComponent(sessionId)}&user_id=eq.${userId}`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type':  'application/json',
+      apikey:          serviceKey,
+      Authorization:   `Bearer ${serviceKey}`,
+      Prefer:          'return=minimal',
+    },
+    body: JSON.stringify({ ai_feedback: result }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
 }
 
 // ── Context build ───────────────────────────────────────────────────────
