@@ -22,6 +22,13 @@ let _trainWired = false;
 let _trainActiveView = 'today';        // 'plan' | 'today' | 'progress'
 const TRAIN_VIEWS = ['plan', 'today', 'progress'];
 
+// In-flight Manage Plan sheet state. The draft holds a deep-cloned copy
+// of the plan being edited; committed on Save, discarded on Close.
+// _managePlanEscHandler is the Esc-key listener so we can detach it
+// when the modal closes (avoids leaking listeners on repeated opens).
+let _managePlanDraft = null;
+let _managePlanEscHandler = null;
+
 // Shared state across the three subtabs. Loaded on first renderTrain()
 // call after sign-in; refreshed on demand (fork, edit, activate).
 const _trainState = {
@@ -429,12 +436,31 @@ function trainOpenManagePlanSheet(planId) {
     return;
   }
   trainCloseManagePlanSheet();
-  // No inline data-train-action / onclick on the inner modal pieces —
-  // event.stopPropagation on .train-modal would block them from reaching
-  // the document-level delegator. We bind close + save handlers directly
-  // on the modal elements after attach instead.
-  const html = `<div class="train-modal-overlay" id="trainManagePlanModal">
-    <div class="train-modal" data-modal-stop>
+
+  // Deep-clone day_template into the draft so the modal can mutate
+  // freely without leaking edits back to the active plan state.
+  _managePlanDraft = {
+    id:           plan.id,
+    name:         plan.name || '',
+    description:  plan.description || '',
+    day_template: JSON.parse(JSON.stringify(Array.isArray(plan.day_template) ? plan.day_template : [])),
+  };
+  // Ensure all 7 DOWs are present so the editor can show every row;
+  // missing days seed as 'rest'. Then sort Mon → Sun.
+  const existing = new Set(_managePlanDraft.day_template.map(d => d.dow));
+  for (const dow of DOW_ORDER) {
+    if (!existing.has(dow)) {
+      _managePlanDraft.day_template.push({ dow, name: 'Rest', type: 'rest', exercises: [] });
+    }
+  }
+  _managePlanDraft.day_template.sort((a, b) => DOW_ORDER.indexOf(a.dow) - DOW_ORDER.indexOf(b.dow));
+
+  // Inner modal pieces use direct listeners (not data-train-action) so
+  // event.stopPropagation on .train-modal doesn't block the document
+  // delegator. The body is painted by managePlanRender() and re-painted
+  // on structural changes (add/remove exercise, change day type).
+  const overlayHTML = `<div class="train-modal-overlay" id="trainManagePlanModal">
+    <div class="train-modal manage-plan-modal" data-modal-stop>
       <div class="train-modal-head">
         <div>
           <div class="day-detail-dow">Manage plan</div>
@@ -442,17 +468,7 @@ function trainOpenManagePlanSheet(planId) {
         </div>
         <button class="train-modal-close" data-modal-close title="Close">×</button>
       </div>
-      <div class="train-form-section">
-        <div class="train-form-label">Name</div>
-        <input class="form-input" id="managePlanName" type="text" value="${trainEsc(plan.name)}" maxlength="80">
-      </div>
-      <div class="train-form-section" style="margin-top:12px">
-        <div class="train-form-label">Description</div>
-        <textarea class="train-notes-input" id="managePlanDesc" placeholder="What's the focus of this plan?" maxlength="240">${trainEsc(plan.description || '')}</textarea>
-      </div>
-      <div class="train-form-hint" style="margin-top:8px">
-        Day-by-day editor (swap exercises, change sets/reps, add days) lands in a follow-up.
-      </div>
+      <div class="manage-plan-body" data-manage-body></div>
       <div class="train-form-actions" style="margin-top:14px">
         <button class="train-btn-secondary" data-modal-close>Cancel</button>
         <button class="train-btn-primary" data-modal-save>Save</button>
@@ -460,64 +476,209 @@ function trainOpenManagePlanSheet(planId) {
     </div>
   </div>`;
   const wrap = document.createElement('div');
-  wrap.innerHTML = html;
+  wrap.innerHTML = overlayHTML;
   const overlay = wrap.firstElementChild;
   document.body.appendChild(overlay);
 
   // Click-outside-to-close — only when the overlay itself is the target.
-  // (Clicks on the inner modal don't qualify thanks to the stop below.)
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) trainCloseManagePlanSheet();
   });
-  // Stop bubbling out of the inner modal so the overlay handler above
-  // doesn't fire on every keystroke / button click inside the modal.
   overlay.querySelector('[data-modal-stop]')?.addEventListener('click', (e) => e.stopPropagation());
-  // X + Cancel: direct listeners (avoids the document delegator entirely).
   overlay.querySelectorAll('[data-modal-close]').forEach(btn => {
     btn.addEventListener('click', trainCloseManagePlanSheet);
   });
-  // Save: bind once with the plan id captured in the closure.
   overlay.querySelector('[data-modal-save]')?.addEventListener('click', () => trainSaveManagePlanSheet(plan.id));
-  // Esc closes the modal.
-  const escHandler = (e) => {
-    if (e.key === 'Escape') { trainCloseManagePlanSheet(); document.removeEventListener('keydown', escHandler); }
-  };
-  document.addEventListener('keydown', escHandler);
+  _managePlanEscHandler = (e) => { if (e.key === 'Escape') trainCloseManagePlanSheet(); };
+  document.addEventListener('keydown', _managePlanEscHandler);
 
-  // Focus the name field so the user can type immediately.
-  setTimeout(() => document.getElementById('managePlanName')?.focus(), 0);
+  managePlanRender(overlay);
+  setTimeout(() => overlay.querySelector('[data-manage-field="name"]')?.focus(), 0);
+}
+
+// Paint the manage-plan body from the in-flight draft. Called on open
+// AND after structural changes (add/remove exercise, change day type).
+// Input typing does NOT trigger re-render — that'd kill focus.
+function managePlanRender(overlay) {
+  const body = overlay.querySelector('[data-manage-body]');
+  if (!body) return;
+  const d = _managePlanDraft;
+  if (!d) return;
+
+  const dayRows = d.day_template.map((day, i) => renderManageDay(day, i)).join('');
+
+  body.innerHTML = `
+    <div class="train-form-section">
+      <div class="train-form-label">Name</div>
+      <input class="form-input" type="text" maxlength="80" value="${trainEsc(d.name)}" data-manage-field="name">
+    </div>
+    <div class="train-form-section" style="margin-top:12px">
+      <div class="train-form-label">Description</div>
+      <textarea class="train-notes-input" maxlength="240" placeholder="What's the focus of this plan?" data-manage-field="description">${trainEsc(d.description || '')}</textarea>
+    </div>
+    <div class="train-form-section" style="margin-top:16px">
+      <div class="train-form-label">Days</div>
+      <div class="manage-day-list">${dayRows}</div>
+    </div>
+  `;
+
+  // Input listeners — write into draft on every keystroke, no re-render.
+  body.querySelector('[data-manage-field="name"]')?.addEventListener('input', (e) => {
+    _managePlanDraft.name = e.target.value;
+  });
+  body.querySelector('[data-manage-field="description"]')?.addEventListener('input', (e) => {
+    _managePlanDraft.description = e.target.value;
+  });
+  body.querySelectorAll('[data-manage-day-field]').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const i = Number(e.target.dataset.dayIdx);
+      const field = e.target.dataset.manageDayField;
+      if (Number.isFinite(i) && _managePlanDraft.day_template[i]) {
+        _managePlanDraft.day_template[i][field] = e.target.value;
+      }
+    });
+  });
+  body.querySelectorAll('[data-manage-ex-field]').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const di = Number(e.target.dataset.dayIdx);
+      const xi = Number(e.target.dataset.exIdx);
+      const field = e.target.dataset.manageExField;
+      const ex = _managePlanDraft.day_template[di]?.exercises?.[xi];
+      if (!ex) return;
+      if (field === 'name')        ex.name   = e.target.value;
+      else if (field === 'sets')   ex.sets   = Number(e.target.value) || null;
+      else if (field === 'reps')   ex.reps   = e.target.value;   // string (supports '8' or '8-10')
+      else if (field === 'rest_s') ex.rest_s = Number(e.target.value) || null;
+    });
+  });
+
+  // Structural actions — these DO trigger re-render.
+  body.querySelectorAll('[data-manage-type-pill]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.dayIdx);
+      const type = btn.dataset.manageTypePill;
+      if (!_managePlanDraft.day_template[i]) return;
+      _managePlanDraft.day_template[i].type = type;
+      if (type === 'lift' && !Array.isArray(_managePlanDraft.day_template[i].exercises)) {
+        _managePlanDraft.day_template[i].exercises = [];
+      }
+      managePlanRender(overlay);
+    });
+  });
+  body.querySelectorAll('[data-manage-add-ex]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.dayIdx);
+      const day = _managePlanDraft.day_template[i];
+      if (!day) return;
+      if (!Array.isArray(day.exercises)) day.exercises = [];
+      day.exercises.push({ name: '', sets: 3, reps: '8', rest_s: 90 });
+      managePlanRender(overlay);
+    });
+  });
+  body.querySelectorAll('[data-manage-remove-ex]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const di = Number(btn.dataset.dayIdx);
+      const xi = Number(btn.dataset.exIdx);
+      const day = _managePlanDraft.day_template[di];
+      if (!day?.exercises) return;
+      day.exercises.splice(xi, 1);
+      managePlanRender(overlay);
+    });
+  });
+}
+
+function renderManageDay(day, i) {
+  const typeBtn = (t, label) => `<button type="button" class="manage-type-pill ${day.type === t ? 'is-active' : ''}" data-manage-type-pill="${t}" data-day-idx="${i}">${label}</button>`;
+  let exercisesBlock = '';
+  if (day.type === 'lift') {
+    const exRows = (day.exercises || []).map((ex, xi) => `
+      <div class="manage-ex-row">
+        <input class="form-input manage-ex-name" type="text" placeholder="Exercise name" value="${trainEsc(ex.name || '')}" data-manage-ex-field="name" data-day-idx="${i}" data-ex-idx="${xi}">
+        <input class="form-input manage-ex-num" type="number" min="1" placeholder="sets" value="${ex.sets != null ? ex.sets : ''}" data-manage-ex-field="sets" data-day-idx="${i}" data-ex-idx="${xi}" title="Sets">
+        <input class="form-input manage-ex-num" type="text" placeholder="reps" value="${trainEsc(String(ex.reps != null ? ex.reps : ''))}" data-manage-ex-field="reps" data-day-idx="${i}" data-ex-idx="${xi}" title="Reps (e.g. 8 or 8-10)">
+        <input class="form-input manage-ex-num" type="number" min="0" placeholder="rest" value="${ex.rest_s != null ? ex.rest_s : ''}" data-manage-ex-field="rest_s" data-day-idx="${i}" data-ex-idx="${xi}" title="Rest (seconds)">
+        <button type="button" class="manage-ex-remove" data-manage-remove-ex data-day-idx="${i}" data-ex-idx="${xi}" title="Remove exercise">×</button>
+      </div>
+    `).join('');
+    exercisesBlock = `
+      <div class="manage-ex-list">
+        ${(day.exercises || []).length ? `<div class="manage-ex-head">
+          <span>Exercise</span><span>Sets</span><span>Reps</span><span>Rest s</span><span></span>
+        </div>` : ''}
+        ${exRows || '<div class="manage-ex-empty">No exercises yet.</div>'}
+        <button type="button" class="train-btn-link manage-add-ex" data-manage-add-ex data-day-idx="${i}">+ Add exercise</button>
+      </div>
+    `;
+  }
+  return `<div class="manage-day-card">
+    <div class="manage-day-head">
+      <div class="manage-day-dow">${trainEsc(day.dow)}</div>
+      <input class="form-input manage-day-name" type="text" maxlength="40" placeholder="Day name" value="${trainEsc(day.name || '')}" data-manage-day-field="name" data-day-idx="${i}">
+      <div class="manage-type-row">
+        ${typeBtn('lift',   'Lift')}
+        ${typeBtn('cardio', 'Cardio')}
+        ${typeBtn('rest',   'Rest')}
+      </div>
+    </div>
+    ${exercisesBlock}
+  </div>`;
 }
 
 function trainCloseManagePlanSheet() {
   document.getElementById('trainManagePlanModal')?.remove();
+  if (_managePlanEscHandler) {
+    document.removeEventListener('keydown', _managePlanEscHandler);
+    _managePlanEscHandler = null;
+  }
+  _managePlanDraft = null;
 }
 
 async function trainSaveManagePlanSheet(planId) {
-  // planId is passed in via closure from the Save button's direct
-  // listener — no more reading it back off a data attribute (the
-  // document-delegator path was unreliable inside the modal because
-  // of the inner stopPropagation).
-  if (!planId) return;
-  const modal = document.getElementById('trainManagePlanModal');
-  if (!modal) return;
-  const nameEl = document.getElementById('managePlanName');
-  const descEl = document.getElementById('managePlanDesc');
-  const name = String(nameEl?.value || '').trim();
-  const description = String(descEl?.value || '').trim() || null;
+  if (!planId || !_managePlanDraft || _managePlanDraft.id !== planId) return;
+  const draft = _managePlanDraft;
+  const name = String(draft.name || '').trim();
+  const description = String(draft.description || '').trim() || null;
   if (!name) { showTrainToast('Name can\'t be empty.'); return; }
+
+  // Clean the day_template before write:
+  // - Coerce numeric fields, drop empty/invalid exercises.
+  // - Rest days lose any leftover exercises so the JSON stays tight.
+  // - Cardio days don't carry an exercises array (modality is logged at
+  //   session time, not in the plan template).
+  const days_per_week = draft.day_template.filter(d => d.type === 'lift' || d.type === 'cardio').length;
+  const day_template = draft.day_template.map(d => {
+    const type = d.type || 'rest';
+    const base = { dow: d.dow, name: String(d.name || '').trim() || (type === 'rest' ? 'Rest' : 'Day'), type };
+    if (type === 'lift') {
+      base.exercises = (Array.isArray(d.exercises) ? d.exercises : [])
+        .map(ex => ({
+          name:   String(ex.name || '').trim(),
+          sets:   ex.sets   != null ? Number(ex.sets)   : null,
+          reps:   ex.reps   != null ? String(ex.reps)   : null,
+          rest_s: ex.rest_s != null ? Number(ex.rest_s) : null,
+        }))
+        .filter(ex => ex.name);   // drop blank rows
+    }
+    return base;
+  });
+
   try {
     const { data, error } = await db.from('workout_plans')
-      .update({ name, description, updated_at: new Date().toISOString() })
+      .update({
+        name, description, day_template, days_per_week,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', planId)
       .select()
       .single();
     if (error) throw error;
-    // Patch the local cache so the dashboard refreshes immediately.
+    // Patch local cache so dashboards refresh immediately.
     const idx = _trainState.userPlans.findIndex(p => p.id === planId);
     if (idx >= 0) _trainState.userPlans[idx] = data;
     if (_trainState.activePlan?.id === planId) _trainState.activePlan = data;
     trainCloseManagePlanSheet();
     renderTrain();
+    showTrainToast('Plan saved.');
   } catch (e) {
     console.warn('[train] save manage plan failed', e);
     showTrainToast('Save failed — ' + (e.message || 'try again'));
@@ -3391,6 +3552,60 @@ function ensureTrainStyles() {
       background: var(--surface); border-radius: var(--r-lg);
       max-width: 480px; width: 100%; padding: 20px;
       box-shadow: var(--shadow-raised);
+    }
+    /* Manage Plan modal: wider canvas for the day-by-day editor. */
+    .train-modal.manage-plan-modal { max-width: 640px; }
+    .manage-plan-body { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+    .manage-day-list { display: flex; flex-direction: column; gap: 10px; }
+    .manage-day-card {
+      background: var(--surface-2); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 10px 12px;
+    }
+    .manage-day-head {
+      display: grid; grid-template-columns: 42px 1fr auto; gap: 8px;
+      align-items: center; margin-bottom: 8px;
+    }
+    .manage-day-dow {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-3); text-transform: uppercase; text-align: center;
+    }
+    .manage-day-name { font-size: 13px; padding: 6px 10px; min-width: 0; }
+    .manage-type-row { display: inline-flex; gap: 3px; }
+    .manage-type-pill {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-sm); padding: 4px 10px; cursor: pointer;
+      font-family: inherit; font-size: 11px; font-weight: 700;
+      color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase;
+    }
+    .manage-type-pill.is-active {
+      background: var(--guava-700); border-color: var(--guava-700); color: #fff;
+    }
+    .manage-ex-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .manage-ex-head {
+      display: grid; grid-template-columns: 1fr 56px 64px 64px 22px; gap: 6px;
+      font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase;
+      padding: 0 4px; align-items: end;
+    }
+    .manage-ex-row {
+      display: grid; grid-template-columns: 1fr 56px 64px 64px 22px; gap: 6px;
+      align-items: center;
+    }
+    .manage-ex-name { font-size: 12px; padding: 5px 8px; min-width: 0; }
+    .manage-ex-num  { font-size: 12px; padding: 5px 6px; text-align: center; min-width: 0; }
+    .manage-ex-remove {
+      background: none; border: 0; cursor: pointer;
+      color: var(--ink-4); font-size: 16px; line-height: 1;
+      padding: 0; width: 22px; height: 22px;
+    }
+    .manage-ex-remove:hover { color: var(--guava-700); }
+    .manage-ex-empty {
+      font-size: 11px; color: var(--ink-4); font-style: italic;
+      padding: 6px 4px;
+    }
+    .manage-add-ex {
+      align-self: flex-start; margin-top: 4px;
+      font-size: 11px;
     }
     .train-modal-head {
       display: flex; align-items: flex-start; justify-content: space-between;
