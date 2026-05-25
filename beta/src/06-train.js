@@ -458,6 +458,20 @@ async function loadTrainPlans() {
 async function trainForkTemplate(templateId) {
   const tpl = _trainState.templates.find(t => t.id === templateId);
   if (!tpl) return;
+  // Guard: if an active plan exists, confirm before silently swapping
+  // it out. The previous flow deactivated and looked permanent —
+  // multiple users hit Fork by accident and thought their custom plan
+  // was destroyed. The old plan stays in workout_plans (is_active=false)
+  // either way, but the confirm makes the intent explicit.
+  if (_trainState.activePlan) {
+    const ok = window.confirm(
+      `You already have an active plan: "${_trainState.activePlan.name}".\n\n` +
+      `Forking "${tpl.name}" will set it as your new active plan. ` +
+      `Your previous plan is kept (you can re-activate it later from the Plan list), ` +
+      `but it will no longer be the active one.\n\nProceed?`
+    );
+    if (!ok) return;
+  }
   try {
     // Deactivate any currently-active plan first so the unique-active
     // index doesn't fire on the insert below.
@@ -548,9 +562,34 @@ function renderTrainPlan(root) {
   const active   = _trainState.activePlan;
   const todayDow = trainTodayDow();
 
+  // Inactive forks/customs the user has built up — surfaced as a tiny
+  // list with re-activate buttons. Without this surface, the only way
+  // back to a deactivated plan was a DB edit; users hit Fork by accident
+  // and lost track of their custom plan.
+  const inactivePlans = (_trainState.userPlans || []).filter(p => !p.is_active);
+
   root.innerHTML = `<div class="train-shell">
     ${active ? renderPlanActiveCard(active, todayDow) : renderPlanEmptyCard()}
+    ${inactivePlans.length ? renderPlanInactiveList(inactivePlans) : ''}
     ${renderPlanTemplatesList(_trainState.templates, active)}
+  </div>`;
+}
+
+function renderPlanInactiveList(plans) {
+  const items = plans.map(p => {
+    const days = Array.isArray(p.day_template) ? p.day_template : [];
+    const schedule = days.map(d => d.name).join(' · ') || `${p.days_per_week || days.length} days/week`;
+    return `<div class="plan-template-card">
+      <div class="plan-template-text">
+        <div class="plan-template-name">${trainEsc(p.name)}</div>
+        <div class="plan-template-meta">${trainEsc(schedule)}</div>
+      </div>
+      <button class="train-btn-secondary" data-train-action="activate-plan" data-plan-id="${p.id}">Activate</button>
+    </div>`;
+  }).join('');
+  return `<div class="plan-templates-block">
+    <div class="plan-templates-label">Your other plans</div>
+    ${items}
   </div>`;
 }
 
