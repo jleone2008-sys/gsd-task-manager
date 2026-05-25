@@ -1618,6 +1618,44 @@
   .floating-search .fs-clear:hover { color: var(--ink); }
   .floating-search.has-query .fs-clear { display: flex; }
   .floating-search.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
+
+  /* ── Floating scratchpad button ─────────────────────────────────────
+     Sits between .floating-search and .fab. Same chrome as the search
+     icon, but never expands — single-purpose: open the Scratchpad modal.
+     When this button is visible (Notes tab only), .floating-search
+     pushes one slot further from the edge so the layout reads
+     [search] [lightning] [+] from left to right. */
+  .floating-scratch {
+    position: fixed;
+    bottom: calc(var(--fab-bottom-mobile) + (var(--fab-size) - var(--search-size)) / 2);
+    right: calc(var(--fab-right-mobile) + var(--fab-size) + var(--fab-search-gap));
+    height: var(--search-size);
+    width: var(--search-size);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow-card);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    z-index: var(--z-fab-mobile);
+    cursor: pointer;
+    transition: box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease),
+                transform var(--dur) var(--ease);
+  }
+  .floating-scratch:hover { box-shadow: var(--shadow-card-hover); }
+  .floating-scratch:active { transform: translateY(1px); }
+  .floating-scratch svg { color: var(--ink-3); width: 16px; height: 16px; }
+  .floating-scratch:hover svg { color: var(--ink); }
+  .floating-scratch.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
+
+  /* When the scratch button is present, push the search button one slot
+     further from the right edge so it doesn't overlap. */
+  .floating-search.has-scratch-neighbor {
+    right: calc(var(--fab-right-mobile) + var(--fab-size) + var(--fab-search-gap)
+              + var(--search-size) + var(--fab-search-gap));
+  }
+
   @media (min-width: 900px) {
     .floating-search {
       bottom: calc(var(--fab-bottom-desktop) + (var(--fab-size) - var(--search-size)) / 2);
@@ -1625,6 +1663,15 @@
       z-index: var(--z-fab-desktop);
     }
     .floating-search.expanded { width: 240px; }
+    .floating-scratch {
+      bottom: calc(var(--fab-bottom-desktop) + (var(--fab-size) - var(--search-size)) / 2);
+      right: calc(var(--fab-right-desktop) + var(--fab-size) + var(--fab-search-gap));
+      z-index: var(--z-fab-desktop);
+    }
+    .floating-search.has-scratch-neighbor {
+      right: calc(var(--fab-right-desktop) + var(--fab-size) + var(--fab-search-gap)
+                + var(--search-size) + var(--fab-search-gap));
+    }
   }
   /* highlight matched text in task */
   .search-hl { background: var(--ochre-bg); color: var(--ink); border-radius: var(--r-sm); padding: 0 var(--space-0-5); }

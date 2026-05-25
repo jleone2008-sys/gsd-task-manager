@@ -568,6 +568,13 @@
   </button>
 </div>
 
+<!-- FLOATING SCRATCHPAD BUTTON — only visible on the Notes tab. Sits between
+     the search button and the FAB; tapping it opens the same Scratchpad
+     modal the Home tab uses (openQuickNotesModal in beta/src/04-home.js). -->
+<button class="floating-scratch hidden" id="floatingScratch" title="Open scratchpad" aria-label="Open scratchpad">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+</button>
+
 <!-- FLOATING NEW TASK BUTTON — start hidden; switchTool toggles the .hidden class
      based on the active tab so it appears only where appropriate. -->
 <button class="fab hidden" id="fabBtn">

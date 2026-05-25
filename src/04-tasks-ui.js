@@ -378,6 +378,20 @@ function updateFloatingSearch() {
   // Reset on tool switch
   input.value = '';
   el.classList.remove('expanded', 'has-query');
+
+  // Notes tab gets a lightning button between search and FAB that opens
+  // the Scratchpad modal. Push search one slot further from the edge so
+  // the visual order reads [search] [lightning] [+].
+  const scratchBtn = document.getElementById('floatingScratch');
+  if (scratchBtn) {
+    if (activeTool === 'notes') {
+      scratchBtn.classList.remove('hidden');
+      el.classList.add('has-scratch-neighbor');
+    } else {
+      scratchBtn.classList.add('hidden');
+      el.classList.remove('has-scratch-neighbor');
+    }
+  }
 }
 // Collapse when clicking outside
 document.addEventListener('mousedown', e => {
@@ -634,6 +648,13 @@ document.getElementById('floatingSearchInput').addEventListener('keydown', e => 
 document.getElementById('fsClear').addEventListener('click', e => {
   e.stopPropagation();
   clearFloatingSearch();
+});
+
+// Floating scratchpad button (Notes tab only). Opens the same Scratchpad
+// modal the Home tab uses. openQuickNotesModal is defined globally in
+// beta/src/04-home.js — classic-script scope, no import needed.
+document.getElementById('floatingScratch')?.addEventListener('click', () => {
+  if (typeof openQuickNotesModal === 'function') openQuickNotesModal();
 });
 
 document.getElementById('fabBtn').addEventListener('click', openCreatePanel);
