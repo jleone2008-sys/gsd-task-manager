@@ -32,6 +32,14 @@ const journalState = {
   // Lightbox state
   lightboxPhotos: null,              // {date, index}
 
+  // Phase 5: per-event metadata cache (relationship_tag, energy_after,
+  // notes). Map<event_id, { relationship_tag, energy_after, notes }>.
+  // Loaded once per session via loadCalendarEventMeta(); updated as the
+  // user saves edits.
+  eventMeta: new Map(),
+  eventMetaLoaded: false,
+  eventMetaEditing: null,             // event-id currently open in the editor
+
   // Search
   searchQuery: '',
   searchResults: null,
@@ -385,6 +393,32 @@ async function getGoogleAccessToken(forceRefresh) {
   }
 }
 
+// Phase 5 — calendar event metadata (relationship_tag, energy_after,
+// notes). Loaded once per session, then mutated in-place by save/delete
+// from the editor.
+async function loadCalendarEventMeta() {
+  if (journalState.eventMetaLoaded) return;
+  journalState.eventMetaLoaded = true;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data, error } = await db.from('calendar_event_meta')
+      .select('calendar_event_id,relationship_tag,energy_after,notes')
+      .eq('user_id', session.user.id);
+    if (error) throw error;
+    for (const row of (data || [])) {
+      journalState.eventMeta.set(row.calendar_event_id, {
+        relationship_tag: row.relationship_tag,
+        energy_after:     row.energy_after,
+        notes:            row.notes,
+      });
+    }
+  } catch (e) {
+    console.warn('[journal] calendar_event_meta load failed', e);
+    journalState.eventMetaLoaded = false;   // allow retry on next call
+  }
+}
+
 // Phase 5 — multi-Google-calendar sync. Loads enabled calendar IDs
 // once per session (cached in journalState.enabledCalendarIds). Returns
 // ['primary'] as a back-compat fallback when no rows exist yet.
@@ -435,6 +469,7 @@ async function fetchLiveCalendarEvents(dateStr) {
     if (!res.ok) throw new Error(`api_${res.status}`);
     const data = await res.json();
     return (data.items || []).map(e => ({
+      id:         e.id,
       summary:    e.summary || '(no title)',
       start:      e.start?.dateTime || e.start?.date || '',
       isAllDay:   !!e.start?.date && !e.start?.dateTime,
@@ -558,6 +593,7 @@ async function syncCalendarHistory() {
       if (!dateKey) continue;
       if (!byDate[dateKey]) byDate[dateKey] = [];
       byDate[dateKey].push({
+        id:         ev.id,
         summary:    ev.summary || '(no title)',
         start:      startStr,
         isAllDay:   !!ev.start?.date && !ev.start?.dateTime,
@@ -755,12 +791,39 @@ function ensureJournalStyles() {
 
     .j-section { margin-bottom: 22px; }
     .j-section-h { font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
-    .j-list-row { display: flex; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+    .j-list-row { display: flex; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; align-items: center; }
     .j-list-row .j-bullet { color: var(--guava-500); flex-shrink: 0; }
     .j-list-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
     .j-empty-row { font-size: 12px; color: var(--ink-4); font-style: italic; padding: 4px 0; }
     .j-error-row { font-size: 12px; color: var(--guava-700); padding: 4px 0; line-height: 1.5; }
     .j-error-row a { color: var(--guava-800); text-decoration: underline; cursor: pointer; }
+    /* Phase 5 — tappable event row. Cursor hint + subtle hover bg so
+       users discover the affordance. Energy emoji + tag chip surface
+       on the right side when meta exists. */
+    .j-event-row { border-radius: 4px; }
+    .j-event-row.is-editable { cursor: pointer; }
+    .j-event-row.is-editable:hover { background: var(--surface-2); padding-left: 4px; padding-right: 4px; margin-left: -4px; margin-right: -4px; }
+    .j-event-text { flex: 1; min-width: 0; }
+    .j-event-energy { font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .j-event-tag {
+      display: inline-block; flex-shrink: 0;
+      font-size: 10px; font-weight: 700; letter-spacing: .03em;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--surface-2); color: var(--ink-3);
+      text-transform: uppercase;
+    }
+    /* Phase 5 — event meta editor modal */
+    .j-event-meta-modal { max-width: 480px; }
+    .j-event-meta-modal .day-detail-meta {
+      font-size: 11px; color: var(--ink-4); margin-top: 2px;
+    }
+    .j-event-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+    .j-event-chip {
+      background: var(--surface-2); border: 1px solid var(--edge);
+      border-radius: 999px; padding: 4px 10px; cursor: pointer;
+      font-family: inherit; font-size: 11px; color: var(--ink-2);
+    }
+    .j-event-chip:hover { background: var(--guava-50); color: var(--guava-700); border-color: var(--guava-50); }
 
     .j-photos { display: flex; flex-wrap: wrap; gap: 10px; }
     .j-photo { position: relative; width: 88px; height: 88px; border-radius: var(--r-md); overflow: hidden; background: var(--surface-2); border: 1px solid var(--edge); cursor: pointer; }
@@ -1173,8 +1236,204 @@ function renderEventsSection(ds) {
   if (!events.length) return `<div class="j-empty-row">No calendar events.</div>`;
   return events.map(ev => {
     const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
-    return `<div class="j-list-row"><span class="j-bullet">•</span><span>${escapeHtml(ev.summary)} · ${time}</span></div>`;
+    // Phase 5: tag indicator + tap-to-edit. Events fetched before the
+    // Phase 5 commit that captured `id` won't have one — they render
+    // without the editor affordance until the next calendar sync.
+    const meta = ev.id ? journalState.eventMeta.get(ev.id) : null;
+    const energyEmoji = (meta && meta.energy_after) ? MOOD_EMOJI[meta.energy_after - 1] : '';
+    const tagBadge = (meta && meta.relationship_tag)
+      ? `<span class="j-event-tag">${escapeHtml(meta.relationship_tag)}</span>` : '';
+    const clickable = ev.id ? ` data-jevent-edit="${escapeHtml(ev.id)}"` : '';
+    const editCls = ev.id ? ' is-editable' : '';
+    return `<div class="j-list-row j-event-row${editCls}"${clickable}>
+      <span class="j-bullet">•</span>
+      <span class="j-event-text">${escapeHtml(ev.summary)} · ${time}</span>
+      ${energyEmoji ? `<span class="j-event-energy" title="Energy after">${energyEmoji}</span>` : ''}
+      ${tagBadge}
+    </div>`;
   }).join('');
+}
+
+/* ── Phase 5 — Calendar event metadata editor ───────────────────────
+   Tap an event row → opens a sheet to record relationship_tag,
+   energy_after, and notes. Same modal pattern as Train's Manage Plan
+   (direct listeners on inner buttons; stop-propagation on the
+   .train-modal-style wrapper). */
+function openEventMetaEditor(eventId) {
+  // Find the event in the in-memory cache so we can show its title/time.
+  let ev = null;
+  for (const events of journalState.calendarEvents.values()) {
+    const hit = events.find(e => e.id === eventId);
+    if (hit) { ev = hit; break; }
+  }
+  if (!ev) return;
+  closeEventMetaEditor();
+  journalState.eventMetaEditing = eventId;
+  const meta = journalState.eventMeta.get(eventId) || {};
+  const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', weekday:'short', month:'short', day:'numeric' });
+
+  // Suggested relationship chips — tap to populate the text field.
+  const CHIPS = ['Boss', 'Peer', 'Direct report', 'Customer', 'Partner', 'Family', 'Friend', 'Stranger'];
+  const moodRow = MOOD_EMOJI.map((emoji, i) => {
+    const val = i + 1;
+    const sel = meta.energy_after === val ? ' is-selected' : '';
+    return `<button type="button" class="j-mood-btn${sel}" data-jevent-energy="${val}" title="${MOOD_LABEL[i]}">${emoji}</button>`;
+  }).join('');
+  const chipsHTML = CHIPS.map(c => `<button type="button" class="j-event-chip" data-jevent-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
+
+  const html = `<div class="train-modal-overlay" id="jEventMetaModal">
+    <div class="train-modal j-event-meta-modal" data-modal-stop>
+      <div class="train-modal-head">
+        <div>
+          <div class="day-detail-dow">Event details</div>
+          <div class="day-detail-name">${escapeHtml(ev.summary)}</div>
+          <div class="day-detail-meta">${escapeHtml(time)}</div>
+        </div>
+        <button class="train-modal-close" data-modal-close title="Close">×</button>
+      </div>
+      <div class="train-form-section">
+        <div class="train-form-label">Relationship</div>
+        <input class="form-input" id="jEventTag" type="text" maxlength="40" placeholder="e.g. Boss, Customer, Family" value="${escapeHtml(meta.relationship_tag || '')}">
+        <div class="j-event-chip-row" style="margin-top:8px;">${chipsHTML}</div>
+      </div>
+      <div class="train-form-section" style="margin-top:14px">
+        <div class="train-form-label">Energy after</div>
+        <div class="j-mood-grid">${moodRow}</div>
+      </div>
+      <div class="train-form-section" style="margin-top:14px">
+        <div class="train-form-label">Notes</div>
+        <textarea class="train-notes-input" id="jEventNotes" maxlength="400" placeholder="What happened? Decisions, vibes, follow-ups…">${escapeHtml(meta.notes || '')}</textarea>
+      </div>
+      <div class="train-form-actions" style="margin-top:14px">
+        ${meta.energy_after != null || meta.relationship_tag || meta.notes
+          ? `<button class="train-btn-link" style="color:var(--guava-700)" data-jevent-remove>Remove</button>` : ''}
+        <button class="train-btn-secondary" data-modal-close>Cancel</button>
+        <button class="train-btn-primary" data-jevent-save>Save</button>
+      </div>
+    </div>
+  </div>`;
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  const overlay = wrap.firstElementChild;
+  document.body.appendChild(overlay);
+
+  // Click-outside-to-close.
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeEventMetaEditor(); });
+  overlay.querySelector('[data-modal-stop]')?.addEventListener('click', (e) => e.stopPropagation());
+  overlay.querySelectorAll('[data-modal-close]').forEach(b => b.addEventListener('click', closeEventMetaEditor));
+
+  // Energy buttons toggle selection in-place (single-select).
+  overlay.querySelectorAll('[data-jevent-energy]').forEach(b => {
+    b.addEventListener('click', () => {
+      overlay.querySelectorAll('[data-jevent-energy]').forEach(x => x.classList.remove('is-selected'));
+      b.classList.add('is-selected');
+      b.dataset.selected = '1';
+    });
+  });
+  // Initial selection — mark current value if any.
+  if (meta.energy_after != null) {
+    const cur = overlay.querySelector(`[data-jevent-energy="${meta.energy_after}"]`);
+    if (cur) cur.dataset.selected = '1';
+  }
+
+  // Chip taps populate the tag input.
+  overlay.querySelectorAll('[data-jevent-chip]').forEach(b => {
+    b.addEventListener('click', () => {
+      const input = overlay.querySelector('#jEventTag');
+      if (input) input.value = b.dataset.jeventChip;
+    });
+  });
+
+  // Save / Remove.
+  overlay.querySelector('[data-jevent-save]')?.addEventListener('click', () => {
+    const tag    = overlay.querySelector('#jEventTag')?.value.trim() || null;
+    const notes  = overlay.querySelector('#jEventNotes')?.value.trim() || null;
+    const selectedBtn = overlay.querySelector('[data-jevent-energy][data-selected="1"]');
+    const energy = selectedBtn ? Number(selectedBtn.dataset.jeventEnergy) : null;
+    saveEventMeta(eventId, ev, { relationship_tag: tag, energy_after: energy, notes });
+  });
+  overlay.querySelector('[data-jevent-remove]')?.addEventListener('click', () => {
+    deleteEventMeta(eventId);
+  });
+
+  // Esc closes.
+  const escHandler = (e) => { if (e.key === 'Escape') closeEventMetaEditor(); };
+  document.addEventListener('keydown', escHandler);
+  overlay.dataset._escBound = '1';
+  overlay._escHandler = escHandler;
+
+  setTimeout(() => overlay.querySelector('#jEventTag')?.focus(), 0);
+}
+
+function closeEventMetaEditor() {
+  const overlay = document.getElementById('jEventMetaModal');
+  if (overlay?._escHandler) document.removeEventListener('keydown', overlay._escHandler);
+  overlay?.remove();
+  journalState.eventMetaEditing = null;
+}
+
+async function saveEventMeta(eventId, ev, patch) {
+  // No-op save when nothing's set — treat as remove for cleanliness.
+  if (patch.relationship_tag == null && patch.energy_after == null && !patch.notes) {
+    return deleteEventMeta(eventId);
+  }
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const row = {
+      user_id:            session.user.id,
+      calendar_event_id:  eventId,
+      google_calendar_id: ev.calendarId || null,
+      event_summary:      ev.summary || null,
+      event_start:        ev.start || null,
+      relationship_tag:   patch.relationship_tag,
+      energy_after:       patch.energy_after,
+      notes:              patch.notes,
+    };
+    const { error } = await db.from('calendar_event_meta')
+      .upsert(row, { onConflict: 'user_id,calendar_event_id' });
+    if (error) throw error;
+    journalState.eventMeta.set(eventId, {
+      relationship_tag: patch.relationship_tag,
+      energy_after:     patch.energy_after,
+      notes:            patch.notes,
+    });
+    closeEventMetaEditor();
+    // Re-render whatever date this event belongs to so the row picks up
+    // the new energy emoji + tag badge immediately.
+    rerenderEventDate(eventId);
+  } catch (e) {
+    console.warn('[journal] event meta save failed', e);
+    if (typeof showToast === 'function') showToast('Save failed', 'offline');
+  }
+}
+
+async function deleteEventMeta(eventId) {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { error } = await db.from('calendar_event_meta').delete()
+      .eq('user_id', session.user.id)
+      .eq('calendar_event_id', eventId);
+    if (error) throw error;
+    journalState.eventMeta.delete(eventId);
+    closeEventMetaEditor();
+    rerenderEventDate(eventId);
+  } catch (e) {
+    console.warn('[journal] event meta delete failed', e);
+    if (typeof showToast === 'function') showToast('Delete failed', 'offline');
+  }
+}
+
+// Find which dateStr owns this event id, then re-render that timeline card.
+function rerenderEventDate(eventId) {
+  for (const [date, events] of journalState.calendarEvents.entries()) {
+    if (events.some(e => e.id === eventId)) {
+      if (typeof rerenderTimelineCard === 'function') rerenderTimelineCard(date);
+      break;
+    }
+  }
 }
 
 function renderTasksSection(ds) {
@@ -1474,6 +1733,7 @@ async function renderJournal() {
 
   setupScrollObserver();
   syncCalendarHistory();
+  loadCalendarEventMeta();
   updateTopbarHeightVar();
 }
 
@@ -1710,6 +1970,13 @@ document.addEventListener('click', async e => {
     await ensureTimelineCovers(date);
     scrollTimelineToDate(date);
     openViewModal(date);
+    return;
+  }
+
+  // Phase 5 — tap a calendar event row to edit metadata.
+  const eventEdit = e.target.closest('[data-jevent-edit]');
+  if (eventEdit) {
+    openEventMetaEditor(eventEdit.dataset.jeventEdit);
     return;
   }
 
