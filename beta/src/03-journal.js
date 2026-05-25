@@ -1603,12 +1603,18 @@ async function deleteEventMeta(eventId) {
 }
 
 // Find which dateStr owns this event id, then re-render that timeline card.
+// Also opportunistically refresh the Home calendar section if it's
+// mounted — the event-meta editor can be opened from Home too (since
+// the Phase 5 hookup), so its save path needs to update both surfaces.
 function rerenderEventDate(eventId) {
   for (const [date, events] of journalState.calendarEvents.entries()) {
     if (events.some(e => e.id === eventId)) {
       if (typeof rerenderTimelineCard === 'function') rerenderTimelineCard(date);
       break;
     }
+  }
+  if (typeof homeRerenderCalendarIfMounted === 'function') {
+    homeRerenderCalendarIfMounted();
   }
 }
 

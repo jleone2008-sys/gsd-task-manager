@@ -405,10 +405,28 @@ function homeCalendarInnerHTML(events, expired) {
       <button class="home-cta" data-home-cta="settings">Connect Google Calendar →</button>`;
   }
   if (!events || !events.length) return `<div class="home-empty">Nothing on the calendar today.</div>`;
-  return `<div class="home-item-list">${events.map(ev => `<div class="home-row">
+  // Mirror the journal's event-row affordance — tap to open the same
+  // event metadata editor (relationship_tag, energy_after, notes).
+  // Events synced before Phase 5 may lack `id`; those render
+  // non-clickable. Tag + energy badges show when meta is on file
+  // (loaded by hydrateHomeCalendar via loadCalendarEventMetaForEvents).
+  const MOOD = ['😢','😔','😐','😊','🤩'];
+  return `<div class="home-item-list">${events.map(ev => {
+    const meta = (ev.id && typeof journalState !== 'undefined')
+      ? journalState.eventMeta?.get(ev.id)
+      : null;
+    const energy = (meta && meta.energy_after) ? MOOD[meta.energy_after - 1] : '';
+    const tag    = (meta && meta.relationship_tag)
+      ? `<span class="home-event-tag">${hEsc(meta.relationship_tag)}</span>` : '';
+    const editable = ev.id ? ' is-editable' : '';
+    const editAttr = ev.id ? ` data-jevent-edit="${hEsc(ev.id)}"` : '';
+    return `<div class="home-row home-event-row${editable}"${editAttr}>
       <span class="home-cal-time ${ev.isAllDay ? 'is-allday' : 'is-timed'}">${hEsc(_fmtEventTime(ev))}</span>
       <span class="home-item-title">${hEsc(ev.summary || '(no title)')}</span>
-    </div>`).join('')}</div>`;
+      ${energy ? `<span class="home-event-energy" title="Energy after">${energy}</span>` : ''}
+      ${tag}
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // Condensed task cards: same .card.task-item chrome as the Tasks tab (incl. the
@@ -679,7 +697,54 @@ async function hydrateHomeCalendar() {
   const expired = typeof journalState !== 'undefined' && journalState.eventsError && journalState.eventsError.get(today) === 'expired';
   const el = document.getElementById('homeCalendar');
   if (el) el.innerHTML = homeCalendarInnerHTML(events, expired);
+  // Scope-load event metadata for today's events so tag/energy badges
+  // show on first paint. fire-and-forget — re-render when it lands so
+  // newly-arrived meta replaces the unbadged initial render.
+  if (typeof loadCalendarEventMetaForEvents === 'function' && Array.isArray(events) && events.length) {
+    const ids = events.filter(e => e && e.id).map(e => e.id);
+    if (ids.length) {
+      loadCalendarEventMetaForEvents(ids).then(() => {
+        const el2 = document.getElementById('homeCalendar');
+        if (el2) el2.innerHTML = homeCalendarInnerHTML(events, expired);
+      });
+    }
+  }
 }
+
+// Re-render the Home calendar section using whatever events are
+// currently in journalState.calendarEvents for today. Called from
+// the journal's rerenderEventDate after an event-meta save so the
+// new tag/energy badges show up on the Home tab without a full
+// renderHome. No-op when the user isn't on Home.
+function homeRerenderCalendarIfMounted() {
+  if (typeof activeTool === 'undefined' || activeTool !== 'home') return;
+  const el = document.getElementById('homeCalendar');
+  if (!el) return;
+  const today = homeToday();
+  const events = (typeof journalState !== 'undefined')
+    ? (journalState.calendarEvents.get(today) || [])
+    : [];
+  const expired = typeof journalState !== 'undefined' && journalState.eventsError && journalState.eventsError.get(today) === 'expired';
+  el.innerHTML = homeCalendarInnerHTML(events, expired);
+}
+
+// Click handler for Home event rows. The journal's document-level
+// handler at 03-journal.js:1986 early-exits when activeTool !== 'journal'
+// (perf optimization to skip ~20 selector checks per click everywhere
+// else). So we wire our own targeted handler here, only firing for
+// rows inside the Home calendar section. Calls into openEventMetaEditor
+// which is defined in 03-journal.js — same modal, same save path,
+// same realtime updates.
+document.addEventListener('click', e => {
+  // Targeted: only catch clicks inside the Home calendar list. Avoids
+  // double-handling on Journal (where the existing handler already
+  // owns these rows).
+  const row = e.target.closest('#homeCalendar [data-jevent-edit]');
+  if (!row) return;
+  if (typeof openEventMetaEditor === 'function') {
+    openEventMetaEditor(row.dataset.jeventEdit);
+  }
+});
 
 async function hydrateHomeWeek() {
   if (!document.getElementById('homeWeek')) return;

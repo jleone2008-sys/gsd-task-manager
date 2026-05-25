@@ -137,6 +137,18 @@
   .home-cal-time { font-size: var(--t-sm); width: 70px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   .home-cal-time.is-allday { color: var(--ink-4); }
   .home-cal-time.is-timed { color: var(--sky-fg); font-weight: 600; }
+  /* Phase 5 — calendar event metadata editor affordance, mirroring
+     the journal's .j-event-row pattern. Tap-to-edit opens the same
+     modal (relationship_tag, energy_after, notes). */
+  .home-event-row.is-editable { cursor: pointer; }
+  .home-event-row.is-editable:hover { background: var(--surface-2); }
+  .home-event-energy { font-size: var(--t-sm); flex-shrink: 0; margin-left: 4px; }
+  .home-event-tag {
+    font-size: 10px; font-weight: 600; letter-spacing: .03em;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--surface-2); color: var(--ink-3);
+    flex-shrink: 0; margin-left: 4px;
+  }
 
   /* Last 7 Days — average stat boxes */
   .home-week-avg { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
