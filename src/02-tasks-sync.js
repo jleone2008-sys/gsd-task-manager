@@ -222,19 +222,21 @@ async function load() {
   const since = _tasksLookbackSince();
 
   const [openRes, doneRes] = await Promise.all([
-    // Open: every task that isn't done. Filter on the `done` boolean
-    // (not `status`) because legacy rows can have NULL status — the
-    // client side does `r.status || (r.done ? 'done' : 'todo')` to
-    // tolerate that, but PostgREST `neq('status','done')` excludes
-    // NULLs and would drop every legacy open task.
+    // Open: every task that isn't done. Mirror the client's reader
+    // logic — rowToTask treats `done = null` AND `done = false` both
+    // as 'todo' (the OR covers any historical row that may have NULL
+    // in either the legacy `done` column or the newer `status`
+    // column). PostgREST's basic .eq() excludes NULL, so a single-
+    // column filter on either would silently drop legacy rows that
+    // were never touched after the schema additions.
     db.from('tasks')
       .select('*')
       .eq('user_id', currentUser.id)
-      .eq('done', false)
+      .or('done.is.null,done.eq.false')
       .order('order', { ascending: true }),
-    // Done: last DONE_LOOKBACK_DAYS only. Same reasoning — filter on
-    // the `done` boolean which is reliably set across legacy and new
-    // rows.
+    // Done: last DONE_LOOKBACK_DAYS only. `eq('done', true)` is
+    // correct since "done" rows always have done=true (the client
+    // writes both done and status in sync via taskToRow).
     db.from('tasks')
       .select('*')
       .eq('user_id', currentUser.id)
