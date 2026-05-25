@@ -2120,27 +2120,70 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     </svg>`;
   };
 
-  // Thin 4-cell metrics strip (mockup Variation A's top row). Replaces the
-  // 3-cell stats grid we had before; LBM is the new one.
+  // ── Delta pills: oldest → newest entry within the loaded window ──
+  // Compute delta + dynamic window label (1y / Xmo / Xd) so the user
+  // sees not just the current value but the trend at-a-glance.
+  const weightGoal = _trainProgressState.goals.find(g => g.kind === 'weight') || null;
+  const oldest = entries.length > 1 ? entries[entries.length - 1] : null;
+  const winDays = oldest
+    ? Math.max(1, Math.round((new Date(latest.captured_date) - new Date(oldest.captured_date)) / 86400_000))
+    : 0;
+  const winLabel = !oldest ? null
+                 : winDays >= 330 ? '1y'
+                 : winDays >= 150 ? '6mo'
+                 : winDays >=  60 ? `${Math.round(winDays / 30)}mo`
+                 :                  `${winDays}d`;
+
+  const oldW = oldest?.weight_lbs   != null ? Number(oldest.weight_lbs)   : null;
+  const oldBf = oldest?.body_fat_pct != null ? Number(oldest.body_fat_pct) : null;
+  const oldWaist = oldest?.waist_in != null ? Number(oldest.waist_in) : null;
+  const oldLbm = (oldW != null && oldBf != null) ? oldW * (1 - oldBf / 100) : null;
+
+  const deltaWeight = (w   != null && oldW   != null) ? w   - oldW   : null;
+  const deltaBf     = (bf  != null && oldBf  != null) ? bf  - oldBf  : null;
+  const deltaLbm    = (lbm != null && oldLbm != null) ? lbm - oldLbm : null;
+  const deltaWaist  = (latest.waist_in != null && oldWaist != null) ? Number(latest.waist_in) - oldWaist : null;
+
+  // Direction-correctness map. Weight is goal-aware (bulk → up good,
+  // cut → down good); the rest have fixed conventions.
+  const isWeightBulk = weightGoal && Number(weightGoal.target_value) > Number(weightGoal.start_value);
+  const isWeightCut  = weightGoal && Number(weightGoal.target_value) < Number(weightGoal.start_value);
+  const weightIsGood = (d) => isWeightBulk ? d > 0 : isWeightCut ? d < 0 : null;
+
+  const pill = (delta, unit, isGoodFn) => {
+    if (delta == null || winLabel == null) return '';
+    const abs = Math.abs(delta);
+    const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
+    const good = typeof isGoodFn === 'function' ? isGoodFn(delta) : isGoodFn;
+    const cls = good === true ? 'up' : good === false ? 'down' : 'neutral';
+    return `<span class="metric-cell-delta ${cls}">${sign}${abs.toFixed(1)}${unit} · ${winLabel}</span>`;
+  };
+
+  // Thin 4-cell metrics strip. Each cell: top-aligned delta pill, then
+  // label, then big number with small unit suffix, then sparkline.
   const metricsStrip = `<div class="metrics-strip">
     <div class="metric-cell">
-      <div class="metric-cell-num">${w != null ? w.toFixed(1) : '—'}</div>
-      <div class="metric-cell-label">Weight</div>
-      ${spark(points('weight'), 'var(--guava-700)')}
-    </div>
-    <div class="metric-cell">
-      <div class="metric-cell-num">${bfNum}</div>
-      <div class="metric-cell-label">Body fat</div>
-      ${spark(points('bf'), 'var(--guava-700)')}
-    </div>
-    <div class="metric-cell">
-      <div class="metric-cell-num">${lbm != null ? lbm.toFixed(1) : '—'}</div>
+      ${pill(deltaLbm, ' lbs', d => d > 0)}
       <div class="metric-cell-label">Lean mass</div>
+      <div class="metric-cell-num">${lbm != null ? lbm.toFixed(1) : '—'}<span class="metric-cell-unit">lbs</span></div>
       ${spark(points('lbm'), 'var(--moss-fg, #5e8c4f)')}
     </div>
     <div class="metric-cell">
-      <div class="metric-cell-num">${latest.waist_in != null ? Number(latest.waist_in).toFixed(1) + '"' : '—'}</div>
+      ${pill(deltaWeight, ' lbs', weightIsGood)}
+      <div class="metric-cell-label">Weight</div>
+      <div class="metric-cell-num">${w != null ? w.toFixed(1) : '—'}<span class="metric-cell-unit">lbs</span></div>
+      ${spark(points('weight'), 'var(--guava-700)')}
+    </div>
+    <div class="metric-cell">
+      ${pill(deltaBf, '%', d => d < 0)}
+      <div class="metric-cell-label">Body fat</div>
+      <div class="metric-cell-num">${bfNum}</div>
+      ${spark(points('bf'), 'var(--guava-700)')}
+    </div>
+    <div class="metric-cell">
+      ${pill(deltaWaist, '"', d => d < 0)}
       <div class="metric-cell-label">Waist</div>
+      <div class="metric-cell-num">${latest.waist_in != null ? Number(latest.waist_in).toFixed(1) : '—'}<span class="metric-cell-unit">in</span></div>
       ${spark(points('waist'), 'var(--ink-3)')}
     </div>
   </div>`;
@@ -3884,15 +3927,31 @@ function ensureTrainStyles() {
     }
     .metric-cell {
       background: var(--surface); border: 1px solid var(--edge);
-      border-radius: var(--r-md); padding: 10px 10px;
+      border-radius: var(--r-md); padding: 10px;
       box-shadow: var(--shadow-card);
-      display: flex; flex-direction: column; gap: 3px;
-      min-width: 0;     /* let cells shrink below their content's intrinsic width */
+      display: flex; flex-direction: column; gap: 4px;
+      min-width: 0;     /* let cells shrink below content's intrinsic width */
     }
+    /* Top-aligned delta pill — small, color-coded by direction. Hidden
+       when only one entry exists (no comparison possible). */
+    .metric-cell-delta {
+      align-self: flex-start;
+      font-size: 9px; font-weight: 700; letter-spacing: .02em;
+      font-variant-numeric: tabular-nums;
+      padding: 2px 7px; border-radius: 999px; line-height: 1.3;
+      white-space: nowrap;
+    }
+    .metric-cell-delta.up      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
+    .metric-cell-delta.down    { background: var(--guava-50);          color: var(--guava-700); }
+    .metric-cell-delta.neutral { background: var(--surface-2);          color: var(--ink-3); }
     .metric-cell-num {
-      font-size: 18px; font-weight: 700; color: var(--ink);
+      font-size: 20px; font-weight: 700; color: var(--ink);
       letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
       line-height: 1.1; white-space: nowrap;
+    }
+    .metric-cell-unit {
+      font-size: 11px; font-weight: 600; color: var(--ink-3);
+      margin-left: 2px;
     }
     .metric-cell-label {
       font-size: 10px; font-weight: 700; letter-spacing: .04em;
