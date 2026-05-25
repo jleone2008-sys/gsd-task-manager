@@ -22,8 +22,12 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const DEFAULT_MODEL      = 'claude-opus-4-7';
 const DEFAULT_MAX_TOKENS = 600;
+const RECOVERY_STALE_HOURS = 24;   // mirrors brief's OURA_STALE_HOURS
 
 const { moodLabel, MOOD_SCALE_NOTE } = require('./lib/mood-scale');
+
+// Map weekdayInTz output to the 3-letter codes workout_plans.day_template uses.
+const DOW3 = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu', Friday:'Fri', Saturday:'Sat', Sunday:'Sun' };
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
@@ -42,6 +46,7 @@ exports.handler = async (event) => {
   if (!ur.ok) return cors(json(401, { error: 'invalid_token' }));
   const userJson = await ur.json();
   const userId   = userJson.id;
+  const userEmail = userJson.email || null;
   if (!userId) return cors(json(401, { error: 'invalid_token' }));
 
   // ── Parse body ──────────────────────────────────────────────────────
@@ -52,14 +57,38 @@ exports.handler = async (event) => {
   if (!sessionId) return cors(json(400, { error: 'session_id_required' }));
 
   try {
-    // ── Read session + sets ───────────────────────────────────────────
+    // ── Read session (needed first — date + day_name gate later fetches) ─
     const session = await fetchSession(sessionId, userId, serviceKey);
     if (!session) return cors(json(404, { error: 'session_not_found' }));
-    const sets    = await fetchSets(sessionId, userId, serviceKey);
 
-    // ── Comparison: last 3 prior sessions (same day_name) ─────────────
-    const priorSessions = await fetchPriorSessions(userId, session, serviceKey);
-    const priorSetsMap  = await fetchSetsForSessions(priorSessions.map(s => s.id), userId, serviceKey);
+    // ── Parallel batch of independent fetches ─────────────────────────
+    // Pattern mirrors beta-daily-brief.js's buildContext Promise.all. Any
+    // individual fetch returning null/[] is non-fatal — the context is
+    // assembled defensively below so a missing wearable / plan / goal
+    // doesn't break the AI call.
+    const [
+      sets,
+      priorSessions,
+      healthSource,
+      activePrescription,
+      weeklyLoadCount,
+      activeGoal,
+    ] = await Promise.all([
+      fetchSets(sessionId, userId, serviceKey).catch(err => { console.warn('[train-feedback] sets fetch failed:', err.message); return []; }),
+      fetchPriorSessions(userId, session, serviceKey).catch(err => { console.warn('[train-feedback] prior sessions fetch failed:', err.message); return []; }),
+      fetchHealthSource(userId, serviceKey).catch(err => { console.warn('[train-feedback] health_source fetch failed:', err.message); return null; }),
+      fetchActivePrescription(userId, session, serviceKey).catch(err => { console.warn('[train-feedback] active prescription fetch failed:', err.message); return null; }),
+      fetchWeeklyLoad(userId, sessionId, session.session_date, serviceKey).catch(err => { console.warn('[train-feedback] weekly load fetch failed:', err.message); return 0; }),
+      fetchActiveGoal(userId, serviceKey).catch(err => { console.warn('[train-feedback] active goal fetch failed:', err.message); return null; }),
+    ]);
+
+    // ── Dependent follow-ups (run in parallel) ───────────────────────
+    const [priorSetsMap, recovery] = await Promise.all([
+      fetchSetsForSessions(priorSessions.map(s => s.id), userId, serviceKey).catch(err => { console.warn('[train-feedback] prior sets fetch failed:', err.message); return {}; }),
+      (healthSource && userEmail)
+        ? fetchRecoveryForDate(userEmail, healthSource, session.session_date, serviceKey).catch(err => { console.warn('[train-feedback] recovery fetch failed:', err.message); return null; })
+        : Promise.resolve(null),
+    ]);
 
     // ── No API key → deterministic fallback ───────────────────────────
     if (!anthropicKey) {
@@ -67,7 +96,12 @@ exports.handler = async (event) => {
     }
 
     // ── Build context + call Claude ──────────────────────────────────
-    const ctx = buildContext(session, sets, priorSessions, priorSetsMap);
+    const ctx = buildContext(session, sets, priorSessions, priorSetsMap, {
+      recovery,
+      prescribed:   activePrescription,
+      weekly_load:  { sessions_last_7d: weeklyLoadCount || 0 },
+      goal:         activeGoal,
+    });
     let result;
     try {
       result = await callClaude(ctx, anthropicKey);
@@ -131,6 +165,150 @@ async function fetchSetsForSessions(sessionIds, userId, serviceKey) {
   return out;
 }
 
+// ── Wider-context fetchers (recovery / prescription / weekly load / goal) ─
+//
+// Each fetcher is best-effort: failures are caught at the call site and
+// fall through to null/[]/0 so a missing integration doesn't tank the
+// whole feedback call. Pattern mirrors beta-daily-brief.js.
+
+// Reads the user's chosen recovery source from user_settings.integrations.
+// Defaults to 'oura' when no preference is set (matches client default in
+// beta/src/02-settings.js getHealthSource()).
+async function fetchHealthSource(userId, serviceKey) {
+  const url = `${SUPABASE_URL}/rest/v1/user_settings?user_id=eq.${userId}&select=integrations`;
+  const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
+  if (!r.ok) throw new Error(`user_settings_fetch_${r.status}`);
+  const rows = await r.json();
+  const src = rows?.[0]?.integrations?.health_source;
+  if (src === 'whoop' || src === 'oura') return src;
+  return 'oura';   // default
+}
+
+// Reads the wearable snapshot for the session date and normalizes the
+// shape so the prompt sees one consistent object regardless of source.
+// Stale flag follows the brief's 24h threshold.
+async function fetchRecoveryForDate(userEmail, source, dateStr, serviceKey) {
+  if (!userEmail || !dateStr) return null;
+  const hdr = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  if (source === 'whoop') {
+    const url = `${SUPABASE_URL}/rest/v1/whoop_daily?user_email=eq.${encodeURIComponent(userEmail)}&date=eq.${dateStr}&select=date,recovery_score,hrv_ms,resting_hr,strain,sleep_duration_min,updated_at`;
+    const r = await fetch(url, { headers: hdr });
+    if (!r.ok) throw new Error(`whoop_daily_fetch_${r.status}`);
+    const row = (await r.json())?.[0];
+    if (!row) return null;
+    const stale = !row.updated_at
+      || (Date.now() - new Date(row.updated_at).getTime()) > RECOVERY_STALE_HOURS * 3600_000;
+    return {
+      source:       'whoop',
+      score:        row.recovery_score ?? null,
+      hrv_ms:       row.hrv_ms         ?? null,
+      resting_hr:   row.resting_hr     ?? null,
+      sleep_min:    row.sleep_duration_min ?? null,
+      strain:       row.strain         ?? null,
+      stale,
+    };
+  }
+  // Oura (default). Note: oura_daily's "recovery" is yesterday's sleep
+  // scored against today — for a session logged on the same day, this
+  // row reflects how recovered the user *started* the day.
+  const url = `${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(userEmail)}&date=eq.${dateStr}&select=date,readiness_score,sleep_score,hrv_ms,resting_hr,total_sleep_min,updated_at`;
+  const r = await fetch(url, { headers: hdr });
+  if (!r.ok) throw new Error(`oura_daily_fetch_${r.status}`);
+  const row = (await r.json())?.[0];
+  if (!row) return null;
+  const stale = !row.updated_at
+    || (Date.now() - new Date(row.updated_at).getTime()) > RECOVERY_STALE_HOURS * 3600_000;
+  return {
+    source:      'oura',
+    score:       row.readiness_score ?? null,
+    sleep_score: row.sleep_score     ?? null,
+    hrv_ms:      row.hrv_ms          ?? null,
+    resting_hr:  row.resting_hr      ?? null,
+    sleep_min:   row.total_sleep_min ?? null,
+    stale,
+  };
+}
+
+// Pulls the user's active workout_plans row and finds the day_template
+// entry that matches the just-submitted session. Match strategy:
+//   1) Exact match on session.day_name (most planned sessions).
+//   2) Fall back to DOW match using the session_date (catches sessions
+//      where day_name was edited at submit time).
+// Returns null for bonus / cardio / unprogrammed sessions or when no
+// active plan exists.
+async function fetchActivePrescription(userId, session, serviceKey) {
+  if (!session) return null;
+  const url = `${SUPABASE_URL}/rest/v1/workout_plans?user_id=eq.${userId}&is_active=eq.true&is_template=eq.false&select=id,name,day_template&limit=1`;
+  const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
+  if (!r.ok) throw new Error(`workout_plans_fetch_${r.status}`);
+  const plan = (await r.json())?.[0];
+  if (!plan || !Array.isArray(plan.day_template)) return null;
+
+  let match = null;
+  if (session.day_name) {
+    match = plan.day_template.find(d => d.name === session.day_name) || null;
+  }
+  if (!match && session.session_date) {
+    // Compute DOW from session_date (UTC). The day_template uses 3-letter
+    // codes; weekdayInTz isn't available here so use UTC weekday — close
+    // enough since sessions are stored as DATE without tz.
+    const d = new Date(session.session_date + 'T12:00:00Z');
+    const weekday = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getUTCDay()];
+    const dow3 = DOW3[weekday];
+    match = plan.day_template.find(d => d.dow === dow3) || null;
+  }
+  if (!match) return null;
+  return {
+    name:      match.name || null,
+    type:      match.type || null,
+    exercises: Array.isArray(match.exercises) ? match.exercises.map(ex => ({
+      name:       ex.name || null,
+      sets:       ex.sets ?? null,
+      reps:       ex.reps ?? null,
+      rest_s:     ex.rest_s ?? null,
+      bodyweight: !!ex.bodyweight,
+    })) : [],
+  };
+}
+
+// Count of workout_sessions in the trailing 7 days, excluding the current
+// session. Single integer — drives streak / "5th lift this week" framing.
+async function fetchWeeklyLoad(userId, sessionId, sessionDate, serviceKey) {
+  if (!sessionDate) return 0;
+  const d = new Date(sessionDate + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 7);
+  const since = d.toISOString().slice(0, 10);
+  const url = `${SUPABASE_URL}/rest/v1/workout_sessions?user_id=eq.${userId}&session_date=gte.${since}&session_date=lte.${sessionDate}&id=neq.${encodeURIComponent(sessionId)}&select=id`;
+  const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
+  if (!r.ok) throw new Error(`weekly_load_fetch_${r.status}`);
+  const rows = await r.json();
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+// Active body composition goal. Direction inferred from target vs start
+// so the prompt can frame volume-up as on-plan for bulk, etc.
+async function fetchActiveGoal(userId, serviceKey) {
+  const url = `${SUPABASE_URL}/rest/v1/body_comp_goals?user_id=eq.${userId}&is_active=eq.true&select=kind,start_value,target_value,start_date,end_date&order=created_at.desc&limit=1`;
+  const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
+  if (!r.ok) throw new Error(`body_comp_goals_fetch_${r.status}`);
+  const row = (await r.json())?.[0];
+  if (!row) return null;
+  const start  = Number(row.start_value);
+  const target = Number(row.target_value);
+  let direction = 'maintain';
+  if (Number.isFinite(start) && Number.isFinite(target)) {
+    if (target > start)      direction = 'bulk';
+    else if (target < start) direction = 'cut';
+  }
+  return {
+    kind:         row.kind,
+    direction,
+    start_value:  row.start_value,
+    target_value: row.target_value,
+    end_date:     row.end_date,
+  };
+}
+
 // Persist the generated feedback onto workout_sessions.ai_feedback so
 // the History tab (and any future surface) can read it back without
 // re-spending tokens.
@@ -150,7 +328,8 @@ async function persistAiFeedback(sessionId, userId, result, serviceKey) {
 }
 
 // ── Context build ───────────────────────────────────────────────────────
-function buildContext(session, sets, priorSessions, priorSetsMap) {
+function buildContext(session, sets, priorSessions, priorSetsMap, extras) {
+  extras = extras || {};
   // Per-exercise summary for this session: max weight × reps, total volume,
   // and best comparison: prior session's matching exercise.
   const exMap = {};
@@ -208,6 +387,11 @@ function buildContext(session, sets, priorSessions, priorSetsMap) {
       exercises,
     },
     prior_sessions: priors,
+    // Wider context (may be null when integrations / plan / goal absent).
+    recovery:    extras.recovery    || null,
+    prescribed:  extras.prescribed  || null,
+    weekly_load: extras.weekly_load || { sessions_last_7d: 0 },
+    goal:        extras.goal        || null,
   };
 }
 
@@ -222,6 +406,15 @@ async function callClaude(ctx, anthropicKey) {
     'You are a strength + conditioning coach reviewing a single workout the user just submitted.',
     '',
     `SCALES: ${MOOD_SCALE_NOTE} The session payload includes both the raw integer (\`feel\`) and the matching label (\`feel_label\`) — read the label, don't infer from the number.`,
+    '',
+    'CONTEXT YOU SEE (for reasoning, not for echoing):',
+    '- today / prior_sessions = the workout just submitted + up to 3 prior matching sessions.',
+    '- recovery = wearable read for the session date (oura readiness OR whoop recovery, picked from the user\'s chosen source). Use to frame fatigue: a hard session at score 55 reads very differently than at 85. When recovery.stale=true, downgrade your confidence in that signal. recovery may be null — that\'s fine, just don\'t reference it.',
+    '- prescribed = the active plan\'s prescription for this day. When present, you can call out off-script choices, skipped exercises, or under/over the rep target. When null, treat as an unprogrammed / bonus session.',
+    '- weekly_load.sessions_last_7d = how many sessions the user has logged in the past 7 days (excluding this one). Enables streak / recovery-day framing.',
+    '- goal = the user\'s active body-comp goal. direction=\'bulk\' means volume up is on-plan; direction=\'cut\' means a hard session in a deficit is impressive; direction=\'maintain\' means consistency is the win. Null means no active goal — omit goal framing.',
+    '',
+    'DO NOT echo specific numbers from these fields (readiness=62, hrv=42, etc) — read them, then frame in prose. The deterministic stats grid is the single source of truth for numeric data.',
     '',
     'YOUR JOB: produce a short, plain-English insight (1-2 sentences) plus 1-3 observation bullets.',
     'You are RIGHT NEXT TO a deterministic stats grid (sets, volume, duration, PR detection) — do NOT restate those numbers verbatim. Add the WHY and the NEXT MOVE.',
