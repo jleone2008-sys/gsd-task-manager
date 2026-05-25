@@ -1287,6 +1287,13 @@ async function loadOlderTimelineDays(count = 7) {
     loadJournalRange(newStart, newEnd),
     loadCalendarCacheRange(newStart, newEnd),
     loadHabitSummariesForRange(newStart, newEnd),
+    // Phase 2 audit: tasks cold-load only carries the last 90 days of
+    // completed rows. Once the journal scrolls past that, the per-day
+    // "What you finished" section needs more — pull the range here.
+    // No-op if the helper isn't defined yet (load order safety).
+    (typeof loadDoneTasksForRange === 'function')
+      ? loadDoneTasksForRange(newStart + 'T00:00:00.000Z', newEnd + 'T23:59:59.999Z')
+      : Promise.resolve(),
   ]);
   journalState.timelineLoadedThrough = newStart;
   journalState.timelineDays += count;
@@ -1308,6 +1315,10 @@ async function ensureTimelineCovers(dateStr) {
   await Promise.all([
     loadJournalRange(target, newEnd),
     loadHabitSummariesForRange(target, newEnd),
+    // Phase 2 audit — see loadOlderTimelineDays for context.
+    (typeof loadDoneTasksForRange === 'function')
+      ? loadDoneTasksForRange(target + 'T00:00:00.000Z', newEnd + 'T23:59:59.999Z')
+      : Promise.resolve(),
   ]);
   // Update window
   const todayDate = jParseDate(today);

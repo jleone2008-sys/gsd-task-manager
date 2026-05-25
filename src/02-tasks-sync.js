@@ -189,23 +189,69 @@ function subscribeToChanges() {
     .subscribe(onChannelStatus);
 }
 
+// Cold-open task load. Pre-Phase 2 audit this was a single
+// `.select('*')` with no filter — pulling every task the user had
+// EVER created, including completed/archived ones from years back.
+// Loaded on every cold open, scaling linearly with the user's lifetime
+// task count, and indirectly slowing every downstream consumer
+// (journal "what you finished", home counts, AI brief context).
+//
+// New shape:
+//   1. ALL open tasks (status != 'done'). Bounded by user behavior —
+//      power users typically run 50-200 open tasks; not a growth axis.
+//   2. RECENT done tasks (completed_at within DONE_LOOKBACK_DAYS). This
+//      covers the journal's default 7-day window with generous slack,
+//      plus the Tasks tab's "Show completed" toggle for recent history.
+//
+// For older completions (journal scroll-back past the window, or a
+// Tasks-tab "Load older" affordance), see loadDoneTasksForRange below.
+const DONE_LOOKBACK_DAYS = 90;
+
+function _tasksLookbackSince() {
+  const d = new Date();
+  d.setDate(d.getDate() - DONE_LOOKBACK_DAYS);
+  return d.toISOString();
+}
+
+// Tracks the earliest completed_at we've loaded into `tasks` so journal
+// scroll-back can decide whether it needs to pull more done rows.
+let tasksDoneLoadedThrough = null;
+
 async function load() {
   setStatus('syncing');
-  const { data, error } = await db.from('tasks')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('order', { ascending: true });
+  const since = _tasksLookbackSince();
 
-  if (error) {
-    console.error('load:', error.message);
+  const [openRes, doneRes] = await Promise.all([
+    // Open: every task that isn't done. No date bound — open list is
+    // bounded by user behavior, not time.
+    db.from('tasks')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .neq('status', 'done')
+      .order('order', { ascending: true }),
+    // Done: last DONE_LOOKBACK_DAYS only. The Tasks-tab "Completed"
+    // toggle and the journal's per-day completed list both read from
+    // here. Older completions load on demand.
+    db.from('tasks')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'done')
+      .gte('completed_at', since)
+      .order('completed_at', { ascending: false }),
+  ]);
+
+  if (openRes.error || doneRes.error) {
+    console.error('load:', (openRes.error || doneRes.error).message);
     setStatus('error');
     render();
     return;
   }
 
-  tasks = data.map(rowToTask);
+  const allRows = [...(openRes.data || []), ...(doneRes.data || [])];
+  tasks = allRows.map(rowToTask);
   // Populate rowIdMap so realtime DELETE events can resolve client_id
-  data.forEach(r => rowIdMap.set(r.id, r.client_id));
+  allRows.forEach(r => rowIdMap.set(r.id, r.client_id));
+  tasksDoneLoadedThrough = since;
   render();
   setStatus('saved');
 
@@ -216,6 +262,38 @@ async function load() {
 
   subscribeToChanges();
   autoBackup();
+}
+
+// Pull additional completed tasks into `tasks` for the given date range
+// (inclusive). Used by the journal when the user scrolls back past the
+// initial 90-day window so the "What you finished" section continues to
+// populate. Idempotent — rows whose client_id is already in `tasks` are
+// skipped so concurrent calls don't dupe.
+async function loadDoneTasksForRange(startIso, endIso) {
+  if (!startIso || !endIso) return;
+  try {
+    const { data, error } = await db.from('tasks')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'done')
+      .gte('completed_at', startIso)
+      .lte('completed_at', endIso);
+    if (error) throw error;
+    const existing = new Set(tasks.map(t => t.id));
+    for (const row of (data || [])) {
+      if (!existing.has(row.client_id)) {
+        tasks.push(rowToTask(row));
+        rowIdMap.set(row.id, row.client_id);
+      }
+    }
+    // Track how far back we've loaded so the journal can decide whether
+    // to call this again on the next scroll-back.
+    if (!tasksDoneLoadedThrough || startIso < tasksDoneLoadedThrough) {
+      tasksDoneLoadedThrough = startIso;
+    }
+  } catch (e) {
+    console.warn('[tasks] loadDoneTasksForRange failed', e);
+  }
 }
 
 /* ══════ SUBTASKS DATA LAYER ══════ */
