@@ -4114,7 +4114,10 @@ function ensureTrainStyles() {
       margin: 10px 0;
     }
     .history-recap-stat {
-      background: var(--surface-2); border-radius: var(--r-sm);
+      /* Canonical box pattern — same rule as .train-ai-block (see note
+         on that rule). Never --surface-2 as a container background. */
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-sm); box-shadow: var(--shadow-card);
       padding: 10px 8px; text-align: center;
     }
     .history-recap-stat-num {
@@ -4843,19 +4846,12 @@ function ensureTrainStyles() {
        cards must always stay side-by-side. Cells shrink instead.) */
 
     /* ── Coach Card (Body Comp Report v2 — Variation A) ──────────────
-       Overrides the .train-ai-block surface-2 + dashed-border treatment
-       — for the Progress report we want this card to read as primary
-       content (white surface, solid edge, shadow), not a tertiary AI
-       sub-region. Selector intentionally combines BOTH classes to win
-       over the later-defined .train-ai-block rule without relying on
-       source order. */
-    .train-ai-block.coach-card {
-      background: var(--surface);
-      border: 1px solid var(--edge);
-      border-style: solid;
-      padding: 18px 20px;
-      box-shadow: var(--shadow-card);
-    }
+       Now that .train-ai-block uses the canonical card pattern by
+       default (white surface, solid edge, shadow), the coach-card
+       override only differs in padding. Kept here so the Progress
+       report's coach card retains its slightly roomier feel; surface/
+       border/shadow inherit from the base rule. */
+    .train-ai-block.coach-card { padding: 18px 20px; }
     .coach-headline {
       font-size: 19px; font-weight: 700; color: var(--ink);
       letter-spacing: -0.02em; line-height: 1.3;
@@ -5021,10 +5017,18 @@ function ensureTrainStyles() {
     }
     .goal-big-eta strong { color: var(--guava-700); }
 
-    /* ── AI feedback overlay (Today subtab) ───────────────────────── */
+    /* ── AI feedback overlay (Today subtab) ─────────────────────────
+       Canonical card pattern — used here, on the Progress tab Coach
+       Card, and the History Recap stat tiles below. THE RULE for any
+       new box/container in the app: white surface, solid edge border,
+       --shadow-card. Never --surface-2 as a card background (that
+       token is reserved for inline accents — pill bg, hover state,
+       progress-bar track, etc). Keeping a single class on this rule
+       so updating once propagates to every container that uses it. */
     .train-ai-block {
-      background: var(--surface-2); border: 1px dashed var(--edge-strong);
+      background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-md); padding: 12px 14px; margin-top: 14px;
+      box-shadow: var(--shadow-card);
     }
     .train-ai-block.is-error { background: var(--surface); border-style: solid; }
     .train-ai-head {
