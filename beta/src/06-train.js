@@ -2095,14 +2095,19 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     return vals;
   };
   const spark = (vals, color) => {
-    if (vals.length < 2) return '';
-    const W = 80, H = 16, pad = 2;
+    if (vals.length < 2) return `<div class="metric-spark-empty"></div>`;
+    const W = 100, H = 28, pad = 2;
     const min = Math.min(...vals), max = Math.max(...vals);
     const range = (max - min) || 1;
     const xs = vals.map((_, i) => pad + (i * (W - 2 * pad)) / (vals.length - 1));
     const ys = vals.map(v => H - pad - ((v - min) / range) * (H - 2 * pad));
     const d = vals.map((_, i) => `${i === 0 ? 'M' : 'L'}${xs[i].toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
-    return `<svg class="metric-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    // End-point dot draws attention to the current value at the right edge.
+    const lastX = xs[xs.length - 1], lastY = ys[ys.length - 1];
+    return `<svg class="metric-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="${color}"/>
+    </svg>`;
   };
 
   // Thin 4-cell metrics strip (mockup Variation A's top row). Replaces the
@@ -2286,6 +2291,7 @@ function renderProgressAIAnalysis(entry) {
       <span class="train-ai-tag is-ai">AI · Claude vision</span>
     </div>
     ${traitPills ? `<div class="coach-traits">${traitPills}</div>` : ''}
+    ${a.headline ? `<h3 class="coach-headline">${trainEsc(a.headline)}</h3>` : ''}
     ${a.overview ? `<div class="coach-overview">${trainEsc(a.overview)}</div>` : ''}
     ${focusHTML ? `<div class="coach-focus-block">${focusHTML}</div>` : ''}
     ${legacyUpgradeHTML}
@@ -2335,20 +2341,32 @@ function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, cal
   </div>`;
 }
 
-// Big goal cards — one per active goal. Replaced the compact stacked bars
-// with a prominent gradient card per kind, showing start / now / target,
-// progress bar, and an at-current-rate ETA. Modeled after the
-// body-comp-report mockup Variation B.
+// Combined goals card — weight + body fat sections share a single card
+// so the Progress dashboard doesn't fragment into two big gradient
+// blocks. Each section keeps the headline + Start/Now/Target row + ETA
+// from the mockup, separated by a hairline divider.
 function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct) {
-  const cards = [];
-  if (weightGoal) cards.push(renderGoalCard(weightGoal, latest?.weight_lbs, 'weight'));
-  else cards.push(renderGoalEmpty('weight'));
-  if (fatGoal) cards.push(renderGoalCard(fatGoal, bfPct, 'body_fat'));
-  else cards.push(renderGoalEmpty('body_fat'));
-  return cards.join('');
+  return `<div class="goal-combined-card">
+    <div class="progress-card-head" style="margin-bottom:10px">
+      <div>
+        <div class="progress-card-label">Goals</div>
+        <div class="progress-card-meta">Progress vs. start value</div>
+      </div>
+    </div>
+    <div class="goal-section ${weightGoal ? '' : 'is-empty'}">
+      ${weightGoal
+        ? renderGoalSection(weightGoal, latest?.weight_lbs, 'weight')
+        : renderGoalSectionEmpty('weight')}
+    </div>
+    <div class="goal-section ${fatGoal ? '' : 'is-empty'}">
+      ${fatGoal
+        ? renderGoalSection(fatGoal, bfPct, 'body_fat')
+        : renderGoalSectionEmpty('body_fat')}
+    </div>
+  </div>`;
 }
 
-function renderGoalCard(goal, current, kind) {
+function renderGoalSection(goal, current, kind) {
   const unit  = kind === 'weight' ? 'lbs' : '%';
   const label = kind === 'weight' ? 'Weight' : 'Body fat';
   const startVal  = Number(goal.start_value);
@@ -2396,11 +2414,11 @@ function renderGoalCard(goal, current, kind) {
     ? `${remaining.toFixed(1)} ${unit} ${directionVerb} → target ${targetVal.toFixed(1)} ${unit}`
     : `Target ${targetVal.toFixed(1)} ${unit}`;
 
-  return `<div class="goal-big-card">
-    <div class="goal-big-head">
+  return `<div class="goal-section-inner">
+    <div class="goal-section-head">
       <div>
-        <div class="goal-big-eyebrow">Goal · ${trainEsc(label)}</div>
-        <div class="goal-big-title">${trainEsc(headlineRemaining)}</div>
+        <div class="goal-section-eyebrow">${trainEsc(label)}</div>
+        <div class="goal-section-title">${trainEsc(headlineRemaining)}</div>
       </div>
       <button class="train-btn-link" data-train-action="progress-edit-goal" data-kind="${kind}">Edit ↗</button>
     </div>
@@ -2414,18 +2432,17 @@ function renderGoalCard(goal, current, kind) {
   </div>`;
 }
 
-function renderGoalEmpty(kind) {
+function renderGoalSectionEmpty(kind) {
   const label = kind === 'weight' ? 'Weight' : 'Body fat';
   const verb  = kind === 'weight' ? 'weight' : 'body fat';
-  return `<div class="goal-big-card is-empty">
-    <div class="goal-big-head">
+  return `<div class="goal-section-inner">
+    <div class="goal-section-head">
       <div>
-        <div class="goal-big-eyebrow">Goal · ${trainEsc(label)}</div>
-        <div class="goal-big-title goal-big-title--empty">No ${verb} goal set</div>
+        <div class="goal-section-eyebrow">${trainEsc(label)}</div>
+        <div class="goal-section-title goal-section-title--empty">No ${verb} goal set</div>
       </div>
-      <button class="train-btn-primary" data-train-action="progress-edit-goal" data-kind="${kind}">Set goal</button>
+      <button class="train-btn-secondary" data-train-action="progress-edit-goal" data-kind="${kind}">Set goal</button>
     </div>
-    <div class="goal-big-eta">Set a target value and date and we'll show progress + an at-current-rate ETA here.</div>
   </div>`;
 }
 
@@ -3849,35 +3866,64 @@ function ensureTrainStyles() {
       gap: 10px; padding: 0 2px; margin-bottom: 8px;
     }
     .metrics-strip {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
-      margin-bottom: 4px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      margin-bottom: 10px;
     }
     .metric-cell {
       background: var(--surface); border: 1px solid var(--edge);
-      border-radius: var(--r-sm); padding: 10px 12px;
+      border-radius: var(--r-md); padding: 12px 14px;
       box-shadow: var(--shadow-card);
+      display: flex; flex-direction: column; gap: 4px;
     }
     .metric-cell-num {
-      font-size: 18px; font-weight: 700; color: var(--ink);
-      letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
-      line-height: 1.15;
+      font-size: 22px; font-weight: 700; color: var(--ink);
+      letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+      line-height: 1.1;
     }
     .metric-cell-label {
-      font-size: 9px; font-weight: 700; letter-spacing: .05em;
-      color: var(--ink-4); text-transform: uppercase; margin-top: 2px;
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase;
     }
     .metric-cell-badge {
       font-size: 9px; font-weight: 600; color: var(--ink-4);
       text-transform: none; letter-spacing: 0;
       margin-left: 4px;
     }
-    .metric-spark { display: block; width: 100%; height: 16px; margin-top: 4px; }
+    /* Sparkline: bigger now (28px) so the time-series story reads. When
+       <2 data points exist, render a flat "need more entries" placeholder
+       instead of leaving the slot blank. */
+    .metric-spark { display: block; width: 100%; height: 28px; margin-top: auto; }
+    .metric-spark-empty {
+      display: block; width: 100%; height: 28px; margin-top: auto;
+      border-top: 1px dashed var(--edge); position: relative;
+    }
+    .metric-spark-empty::after {
+      content: 'log more entries';
+      position: absolute; inset: 50% 0 0 0; transform: translateY(-50%);
+      text-align: center; font-size: 9px; color: var(--ink-4);
+      letter-spacing: .04em; text-transform: uppercase; font-weight: 600;
+    }
     @media (max-width: 480px) {
       .metrics-strip { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ── Coach Card (Body Comp Report v2 — Variation A) ──────────── */
-    .coach-card { padding: 16px 18px; }
+    /* ── Coach Card (Body Comp Report v2 — Variation A) ──────────────
+       Overrides the .train-ai-block surface-2 + dashed-border treatment
+       — for the Progress report we want this card to read as primary
+       content (white surface, solid edge, shadow), not a tertiary AI
+       sub-region. */
+    .coach-card {
+      background: var(--surface);
+      border: 1px solid var(--edge);
+      border-style: solid;
+      padding: 18px 20px;
+      box-shadow: var(--shadow-card);
+    }
+    .coach-headline {
+      font-size: 19px; font-weight: 700; color: var(--ink);
+      letter-spacing: -0.02em; line-height: 1.3;
+      margin: 4px 0 10px 0;
+    }
     .coach-traits {
       display: flex; flex-wrap: wrap; gap: 4px;
       margin-bottom: 10px;
@@ -3986,34 +4032,33 @@ function ensureTrainStyles() {
       font-style: italic;
     }
 
-    /* ── Big Goal Card (Body Comp Report v2 — Variation B's goal block) ── */
-    .goal-big-card {
-      background: linear-gradient(135deg, var(--guava-50) 0%, var(--surface-2) 100%);
-      border: 1px solid var(--guava-700);
-      border-radius: var(--r-md); padding: 16px;
-      box-shadow: var(--shadow-card);
-      margin-bottom: 12px;
+    /* ── Combined Goal Card (weight + body fat in one block) ────────
+       Single white card with two stacked sections divided by a hairline.
+       Variation B's mockup goal-block design adapted to coexist with
+       the body-fat goal in the same surface. */
+    .goal-combined-card {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 14px 16px;
+      box-shadow: var(--shadow-card); margin-bottom: 12px;
     }
-    .goal-big-card.is-empty {
-      background: var(--surface);
-      border: 1px dashed var(--edge-strong);
-    }
-    .goal-big-head {
+    .goal-section { padding: 12px 0; }
+    .goal-section + .goal-section { border-top: 1px solid var(--edge); }
+    .goal-section-head {
       display: flex; align-items: flex-start; justify-content: space-between;
       gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
     }
-    .goal-big-eyebrow {
+    .goal-section-eyebrow {
       font-size: 10px; font-weight: 700; letter-spacing: .08em;
       color: var(--guava-700); text-transform: uppercase; margin-bottom: 4px;
     }
-    .goal-big-card.is-empty .goal-big-eyebrow { color: var(--ink-3); }
-    .goal-big-title {
-      font-size: 15px; font-weight: 700; color: var(--ink);
+    .goal-section.is-empty .goal-section-eyebrow { color: var(--ink-3); }
+    .goal-section-title {
+      font-size: 14px; font-weight: 700; color: var(--ink);
       letter-spacing: -0.01em; line-height: 1.3;
     }
-    .goal-big-title--empty { color: var(--ink-3); font-weight: 600; }
+    .goal-section-title--empty { color: var(--ink-3); font-weight: 600; }
     .goal-big-bar {
-      background: rgba(255,255,255,0.7); border-radius: 999px; height: 14px;
+      background: var(--surface-2); border-radius: 999px; height: 12px;
       overflow: hidden; position: relative; margin-bottom: 6px;
     }
     .goal-big-bar-fill {

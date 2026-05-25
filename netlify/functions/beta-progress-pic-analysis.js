@@ -214,7 +214,8 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
     input_schema: {
       type: 'object',
       properties: {
-        overview:    { type: 'string', description: '2-3 sentence prescriptive paragraph. NOT a description ("you have shoulders"), a coaching read ("shoulders are leading, waist isn\'t — hold the bulk 6 more weeks"). ≤320 chars.' },
+        headline:    { type: 'string', description: 'ONE bold one-liner that frames the read — verb-first or noun-led, ≤72 chars. The card displays this in big bold above the overview paragraph. Good examples: "Lean bulk is working — shoulders are leading, waist isn\'t.", "Recomp stalled — calories too tight.", "Strong base, posterior chain lagging.". NEVER greetings, NEVER filler ("Looking good!"). Punctuate as a complete thought.' },
+        overview:    { type: 'string', description: '2-3 sentence prescriptive paragraph that extends the headline with the WHY and the NEXT MOVE. NOT a description ("you have shoulders"), a coaching read ("shoulders are leading, waist isn\'t — hold the bulk 6 more weeks"). ≤320 chars.' },
         needs_work:  { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Muscle groups that look underdeveloped relative to the rest. Single muscle-group names — "Hamstrings", "Mid-back", "Posterior delts".' },
         balanced:    { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Muscle groups that look proportional and well-developed. Same naming as needs_work.' },
         focus_areas: {
@@ -317,6 +318,7 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
   }).filter(f => f && f.title);
 
   const analysis = {
+    headline:     clipStr(raw.headline,      72),
     overview:     clipStr(raw.overview,     320),
     needs_work:   clipArr(raw.needs_work,   4, 60),
     balanced:     clipArr(raw.balanced,     4, 60),
