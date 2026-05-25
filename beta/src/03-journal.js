@@ -888,6 +888,12 @@ function ensureJournalStyles() {
     .j-mood-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); border: 1.5px solid transparent; cursor: pointer; font-size: 22px; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
     .j-mood-btn:hover { transform: scale(1.08); }
     .j-mood-btn.is-selected { border-color: var(--guava-700); background: var(--guava-50); }
+    /* Phase 5 — today's edit-modal picker is read-only; intra-day
+       check-ins on Home are the new entry point. */
+    .j-mood.is-readonly .j-mood-btn { cursor: default; opacity: 0.65; }
+    .j-mood.is-readonly .j-mood-btn:hover { transform: none; }
+    .j-mood-btn[disabled] { pointer-events: none; }
+    .j-mood-hint { font-size: 11px; color: var(--ink-4); margin-top: 8px; line-height: 1.4; }
 
     /* Photo source modal */
     .j-photo-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.45); display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 20px; }
@@ -1516,10 +1522,19 @@ function renderEditModalBody(ds) {
   const photosHtml = (entry.photos || []).map((src, i) =>
     `<div class="j-photo"><img src="${src}" alt="" data-jlightbox="${ds}|${i}" /><button class="j-photo-del" data-jphoto-del="${i}" title="Remove">×</button></div>`
   ).join('');
+  // Phase 5 — for TODAY, the mood picker becomes read-only with a
+  // pointer to the Home check-in flow (mood is now the rounded average
+  // of intra-day check-ins). For PAST days, keep the existing manual
+  // single-tap override since no check-in data exists for those dates.
+  const isTodayEntry = ds === jToday();
   const moodHtml = MOOD_EMOJI.map((emoji, i) => {
     const sel = entry.mood === (i+1) ? ' is-selected' : '';
-    return `<button class="j-mood-btn${sel}" data-jmood="${i+1}" title="${MOOD_LABEL[i]}">${emoji}</button>`;
+    const disabled = isTodayEntry ? ' disabled' : '';
+    return `<button class="j-mood-btn${sel}" data-jmood="${i+1}" title="${MOOD_LABEL[i]}"${disabled}>${emoji}</button>`;
   }).join('');
+  const moodHint = isTodayEntry
+    ? `<div class="j-mood-hint">Today's mood is the average of your Home check-ins. Tap an emoji on the Home tab to log a check-in.</div>`
+    : '';
   return `
     <div class="j-section">
       <div class="j-section-h">Daily Reflection</div>
@@ -1531,7 +1546,8 @@ function renderEditModalBody(ds) {
     </div>
     <div class="j-section">
       <div class="j-section-h">Mood</div>
-      <div class="j-mood">${moodHtml}</div>
+      <div class="j-mood${isTodayEntry ? ' is-readonly' : ''}">${moodHtml}</div>
+      ${moodHint}
     </div>
     <div class="j-section">
       <div class="j-section-h">Photos</div>
@@ -2022,9 +2038,13 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Mood click (in edit modal)
+  // Mood click (in edit modal). For today's entry the picker is
+  // disabled — Home check-ins are the new write path. Honor the
+  // disabled attribute defensively in case a future child element
+  // makes the click bubble through.
   const moodBtn = e.target.closest('[data-jmood]');
   if (moodBtn) {
+    if (moodBtn.disabled) return;
     const m = parseInt(moodBtn.dataset.jmood, 10);
     const ds = journalState.editingDate;
     if (!ds) return;

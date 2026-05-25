@@ -22,6 +22,11 @@ let _homeOura = null;
 let _homeOuraInflight = null;
 let _homeWired = false;
 
+// Phase 5 — intra-day mood check-ins. Today's check-ins (newest first
+// inside the array; we sort on render). Single fetch on Home mount;
+// patched in-place by the tap + delete handlers.
+let _homeMoodCheckins = [];
+
 function homeToday() {
   return (typeof jToday === 'function') ? jToday() : new Date().toISOString().slice(0, 10);
 }
@@ -239,13 +244,138 @@ function homeRingsRowHTML(oura) {
     </div>`;
 }
 function homeMoodRowHTML(entry) {
-  const sel = entry && entry.mood ? entry.mood : null;   // 1–5, null = unset
+  // Picker stays as-is structurally — same 5 buttons. Each tap now
+  // creates a check-in (handled in the click delegator), so there's no
+  // single "selected" emoji anymore; we drop the .is-selected logic.
   const labels = homeMoodLabels(), emoji = homeMoodEmoji();
   const btns = emoji.map((e, i) => `
-    <button class="home-mood-btn${sel === i + 1 ? ' is-selected' : ''}" data-home-mood="${i + 1}">
+    <button class="home-mood-btn" data-home-mood="${i + 1}" title="Log check-in: ${labels[i] || ''}">
       <span>${e}</span><span class="home-mood-cap">${labels[i] || ''}</span>
     </button>`).join('');
-  return `<div class="home-mood">${btns}</div>`;
+  return `<div class="home-mood">${btns}</div>
+    <div class="home-mood-checkins" id="homeMoodCheckins">${homeMoodCheckinsHTML(_homeMoodCheckins, entry)}</div>`;
+}
+
+// Today's check-in timeline + summary. Renders inline below the picker.
+// Each chip: time · emoji · × (delete). Summary line: avg emoji · N.
+function homeMoodCheckinsHTML(checkins, entry) {
+  const list = Array.isArray(checkins) ? checkins.slice() : [];
+  list.sort((a, b) => new Date(a.captured_at) - new Date(b.captured_at));
+  const emoji = homeMoodEmoji();
+  if (!list.length) {
+    // Quiet empty state — keeps the card uncluttered when no check-ins
+    // exist yet. The picker above is the obvious call-to-action.
+    const dailyMood = entry?.mood;
+    if (dailyMood) {
+      return `<div class="home-mood-summary"><span class="home-mood-summary-label">Today</span> <span class="home-mood-summary-emoji">${emoji[dailyMood - 1]}</span></div>`;
+    }
+    return '';
+  }
+  const chips = list.map(c => {
+    const t = new Date(c.captured_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const em = emoji[c.mood - 1] || '·';
+    return `<span class="home-mood-chip">
+      <span class="home-mood-chip-time">${hEsc(t)}</span>
+      <span class="home-mood-chip-emoji">${em}</span>
+      <button class="home-mood-chip-del" data-home-mood-checkin-delete="${hEsc(c.id)}" title="Remove this check-in">×</button>
+    </span>`;
+  }).join('');
+  const avgRaw = list.reduce((s, c) => s + Number(c.mood), 0) / list.length;
+  const avgIdx = Math.max(1, Math.min(5, Math.round(avgRaw)));
+  const summary = `<div class="home-mood-summary">
+    <span class="home-mood-summary-label">Today's mood</span>
+    <span class="home-mood-summary-emoji">${emoji[avgIdx - 1]}</span>
+    <span class="home-mood-summary-count">· ${list.length} check-in${list.length === 1 ? '' : 's'}</span>
+  </div>`;
+  return `<div class="home-mood-chips">${chips}</div>${summary}`;
+}
+
+// Compute the rounded average of the in-memory check-ins; null when none.
+function homeMoodAvg() {
+  const list = _homeMoodCheckins;
+  if (!list || !list.length) return null;
+  const sum = list.reduce((s, c) => s + Number(c.mood), 0);
+  return Math.max(1, Math.min(5, Math.round(sum / list.length)));
+}
+
+// Pull today's check-ins (single .select). Called on Home mount.
+// Filters by user_local "today" date range so DST + tz edges behave.
+async function loadHomeMoodCheckins() {
+  try {
+    const today = homeToday();
+    const startISO = new Date(today + 'T00:00:00').toISOString();
+    const endISO   = new Date(today + 'T23:59:59.999').toISOString();
+    const { data, error } = await db.from('mood_checkins')
+      .select('id, captured_at, mood')
+      .gte('captured_at', startISO)
+      .lte('captured_at', endISO)
+      .order('captured_at', { ascending: true });
+    if (error) throw error;
+    _homeMoodCheckins = data || [];
+  } catch (e) {
+    console.warn('[home] loadHomeMoodCheckins failed', e);
+    _homeMoodCheckins = [];
+  }
+}
+
+// Insert a check-in + recompute today's daily mood. Patches in-memory
+// state + repaints the mood subsection. Calls homeBriefRecompute so any
+// mood reference in the brief recap refreshes inline.
+async function insertMoodCheckin(value) {
+  const v = parseInt(value, 10);
+  if (!Number.isFinite(v) || v < 1 || v > 5) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const captured_at = new Date().toISOString();
+    const { data, error } = await db.from('mood_checkins')
+      .insert({ user_id: session.user.id, captured_at, mood: v })
+      .select('id, captured_at, mood')
+      .single();
+    if (error) throw error;
+    _homeMoodCheckins.push(data);
+    await syncDailyMoodFromCheckins();
+    repaintHomeMoodRow();
+  } catch (e) {
+    console.warn('[home] insertMoodCheckin failed', e);
+  }
+}
+
+async function deleteMoodCheckin(id) {
+  if (!id) return;
+  try {
+    const { error } = await db.from('mood_checkins').delete().eq('id', id);
+    if (error) throw error;
+    _homeMoodCheckins = _homeMoodCheckins.filter(c => c.id !== id);
+    await syncDailyMoodFromCheckins();
+    repaintHomeMoodRow();
+  } catch (e) {
+    console.warn('[home] deleteMoodCheckin failed', e);
+  }
+}
+
+// Recompute today's daily mood from in-memory check-ins and upsert into
+// journal_entries.mood. NULL when there are no check-ins (rather than
+// leaving a stale average sitting around).
+async function syncDailyMoodFromCheckins() {
+  const today = homeToday();
+  const avg = homeMoodAvg();
+  // Use the existing saveJournalEntry path so the journalState cache
+  // also updates (the day card / brief recompute both read from there).
+  if (typeof saveJournalEntry === 'function') {
+    await saveJournalEntry(today, { mood: avg });
+  }
+  // Tier-1: brief recap mood label refreshes from journalState.
+  if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
+}
+
+// Repaint just the picker + check-ins block (not the whole Journal card,
+// to avoid clobbering an in-progress reflection / learning textarea).
+function repaintHomeMoodRow() {
+  const today = homeToday();
+  const entry = (typeof journalState !== 'undefined') ? journalState.entries.get(today) : null;
+  const moodEl = document.getElementById('homeMoodRow');
+  if (moodEl) moodEl.innerHTML = homeMoodRowHTML(entry);
 }
 
 /* ── Section bodies (Calendar · Tasks · Habits · Notes) ───── */
@@ -504,6 +634,11 @@ async function hydrateHomeToday() {
     const oura = await loadOuraScores();
     if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
   }
+  // Phase 5 — intra-day mood check-ins. Single fetch on mount.
+  // Patched in-place by insert/delete handlers; daily journal mood is
+  // kept in sync via syncDailyMoodFromCheckins().
+  await loadHomeMoodCheckins();
+
   // Journal reflection + mood (today's journal entry).
   if (typeof loadJournalEntry === 'function') {
     const entry = await loadJournalEntry(homeToday());
@@ -714,17 +849,19 @@ function homeWireOnce() {
     if (e.target.closest('[data-home-newnote]')) { homeCreateNote(); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
 
+    // Phase 5 — intra-day mood check-in. Tapping an emoji creates a
+    // new check-in at the current timestamp (no toggle/deselect — each
+    // tap is a fresh log). The daily journal_entries.mood is recomputed
+    // as the rounded average of today's check-ins.
     const moodEl = e.target.closest('[data-home-mood]');
     if (moodEl) {
       const val = parseInt(moodEl.dataset.homeMood, 10);  // 1–5
-      const today = homeToday();
-      const cur = (typeof journalState !== 'undefined' && journalState.entries.get(today)?.mood) || null;
-      const newMood = cur === val ? null : val;
-      if (typeof saveJournalEntry === 'function') saveJournalEntry(today, { mood: newMood });
-      const entry = (typeof journalState !== 'undefined' && journalState.entries.get(today)) || { mood: newMood };
-      refreshHomeSection('homeMoodRow', homeMoodRowHTML(entry));
-      // Tier 1 realtime: mood label in the brief recomputes from live state.
-      if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
+      insertMoodCheckin(val);
+      return;
+    }
+    const moodDelEl = e.target.closest('[data-home-mood-checkin-delete]');
+    if (moodDelEl) {
+      deleteMoodCheckin(moodDelEl.dataset.homeMoodCheckinDelete);
       return;
     }
     // Tasks (data-task-action) and habits (data-habit-action) are handled by
