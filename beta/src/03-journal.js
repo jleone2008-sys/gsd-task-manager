@@ -821,11 +821,44 @@ function ensureJournalStyles() {
       background: var(--surface-2); color: var(--ink-3);
       text-transform: uppercase;
     }
-    /* Phase 5 — event meta editor modal */
-    .j-event-meta-modal { max-width: 480px; }
-    .j-event-meta-modal .day-detail-meta {
-      font-size: 11px; color: var(--ink-4); margin-top: 2px;
+    /* Phase 5 — event meta editor modal. Built on the journal-native
+       .j-edit-modal/.j-edit-card chrome so the styles are always loaded
+       (the previous build used train-* classes which only injected when
+       the user opened the Train tab — leading to an un-styled overlay
+       that rendered as block content at the bottom of the page). */
+    .j-event-meta-modal .j-edit-card { max-width: 480px; }
+    .j-event-meta-time {
+      font-size: 11px; color: var(--ink-4); margin-top: 4px;
+      letter-spacing: 0.02em;
     }
+    .j-event-meta-tag {
+      width: 100%; box-sizing: border-box;
+      padding: 8px 12px; font-size: 14px;
+      min-height: 0;            /* overrides .j-textarea's min-height */
+      resize: none;
+    }
+    .j-event-meta-footer {
+      display: flex; gap: 8px; align-items: center; justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .j-event-meta-footer .j-edit-submit {
+      width: auto; padding: 8px 16px;
+    }
+    .j-edit-cancel {
+      background: var(--surface); color: var(--ink-2);
+      border: 1px solid var(--edge-strong);
+      padding: 8px 16px; font-family: inherit; font-size: 13px;
+      font-weight: 600; border-radius: var(--r-md); cursor: pointer;
+    }
+    .j-edit-cancel:hover { background: var(--surface-2); }
+    .j-event-meta-remove {
+      margin-right: auto;       /* push Cancel + Save to the right */
+      background: none; border: 0;
+      color: var(--guava-700); cursor: pointer;
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 6px 8px;
+    }
+    .j-event-meta-remove:hover { color: var(--guava-800); text-decoration: underline; }
     .j-event-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .j-event-chip {
       background: var(--surface-2); border: 1px solid var(--edge);
@@ -1300,34 +1333,38 @@ function openEventMetaEditor(eventId) {
   }).join('');
   const chipsHTML = CHIPS.map(c => `<button type="button" class="j-event-chip" data-jevent-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
 
-  const html = `<div class="train-modal-overlay" id="jEventMetaModal">
-    <div class="train-modal j-event-meta-modal" data-modal-stop>
-      <div class="train-modal-head">
+  // Uses the journal-native modal classes (j-edit-modal / j-edit-card)
+  // so the CSS is always present, regardless of whether the user has
+  // visited Train this session.
+  const html = `<div class="j-edit-modal j-event-meta-modal" id="jEventMetaModal">
+    <div class="j-edit-card" data-modal-stop>
+      <div class="j-edit-head">
         <div>
-          <div class="day-detail-dow">Event details</div>
-          <div class="day-detail-name">${escapeHtml(ev.summary)}</div>
-          <div class="day-detail-meta">${escapeHtml(time)}</div>
+          <div class="j-edit-title">${escapeHtml(ev.summary)}</div>
+          <div class="j-event-meta-time">${escapeHtml(time)}</div>
         </div>
-        <button class="train-modal-close" data-modal-close title="Close">×</button>
+        <button class="j-edit-close" data-modal-close title="Close" type="button">×</button>
       </div>
-      <div class="train-form-section">
-        <div class="train-form-label">Relationship</div>
-        <input class="form-input" id="jEventTag" type="text" maxlength="40" placeholder="e.g. Boss, Customer, Family" value="${escapeHtml(meta.relationship_tag || '')}">
-        <div class="j-event-chip-row" style="margin-top:8px;">${chipsHTML}</div>
+      <div class="j-edit-body">
+        <div class="j-section">
+          <div class="j-section-h">Relationship</div>
+          <input class="j-textarea j-event-meta-tag" id="jEventTag" type="text" maxlength="40" placeholder="e.g. Boss, Customer, Family" value="${escapeHtml(meta.relationship_tag || '')}">
+          <div class="j-event-chip-row" style="margin-top:8px;">${chipsHTML}</div>
+        </div>
+        <div class="j-section">
+          <div class="j-section-h">Energy after</div>
+          <div class="j-mood">${moodRow}</div>
+        </div>
+        <div class="j-section">
+          <div class="j-section-h">Notes</div>
+          <textarea class="j-textarea" id="jEventNotes" maxlength="400" placeholder="What happened? Decisions, vibes, follow-ups…">${escapeHtml(meta.notes || '')}</textarea>
+        </div>
       </div>
-      <div class="train-form-section" style="margin-top:14px">
-        <div class="train-form-label">Energy after</div>
-        <div class="j-mood-grid">${moodRow}</div>
-      </div>
-      <div class="train-form-section" style="margin-top:14px">
-        <div class="train-form-label">Notes</div>
-        <textarea class="train-notes-input" id="jEventNotes" maxlength="400" placeholder="What happened? Decisions, vibes, follow-ups…">${escapeHtml(meta.notes || '')}</textarea>
-      </div>
-      <div class="train-form-actions" style="margin-top:14px">
+      <div class="j-edit-footer j-event-meta-footer">
         ${meta.energy_after != null || meta.relationship_tag || meta.notes
-          ? `<button class="train-btn-link" style="color:var(--guava-700)" data-jevent-remove>Remove</button>` : ''}
-        <button class="train-btn-secondary" data-modal-close>Cancel</button>
-        <button class="train-btn-primary" data-jevent-save>Save</button>
+          ? `<button class="j-event-meta-remove" data-jevent-remove type="button">Remove</button>` : ''}
+        <button class="j-edit-cancel" data-modal-close type="button">Cancel</button>
+        <button class="j-edit-submit" data-jevent-save type="button">Save</button>
       </div>
     </div>
   </div>`;
