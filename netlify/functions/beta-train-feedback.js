@@ -285,27 +285,63 @@ async function fetchWeeklyLoad(userId, sessionId, sessionDate, serviceKey) {
   return Array.isArray(rows) ? rows.length : 0;
 }
 
-// Active body composition goal. Direction inferred from target vs start
-// so the prompt can frame volume-up as on-plan for bulk, etc.
+// Active body composition goals — one per kind (weight, body_fat) can be
+// active simultaneously. Common case: a recomp where the user wants to
+// gain weight (muscle) while losing body fat. Returning a single goal
+// would mislead Claude (it'd frame the session against only half the
+// picture). We return an object keyed by kind plus a derived `summary`
+// the prompt can read at a glance: 'recomp' | 'bulk' | 'cut' | 'maintain'
+// | 'mixed'. Returns null when no active goals.
 async function fetchActiveGoal(userId, serviceKey) {
-  const url = `${SUPABASE_URL}/rest/v1/body_comp_goals?user_id=eq.${userId}&is_active=eq.true&select=kind,start_value,target_value,start_date,end_date&order=created_at.desc&limit=1`;
+  const url = `${SUPABASE_URL}/rest/v1/body_comp_goals?user_id=eq.${userId}&is_active=eq.true&select=kind,start_value,target_value,start_date,end_date&order=created_at.desc`;
   const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
   if (!r.ok) throw new Error(`body_comp_goals_fetch_${r.status}`);
-  const row = (await r.json())?.[0];
-  if (!row) return null;
-  const start  = Number(row.start_value);
-  const target = Number(row.target_value);
-  let direction = 'maintain';
-  if (Number.isFinite(start) && Number.isFinite(target)) {
-    if (target > start)      direction = 'bulk';
-    else if (target < start) direction = 'cut';
-  }
-  return {
+  const rows = await r.json();
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+
+  // One row per kind (RLS + app-side enforcement). Build a per-kind map.
+  const directionFor = (row) => {
+    const start  = Number(row.start_value);
+    const target = Number(row.target_value);
+    if (!Number.isFinite(start) || !Number.isFinite(target)) return 'maintain';
+    if (target > start) return 'bulk';
+    if (target < start) return 'cut';
+    return 'maintain';
+  };
+  const shape = (row) => ({
     kind:         row.kind,
-    direction,
+    direction:    directionFor(row),
     start_value:  row.start_value,
     target_value: row.target_value,
     end_date:     row.end_date,
+  });
+  const byKind = {};
+  for (const row of rows) {
+    if (!byKind[row.kind]) byKind[row.kind] = shape(row);   // first wins (most recent)
+  }
+
+  // Derive the authoritative summary server-side. Claude is told to READ
+  // this value, never infer one from the per-kind data — so the rule is
+  // hard-coded here:
+  //   both cut          → 'cut'
+  //   both bulk         → 'bulk'
+  //   one cut + one bulk → 'recomp' (gain muscle while losing fat, in
+  //                        either ordering of weight vs body_fat)
+  //   only one goal     → that goal's direction
+  //   anything else     → 'maintain'
+  const weightDir = byKind.weight?.direction    || null;
+  const bfDir     = byKind.body_fat?.direction  || null;
+  const dirs      = [weightDir, bfDir].filter(d => d === 'bulk' || d === 'cut');
+  let summary;
+  if (dirs.length === 2 && dirs[0] !== dirs[1])       summary = 'recomp';
+  else if (dirs.length >= 1 && dirs.every(d => d === 'bulk')) summary = 'bulk';
+  else if (dirs.length >= 1 && dirs.every(d => d === 'cut'))  summary = 'cut';
+  else summary = 'maintain';
+
+  return {
+    summary,
+    weight:   byKind.weight   || null,
+    body_fat: byKind.body_fat || null,
   };
 }
 
@@ -412,7 +448,12 @@ async function callClaude(ctx, anthropicKey) {
     '- recovery = wearable read for the session date (oura readiness OR whoop recovery, picked from the user\'s chosen source). Use to frame fatigue: a hard session at score 55 reads very differently than at 85. When recovery.stale=true, downgrade your confidence in that signal. recovery may be null — that\'s fine, just don\'t reference it.',
     '- prescribed = the active plan\'s prescription for this day. When present, you can call out off-script choices, skipped exercises, or under/over the rep target. When null, treat as an unprogrammed / bonus session.',
     '- weekly_load.sessions_last_7d = how many sessions the user has logged in the past 7 days (excluding this one). Enables streak / recovery-day framing.',
-    '- goal = the user\'s active body-comp goal. direction=\'bulk\' means volume up is on-plan; direction=\'cut\' means a hard session in a deficit is impressive; direction=\'maintain\' means consistency is the win. Null means no active goal — omit goal framing.',
+    '- goal = the user\'s active body-comp goals. READ goal.summary directly — it is the authoritative value, computed server-side:',
+    '    • \'bulk\' = gaining (volume up is on-plan, push through fatigue)',
+    '    • \'cut\' = losing (a hard session in a deficit is impressive)',
+    '    • \'recomp\' = simultaneously gaining muscle AND losing fat (the user has BOTH a weight-gain goal and a body-fat-loss goal active at once; resistance training + protein focus matter most, scale weight is a noisy signal)',
+    '    • \'maintain\' = consistency is the win',
+    '    Do NOT infer the summary yourself from goal.weight / goal.body_fat — use goal.summary as given. The per-kind objects are available for specific framing but the overall stance comes from summary. Null goal means no active goal — omit goal framing entirely.',
     '',
     'DO NOT echo specific numbers from these fields (readiness=62, hrv=42, etc) — read them, then frame in prose. The deterministic stats grid is the single source of truth for numeric data.',
     '',
