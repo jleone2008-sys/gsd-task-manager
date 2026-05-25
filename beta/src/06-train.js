@@ -1359,7 +1359,7 @@ function renderTodayLoggedSessions(sessions, viewDate, todayStr) {
     }
     const badge = typeBadge[s.day_type] || { txt: s.day_type, cls: '' };
     const feel = (typeof s.feel === 'number')
-      ? ['🤩','😊','😐','😔','😢'][s.feel - 1] || ''
+      ? ['😢','😔','😐','😊','🤩'][s.feel - 1] || ''
       : '';
     const notes = s.session_notes
       ? `<div class="logged-session-notes">${trainEsc(s.session_notes)}</div>`
@@ -1572,8 +1572,10 @@ function renderTodayRest(st) {
 }
 
 function renderTodayFooter(st) {
-  const moodEmojis = ['🤩','😊','😐','😔','😢'];
-  const moodLabels = ['Great','Good','Okay','Low','Bad'];
+  // Mood scale: 1=Bad ... 5=Great (matches the conventional 1-5
+  // direction after invert_mood_scale.sql).
+  const moodEmojis = ['😢','😔','😐','😊','🤩'];
+  const moodLabels = ['Bad','Low','Okay','Good','Great'];
   const mood = moodEmojis.map((e, i) => `
     <button class="mood-btn ${st.feel === i + 1 ? 'is-selected' : ''}" data-train-action="feel" data-val="${i + 1}">
       <span class="mood-emoji">${e}</span><span class="mood-label">${moodLabels[i]}</span>

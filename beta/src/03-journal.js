@@ -52,8 +52,12 @@ const journalState = {
   habitSummaries: new Map()
 };
 
-const MOOD_EMOJI = ['🤩', '😊', '😐', '😔', '😢'];
-const MOOD_LABEL = ['Great', 'Good', 'Okay', 'Low', 'Bad'];
+// Mood scale: 1=Bad ... 5=Great (array index N → mood value N+1).
+// Inverted from the original 1=best convention via the
+// invert_mood_scale.sql migration so the order matches every standard
+// 1-5 rating UX + LLMs read it correctly without a custom prompt note.
+const MOOD_EMOJI = ['😢', '😔', '😐', '😊', '🤩'];
+const MOOD_LABEL = ['Bad', 'Low', 'Okay', 'Good', 'Great'];
 
 /* ── DATE HELPERS ─────────────────────────────────────────── */
 

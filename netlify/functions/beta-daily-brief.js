@@ -29,6 +29,7 @@ const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const OPEN_METEO_URL  = 'https://api.open-meteo.com/v1/forecast';
 
 const { recommendSleepTarget } = require('./lib/recommendations');
+const { MOOD_LABELS, MOOD_SCALE_NOTE, moodLabel } = require('./lib/mood-scale');
 
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
@@ -62,14 +63,10 @@ const DEFAULT_TIMEZONE    = 'America/New_York';
 // "still syncing — tap to retry" affordance.
 const OURA_STALE_HOURS = 24;
 
-// GSD mood scale: 1=best, 5=worst. We send labels (not integers) to Claude.
-const MOOD_LABELS = { 1: 'Great', 2: 'Good', 3: 'Okay', 4: 'Low', 5: 'Bad' };
-const MOOD_SCALE_NOTE = 'GSD mood scale: 1=Great (best), 2=Good, 3=Okay, 4=Low, 5=Bad (worst). Lower numbers are better.';
-function moodLabel(v) {
-  if (v == null) return null;
-  const k = Math.round(Number(v));
-  return MOOD_LABELS[k] || `Unknown(${v})`;
-}
+// MOOD_LABELS / MOOD_SCALE_NOTE / moodLabel are imported from
+// ./lib/mood-scale.js so every Netlify function that surfaces mood to
+// Claude uses the same shared mapping. See that file for the scale
+// convention (1=Bad ... 5=Great after the invert_mood_scale migration).
 
 // Hero ring options. Server picks a hint by largest |today - 7d median|;
 // Claude can override but only within this enum.

@@ -23,6 +23,8 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const DEFAULT_MODEL      = 'claude-opus-4-7';
 const DEFAULT_MAX_TOKENS = 600;
 
+const { moodLabel, MOOD_SCALE_NOTE } = require('./lib/mood-scale');
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
   if (event.httpMethod !== 'POST')    return cors(json(405, { error: 'method_not_allowed' }));
@@ -167,16 +169,18 @@ function buildContext(session, sets, priorSessions, priorSetsMap) {
     return {
       session_date: p.session_date,
       feel:         p.feel,
+      feel_label:   moodLabel(p.feel),   // explicit label so Claude doesn't have to interpret the int
       exercises:    summary,
     };
   });
 
   return {
     today: {
-      session_date: session.session_date,
-      day_name:     session.day_name,
-      day_type:     session.day_type,
-      feel:         session.feel,
+      session_date:  session.session_date,
+      day_name:      session.day_name,
+      day_type:      session.day_type,
+      feel:          session.feel,
+      feel_label:    moodLabel(session.feel),
       session_notes: session.session_notes,
       exercises,
     },
@@ -193,6 +197,8 @@ async function callClaude(ctx, anthropicKey) {
 
   const systemPrompt = [
     'You are a strength + conditioning coach reviewing a single workout the user just submitted.',
+    '',
+    `SCALES: ${MOOD_SCALE_NOTE} The session payload includes both the raw integer (\`feel\`) and the matching label (\`feel_label\`) — read the label, don't infer from the number.`,
     '',
     'YOUR JOB: produce a short, plain-English insight (1-2 sentences) plus 1-3 observation bullets.',
     'You are RIGHT NEXT TO a deterministic stats grid (sets, volume, duration, PR detection) — do NOT restate those numbers verbatim. Add the WHY and the NEXT MOVE.',

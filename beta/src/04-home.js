@@ -16,7 +16,10 @@
 ═══════════════════════════════════════════════════════════════ */
 
 const HOME_RING_COLORS = { sleep: '#8a6a84', readiness: '#bf9c47', activity: '#7a8a59' };
-const HOME_MOOD_EMOJI  = ['🤩', '😊', '😐', '😔', '😢'];
+// Mood scale: 1=Bad ... 5=Great. Array index N → mood value N+1.
+// (Inverted from the original 1=best convention via the
+// invert_mood_scale.sql migration to match standard 1-5 ratings.)
+const HOME_MOOD_EMOJI  = ['😢', '😔', '😐', '😊', '🤩'];
 
 let _homeOura = null;
 let _homeOuraInflight = null;
@@ -36,7 +39,7 @@ function hEsc(s) {
   ));
 }
 function homeMoodEmoji() { return (typeof MOOD_EMOJI !== 'undefined') ? MOOD_EMOJI : HOME_MOOD_EMOJI; }
-function homeMoodLabels() { return (typeof MOOD_LABEL !== 'undefined') ? MOOD_LABEL : ['Great','Good','Okay','Low','Bad']; }
+function homeMoodLabels() { return (typeof MOOD_LABEL !== 'undefined') ? MOOD_LABEL : ['Bad','Low','Okay','Good','Great']; }
 function homeOuraConnected() { return !!(typeof userSettings !== 'undefined' && userSettings?.integrations?.oura?.connected); }
 function homeWhoopConnected() { return !!(typeof userSettings !== 'undefined' && userSettings?.integrations?.whoop?.connected); }
 function homeHealthSource() {
