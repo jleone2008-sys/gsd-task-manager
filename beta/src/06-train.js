@@ -238,12 +238,7 @@ function trainWireOnce() {
         _trainProgressState.entryDraft = {
           captured_date: entry.captured_date,
           weight_lbs:    entry.weight_lbs   != null ? String(entry.weight_lbs)   : '',
-          neck_in:       entry.neck_in      != null ? String(entry.neck_in)      : '',
           waist_in:      entry.waist_in     != null ? String(entry.waist_in)     : '',
-          chest_in:      entry.chest_in     != null ? String(entry.chest_in)     : '',
-          arms_in:       entry.arms_in      != null ? String(entry.arms_in)      : '',
-          hips_in:       entry.hips_in      != null ? String(entry.hips_in)      : '',
-          thighs_in:     entry.thighs_in    != null ? String(entry.thighs_in)    : '',
           notes:         entry.notes        || '',
           photos: {
             front: { file: null, preview: null, path: entry.front_storage_path || null },
@@ -295,11 +290,6 @@ function trainWireOnce() {
       // Manual re-run of the vision analysis from the dashboard.
       const id = actionEl.dataset.id;
       runProgressPicAnalysis(id);
-      return;
-    }
-    if (action === 'toggle-meas') {
-      _trainProgressState.measOpen = !_trainProgressState.measOpen;
-      renderTrain();
       return;
     }
   });
@@ -358,8 +348,6 @@ function trainWireOnce() {
       ensureEntryDraft();
       const key = el.dataset.key;
       _trainProgressState.entryDraft[key] = v;
-      // For neck / waist / hips, re-render so the live BF preview updates.
-      if (['neck_in','waist_in','hips_in'].includes(key)) renderTrain();
       return;
     }
     if (action === 'goal-input') {
@@ -1791,7 +1779,7 @@ const _trainProgressState = {
   goals:         [],       // active body_comp_goals rows
   view:          'dashboard', // 'dashboard' | 'wizard' | 'new-entry' | 'goal'
   // In-flight new-entry form state — survives action handler renders.
-  entryDraft:    null,     // { captured_date, weight_lbs, neck_in, waist_in, … }
+  entryDraft:    null,     // { captured_date, weight_lbs, waist_in, notes, photos }
   // In-flight wizard state.
   wizardDraft:   null,     // { sex, dob, height_in, activity_level }
   // In-flight goal-editor state.
@@ -1815,7 +1803,7 @@ async function loadTrainProgressData() {
         .eq('user_id', currentUser.id)
         .maybeSingle(),
       db.from('progress_pics')
-        .select('id,captured_date,weight_lbs,neck_in,waist_in,chest_in,arms_in,hips_in,thighs_in,notes,body_fat_pct,body_fat_method,body_fat_confidence,front_storage_path,side_storage_path,back_storage_path,ai_analysis,ai_compared_to')
+        .select('id,captured_date,weight_lbs,waist_in,notes,body_fat_pct,body_fat_method,body_fat_confidence,front_storage_path,side_storage_path,back_storage_path,ai_analysis,ai_compared_to')
         .eq('user_id', currentUser.id)
         .gte('captured_date', since)
         .order('captured_date', { ascending: false }),
@@ -2024,10 +2012,9 @@ function renderProgressDashboard() {
   const dailyCal = calMath?.daily_target ?? tdee;
   const macros = (dailyCal != null && weightLbs != null) ? trainMacros(dailyCal, weightLbs) : null;
 
-  // Latest body fat from Navy formula if measurements present.
-  const bfPct = latest
-    ? trainNavyBodyFat(p.sex, latest.neck_in, latest.waist_in, latest.hips_in, p.height_in)
-    : null;
+  // Body fat now comes from the AI vision pass (Navy formula removed).
+  // Just read the stored value off the latest entry.
+  const bfPct = latest?.body_fat_pct != null ? Number(latest.body_fat_pct) : null;
 
   // Dashboard order (latest reshuffle — promotes Goals above the fold):
   //   1. profile header
@@ -2074,22 +2061,12 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
   const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / 86400_000);
   const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
-  // Body fat: prefer Navy formula (deterministic), fall back to AI estimate.
-  // No method badge in the strip — the value alone keeps the card clean.
-  let bfNum;
-  if (bfPct != null) {
-    bfNum = `${bfPct.toFixed(1)}%`;
-  } else if (latest.body_fat_pct != null && latest.body_fat_method === 'ai_estimate') {
-    bfNum = `${Number(latest.body_fat_pct).toFixed(1)}%`;
-  } else {
-    bfNum = '—';
-  }
+  // Body fat: stored AI value (Navy removed). Single branch now.
+  const bfNum = bfPct != null ? `${bfPct.toFixed(1)}%` : '—';
 
   // LBM = weight × (1 − bf/100). Deterministic. Skip when either is missing.
   const w = latest.weight_lbs != null ? Number(latest.weight_lbs) : null;
-  const bf = bfPct != null
-    ? bfPct
-    : (latest.body_fat_pct != null ? Number(latest.body_fat_pct) : null);
+  const bf = bfPct;   // single source: stored AI value (Navy removed)
   const lbm = (w != null && bf != null) ? w * (1 - bf / 100) : null;
 
   // Sparklines from recent entries (newest-first → reverse). Last 6 points
@@ -2558,17 +2535,13 @@ function renderDashboardEntriesList(entries) {
 function ensureEntryDraft() {
   if (_trainProgressState.entryDraft) return;
   const latest = _trainProgressState.entries[0];
-  // Pre-fill measurements from the most recent entry to make repeat
-  // logging fast — user typically only updates 1-2 numbers each week.
+  // Navy formula was retired — only waist carries over as a standalone
+  // tracking number (it's one of the 4 strip metrics on the dashboard).
+  // Neck/hips/chest/arms/thighs are no longer captured.
   _trainProgressState.entryDraft = {
     captured_date: trainTodayLocalDate(),
     weight_lbs:    '',
-    neck_in:       latest?.neck_in   != null ? String(latest.neck_in)   : '',
     waist_in:      latest?.waist_in  != null ? String(latest.waist_in)  : '',
-    chest_in:      latest?.chest_in  != null ? String(latest.chest_in)  : '',
-    arms_in:       latest?.arms_in   != null ? String(latest.arms_in)   : '',
-    hips_in:       latest?.hips_in   != null ? String(latest.hips_in)   : '',
-    thighs_in:     latest?.thighs_in != null ? String(latest.thighs_in) : '',
     notes:         '',
     // Photo state — three slots (front / side / back). `file` holds the
     // freshly-picked File pending upload; `preview` is a transient
@@ -2585,29 +2558,6 @@ function ensureEntryDraft() {
 function renderProgressNewEntry() {
   ensureEntryDraft();
   const d = _trainProgressState.entryDraft;
-  const p = _trainProgressState.profile;
-
-  // Live preview: if neck + waist are filled, compute body fat now so the
-  // user sees the result as they type.
-  const bfPreview = (d.neck_in && d.waist_in && (p.sex === 'male' || (p.sex === 'female' && d.hips_in)))
-    ? trainNavyBodyFat(p.sex, Number(d.neck_in), Number(d.waist_in), d.hips_in ? Number(d.hips_in) : null, p.height_in)
-    : null;
-  const bfTxt = bfPreview != null
-    ? `Body fat preview: <strong>${bfPreview}%</strong> <span class="train-form-hint" style="display:inline">(Navy formula)</span>`
-    : `Body fat will compute when you fill in neck + waist${p.sex === 'female' ? ' + hips' : ''}.`;
-
-  const meas = (key, label, suffix, required = false) => `<div class="train-form-field">
-    <label class="train-form-label-inline">${label}${required ? ' <span class="req">*</span>' : ''}</label>
-    <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0"
-      placeholder="${trainEsc(suffix)}" value="${trainEsc(d[key] || '')}"
-      data-train-action="entry-input" data-key="${key}">
-  </div>`;
-
-  // Measurements live in a collapsible block — closed by default. Body
-  // fat will be estimated by AI from the photos unless you fill these in,
-  // in which case the deterministic Navy formula wins.
-  const measOpen = !!_trainProgressState.measOpen;
-  const hasAnyMeas = d.neck_in || d.waist_in || d.chest_in || d.arms_in || d.hips_in || d.thighs_in;
 
   return `<div class="progress-new-entry">
     <div class="progress-wizard-head">
@@ -2638,23 +2588,9 @@ function renderProgressNewEntry() {
       </div>
 
       <div class="train-form-section">
-        <button class="train-collapse-toggle" data-train-action="toggle-meas">
-          <span class="train-collapse-chevron ${measOpen ? 'is-open' : ''}">▸</span>
-          <span class="train-collapse-label">Measurements (optional)</span>
-          ${hasAnyMeas && !measOpen ? `<span class="train-collapse-badge">${[d.neck_in,d.waist_in,d.chest_in,d.arms_in,d.hips_in,d.thighs_in].filter(Boolean).length} filled</span>` : ''}
-        </button>
-        ${measOpen ? `<div class="train-collapse-body">
-          <div class="train-form-hint" style="margin-bottom:8px">Filling these switches body fat to the deterministic Navy formula instead of the AI estimate.</div>
-          <div class="entry-meas-grid">
-            ${meas('neck_in',   'Neck',   'in')}
-            ${meas('waist_in',  'Waist',  'in')}
-            ${meas('hips_in',   'Hips',   'in')}
-            ${meas('chest_in',  'Chest',  'in')}
-            ${meas('arms_in',   'Arms',   'in')}
-            ${meas('thighs_in', 'Thighs', 'in')}
-          </div>
-          ${bfPreview != null ? `<div class="train-form-hint" style="margin-top:8px">${bfTxt}</div>` : ''}
-        </div>` : ''}
+        <div class="train-form-label">Waist (optional)</div>
+        <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="inches" value="${trainEsc(d.waist_in || '')}" data-train-action="entry-input" data-key="waist_in">
+        <div class="train-form-hint">A single tape-measure number for the Waist metric tile. Body fat % comes from the photos via AI.</div>
       </div>
 
       <div class="train-form-actions">
@@ -2831,30 +2767,23 @@ async function saveProgressEntry() {
       }
     }
 
-    // ── Step 2: deterministic body-fat (Navy formula).
+    // ── Step 2: build the row. Body fat is no longer computed
+    // client-side — the AI vision pass fills body_fat_pct +
+    // body_fat_method='ai_estimate' once it finishes. The Navy formula
+    // path has been retired.
     _trainProgressState.savingStep = 'Saving…';
     renderTrain();
-    const neck = d.neck_in ? Number(d.neck_in) : null;
     const waist = d.waist_in ? Number(d.waist_in) : null;
-    const hips  = d.hips_in ? Number(d.hips_in) : null;
-    const bfPct = trainNavyBodyFat(p.sex, neck, waist, hips, p.height_in);
-    const bfMethod = bfPct != null ? 'navy_formula' : null;
-    const bfConf   = bfPct != null ? 'high' : null;
 
     const row = {
       user_id:       currentUser.id,
       captured_date: d.captured_date,
       weight_lbs:    d.weight_lbs ? Number(d.weight_lbs) : null,
-      neck_in:       neck,
       waist_in:      waist,
-      chest_in:      d.chest_in ? Number(d.chest_in) : null,
-      arms_in:       d.arms_in ? Number(d.arms_in) : null,
-      hips_in:       hips,
-      thighs_in:     d.thighs_in ? Number(d.thighs_in) : null,
       notes:         d.notes || null,
-      body_fat_pct:  bfPct,
-      body_fat_method: bfMethod,
-      body_fat_confidence: bfConf,
+      // body_fat_pct / body_fat_method / body_fat_confidence intentionally
+      // omitted — the AI vision call writes them. (The columns stay
+      // nullable in the schema.)
       front_storage_path: photoPaths.front,
       side_storage_path:  photoPaths.side,
       back_storage_path:  photoPaths.back,
@@ -4261,29 +4190,8 @@ function trainMacros(dailyCalories, weightLbs) {
   };
 }
 
-/* U.S. Navy body-fat formula. Requires neck + waist + height (in inches).
-   For women, hips is required as well. Returns percent or null when any
-   input is missing. */
-function trainNavyBodyFat(sex, neckIn, waistIn, hipsIn, heightIn) {
-  if (neckIn == null || waistIn == null || heightIn == null) return null;
-  const isFemale = String(sex).toLowerCase() === 'female';
-  if (isFemale && hipsIn == null) return null;
-  const log10 = Math.log10 || (x => Math.log(x) / Math.LN10);
-  let pct;
-  if (isFemale) {
-    // 163.205·log10(waist + hips − neck) − 97.684·log10(height) − 78.387
-    pct = 163.205 * log10(Number(waistIn) + Number(hipsIn) - Number(neckIn))
-          - 97.684 * log10(Number(heightIn))
-          - 78.387;
-  } else {
-    // 86.010·log10(waist − neck) − 70.041·log10(height) + 36.76
-    pct = 86.010 * log10(Number(waistIn) - Number(neckIn))
-          - 70.041 * log10(Number(heightIn))
-          + 36.76;
-  }
-  if (!Number.isFinite(pct)) return null;
-  return Math.round(pct * 10) / 10;   // 1 decimal place
-}
+/* U.S. Navy body-fat formula was retired; body fat now comes from the
+   AI vision pass only. Git history has the prior implementation. */
 
 /* Age in years from a YYYY-MM-DD date of birth. */
 function trainAgeYears(dob) {
@@ -4326,7 +4234,6 @@ if (typeof window !== 'undefined') {
   window.trainTDEE = trainTDEE;
   window.trainCalorieTargetForGoal = trainCalorieTargetForGoal;
   window.trainMacros = trainMacros;
-  window.trainNavyBodyFat = trainNavyBodyFat;
   window.trainAgeYears = trainAgeYears;
   window.trainSuggestActivityLevel = trainSuggestActivityLevel;
   window.trainProgressPct = trainProgressPct;

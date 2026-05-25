@@ -10,10 +10,12 @@
 //      The tool-use schema enforces the ai_analysis shape that the
 //      progress_pics migration documents.
 //   4. Writes the analysis back to progress_pics.ai_analysis. When the
-//      Navy formula didn't fire (no neck/waist), it also stores the
-//      AI body-fat estimate to progress_pics.body_fat_pct so the
-//      dashboard always has a number to show — tagged 'ai_estimate'
-//      so the UI labels it honestly.
+//      Navy formula was retired — this function is now the SINGLE
+//      source of body_fat_pct. It always writes the AI estimate to
+//      progress_pics.body_fat_pct (method='ai_estimate', confidence
+//      from the model). The skip-if-Navy-already-fired guard below
+//      is preserved as a safety net for any historical Navy rows in
+//      the DB.
 //
 // Cost: each pic is downscaled client-side to ≤1600px before upload,
 // and Claude vision charges per pixel. With 3 photos the input is
@@ -259,7 +261,7 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
       content.push({ type: 'image', source: { type: 'base64', media_type: img.media_type, data: img.data } });
     }
   }
-  content.push({ type: 'text', text: `Today's entry — captured ${row.captured_date}${row.weight_lbs ? ` at ${row.weight_lbs} lbs` : ''}${row.body_fat_pct != null ? ` (Navy formula body fat: ${row.body_fat_pct}%)` : ''}:` });
+  content.push({ type: 'text', text: `Today's entry — captured ${row.captured_date}${row.weight_lbs ? ` at ${row.weight_lbs} lbs` : ''}${row.body_fat_pct != null ? ` (prior body-fat estimate: ${row.body_fat_pct}%)` : ''}:` });
   for (const img of todayImages) {
     content.push({ type: 'image', source: { type: 'base64', media_type: img.media_type, data: img.data } });
   }
