@@ -1291,8 +1291,14 @@ async function loadOlderTimelineDays(count = 7) {
     // completed rows. Once the journal scrolls past that, the per-day
     // "What you finished" section needs more — pull the range here.
     // No-op if the helper isn't defined yet (load order safety).
+    // Buffer ±1 day on the UTC range: tasks.completed_at is a UTC
+    // timestamp but the journal matches by LOCAL date (see
+    // getCompletedTasksForDate). A task completed at 11pm local could
+    // have a UTC date one day later (or earlier on the other hemisphere).
+    // ±24h covers any timezone; the client-side filter trims to the
+    // exact local day.
     (typeof loadDoneTasksForRange === 'function')
-      ? loadDoneTasksForRange(newStart + 'T00:00:00.000Z', newEnd + 'T23:59:59.999Z')
+      ? loadDoneTasksForRange(jShiftDays(newStart, -1) + 'T00:00:00.000Z', jShiftDays(newEnd, 1) + 'T23:59:59.999Z')
       : Promise.resolve(),
   ]);
   journalState.timelineLoadedThrough = newStart;
@@ -1315,9 +1321,10 @@ async function ensureTimelineCovers(dateStr) {
   await Promise.all([
     loadJournalRange(target, newEnd),
     loadHabitSummariesForRange(target, newEnd),
-    // Phase 2 audit — see loadOlderTimelineDays for context.
+    // Phase 2 audit — see loadOlderTimelineDays for the timezone-
+    // buffer rationale.
     (typeof loadDoneTasksForRange === 'function')
-      ? loadDoneTasksForRange(target + 'T00:00:00.000Z', newEnd + 'T23:59:59.999Z')
+      ? loadDoneTasksForRange(jShiftDays(target, -1) + 'T00:00:00.000Z', jShiftDays(newEnd, 1) + 'T23:59:59.999Z')
       : Promise.resolve(),
   ]);
   // Update window
