@@ -242,9 +242,12 @@ function briefInjectStyles() {
       display: flex; align-items: center; gap: 8px;
     }
     /* "Last updated at H:MM PM" — small, right-aligned, same gray as the
-       home-card empty states (var(--ink-4)). */
+       home-card empty states (var(--ink-4)). Negative bottom margin
+       pulls the stamp closer to the card's bottom edge so it doesn't
+       feel marooned in the card's 20px bottom padding. */
     .brief-updated-stamp {
       margin-top: 10px;
+      margin-bottom: -10px;
       text-align: right;
       font-size: var(--t-xs);
       color: var(--ink-4);

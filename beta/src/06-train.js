@@ -1974,15 +1974,23 @@ async function saveWizardProfile() {
       units:          d.units || 'imperial',
       body_comp_profile_set_at: new Date().toISOString(),
     };
-    // .select() so we can confirm the update actually hit a row — a
-    // silent 0-row update (mis-matched filter or RLS deny) used to
-    // present as a "successful save" but the wizard re-fired next load.
-    const { data: updated, error } = await db.from('user_profiles')
-      .update(patch)
-      .eq('email', currentUser.email)
-      .select('email,sex,dob,height_in,activity_level,units,body_comp_profile_set_at');
+    // Use a SECURITY DEFINER RPC instead of a direct .update(). The
+    // user_profiles table only has a SELECT policy — there is no
+    // user-facing UPDATE policy (deliberate: admin-only columns like
+    // access_status / role / tab_permissions live on the same row).
+    // The RPC validates that the caller's JWT email matches the target
+    // row and locks the mutable column set down to body-comp fields
+    // only.
+    const { data: updated, error } = await db.rpc('update_body_comp_profile', {
+      p_email:          currentUser.email,
+      p_sex:            d.sex,
+      p_dob:            d.dob,
+      p_height_in:      Number(d.height_in),
+      p_activity_level: d.activity_level,
+      p_units:          d.units || 'imperial',
+    });
     if (error) throw error;
-    if (!updated || updated.length === 0) {
+    if (!updated) {
       throw new Error('profile row not found for ' + currentUser.email);
     }
     _trainProgressState.profile = { ...(_trainProgressState.profile || {}), ...patch };
