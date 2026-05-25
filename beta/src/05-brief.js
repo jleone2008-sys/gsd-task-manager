@@ -414,6 +414,15 @@ function briefRecapHTML(recap, structured) {
     if (tcTxt != null) rows.push({ icon: '☐', name: 'Tasks', value: tcTxt });
     const habitsTodayTxt = briefRecapHabitsText(col.habits_today);
     if (habitsTodayTxt != null) rows.push({ icon: '🔥', name: 'Habits', value: habitsTodayTxt });
+    // Train row — either today/tomorrow's planned session OR yesterday/
+    // today's logged session, formatted server-side as { label, detail }.
+    // Skip when null (no active plan AND no session logged).
+    if (col.train && col.train.label) {
+      const value = col.train.detail
+        ? `${col.train.label} · ${col.train.detail}`
+        : col.train.label;
+      rows.push({ icon: '🏋️', name: 'Train', value });
+    }
     if (col.sleep_target) {
       const tonightLabel = (col.label === 'Tomorrow') ? 'Tomorrow' : 'Tonight';
       rows.push({ icon: '🌙', name: tonightLabel, value: col.sleep_target });

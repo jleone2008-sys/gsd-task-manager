@@ -282,9 +282,19 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     'stress_day_summary','body_temp_deviation_c','resilience_level','updated_at',
   ].join(',');
 
+  // Train context: active workout plan + the last 14 days of sessions
+  // with their sets. workout_sets.session_id is a real FK so the
+  // embedded-resource join below works in one round-trip.
+  const trainSince = (() => {
+    const d = new Date(today + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 14);
+    return d.toISOString().slice(0, 10);
+  })();
+
   const [
     ouraToday, ouraYesterday, whoopY, oTagsY, oWorkoutsY, journalY, tasksAll,
     calY, calT, habitsY, baselines30, baselines7, tasksTopOpen, tasksOpen,
+    activePlanRows, recentSessions,
   ] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${today}&select=${ouraRecoveryCols}`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=${ouraActivityCols}`, hdr),
@@ -300,6 +310,8 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_7d?user_id=eq.${user.user_id}&select=*`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&top3=eq.true&select=text&limit=5`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&select=text,top3,due&limit=200`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/workout_plans?user_id=eq.${user.user_id}&is_active=eq.true&is_template=eq.false&select=id,name,day_template&limit=1`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/workout_sessions?user_id=eq.${user.user_id}&session_date=gte.${trainSince}&select=id,session_date,day_name,day_type,feel,session_notes,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)&order=session_date.desc`, hdr),
   ]);
 
   // Evening mode needs tomorrow's calendar + today's data for the recap row
@@ -363,6 +375,61 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   const hero_hint = computeHeroHint(recoveryRow, activityRow, baselines7?.[0]);
 
   const weekdayName = weekdayInTz(today, user.timezone);
+
+  // ── Train context ───────────────────────────────────────────────────
+  // Map weekdayInTz's "Monday" output to the 3-letter codes the
+  // workout_plans.day_template uses ("Mon"). Same for tomorrow.
+  const DOW3 = { Monday:'Mon', Tuesday:'Tue', Wednesday:'Wed', Thursday:'Thu', Friday:'Fri', Saturday:'Sat', Sunday:'Sun' };
+  const activePlan = activePlanRows?.[0] || null;
+  const dayForDow = (plan, dow3) => {
+    if (!plan || !Array.isArray(plan.day_template)) return null;
+    return plan.day_template.find(d => d.dow === dow3) || null;
+  };
+  const summarizeSession = (s) => {
+    if (!s) return null;
+    const sets = Array.isArray(s.workout_sets) ? s.workout_sets : [];
+    // Group by exercise → top weight × reps + volume.
+    const byEx = {};
+    for (const x of sets) {
+      const k = x.exercise_name || 'Exercise';
+      if (!byEx[k]) byEx[k] = { name: k, sets: 0, top_weight: 0, top_reps: 0, volume: 0 };
+      byEx[k].sets += 1;
+      const w = Number(x.actual_weight) || 0;
+      const r = Number(x.actual_reps)   || 0;
+      if (w > byEx[k].top_weight) byEx[k].top_weight = w;
+      if (r > byEx[k].top_reps)   byEx[k].top_reps   = r;
+      if (!x.is_bodyweight) byEx[k].volume += w * r;
+    }
+    const exercises = Object.values(byEx);
+    const totalVolume = exercises.reduce((sum, e) => sum + e.volume, 0);
+    return {
+      session_date: s.session_date,
+      day_name:     s.day_name,
+      day_type:     s.day_type,
+      feel:         s.feel,
+      total_sets:   sets.length,
+      total_volume: totalVolume,
+      exercises:    exercises.slice(0, 8),   // cap for token budget
+    };
+  };
+  const todayDow3    = DOW3[weekdayName] || null;
+  const tomorrowDow3 = DOW3[weekdayInTz(tomorrow, user.timezone)] || null;
+  const yesterdayDow3 = DOW3[weekdayInTz(yday, user.timezone)] || null;
+  // Today's prescribed session (from the active plan's day_template).
+  const workoutTodayPlanned = dayForDow(activePlan, todayDow3);
+  // Today's already-logged session (if user logged something earlier today
+  // — possible in evening mode or a Same-day cron re-fire).
+  const workoutTodayLogged  = (recentSessions || []).find(s => s.session_date === today) || null;
+  // Yesterday's logged session.
+  const workoutYesterday    = (recentSessions || []).find(s => s.session_date === yday) || null;
+  // Last session matching today's planned day_name — for "last time you
+  // did Full Body A you hit 215×8" comparisons.
+  const workoutSameDayName  = workoutTodayPlanned?.name
+    ? (recentSessions || []).find(s => s.day_name === workoutTodayPlanned.name && s.session_date < today) || null
+    : null;
+  // Tomorrow's prescribed (evening mode).
+  const workoutTomorrowPlanned = dayForDow(activePlan, tomorrowDow3);
+
   const ctx = {
     user: { timezone: user.timezone },
     scales: { mood: MOOD_SCALE_NOTE },
@@ -390,6 +457,9 @@ async function buildContext(user, brief_date, mode, serviceKey) {
         summary: e.summary, start: e.start, allDay: !!e.isAllDay,
       })),
       habits: habitsY?.[0] ? { due: habitsY[0].due_count, done: habitsY[0].done_count } : null,
+      // Train session logged for yesterday (if any). Summary only — full
+      // set list is in train_recent for token-budget reasons.
+      workout: summarizeSession(workoutYesterday),
     },
     today_plan: {
       date: today,
@@ -400,6 +470,27 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       })),
       priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
       task_counts: computeTaskCounts(tasksOpen, today),
+      // Today's training context. `planned` = what the active plan
+      // prescribes for today's DOW. `last_same_day` = the user's most
+      // recent prior session matching that day_name, so Claude can
+      // reference last week's lifts. `logged_today` is non-null when a
+      // session is already in the books (evening mode or same-day refire).
+      workout: {
+        has_active_plan: !!activePlan,
+        plan_name:       activePlan?.name || null,
+        planned:         workoutTodayPlanned ? {
+          dow:           workoutTodayPlanned.dow,
+          name:          workoutTodayPlanned.name,
+          type:          workoutTodayPlanned.type,
+          exercises:     Array.isArray(workoutTodayPlanned.exercises)
+            ? workoutTodayPlanned.exercises.slice(0, 8).map(ex => ({
+                name: ex.name, sets: ex.sets, reps: ex.reps, bodyweight: !!ex.bodyweight,
+              }))
+            : [],
+        } : null,
+        last_same_day:   summarizeSession(workoutSameDayName),
+        logged_today:    summarizeSession(workoutTodayLogged),
+      },
     },
     tomorrow_plan: (mode === 'evening') ? {
       date: tomorrow,
@@ -411,6 +502,16 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       // Priority tasks carry forward (top3 open = persistent until done)
       priority_tasks: (tasksTopOpen || []).map(t => ({ text: t.text })),
       task_counts: computeTaskCounts(tasksOpen, tomorrow),
+      workout: workoutTomorrowPlanned ? {
+        dow:       workoutTomorrowPlanned.dow,
+        name:      workoutTomorrowPlanned.name,
+        type:      workoutTomorrowPlanned.type,
+        exercises: Array.isArray(workoutTomorrowPlanned.exercises)
+          ? workoutTomorrowPlanned.exercises.slice(0, 8).map(ex => ({
+              name: ex.name, sets: ex.sets, reps: ex.reps, bodyweight: !!ex.bodyweight,
+            }))
+          : [],
+      } : null,
     } : null,
     // Evening-only: lightweight recap of TODAY for the "Today" row above
     // Tomorrow's Setup. Counts/mood are real values pulled from data, never
@@ -423,9 +524,16 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       workouts_today: (ouraWorkoutsToday || []).map(w => ({
         activity: w.activity, duration_min: w.duration_min, intensity: w.intensity,
       })),
+      // App-logged Train session for today, if any. Separate from
+      // workouts_today (Oura) — that's wearable-detected motion.
+      train_session_today: summarizeSession(workoutTodayLogged),
       tasks_completed_today: countTasksInLocalDay(tasksAll, today, user.timezone),
       open_priority_tasks:   (tasksTopOpen || []).length,
     } : null,
+    // Compact Train recap — last 5 sessions, summary only. Used by Claude
+    // when synthesizing "you've been hitting it hard" / "third skipped
+    // workout this week" type observations.
+    train_recent: (recentSessions || []).slice(0, 5).map(summarizeSession).filter(Boolean),
     last_7_days: {
       oura: oura7 || [],
       mood: moodWeek,
@@ -791,6 +899,39 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     return { pct: Math.round((done / due) * 100), done, due };
   };
 
+  // Compact Train summary for a recap column. Returns a short string the
+  // client renders as one of the Yesterday/Today rows. Falls back to null
+  // when nothing relevant happened (so the client skips the row entirely).
+  const trainSummary = (session) => {
+    if (!session) return null;
+    const t = session.day_type;
+    const name = session.day_name || (t === 'cardio' ? 'Cardio' : t === 'bonus' ? 'Bonus' : 'Lift');
+    if (t === 'cardio') {
+      const ex = (session.exercises && session.exercises[0]) || null;
+      const mins = ex?.top_reps || 0;          // cardio parks minutes in reps
+      return { label: name, detail: mins ? `${mins} min` : null };
+    }
+    if (t === 'bonus') {
+      const ex = (session.exercises && session.exercises[0]) || null;
+      const mins = ex?.top_reps || 0;
+      return { label: name, detail: mins ? `${mins} min` : null };
+    }
+    // Lift
+    const sets = session.total_sets;
+    const vol  = session.total_volume;
+    if (vol > 0) return { label: name, detail: `${sets} sets · ${vol.toLocaleString()} lbs` };
+    return { label: name, detail: sets ? `${sets} sets` : null };
+  };
+  // Planned-for-today / tomorrow Train row (when nothing logged yet).
+  const plannedSummary = (planned) => {
+    if (!planned) return null;
+    const t = planned.type;
+    if (t === 'rest') return { label: 'Rest day', detail: null };
+    const exc = (planned.exercises || []).length;
+    if (t === 'cardio') return { label: planned.name || 'Cardio', detail: 'cardio session' };
+    return { label: planned.name || 'Lift', detail: exc ? `${exc} exercises` : null };
+  };
+
   // Morning: left = yesterday (yday data), right = today (today plan).
   // Evening: left = today (today recap from ctx.today_recap, plus yday data
   //          for habits/bedtime which finalize only after the day rolls
@@ -802,6 +943,7 @@ function buildRecap(mode, ctx, sleepTargetTime) {
       tasks_done:  ctx.yesterday?.tasks_completed_count ?? null,
       bedtime:     computeBedtime(ctx.yesterday?.recovery),
       mood_label:  ctx.yesterday?.mood?.value_label ?? null,
+      train:       trainSummary(ctx.yesterday?.workout),
     };
     const right = {
       label:        'Today',
@@ -809,6 +951,9 @@ function buildRecap(mode, ctx, sleepTargetTime) {
       task_counts:  ctx.today_plan?.task_counts || null,
       habits_today: null,        // client recomputes from live habitsArr (Tier 1)
       sleep_target: sleepTargetTime,
+      // Prefer logged-for-today when present; fall back to planned otherwise.
+      train:        trainSummary(ctx.today_plan?.workout?.logged_today)
+                 || plannedSummary(ctx.today_plan?.workout?.planned),
     };
     return { left, right };
   }
@@ -821,6 +966,7 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     tasks_done:  ctx.today_recap?.tasks_completed_today ?? null,
     bedtime:     null,           // yesterday's bedtime is stale by evening
     mood_label:  ctx.today_recap?.mood_label ?? null,
+    train:       trainSummary(ctx.today_recap?.train_session_today),
   };
   const right = {
     label:        'Tomorrow',
@@ -828,6 +974,7 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     task_counts:  ctx.tomorrow_plan?.task_counts || null,
     habits_today: null,
     sleep_target: sleepTargetTime,
+    train:        plannedSummary(ctx.tomorrow_plan?.workout),
   };
   return { left, right };
 }
@@ -1039,6 +1186,11 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     'CONTEXT YOU SEE (for reasoning, not for echoing):',
     '- yesterday.recovery = LAST NIGHT\'s sleep that ended this morning (sleep_score, readiness_score, HRV, resting_hr).',
     '- yesterday.activity = YESTERDAY\'s day (activity_score, steps, stress).',
+    '- today_plan.workout.planned = today\'s prescribed Train session from the user\'s active plan. Use the day name in the headline when it\'s a lift/cardio day ("Push day.", "Cardio today."). Skip in headline on rest days.',
+    '- today_plan.workout.last_same_day = the user\'s most recent prior session matching today\'s day_name. Use for streak / consistency framing only — DO NOT echo specific weights or reps in headline/subhead/pills.',
+    '- today_plan.workout.logged_today = a session already in the books for today (evening mode or same-day refire). When present, frame the brief around what got done, not what\'s prescribed.',
+    '- yesterday.workout = the Train session logged yesterday (if any). Useful for "Lifted yesterday" pills.',
+    '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
     `- mood values arrive as labels (Great/Good/Okay/Low/Bad). ${MOOD_SCALE_NOTE}`,
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
@@ -1163,6 +1315,9 @@ function buildFlatNarrative(s) {
       if (col.task_counts) {
         const tc = col.task_counts;
         bits.push(`${tc.priority}p · ${tc.due_today}d · ${tc.overdue}o`);
+      }
+      if (col.train?.label) {
+        bits.push(col.train.detail ? `${col.train.label} · ${col.train.detail}` : col.train.label);
       }
       if (col.sleep_target) bits.push(`Sleep ${col.sleep_target}`);
       return bits.length ? `${col.label}: ${bits.join(' · ')}` : null;
