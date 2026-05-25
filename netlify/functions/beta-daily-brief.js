@@ -921,13 +921,17 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     return { label: name, detail: sets ? `${sets} sets` : null };
   };
   // Planned-for-today / tomorrow Train row (when nothing logged yet).
+  // Just the workout name — the recap column is space-constrained and
+  // "5 exercises" / "cardio session" was overflowing into the next
+  // column. The exercise list lives on the Workout tab itself.
+  // (trainSummary keeps detail for LOGGED workouts — that's useful
+  // retrospective info like "15 min · 1 mile".)
   const plannedSummary = (planned) => {
     if (!planned) return null;
     const t = planned.type;
     if (t === 'rest') return { label: 'Rest day', detail: null };
-    const exc = (planned.exercises || []).length;
-    if (t === 'cardio') return { label: planned.name || 'Cardio', detail: 'cardio session' };
-    return { label: planned.name || 'Lift', detail: exc ? `${exc} exercises` : null };
+    if (t === 'cardio') return { label: planned.name || 'Cardio', detail: null };
+    return { label: planned.name || 'Lift', detail: null };
   };
 
   // Morning: left = yesterday (yday data), right = today (today plan).
