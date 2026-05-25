@@ -2122,8 +2122,9 @@ function trainBuildFormulaicFeedback(st, setRows) {
   stats.push({ label: 'Volume (lbs)',  value: totalVolume.toLocaleString() });
   stats.push({ label: 'Exercises',     value: Object.keys(st.liftSets || {}).filter(k => (st.liftSets[k] || []).some(s => s.reps)).length });
   if (prs.length) observations.push(`PR on ${prs.join(' + ')} (heaviest single set this week)`);
-  if (st.feel === 1) observations.push("Great session feel. Keep the recovery dialed and progression should hold.");
-  if (st.feel >= 4)  observations.push("Session felt rough. Check sleep / hydration; deload candidates if it persists 2+ weeks.");
+  // Mood scale is now 1=Bad .. 5=Great (post invert_mood_scale).
+  if (st.feel === 5) observations.push("Great session feel. Keep the recovery dialed and progression should hold.");
+  if (st.feel <= 2)  observations.push("Session felt rough. Check sleep / hydration; deload candidates if it persists 2+ weeks.");
   return {
     session_summary: `${st.day?.name || 'Session'} · ${totalSets} sets · ${totalVolume.toLocaleString()} lb volume`,
     stats, observations,

@@ -404,6 +404,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       day_name:     s.day_name,
       day_type:     s.day_type,
       feel:         s.feel,
+      feel_label:   moodLabel(s.feel),   // explicit label per lib/mood-scale convention
       total_sets:   sets.length,
       total_volume: totalVolume,
       exercises:    exercises.slice(0, 8),   // cap for token budget
@@ -1191,7 +1192,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- today_plan.workout.logged_today = a session already in the books for today (evening mode or same-day refire). When present, frame the brief around what got done, not what\'s prescribed.',
     '- yesterday.workout = the Train session logged yesterday (if any). Useful for "Lifted yesterday" pills.',
     '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
-    `- mood values arrive as labels (Great/Good/Okay/Low/Bad). ${MOOD_SCALE_NOTE}`,
+    `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
       : '',
