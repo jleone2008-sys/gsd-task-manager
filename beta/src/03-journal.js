@@ -831,12 +831,23 @@ function ensureJournalStyles() {
       font-size: 11px; color: var(--ink-4); margin-top: 4px;
       letter-spacing: 0.02em;
     }
+    /* Relationship dropdown — native <select> styled to match the
+       journal's input look. Caret-down chevron drawn via SVG bg. */
     .j-event-meta-tag {
       width: 100%; box-sizing: border-box;
-      padding: 8px 12px; font-size: 14px;
-      min-height: 0;            /* overrides .j-textarea's min-height */
-      resize: none;
+      padding: 8px 36px 8px 12px; font-size: 14px;
+      background: var(--surface);
+      border: 1px solid var(--edge-strong);
+      border-radius: var(--r-sm);
+      color: var(--ink);
+      font-family: inherit;
+      cursor: pointer;
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6559' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
     }
+    .j-event-meta-tag:focus { outline: 2px solid var(--guava-700); outline-offset: -1px; }
     .j-event-meta-footer {
       display: flex; gap: 8px; align-items: center; justify-content: flex-end;
       flex-wrap: wrap;
@@ -859,13 +870,8 @@ function ensureJournalStyles() {
       padding: 6px 8px;
     }
     .j-event-meta-remove:hover { color: var(--guava-800); text-decoration: underline; }
-    .j-event-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
-    .j-event-chip {
-      background: var(--surface-2); border: 1px solid var(--edge);
-      border-radius: 999px; padding: 4px 10px; cursor: pointer;
-      font-family: inherit; font-size: 11px; color: var(--ink-2);
-    }
-    .j-event-chip:hover { background: var(--guava-50); color: var(--guava-700); border-color: var(--guava-50); }
+    /* (.j-event-chip-row / .j-event-chip removed — relationship is now
+        a native <select> dropdown.) */
 
     .j-photos { display: flex; flex-wrap: wrap; gap: 10px; }
     .j-photo { position: relative; width: 88px; height: 88px; border-radius: var(--r-md); overflow: hidden; background: var(--surface-2); border: 1px solid var(--edge); cursor: pointer; }
@@ -1324,14 +1330,23 @@ function openEventMetaEditor(eventId) {
   const meta = journalState.eventMeta.get(eventId) || {};
   const time = ev.isAllDay ? 'All day' : new Date(ev.start).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', weekday:'short', month:'short', day:'numeric' });
 
-  // Suggested relationship chips — tap to populate the text field.
-  const CHIPS = ['Boss', 'Peer', 'Direct report', 'Customer', 'Partner', 'Family', 'Friend', 'Stranger'];
+  // Relationship dropdown options. If the stored value is a legacy
+  // custom string that's not in this list, it's appended as an extra
+  // option below so users don't lose data on re-open.
+  const RELATIONSHIPS = ['Boss', 'Peer', 'Direct report', 'Customer', 'Partner', 'Family', 'Friend', 'Stranger'];
   const moodRow = MOOD_EMOJI.map((emoji, i) => {
     const val = i + 1;
     const sel = meta.energy_after === val ? ' is-selected' : '';
     return `<button type="button" class="j-mood-btn${sel}" data-jevent-energy="${val}" title="${MOOD_LABEL[i]}">${emoji}</button>`;
   }).join('');
-  const chipsHTML = CHIPS.map(c => `<button type="button" class="j-event-chip" data-jevent-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
+  const cur = meta.relationship_tag || '';
+  const isKnown = RELATIONSHIPS.includes(cur);
+  const optionsHTML = RELATIONSHIPS.map(o =>
+    `<option value="${escapeHtml(o)}"${cur === o ? ' selected' : ''}>${escapeHtml(o)}</option>`
+  ).join('');
+  const customOptionHTML = (cur && !isKnown)
+    ? `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)} (custom)</option>`
+    : '';
 
   // Uses the journal-native modal classes (j-edit-modal / j-edit-card)
   // so the CSS is always present, regardless of whether the user has
@@ -1348,8 +1363,11 @@ function openEventMetaEditor(eventId) {
       <div class="j-edit-body">
         <div class="j-section">
           <div class="j-section-h">Relationship</div>
-          <input class="j-textarea j-event-meta-tag" id="jEventTag" type="text" maxlength="40" placeholder="e.g. Boss, Customer, Family" value="${escapeHtml(meta.relationship_tag || '')}">
-          <div class="j-event-chip-row" style="margin-top:8px;">${chipsHTML}</div>
+          <select class="j-event-meta-tag" id="jEventTag">
+            <option value="">— None —</option>
+            ${optionsHTML}
+            ${customOptionHTML}
+          </select>
         </div>
         <div class="j-section">
           <div class="j-section-h">Energy after</div>
@@ -1393,13 +1411,8 @@ function openEventMetaEditor(eventId) {
     if (cur) cur.dataset.selected = '1';
   }
 
-  // Chip taps populate the tag input.
-  overlay.querySelectorAll('[data-jevent-chip]').forEach(b => {
-    b.addEventListener('click', () => {
-      const input = overlay.querySelector('#jEventTag');
-      if (input) input.value = b.dataset.jeventChip;
-    });
-  });
+  // (Chip click handler removed — relationship is now a native <select>
+  //  so the dropdown UI does the picking itself.)
 
   // Save / Remove.
   overlay.querySelector('[data-jevent-save]')?.addEventListener('click', () => {
