@@ -297,6 +297,11 @@ function trainWireOnce() {
       runProgressPicAnalysis(id);
       return;
     }
+    if (action === 'toggle-meas') {
+      _trainProgressState.measOpen = !_trainProgressState.measOpen;
+      renderTrain();
+      return;
+    }
   });
 
   // File input change handler — Supabase doesn't fire on 'input' for
@@ -2368,11 +2373,17 @@ function renderProgressNewEntry() {
       data-train-action="entry-input" data-key="${key}">
   </div>`;
 
+  // Measurements live in a collapsible block — closed by default. Body
+  // fat will be estimated by AI from the photos unless you fill these in,
+  // in which case the deterministic Navy formula wins.
+  const measOpen = !!_trainProgressState.measOpen;
+  const hasAnyMeas = d.neck_in || d.waist_in || d.chest_in || d.arms_in || d.hips_in || d.thighs_in;
+
   return `<div class="progress-new-entry">
     <div class="progress-wizard-head">
       <button class="train-btn-link" data-train-action="progress-back" style="margin-bottom:6px">← Back to dashboard</button>
       <div class="progress-wizard-title">Log entry</div>
-      <div class="progress-wizard-msg">Weight + a few measurements. Neck and waist (plus hips for women) unlock the Navy body-fat formula.</div>
+      <div class="progress-wizard-msg">Claude will analyze your body composition and give actionable insights.</div>
     </div>
 
     <div class="train-form-card">
@@ -2387,31 +2398,33 @@ function renderProgressNewEntry() {
       </div>
 
       <div class="train-form-section">
-        <div class="train-form-label">Measurements (inches)</div>
-        <div class="entry-meas-grid">
-          ${meas('neck_in',   'Neck',   'in', true)}
-          ${meas('waist_in',  'Waist',  'in', true)}
-          ${p.sex === 'female' ? meas('hips_in', 'Hips', 'in', true) : meas('hips_in', 'Hips', 'in')}
-          ${meas('chest_in',  'Chest',  'in')}
-          ${meas('arms_in',   'Arms',   'in')}
-          ${meas('thighs_in', 'Thighs', 'in')}
-        </div>
-        <div class="train-form-hint">${bfTxt}</div>
-      </div>
-
-      <div class="train-form-section">
-        <div class="train-form-label">Photos (optional)</div>
-        <div class="train-form-hint" style="margin-bottom:8px">Front / side / back — Claude will compare to your last entry and call out what changed. Photos stay private in your own Supabase folder.</div>
+        <div class="train-form-label">Photos</div>
+        <div class="train-form-hint" style="margin-bottom:8px">Claude will analyze your body composition and give actionable insights.</div>
         <div class="progress-photo-grid">
-          ${renderProgressPhotoSlot(d.photos.front, 'front', 'Front')}
-          ${renderProgressPhotoSlot(d.photos.side,  'side',  'Side')}
-          ${renderProgressPhotoSlot(d.photos.back,  'back',  'Back')}
+          ${renderProgressPhotoSlot(d.photos.front, 'front', 'Front', true)}
+          ${renderProgressPhotoSlot(d.photos.side,  'side',  'Side',  true)}
+          ${renderProgressPhotoSlot(d.photos.back,  'back',  'Back',  false)}
         </div>
       </div>
 
       <div class="train-form-section">
-        <div class="train-form-label">Notes</div>
-        <textarea class="train-notes-input" placeholder="How are you feeling? Anything to flag for next entry?" data-train-action="entry-input" data-key="notes">${trainEsc(d.notes || '')}</textarea>
+        <button class="train-collapse-toggle" data-train-action="toggle-meas">
+          <span class="train-collapse-chevron ${measOpen ? 'is-open' : ''}">▸</span>
+          <span class="train-collapse-label">Measurements (optional)</span>
+          ${hasAnyMeas && !measOpen ? `<span class="train-collapse-badge">${[d.neck_in,d.waist_in,d.chest_in,d.arms_in,d.hips_in,d.thighs_in].filter(Boolean).length} filled</span>` : ''}
+        </button>
+        ${measOpen ? `<div class="train-collapse-body">
+          <div class="train-form-hint" style="margin-bottom:8px">Filling these switches body fat to the deterministic Navy formula instead of the AI estimate.</div>
+          <div class="entry-meas-grid">
+            ${meas('neck_in',   'Neck',   'in')}
+            ${meas('waist_in',  'Waist',  'in')}
+            ${meas('hips_in',   'Hips',   'in')}
+            ${meas('chest_in',  'Chest',  'in')}
+            ${meas('arms_in',   'Arms',   'in')}
+            ${meas('thighs_in', 'Thighs', 'in')}
+          </div>
+          ${bfPreview != null ? `<div class="train-form-hint" style="margin-top:8px">${bfTxt}</div>` : ''}
+        </div>` : ''}
       </div>
 
       <div class="train-form-actions">
@@ -2425,10 +2438,11 @@ function renderProgressNewEntry() {
 }
 
 // Renders one photo slot. Three visual states:
-// - Empty: just a "+ Add photo" placeholder. Tap to pick a file.
+// - Empty: "+ Add photo" placeholder (with optional "Required" / "Optional"
+//   pill so the user knows which two are mandatory).
 // - Picked (file): shows the local preview from URL.createObjectURL.
 // - Persisted (path): shows a signed-URL <img> with a "replace" affordance.
-function renderProgressPhotoSlot(slot, key, label) {
+function renderProgressPhotoSlot(slot, key, label, required) {
   const inputId = `progressPhoto_${key}`;
   if (slot.preview) {
     return `<label class="progress-photo-slot is-picked" for="${inputId}">
@@ -2447,9 +2461,10 @@ function renderProgressPhotoSlot(slot, key, label) {
       <input id="${inputId}" type="file" accept="image/*" data-train-action="photo-pick" data-slot="${key}" hidden>
     </label>`;
   }
-  return `<label class="progress-photo-slot is-empty" for="${inputId}">
+  return `<label class="progress-photo-slot is-empty ${required ? 'is-required' : ''}" for="${inputId}">
     <span class="progress-photo-plus">+</span>
     <span class="progress-photo-label">${label}</span>
+    <span class="progress-photo-req">${required ? 'Required' : 'Optional'}</span>
     <input id="${inputId}" type="file" accept="image/*" data-train-action="photo-pick" data-slot="${key}" hidden>
   </label>`;
 }
@@ -2549,6 +2564,17 @@ async function saveProgressEntry() {
   const d = _trainProgressState.entryDraft;
   const p = _trainProgressState.profile;
   if (!d || !d.captured_date) return;
+  // Front + Side are required (Back is optional). A persisted path counts
+  // — when editing an existing entry that already has photos the user
+  // doesn't have to re-pick. Surfacing this with a toast keeps the
+  // friction low; the slot itself is visually marked "Required" already.
+  const hasFront = !!(d.photos.front.file || d.photos.front.path);
+  const hasSide  = !!(d.photos.side.file  || d.photos.side.path);
+  if (!hasFront || !hasSide) {
+    const missing = [!hasFront && 'Front', !hasSide && 'Side'].filter(Boolean).join(' and ');
+    showTrainToast(`Add a ${missing} photo to save the entry.`);
+    return;
+  }
   _trainProgressState.saving = true;
   _trainProgressState.savingStep = 'Saving…';
   renderTrain();
@@ -3227,10 +3253,13 @@ function ensureTrainStyles() {
       padding: 8px 4px;
     }
 
-    /* Session footer */
+    /* Session footer — same card chrome as the rest of the train shell
+       (surface bg, edge border, shadow) so it doesn't read as a darker
+       "modal" sub-region. */
     .train-session-footer {
-      background: var(--surface-2); border-radius: var(--r-md);
-      padding: 14px; margin-top: 6px;
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md); padding: 14px; margin-top: 6px;
+      box-shadow: var(--shadow-card);
     }
     .train-footer-label {
       font-size: 10px; font-weight: 700; letter-spacing: .08em;
@@ -3564,6 +3593,42 @@ function ensureTrainStyles() {
     .progress-photo-slot.is-empty .progress-photo-plus {
       font-size: 28px; line-height: 1; color: var(--ink-4); margin-bottom: 4px;
     }
+    /* Required/optional pill on empty photo slots. Required gets a
+       guava chip so the two mandatory slots read at a glance. */
+    .progress-photo-slot.is-empty .progress-photo-req {
+      font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--ink-4);
+      background: var(--surface); border: 1px solid var(--edge);
+      padding: 2px 6px; border-radius: 999px; margin-top: 4px;
+    }
+    .progress-photo-slot.is-required.is-empty {
+      border-color: var(--guava-700);
+    }
+    .progress-photo-slot.is-required.is-empty .progress-photo-req {
+      background: var(--guava-50); color: var(--guava-700); border-color: var(--guava-50);
+    }
+    /* Collapsible section toggle (measurements). Button-style row with
+       a chevron that rotates when open. Body sits under it when expanded. */
+    .train-collapse-toggle {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: 0; padding: 6px 0; cursor: pointer;
+      font-family: inherit; text-align: left;
+    }
+    .train-collapse-chevron {
+      display: inline-block; transition: transform 0.15s ease;
+      color: var(--ink-3); font-size: 12px;
+    }
+    .train-collapse-chevron.is-open { transform: rotate(90deg); }
+    .train-collapse-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      color: var(--ink-3); text-transform: uppercase;
+    }
+    .train-collapse-badge {
+      font-size: 10px; font-weight: 700; color: var(--guava-700);
+      background: var(--guava-50); padding: 2px 8px; border-radius: 999px;
+      margin-left: auto;
+    }
+    .train-collapse-body { margin-top: 10px; }
     .progress-photo-slot.is-picked,
     .progress-photo-slot.is-persisted { border-style: solid; padding: 0; }
     .progress-photo-slot img {
