@@ -214,10 +214,24 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
     input_schema: {
       type: 'object',
       properties: {
-        overview:    { type: 'string', description: '2-3 sentence summary of what the photos show. ≤320 chars.' },
-        needs_work:  { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Muscle groups or areas that look underdeveloped relative to the rest.' },
-        balanced:    { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Areas that look proportional and well-developed.' },
-        focus_areas: { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Suggested training focus for the next 4-8 weeks — muscle-group level only, not exercise prescriptions.' },
+        overview:    { type: 'string', description: '2-3 sentence prescriptive paragraph. NOT a description ("you have shoulders"), a coaching read ("shoulders are leading, waist isn\'t — hold the bulk 6 more weeks"). ≤320 chars.' },
+        needs_work:  { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Muscle groups that look underdeveloped relative to the rest. Single muscle-group names — "Hamstrings", "Mid-back", "Posterior delts".' },
+        balanced:    { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'Muscle groups that look proportional and well-developed. Same naming as needs_work.' },
+        focus_areas: {
+          type: 'array',
+          maxItems: 3,
+          description: 'EXACTLY 1-3 programmed training focus areas for the next 4-8 weeks. Each one MUST be a structured object — never a plain string. Order matters: most important first.',
+          items: {
+            type: 'object',
+            properties: {
+              title:             { type: 'string', description: 'Short focus area title, muscle-group level. e.g. "Posterior chain — hamstrings + glutes".' },
+              rationale:         { type: 'string', description: '1-2 sentence WHY this matters now. e.g. "Hamstrings/glutes are visibly behind from the side pose. Injury risk + V-taper killer."' },
+              exercises:         { type: 'array', items: { type: 'string' }, maxItems: 5, description: '2-5 named exercise prescriptions. e.g. ["Romanian deadlift","Hip thrust","Glute-ham raise"].' },
+              programming_hint:  { type: 'string', description: 'Frequency + volume. e.g. "2× / week · 12-16 sets total".' },
+            },
+            required: ['title'],
+          },
+        },
         posture:     { type: 'string', description: 'One-phrase observation about posture / alignment. e.g. "slight forward head", "neutral spine".' },
         body_type:   { type: 'string', description: 'One word: ectomorph / mesomorph / endomorph / mixed.' },
         stage:       { type: 'string', description: 'One phrase: "early", "developing", "intermediate", "advanced", or "elite".' },
@@ -228,8 +242,9 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
         body_fat_estimate: { type: 'number', description: 'Estimated body fat percentage (0-50). Skip if not enough is visible.' },
         confidence:  { type: 'string', enum: ['high','medium','low'], description: 'Confidence in the body_fat_estimate.' },
         changes:     { type: 'array', items: { type: 'string' }, maxItems: 4, description: 'When prior photos are provided: 1-4 short observations about what changed. Omit when no prior photos.' },
+        limitations: { type: 'array', items: { type: 'string' }, maxItems: 3, description: 'Photo conditions that softened the read — e.g. "lighting differs from prior shot", "loose clothing covers waist". 1 short phrase per limitation.' },
       },
-      required: ['overview'],
+      required: ['overview', 'focus_areas'],
     },
   };
 
@@ -282,11 +297,31 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
   // Normalize and clip output sizes.
   const clipStr = (s, n) => (s == null ? null : String(s).slice(0, n));
   const clipArr = (a, n, item) => Array.isArray(a) ? a.slice(0, n).map(x => clipStr(x, item)) : [];
+
+  // Normalize focus_areas — accept the new rich object shape AND the
+  // legacy string[] shape (Claude occasionally regresses; keeps client
+  // back-compat). Strings get wrapped as { title } so the client's render
+  // path is uniform.
+  const focusAreasRaw = Array.isArray(raw.focus_areas) ? raw.focus_areas.slice(0, 3) : [];
+  const focus_areas = focusAreasRaw.map(f => {
+    if (typeof f === 'string') return { title: clipStr(f, 80) };
+    if (f && typeof f === 'object') {
+      return {
+        title:            clipStr(f.title || f.name, 100),
+        rationale:        clipStr(f.rationale || f.why, 240),
+        exercises:        clipArr(f.exercises,    5, 60),
+        programming_hint: clipStr(f.programming_hint || f.hint, 60),
+      };
+    }
+    return null;
+  }).filter(f => f && f.title);
+
   const analysis = {
     overview:     clipStr(raw.overview,     320),
     needs_work:   clipArr(raw.needs_work,   4, 60),
     balanced:     clipArr(raw.balanced,     4, 60),
-    focus_areas:  clipArr(raw.focus_areas,  4, 80),
+    focus_areas:  focus_areas,
+    limitations:  clipArr(raw.limitations,  3, 120),
     posture:      clipStr(raw.posture,      80),
     body_type:    clipStr(raw.body_type,    40),
     stage:        clipStr(raw.stage,        40),

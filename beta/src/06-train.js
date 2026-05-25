@@ -2117,14 +2117,21 @@ function renderDashboardLatestCard(latest, bfPct) {
   </div>`;
 }
 
-// AI analysis block — shows the structured fields the vision function
-// stored on progress_pics.ai_analysis. Same visual chrome as the
-// workout-feedback block (dashed border, surface-2 bg, "AI · Claude"
-// tag) so the user can tell AI-derived prose from formulaic numbers.
+// Coach Card — Body Comp Report v2 (Variation A "narrative-first").
+// Replaces the small AI analysis block on the Latest Entry card. The
+// hierarchy is: prescriptive prose → numbered focus areas with named
+// exercises → posture callout → limitations. Same `train-ai-block`
+// chrome so the AI surface stays visually distinct from formulaic stats.
+//
+// Supports two focus_areas shapes for back-compat:
+//   1. Rich (new):  [{ title, rationale, exercises[], programming_hint }, ...]
+//   2. Flat (old):  ['Hamstrings', 'Mid-back', ...]
+// New entries from progress-pic-analysis return the rich shape; legacy
+// entries still render via the flat fallback path.
 function renderProgressAIAnalysis(entry) {
   if (entry._analyzing) {
     return `<div class="train-ai-block is-loading" style="margin-top:14px">
-      <div class="train-ai-label">Photo analysis</div>
+      <div class="train-ai-label">Coach insight</div>
       <div class="train-ai-skel"></div>
       <div class="train-ai-skel" style="width:70%"></div>
     </div>`;
@@ -2132,7 +2139,7 @@ function renderProgressAIAnalysis(entry) {
   if (entry._analyzeError) {
     return `<div class="train-ai-block is-error" style="margin-top:14px">
       <div class="train-ai-head">
-        <div class="train-ai-label">Photo analysis</div>
+        <div class="train-ai-label">Coach insight</div>
         <button class="train-btn-link" data-train-action="progress-analyze" data-id="${entry.id}">Retry</button>
       </div>
       <div class="train-ai-msg">Couldn’t reach the vision coach. Your photos are saved.</div>
@@ -2143,7 +2150,7 @@ function renderProgressAIAnalysis(entry) {
     if (entry.front_storage_path || entry.side_storage_path || entry.back_storage_path) {
       return `<div class="train-ai-block" style="margin-top:14px">
         <div class="train-ai-head">
-          <div class="train-ai-label">Photo analysis</div>
+          <div class="train-ai-label">Coach insight</div>
           <button class="train-btn-link" data-train-action="progress-analyze" data-id="${entry.id}">Run analysis</button>
         </div>
         <div class="train-ai-msg">Photos uploaded — tap "Run analysis" to get a Claude vision read.</div>
@@ -2151,36 +2158,80 @@ function renderProgressAIAnalysis(entry) {
     }
     return '';
   }
-  const overview = a.overview ? `<div class="train-ai-insight">${trainEsc(a.overview)}</div>` : '';
-  const focus = Array.isArray(a.focus_areas) && a.focus_areas.length
-    ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Focus</span><span>${a.focus_areas.map(trainEsc).join(' · ')}</span></div>`
-    : '';
-  const needs = Array.isArray(a.needs_work) && a.needs_work.length
-    ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Needs work</span><span>${a.needs_work.map(trainEsc).join(' · ')}</span></div>`
-    : '';
-  const balanced = Array.isArray(a.balanced) && a.balanced.length
-    ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Balanced</span><span>${a.balanced.map(trainEsc).join(' · ')}</span></div>`
-    : '';
-  const traits = [
-    a.posture     ? `Posture · ${a.posture}`         : '',
-    a.body_type   ? `Type · ${a.body_type}`          : '',
-    a.stage       ? `Stage · ${a.stage}`             : '',
-    a.v_taper     ? `V-taper · ${a.v_taper}`         : '',
-    a.upper_lower ? `Upper/Lower · ${a.upper_lower}` : '',
-    a.symmetry    ? `Symmetry · ${a.symmetry}`       : '',
-  ].filter(Boolean).join(' · ');
-  const traitRow = traits ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Read</span><span>${trainEsc(traits)}</span></div>` : '';
 
-  return `<div class="train-ai-block" style="margin-top:14px">
+  // Trait pills (Bulk/Cut/Maintain comes from goal direction, not AI).
+  const traitPills = [
+    a.body_type ? `<span class="train-pill">${trainEsc(a.body_type)}</span>` : '',
+    a.stage     ? `<span class="train-pill">${trainEsc(a.stage)}</span>`     : '',
+    a.v_taper   ? `<span class="train-pill">V-taper · ${trainEsc(a.v_taper)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  // Focus areas — numbered programmed cards. Detect rich vs flat shape.
+  const focusItems = Array.isArray(a.focus_areas) ? a.focus_areas : [];
+  const focusHTML = focusItems.map((f, i) => {
+    if (typeof f === 'string') {
+      // Legacy flat shape — render as a one-line numbered row.
+      return `<div class="coach-focus-row">
+        <div class="coach-focus-num">${i + 1}</div>
+        <div>
+          <div class="coach-focus-title">${trainEsc(f)}</div>
+        </div>
+      </div>`;
+    }
+    const title = f.title || f.name || `Focus ${i + 1}`;
+    const rationale = f.rationale || f.why || '';
+    const exercises = Array.isArray(f.exercises) ? f.exercises : [];
+    const hint = f.programming_hint || f.hint || '';
+    return `<div class="coach-focus-row">
+      <div class="coach-focus-num">${i + 1}</div>
+      <div>
+        <div class="coach-focus-title">${trainEsc(title)}</div>
+        ${rationale ? `<div class="coach-focus-why">${trainEsc(rationale)}</div>` : ''}
+        ${exercises.length ? `<div class="coach-focus-ex">${exercises.map(e =>
+          `<span class="coach-ex-pill">${trainEsc(e)}</span>`).join('')}</div>` : ''}
+        ${hint ? `<div class="coach-focus-hint">${trainEsc(hint)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Posture / symmetry callout (moss-green callout box).
+  const postureBits = [];
+  if (a.posture)     postureBits.push(a.posture);
+  if (a.symmetry)    postureBits.push(`Symmetry: ${a.symmetry}`);
+  if (a.upper_lower) postureBits.push(a.upper_lower);
+  const calloutHTML = postureBits.length
+    ? `<div class="coach-callout">
+        <span class="coach-callout-icon">✓</span>
+        <div>${trainEsc(postureBits.join(' · '))}</div>
+       </div>`
+    : '';
+
+  // Limitations — single italic line at the bottom.
+  const limitationsArr = Array.isArray(a.limitations) ? a.limitations : [];
+  const limitationsHTML = limitationsArr.length
+    ? `<div class="coach-limitation">Limitation: ${trainEsc(limitationsArr.join(' · '))}</div>`
+    : '';
+
+  // "Needs work" / "Balanced" — show as muscle-group chips below the focus
+  // areas. Lower hierarchy than the numbered focus cards.
+  const needsHTML = Array.isArray(a.needs_work) && a.needs_work.length
+    ? `<div class="coach-secondary-row"><span class="coach-secondary-label">Needs work</span><span class="coach-chip-group">${a.needs_work.map(x => `<span class="coach-secondary-chip">${trainEsc(x)}</span>`).join('')}</span></div>`
+    : '';
+  const balancedHTML = Array.isArray(a.balanced) && a.balanced.length
+    ? `<div class="coach-secondary-row"><span class="coach-secondary-label">Balanced</span><span class="coach-chip-group">${a.balanced.map(x => `<span class="coach-secondary-chip">${trainEsc(x)}</span>`).join('')}</span></div>`
+    : '';
+
+  return `<div class="train-ai-block coach-card" style="margin-top:14px">
     <div class="train-ai-head">
-      <div class="train-ai-label">Photo analysis</div>
+      <div class="train-ai-label">Coach insight</div>
       <span class="train-ai-tag is-ai">AI · Claude vision</span>
     </div>
-    ${overview}
-    ${traitRow}
-    ${focus}
-    ${needs}
-    ${balanced}
+    ${traitPills ? `<div class="coach-traits">${traitPills}</div>` : ''}
+    ${a.overview ? `<div class="coach-overview">${trainEsc(a.overview)}</div>` : ''}
+    ${focusHTML ? `<div class="coach-focus-block">${focusHTML}</div>` : ''}
+    ${(needsHTML || balancedHTML) ? `<div class="coach-secondary">${needsHTML}${balancedHTML}</div>` : ''}
+    ${calloutHTML}
+    ${limitationsHTML}
   </div>`;
 }
 
@@ -2223,50 +2274,97 @@ function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, cal
   </div>`;
 }
 
+// Big goal cards — one per active goal. Replaced the compact stacked bars
+// with a prominent gradient card per kind, showing start / now / target,
+// progress bar, and an at-current-rate ETA. Modeled after the
+// body-comp-report mockup Variation B.
 function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct) {
-  const bar = (goal, current, kind) => {
-    if (!goal) return '';
-    const pct = Math.max(0, Math.min(100, trainProgressPct(goal.start_value, current, goal.target_value) || 0));
-    const startTxt = Number(goal.start_value).toFixed(kind === 'weight' ? 1 : 1);
-    const tgtTxt = Number(goal.target_value).toFixed(kind === 'weight' ? 1 : 1);
-    const curTxt = current != null ? Number(current).toFixed(kind === 'weight' ? 1 : 1) : '—';
-    const daysLeft = Math.max(0, Math.round((new Date(goal.end_date) - new Date()) / 86400_000));
-    const unit = kind === 'weight' ? 'lbs' : '%';
-    return `<div class="goal-row">
-      <div class="goal-row-head">
-        <div class="goal-row-title">${kind === 'weight' ? 'Weight' : 'Body fat'} · <strong>${tgtTxt}${unit}</strong> by ${trainEsc(goal.end_date)}</div>
-        <div class="goal-row-cur">${curTxt}${unit} <span class="goal-row-pct">${pct}%</span></div>
-      </div>
-      <div class="goal-bar"><div class="goal-bar-fill" style="width:${pct}%"></div></div>
-      <div class="goal-row-meta">Started at ${startTxt}${unit} · ${daysLeft} days left</div>
-    </div>`;
-  };
+  const cards = [];
+  if (weightGoal) cards.push(renderGoalCard(weightGoal, latest?.weight_lbs, 'weight'));
+  else cards.push(renderGoalEmpty('weight'));
+  if (fatGoal) cards.push(renderGoalCard(fatGoal, bfPct, 'body_fat'));
+  else cards.push(renderGoalEmpty('body_fat'));
+  return cards.join('');
+}
 
-  const haveAny = !!(weightGoal || fatGoal);
-  if (!haveAny) {
-    return `<div class="progress-card">
-      <div class="progress-card-head">
-        <div>
-          <div class="progress-card-label">Goals</div>
-          <div class="progress-card-meta">No active goal yet</div>
-        </div>
-        <button class="train-btn-secondary" data-train-action="progress-edit-goal" data-kind="weight">Set weight goal</button>
-      </div>
-    </div>`;
+function renderGoalCard(goal, current, kind) {
+  const unit  = kind === 'weight' ? 'lbs' : '%';
+  const label = kind === 'weight' ? 'Weight' : 'Body fat';
+  const startVal  = Number(goal.start_value);
+  const targetVal = Number(goal.target_value);
+  const curVal    = current != null ? Number(current) : null;
+
+  const direction = targetVal > startVal ? 'up' : (targetVal < startVal ? 'down' : 'flat');
+  const totalRange = Math.abs(targetVal - startVal) || 1;
+  const movedAbs   = curVal != null ? Math.abs(curVal - startVal) : 0;
+  const pct = Math.max(0, Math.min(100, Math.round((movedAbs / totalRange) * 100)));
+  const remaining = curVal != null ? Math.abs(targetVal - curVal) : Math.abs(targetVal - startVal);
+
+  // ETA: rate per day from start, project days-to-target.
+  const startDate = new Date(goal.start_date + 'T00:00:00');
+  const today = new Date();
+  const daysSinceStart = Math.max(1, Math.round((today - startDate) / 86400_000));
+  const endDate = new Date(goal.end_date + 'T00:00:00');
+  const daysLeft = Math.max(0, Math.round((endDate - today) / 86400_000));
+  let etaTxt;
+  if (curVal == null) {
+    etaTxt = `Log an entry to start tracking.`;
+  } else {
+    const delta = curVal - startVal;
+    const ratePerDay = delta / daysSinceStart;
+    const ratePerMonth = ratePerDay * 30;
+    const correctDirection = (direction === 'up' && ratePerDay > 0)
+                          || (direction === 'down' && ratePerDay < 0);
+    const ratePart = `<strong>${ratePerMonth > 0 ? '+' : ''}${ratePerMonth.toFixed(2)} ${unit}/mo</strong>`;
+    if (Math.abs(ratePerDay) < 1e-6 || !correctDirection) {
+      etaTxt = `At your current rate (${ratePart}), you won't hit target by ${trainEsc(goal.end_date)}. Pick up the pace or extend the date.`;
+    } else {
+      const daysToTarget = (targetVal - curVal) / ratePerDay;
+      const monthsToTarget = daysToTarget / 30;
+      const onPace = daysToTarget <= daysLeft;
+      etaTxt = onPace
+        ? `At your current rate (${ratePart}), target lands in ~${monthsToTarget.toFixed(1)} months — on pace.`
+        : `At your current rate (${ratePart}), target lands in ~${monthsToTarget.toFixed(1)} months — that's after your ${daysLeft}-day deadline.`;
+    }
   }
 
-  return `<div class="progress-card">
-    <div class="progress-card-head">
+  // For "lose" goals (down direction), the bar visually fills from start toward target.
+  // Same math either way — pct is movement-along-the-range %.
+  const directionVerb = direction === 'down' ? 'to lose' : 'to add';
+  const headlineRemaining = curVal != null
+    ? `${remaining.toFixed(1)} ${unit} ${directionVerb} → target ${targetVal.toFixed(1)} ${unit}`
+    : `Target ${targetVal.toFixed(1)} ${unit}`;
+
+  return `<div class="goal-big-card">
+    <div class="goal-big-head">
       <div>
-        <div class="progress-card-label">Goals</div>
-        <div class="progress-card-meta">Progress vs. start value</div>
+        <div class="goal-big-eyebrow">Goal · ${trainEsc(label)}</div>
+        <div class="goal-big-title">${trainEsc(headlineRemaining)}</div>
       </div>
-      <button class="train-btn-link" data-train-action="progress-edit-goal" data-kind="${weightGoal ? 'weight' : 'body_fat'}">Edit ↗</button>
+      <button class="train-btn-link" data-train-action="progress-edit-goal" data-kind="${kind}">Edit ↗</button>
     </div>
-    ${bar(weightGoal, latest?.weight_lbs, 'weight')}
-    ${bar(fatGoal, bfPct, 'body_fat')}
-    ${!weightGoal ? `<button class="train-btn-secondary" style="margin-top:8px" data-train-action="progress-edit-goal" data-kind="weight">+ Add weight goal</button>` : ''}
-    ${!fatGoal    ? `<button class="train-btn-secondary" style="margin-top:8px" data-train-action="progress-edit-goal" data-kind="body_fat">+ Add body fat goal</button>` : ''}
+    <div class="goal-big-bar"><div class="goal-big-bar-fill" style="width:${pct}%"></div></div>
+    <div class="goal-big-stats">
+      <span>Start · <strong>${startVal.toFixed(1)} ${unit}</strong></span>
+      <span>Now · <strong>${curVal != null ? curVal.toFixed(1) + ' ' + unit : '—'}</strong></span>
+      <span>Target · <strong>${targetVal.toFixed(1)} ${unit}</strong></span>
+    </div>
+    <div class="goal-big-eta">${etaTxt}</div>
+  </div>`;
+}
+
+function renderGoalEmpty(kind) {
+  const label = kind === 'weight' ? 'Weight' : 'Body fat';
+  const verb  = kind === 'weight' ? 'weight' : 'body fat';
+  return `<div class="goal-big-card is-empty">
+    <div class="goal-big-head">
+      <div>
+        <div class="goal-big-eyebrow">Goal · ${trainEsc(label)}</div>
+        <div class="goal-big-title goal-big-title--empty">No ${verb} goal set</div>
+      </div>
+      <button class="train-btn-primary" data-train-action="progress-edit-goal" data-kind="${kind}">Set goal</button>
+    </div>
+    <div class="goal-big-eta">Set a target value and date and we'll show progress + an at-current-rate ETA here.</div>
   </div>`;
 }
 
@@ -3683,6 +3781,124 @@ function ensureTrainStyles() {
       color: var(--ink-4); text-transform: uppercase;
       min-width: 78px; flex-shrink: 0;
     }
+
+    /* ── Coach Card (Body Comp Report v2 — Variation A) ──────────── */
+    .coach-card { padding: 16px 18px; }
+    .coach-traits {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 10px;
+    }
+    .train-pill {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      letter-spacing: .05em; padding: 2px 8px; border-radius: 999px;
+      background: var(--surface-2); color: var(--ink-3); text-transform: uppercase;
+    }
+    .coach-overview {
+      font-size: 14px; line-height: 1.55; color: var(--ink-2);
+      margin-bottom: 14px;
+    }
+    .coach-focus-block { display: flex; flex-direction: column; gap: 10px; }
+    .coach-focus-row {
+      display: grid; grid-template-columns: 26px 1fr; gap: 12px;
+      align-items: start; padding: 12px;
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-md);
+    }
+    .coach-focus-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--guava-700); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .coach-focus-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+    .coach-focus-why { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; line-height: 1.5; }
+    .coach-focus-ex { display: flex; flex-wrap: wrap; gap: 4px; }
+    .coach-ex-pill {
+      background: var(--surface-2); border: 1px solid var(--edge);
+      border-radius: 999px; padding: 2px 8px;
+      font-size: 11px; color: var(--ink-2);
+    }
+    .coach-focus-hint {
+      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      color: var(--guava-700); margin-top: 6px; text-transform: uppercase;
+    }
+    .coach-secondary {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--edge);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .coach-secondary-row {
+      display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+      font-size: 12px;
+    }
+    .coach-secondary-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase;
+      min-width: 78px; flex-shrink: 0;
+    }
+    .coach-chip-group { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+    .coach-secondary-chip {
+      background: var(--surface-2); padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; color: var(--ink-2);
+    }
+    .coach-callout {
+      margin-top: 12px; display: flex; gap: 10px; align-items: start;
+      background: var(--moss-bg, #eaf0e3); border-radius: var(--r-md);
+      padding: 10px 12px; font-size: 12px;
+      color: var(--moss-fg, #5e8c4f); line-height: 1.5;
+    }
+    .coach-callout-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .coach-limitation {
+      margin-top: 8px; font-size: 11px; color: var(--ink-4);
+      font-style: italic;
+    }
+
+    /* ── Big Goal Card (Body Comp Report v2 — Variation B's goal block) ── */
+    .goal-big-card {
+      background: linear-gradient(135deg, var(--guava-50) 0%, var(--surface-2) 100%);
+      border: 1px solid var(--guava-700);
+      border-radius: var(--r-md); padding: 16px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 12px;
+    }
+    .goal-big-card.is-empty {
+      background: var(--surface);
+      border: 1px dashed var(--edge-strong);
+    }
+    .goal-big-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .goal-big-eyebrow {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      color: var(--guava-700); text-transform: uppercase; margin-bottom: 4px;
+    }
+    .goal-big-card.is-empty .goal-big-eyebrow { color: var(--ink-3); }
+    .goal-big-title {
+      font-size: 15px; font-weight: 700; color: var(--ink);
+      letter-spacing: -0.01em; line-height: 1.3;
+    }
+    .goal-big-title--empty { color: var(--ink-3); font-weight: 600; }
+    .goal-big-bar {
+      background: rgba(255,255,255,0.7); border-radius: 999px; height: 14px;
+      overflow: hidden; position: relative; margin-bottom: 6px;
+    }
+    .goal-big-bar-fill {
+      background: var(--guava-700); height: 100%; border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+    .goal-big-stats {
+      display: flex; justify-content: space-between; gap: 8px;
+      font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+      flex-wrap: wrap;
+    }
+    .goal-big-stats strong { color: var(--ink); font-weight: 700; }
+    .goal-big-eta {
+      font-size: 12px; color: var(--ink-2); margin-top: 8px;
+      line-height: 1.5;
+    }
+    .goal-big-eta strong { color: var(--guava-700); }
 
     /* ── AI feedback overlay (Today subtab) ───────────────────────── */
     .train-ai-block {
