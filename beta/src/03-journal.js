@@ -14,9 +14,11 @@ const journalState = {
   eventsError: new Map(),
   historySynced: false,
 
-  // Timeline view
+  // Timeline view. Small initial window (last 7 days) so cold-open
+  // paints fast; user scrolls to extend in 7-day chunks. Phase 2 audit:
+  // 30/30 paid for content most users never read on a given session.
   timelineLoadedThrough: null,       // earliest date string loaded
-  timelineDays: 30,                  // initial window size
+  timelineDays: 7,                   // initial window size
   timelineLoading: false,
 
   // Calendar popover
@@ -770,7 +772,20 @@ function ensureJournalStyles() {
     .j-cal-cell[disabled] { color: var(--ink-5); cursor: not-allowed; opacity: 0.45; }
 
     .j-timeline { display: flex; flex-direction: column; gap: 16px; }
-    .j-card { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--shadow-card); cursor: pointer; transition: box-shadow 0.15s, transform 0.08s; }
+    .j-card {
+      background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md);
+      overflow: hidden; box-shadow: var(--shadow-card); cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.08s;
+      /* Browser-native virtualization (Phase 2 audit) — skips layout +
+         paint for off-screen cards while keeping correct scroll height.
+         contain-intrinsic-size is the placeholder height the browser
+         reserves for unrendered cards; 220px is a rough avg for a card
+         with one or two auto-sections. Cards in/near viewport render
+         normally. Supported in Chrome/Edge/Safari 18+; Firefox falls
+         back to no-op (renders everything, same as today). */
+      content-visibility: auto;
+      contain-intrinsic-size: 0 220px;
+    }
     .j-card:hover { box-shadow: var(--shadow-card-hover); }
     .j-card:active { transform: translateY(1px); }
     .j-card.j-card--empty { box-shadow: none; }
@@ -1262,7 +1277,7 @@ async function loadInitialTimeline() {
   loadCalendarEventMetaForEvents(collectLoadedEventIds());
 }
 
-async function loadOlderTimelineDays(count = 30) {
+async function loadOlderTimelineDays(count = 7) {
   if (journalState.timelineLoading) return;
   journalState.timelineLoading = true;
   const oldStart = journalState.timelineLoadedThrough || jToday();
@@ -1316,7 +1331,7 @@ function setupScrollObserver() {
   if (!sentinel) return;
   if (journalState._observer) journalState._observer.disconnect();
   const obs = new IntersectionObserver(entries => {
-    if (entries.some(e => e.isIntersecting)) loadOlderTimelineDays(30);
+    if (entries.some(e => e.isIntersecting)) loadOlderTimelineDays(7);
   }, { rootMargin: '300px' });
   obs.observe(sentinel);
   journalState._observer = obs;
