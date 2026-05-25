@@ -412,6 +412,12 @@ function briefRecapHTML(recap, structured) {
     }
     const tcTxt = briefRecapTaskCountsText(col.task_counts);
     if (tcTxt != null) rows.push({ icon: '☐', name: 'Tasks', value: tcTxt });
+    // Morning brief: live "Tasks done today" so completions show up
+    // without waiting for tonight's brief regen. Only renders when > 0
+    // so the row doesn't add noise first thing in the morning.
+    if (col.tasks_done_today != null && col.tasks_done_today > 0) {
+      rows.push({ icon: '✓', name: 'Done', value: String(col.tasks_done_today) });
+    }
     const habitsTodayTxt = briefRecapHabitsText(col.habits_today);
     if (habitsTodayTxt != null) rows.push({ icon: '🔥', name: 'Habits', value: habitsTodayTxt });
     // Train row — either today/tomorrow's planned session OR yesterday/
@@ -591,6 +597,45 @@ function briefTodayLocal() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+// Count tasks completed in the user's local day. Mirrors
+// netlify/functions/beta-daily-brief.js countTasksInLocalDay so the live
+// recompute matches what the server stored at brief-generation time.
+function briefCountTasksDoneToday() {
+  if (typeof tasks === 'undefined' || !Array.isArray(tasks)) return 0;
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+  const today = briefTodayLocal();
+  const [y, m, d] = today.split('-').map(Number);
+  // Local midnight today → local midnight tomorrow in UTC ms.
+  const startUtc = new Date(Date.UTC(y, m - 1, d)).getTime()
+    - tzOffsetMs(today, tz);
+  const endUtc = startUtc + 86400_000;
+  let n = 0;
+  for (const t of tasks) {
+    if (!t.done || !t.completedAt) continue;
+    if (t.completedAt >= startUtc && t.completedAt < endUtc) n++;
+  }
+  return n;
+}
+
+// Approximate timezone offset in ms for a YYYY-MM-DD date in tz. Used to
+// turn local-midnight into a UTC ms value without depending on the
+// Temporal API. Tolerates DST around the boundary.
+function tzOffsetMs(dateStr, tz) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const utcNoon = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const localStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(utcNoon);
+  const part = (k) => Number(localStr.find(p => p.type === k)?.value || 0);
+  const localMs = Date.UTC(
+    part('year'), part('month') - 1, part('day'),
+    part('hour') === 24 ? 0 : part('hour'),
+    part('minute'), part('second')
+  );
+  return localMs - utcNoon.getTime();
+}
+
 const _BRIEF_MOOD_LABELS = { 1: 'Great', 2: 'Good', 3: 'Okay', 4: 'Low', 5: 'Bad' };
 function briefMoodLabel(v) {
   if (v == null) return null;
@@ -649,6 +694,20 @@ function homeBriefRecompute() {
     s.recap.right.habits_today = hToday
       ? { pct: Math.round((hToday.done / hToday.due) * 100), done: hToday.done, due: hToday.due }
       : null;
+    // Morning mode: surface tasks-done-today on the Today column so the
+    // user sees completions reflected without waiting for tonight's brief
+    // regen. (Evening mode already shows this on the left column —
+    // patched below.)
+    if (mode === 'morning') {
+      s.recap.right.tasks_done_today = briefCountTasksDoneToday();
+    }
+  }
+
+  // Evening mode: recap.left.label === 'Today' and tasks_done is what
+  // got finished today. Server snapshotted it at brief-generation time —
+  // client owns the live value from here on.
+  if (mode === 'evening' && s.recap && s.recap.left && s.recap.left.label === 'Today') {
+    s.recap.left.tasks_done = briefCountTasksDoneToday();
   }
 
   // ── Legacy shape (today_play / tomorrow_setup) ──────────────────────────

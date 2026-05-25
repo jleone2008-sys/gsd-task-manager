@@ -121,6 +121,9 @@ function addTask() {
   document.querySelectorAll('.create-panel-tags .tag-btn').forEach(b=>b.classList.remove('selected'));
   closeCreatePanel();
   render();
+  // Tier 1 realtime: a new task may push open / priority / due counts so
+  // the brief's recap row updates without waiting for tonight's regen.
+  if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
   saveTask(newTask);
   const newEl = document.getElementById('ti-' + newTask.id);
   if (newEl) { newEl.classList.add('new-task'); setTimeout(()=>newEl.classList.remove('new-task'), 400); }
@@ -174,6 +177,8 @@ function delTask(id) {
       render();
       deleteTask(id);
       orphaned.forEach(s => dbDeleteSubtask(s.client_id));
+      // Tier 1 realtime: deleting a task changes the open counts.
+      if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
     }
   });
 }
