@@ -109,14 +109,10 @@ function trainWireOnce() {
       trainDeletePlan(actionEl.dataset.planId);
       return;
     }
-    if (action === 'close-manage-plan') {
-      trainCloseManagePlanSheet();
-      return;
-    }
-    if (action === 'save-manage-plan') {
-      trainSaveManagePlanSheet();
-      return;
-    }
+    // (close-manage-plan + save-manage-plan are bound directly on the
+    //  modal elements in trainOpenManagePlanSheet — they don't route
+    //  through this document-level delegator because event.stopPropagation
+    //  on .train-modal would block them from reaching it.)
     if (action === 'day-detail') {
       trainOpenDayDetail(actionEl.dataset.dow);
       return;
@@ -433,14 +429,18 @@ function trainOpenManagePlanSheet(planId) {
     return;
   }
   trainCloseManagePlanSheet();
-  const html = `<div class="train-modal-overlay" id="trainManagePlanModal" data-train-action="close-manage-plan">
-    <div class="train-modal" onclick="event.stopPropagation()">
+  // No inline data-train-action / onclick on the inner modal pieces —
+  // event.stopPropagation on .train-modal would block them from reaching
+  // the document-level delegator. We bind close + save handlers directly
+  // on the modal elements after attach instead.
+  const html = `<div class="train-modal-overlay" id="trainManagePlanModal">
+    <div class="train-modal" data-modal-stop>
       <div class="train-modal-head">
         <div>
           <div class="day-detail-dow">Manage plan</div>
           <div class="day-detail-name">${trainEsc(plan.name)}</div>
         </div>
-        <button class="train-modal-close" data-train-action="close-manage-plan" title="Close">×</button>
+        <button class="train-modal-close" data-modal-close title="Close">×</button>
       </div>
       <div class="train-form-section">
         <div class="train-form-label">Name</div>
@@ -454,14 +454,36 @@ function trainOpenManagePlanSheet(planId) {
         Day-by-day editor (swap exercises, change sets/reps, add days) lands in a follow-up.
       </div>
       <div class="train-form-actions" style="margin-top:14px">
-        <button class="train-btn-secondary" data-train-action="close-manage-plan">Cancel</button>
-        <button class="train-btn-primary" data-train-action="save-manage-plan" data-plan-id="${plan.id}">Save</button>
+        <button class="train-btn-secondary" data-modal-close>Cancel</button>
+        <button class="train-btn-primary" data-modal-save>Save</button>
       </div>
     </div>
   </div>`;
   const wrap = document.createElement('div');
   wrap.innerHTML = html;
-  document.body.appendChild(wrap.firstElementChild);
+  const overlay = wrap.firstElementChild;
+  document.body.appendChild(overlay);
+
+  // Click-outside-to-close — only when the overlay itself is the target.
+  // (Clicks on the inner modal don't qualify thanks to the stop below.)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) trainCloseManagePlanSheet();
+  });
+  // Stop bubbling out of the inner modal so the overlay handler above
+  // doesn't fire on every keystroke / button click inside the modal.
+  overlay.querySelector('[data-modal-stop]')?.addEventListener('click', (e) => e.stopPropagation());
+  // X + Cancel: direct listeners (avoids the document delegator entirely).
+  overlay.querySelectorAll('[data-modal-close]').forEach(btn => {
+    btn.addEventListener('click', trainCloseManagePlanSheet);
+  });
+  // Save: bind once with the plan id captured in the closure.
+  overlay.querySelector('[data-modal-save]')?.addEventListener('click', () => trainSaveManagePlanSheet(plan.id));
+  // Esc closes the modal.
+  const escHandler = (e) => {
+    if (e.key === 'Escape') { trainCloseManagePlanSheet(); document.removeEventListener('keydown', escHandler); }
+  };
+  document.addEventListener('keydown', escHandler);
+
   // Focus the name field so the user can type immediately.
   setTimeout(() => document.getElementById('managePlanName')?.focus(), 0);
 }
@@ -470,12 +492,14 @@ function trainCloseManagePlanSheet() {
   document.getElementById('trainManagePlanModal')?.remove();
 }
 
-async function trainSaveManagePlanSheet() {
+async function trainSaveManagePlanSheet(planId) {
+  // planId is passed in via closure from the Save button's direct
+  // listener — no more reading it back off a data attribute (the
+  // document-delegator path was unreliable inside the modal because
+  // of the inner stopPropagation).
+  if (!planId) return;
   const modal = document.getElementById('trainManagePlanModal');
   if (!modal) return;
-  const btn = modal.querySelector('[data-train-action="save-manage-plan"]');
-  const planId = btn?.dataset.planId;
-  if (!planId) return;
   const nameEl = document.getElementById('managePlanName');
   const descEl = document.getElementById('managePlanDesc');
   const name = String(nameEl?.value || '').trim();
