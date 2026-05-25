@@ -2548,7 +2548,15 @@ function renderHistoryRecapBody(s) {
 
 function renderHistoryRecapAI(s) {
   const ai = s.ai_feedback;
-  if (!ai) {
+  // Treat an empty-insight row the same as "no AI on file" so the user
+  // can re-run. This recovers any session that previously landed with a
+  // blank "AI · Claude" card (Claude truncating tool input, older client
+  // versions, etc). Fallback rows with their own insight are still OK.
+  const hasUsableInsight = ai && (
+    (typeof ai.insight === 'string' && ai.insight.trim().length > 0) ||
+    (Array.isArray(ai.observations) && ai.observations.length > 0)
+  );
+  if (!ai || !hasUsableInsight) {
     return `<div class="train-ai-block" style="margin-top:14px">
       <div class="train-ai-head">
         <div class="train-ai-label">Coach insight</div>
