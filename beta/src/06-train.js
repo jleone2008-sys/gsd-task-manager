@@ -98,9 +98,23 @@ function trainWireOnce() {
       return;
     }
     if (action === 'manage-plan') {
-      // Edit-plan modal lands in a follow-up commit; toast for now so the
-      // CTA isn't a dead button.
-      showTrainToast('Plan editor coming in the next commit.');
+      trainOpenManagePlanSheet(actionEl.dataset.planId || _trainState.activePlan?.id);
+      return;
+    }
+    if (action === 'rename-plan') {
+      trainRenamePlan(actionEl.dataset.planId);
+      return;
+    }
+    if (action === 'delete-plan') {
+      trainDeletePlan(actionEl.dataset.planId);
+      return;
+    }
+    if (action === 'close-manage-plan') {
+      trainCloseManagePlanSheet();
+      return;
+    }
+    if (action === 'save-manage-plan') {
+      trainSaveManagePlanSheet();
       return;
     }
     if (action === 'day-detail') {
@@ -407,6 +421,140 @@ function trainCloseDayDetail() {
   document.getElementById('trainDayDetailModal')?.remove();
 }
 
+/* ── Manage plan sheet (rename + description) ─────────────────────────
+   Opens for any plan the user owns (active or inactive). The full
+   day-template editor is a bigger build; this sheet handles the two
+   pieces users need most: the plan's name + description. Save calls
+   .update() on workout_plans which is RLS-gated to own rows. */
+function trainOpenManagePlanSheet(planId) {
+  const plan = (_trainState.userPlans || []).find(p => p.id === planId);
+  if (!plan) {
+    showTrainToast('Plan not found.');
+    return;
+  }
+  trainCloseManagePlanSheet();
+  const html = `<div class="train-modal-overlay" id="trainManagePlanModal" data-train-action="close-manage-plan">
+    <div class="train-modal" onclick="event.stopPropagation()">
+      <div class="train-modal-head">
+        <div>
+          <div class="day-detail-dow">Manage plan</div>
+          <div class="day-detail-name">${trainEsc(plan.name)}</div>
+        </div>
+        <button class="train-modal-close" data-train-action="close-manage-plan" title="Close">×</button>
+      </div>
+      <div class="train-form-section">
+        <div class="train-form-label">Name</div>
+        <input class="form-input" id="managePlanName" type="text" value="${trainEsc(plan.name)}" maxlength="80">
+      </div>
+      <div class="train-form-section" style="margin-top:12px">
+        <div class="train-form-label">Description</div>
+        <textarea class="train-notes-input" id="managePlanDesc" placeholder="What's the focus of this plan?" maxlength="240">${trainEsc(plan.description || '')}</textarea>
+      </div>
+      <div class="train-form-hint" style="margin-top:8px">
+        Day-by-day editor (swap exercises, change sets/reps, add days) lands in a follow-up.
+      </div>
+      <div class="train-form-actions" style="margin-top:14px">
+        <button class="train-btn-secondary" data-train-action="close-manage-plan">Cancel</button>
+        <button class="train-btn-primary" data-train-action="save-manage-plan" data-plan-id="${plan.id}">Save</button>
+      </div>
+    </div>
+  </div>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap.firstElementChild);
+  // Focus the name field so the user can type immediately.
+  setTimeout(() => document.getElementById('managePlanName')?.focus(), 0);
+}
+
+function trainCloseManagePlanSheet() {
+  document.getElementById('trainManagePlanModal')?.remove();
+}
+
+async function trainSaveManagePlanSheet() {
+  const modal = document.getElementById('trainManagePlanModal');
+  if (!modal) return;
+  const btn = modal.querySelector('[data-train-action="save-manage-plan"]');
+  const planId = btn?.dataset.planId;
+  if (!planId) return;
+  const nameEl = document.getElementById('managePlanName');
+  const descEl = document.getElementById('managePlanDesc');
+  const name = String(nameEl?.value || '').trim();
+  const description = String(descEl?.value || '').trim() || null;
+  if (!name) { showTrainToast('Name can\'t be empty.'); return; }
+  try {
+    const { data, error } = await db.from('workout_plans')
+      .update({ name, description, updated_at: new Date().toISOString() })
+      .eq('id', planId)
+      .select()
+      .single();
+    if (error) throw error;
+    // Patch the local cache so the dashboard refreshes immediately.
+    const idx = _trainState.userPlans.findIndex(p => p.id === planId);
+    if (idx >= 0) _trainState.userPlans[idx] = data;
+    if (_trainState.activePlan?.id === planId) _trainState.activePlan = data;
+    trainCloseManagePlanSheet();
+    renderTrain();
+  } catch (e) {
+    console.warn('[train] save manage plan failed', e);
+    showTrainToast('Save failed — ' + (e.message || 'try again'));
+  }
+}
+
+// Inline rename via prompt() — same dialog pattern as Fork's confirm.
+// For deeper edits (description, days), open the Manage sheet instead.
+async function trainRenamePlan(planId) {
+  const plan = (_trainState.userPlans || []).find(p => p.id === planId);
+  if (!plan) return;
+  const next = window.prompt(`Rename "${plan.name}" to:`, plan.name);
+  if (next == null) return;       // cancelled
+  const name = String(next).trim();
+  if (!name || name === plan.name) return;
+  try {
+    const { data, error } = await db.from('workout_plans')
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq('id', planId)
+      .select()
+      .single();
+    if (error) throw error;
+    const idx = _trainState.userPlans.findIndex(p => p.id === planId);
+    if (idx >= 0) _trainState.userPlans[idx] = data;
+    if (_trainState.activePlan?.id === planId) _trainState.activePlan = data;
+    renderTrain();
+  } catch (e) {
+    console.warn('[train] rename plan failed', e);
+    showTrainToast('Rename failed — ' + (e.message || 'try again'));
+  }
+}
+
+// Delete a plan. Refuses to delete the active plan (must deactivate
+// first — typically by activating another plan). Historical sessions
+// keep their plan_id set NULL on cascade (already wired in the workout_
+// sessions schema), so session history is preserved.
+async function trainDeletePlan(planId) {
+  const plan = (_trainState.userPlans || []).find(p => p.id === planId);
+  if (!plan) return;
+  if (plan.is_active) {
+    showTrainToast('Activate another plan first, then delete this one.');
+    return;
+  }
+  const ok = window.confirm(
+    `Delete "${plan.name}"?\n\n` +
+    `This removes the plan permanently. Sessions you've already logged ` +
+    `against it stay in your history (they just lose the plan link). ` +
+    `This cannot be undone.`
+  );
+  if (!ok) return;
+  try {
+    const { error } = await db.from('workout_plans').delete().eq('id', planId);
+    if (error) throw error;
+    _trainState.userPlans = _trainState.userPlans.filter(p => p.id !== planId);
+    renderTrain();
+  } catch (e) {
+    console.warn('[train] delete plan failed', e);
+    showTrainToast('Delete failed — ' + (e.message || 'try again'));
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    DATA LAYER — Supabase reads/writes for plans + sessions.
    `db`, `currentUser` are globals from beta/src/01-core.js (classic script
@@ -584,7 +732,11 @@ function renderPlanInactiveList(plans) {
         <div class="plan-template-name">${trainEsc(p.name)}</div>
         <div class="plan-template-meta">${trainEsc(schedule)}</div>
       </div>
-      <button class="train-btn-secondary" data-train-action="activate-plan" data-plan-id="${p.id}">Activate</button>
+      <div class="plan-row-actions">
+        <button class="train-btn-link" data-train-action="rename-plan" data-plan-id="${p.id}" title="Rename">Rename</button>
+        <button class="train-btn-secondary" data-train-action="activate-plan" data-plan-id="${p.id}">Activate</button>
+        <button class="train-btn-link train-btn-link--danger" data-train-action="delete-plan" data-plan-id="${p.id}" title="Delete">Delete</button>
+      </div>
     </div>`;
   }).join('');
   return `<div class="plan-templates-block">
@@ -645,7 +797,7 @@ function renderPlanActiveCard(plan, todayDow) {
   return `<div class="plan-active-card">
     <div class="plan-active-head">
       <span class="plan-eyebrow">Active plan</span>
-      <button class="train-btn-link" data-train-action="manage-plan">Manage ↗</button>
+      <button class="train-btn-link" data-train-action="manage-plan" data-plan-id="${plan.id}">Manage ↗</button>
     </div>
     <div class="plan-name">${trainEsc(plan.name)}</div>
     <div class="plan-week-grid">${dayGrid}</div>
@@ -3179,6 +3331,15 @@ function ensureTrainStyles() {
     }
     .plan-template-text { min-width: 0; }
     .plan-template-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+    /* Multi-action row on inactive plan cards: Rename / Activate / Delete.
+       Stacks vertically on narrow viewports to keep the row card
+       legible. */
+    .plan-row-actions {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .train-btn-link--danger { color: var(--guava-700); }
+    .train-btn-link--danger:hover { color: var(--guava-800); }
     .plan-template-meta {
       font-size: 11px; color: var(--ink-3); margin-top: 4px; line-height: 1.45;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
