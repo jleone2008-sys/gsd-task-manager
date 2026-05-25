@@ -146,15 +146,17 @@ async function loadOuraStatus() {
   }
 }
 
-// Phase 1.6: user-set city for the daily brief's weather line. Read directly
-// from user_profiles via RLS (the user can read their own row).
+// User-set city for the daily brief's weather line. Lives on
+// user_preferences (full RLS — user owns their row). Was on user_profiles
+// before the table split; moved so the client can write directly without
+// the SECURITY DEFINER RPC dance.
 async function loadLocationStatus() {
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
-    const { data, error } = await db.from('user_profiles')
+    const { data, error } = await db.from('user_preferences')
       .select('city,weather_label')
-      .eq('email', session.user.email)
+      .eq('user_id', session.user.id)
       .maybeSingle();
     if (error) throw error;
     if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };

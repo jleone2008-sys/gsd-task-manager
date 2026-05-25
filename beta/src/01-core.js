@@ -406,7 +406,7 @@ async function _signInUser(user) {
     .then(null, e => console.warn('[access] upsert_user_profile_id failed', e));
 
   const { data: profile } = await db.from('user_profiles')
-    .select('access_status, role, status, tab_permissions, supabase_user_id, timezone')
+    .select('access_status, role, status, tab_permissions, supabase_user_id')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -447,17 +447,26 @@ async function _signInUser(user) {
   // NULL so manual overrides in Settings (future) aren't clobbered. Used by
   // the per-user daily-brief cron to fire in each user's local morning
   // window (06-14 local) instead of one global UTC time.
-  if (!profile?.timezone) {
-    try {
+  //
+  // Reads/writes user_preferences now (was user_profiles — moved as part
+  // of the table split so this autodetect actually persists; the old
+  // path was silently 0-affecting because user_profiles has no client
+  // UPDATE policy).
+  try {
+    const { data: prefs } = await db.from('user_preferences')
+      .select('timezone')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!prefs?.timezone) {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (tz) {
-        db.from('user_profiles').update({ timezone: tz, updated_at: new Date().toISOString() })
-          .eq('email', user.email)
+        db.from('user_preferences')
+          .upsert({ user_id: user.id, timezone: tz }, { onConflict: 'user_id' })
           .then(null, e => console.warn('[timezone autodetect]', e));
       }
-    } catch (e) {
-      console.warn('[timezone autodetect] failed:', e);
     }
+  } catch (e) {
+    console.warn('[timezone autodetect] failed:', e);
   }
 
   // Auto-grant any new core tabs that weren't in this user's tab_permissions yet.

@@ -53,20 +53,39 @@ exports.handler = async () => {
   // Pull every user profile that has a usable identity. We don't gate on
   // beta_enabled yet — the brief function itself is the unit of correctness
   // and is idempotent + cheap when nothing to do.
+  // Identity lives on user_profiles; timezone now lives on
+  // user_preferences. Two queries (no FK between the tables — both
+  // reference auth.users separately, so PostgREST embedded-resource
+  // syntax can't pull this in one shot). Merge by user_id in code.
+  // Users with no preferences row yet default to America/New_York.
   let users;
   try {
-    const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/user_profiles?select=email,supabase_user_id,timezone&supabase_user_id=not.is.null`,
-      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
-    );
-    users = await r.json();
+    const [profRes, prefRes] = await Promise.all([
+      fetch(
+        `${SUPABASE_URL}/rest/v1/user_profiles?select=email,supabase_user_id&supabase_user_id=not.is.null`,
+        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+      ),
+      fetch(
+        `${SUPABASE_URL}/rest/v1/user_preferences?select=user_id,timezone`,
+        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+      ),
+    ]);
+    const profiles = await profRes.json();
+    const prefs    = await prefRes.json();
+    if (!Array.isArray(profiles) || !Array.isArray(prefs)) {
+      console.error('cron-daily-brief: bad user list shape:', { profiles, prefs });
+      return { statusCode: 500, body: 'bad_user_list' };
+    }
+    const tzByUserId = {};
+    for (const p of prefs) tzByUserId[p.user_id] = p.timezone || null;
+    users = profiles.map(row => ({
+      email:            row.email,
+      supabase_user_id: row.supabase_user_id,
+      timezone:         tzByUserId[row.supabase_user_id] || null,
+    }));
   } catch (err) {
     console.error('cron-daily-brief: user list fetch failed:', err.message);
     return { statusCode: 500, body: err.message };
-  }
-  if (!Array.isArray(users)) {
-    console.error('cron-daily-brief: user list non-array:', users);
-    return { statusCode: 500, body: 'bad_user_list' };
   }
 
   const now = new Date();

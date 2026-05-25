@@ -1,6 +1,11 @@
 // User-facing endpoint: geocode a city name via Open-Meteo and store the
-// resolved lat/lng/label on user_profiles. Called from beta Settings when
-// the user enters/updates their location.
+// resolved lat/lng/label on user_preferences. Called from beta Settings
+// when the user enters/updates their location.
+//
+// Storage moved from user_profiles → user_preferences as part of the
+// table split (see supabase-migrations/user_preferences.sql). The
+// function continues to write via the service key — RLS is bypassed
+// either way — but the table changed.
 //
 // Open-Meteo geocoding is free and requires no API key:
 //   https://geocoding-api.open-meteo.com/v1/search?name=<city>&count=1
@@ -64,13 +69,16 @@ exports.handler = async (event) => {
   // Auth
   const bearer = (event.headers.authorization || event.headers.Authorization || '').replace(/^Bearer\s+/i, '').trim();
   if (!bearer) return cors(json(401, { error: 'missing_token' }));
-  let callerEmail;
+  let callerEmail, callerUserId;
   try {
     const ur = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${bearer}` },
     });
     if (!ur.ok) return cors(json(401, { error: 'invalid_token' }));
-    callerEmail = (await ur.json()).email;
+    const u = await ur.json();
+    callerEmail = u.email;
+    callerUserId = u.id;
+    if (!callerUserId) return cors(json(401, { error: 'invalid_token' }));
   } catch (err) {
     return cors(json(401, { error: 'token_validation_failed', detail: err.message }));
   }
@@ -110,21 +118,25 @@ exports.handler = async (event) => {
   const labelParts = [hit.name, hit.admin1, hit.country_code].filter(Boolean);
   const weather_label = labelParts.join(', ');
 
-  // Store
+  // Upsert into user_preferences. Creates the row if absent (first-time
+  // location set before any other preference was saved), updates
+  // otherwise. Resolution=merge-duplicates so Postgres treats the
+  // user_id PK collision as an update of the listed columns.
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(callerEmail)}`, {
-      method: 'PATCH',
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/user_preferences?on_conflict=user_id`, {
+      method: 'POST',
       headers: {
         'Content-Type':  'application/json',
         apikey:          serviceKey,
         Authorization:   `Bearer ${serviceKey}`,
+        Prefer:          'resolution=merge-duplicates',
       },
       body: JSON.stringify({
+        user_id:        callerUserId,
         city:           cityInput,
         weather_lat:    hit.latitude,
         weather_lng:    hit.longitude,
         weather_label:  weather_label,
-        updated_at:     new Date().toISOString(),
       }),
     });
     if (!r.ok) {

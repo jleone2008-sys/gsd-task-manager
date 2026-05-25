@@ -66,7 +66,7 @@ exports.handler = async (event) => {
     if (!photoPaths.length) return cors(json(400, { error: 'no_photos_to_analyze' }));
 
     // Profile (sex + height for the Navy fallback check + AI body-fat estimate context).
-    const profile = await fetchProfile(userJson.email, serviceKey);
+    const profile = await fetchProfile(userId, serviceKey);
 
     // Prior entry — most recent before this one, with at least one photo.
     const prior = await fetchPriorEntryWithPhotos(userId, row, serviceKey);
@@ -137,9 +137,11 @@ async function fetchPriorEntryWithPhotos(userId, current, serviceKey) {
   return rows[0] || null;
 }
 
-async function fetchProfile(email, serviceKey) {
-  if (!email) return null;
-  const url = `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=sex,dob,height_in,activity_level`;
+// Body-comp profile lives on user_preferences after the table split.
+// Keyed on user_id rather than email — fewer joins, same data.
+async function fetchProfile(userId, serviceKey) {
+  if (!userId) return null;
+  const url = `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${userId}&select=sex,dob,height_in,activity_level`;
   const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
   if (!r.ok) return null;
   const rows = await r.json();

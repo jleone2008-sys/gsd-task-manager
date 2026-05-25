@@ -1801,13 +1801,13 @@ async function loadTrainProgressData() {
     const since = trainShiftDate(trainTodayLocalDate(), -90);
 
     const [profRes, entryRes, goalRes] = await Promise.all([
-      // user_profiles canonical key is `email` (legacy rows can have
-      // supabase_user_id null). Matching on supabase_user_id was
-      // returning 0 rows and silently 0-affecting on update, which is
-      // why the wizard re-fired on every reload.
-      db.from('user_profiles')
+      // Body-comp profile lives on user_preferences (user-owned table
+      // with full RLS — read+write own row). Migrated off user_profiles
+      // in user_preferences.sql so the wizard can use a plain upsert
+      // below instead of the SECURITY DEFINER RPC workaround.
+      db.from('user_preferences')
         .select('sex,dob,height_in,activity_level,activity_level_override,units,body_comp_profile_set_at')
-        .eq('email', currentUser.email)
+        .eq('user_id', currentUser.id)
         .maybeSingle(),
       db.from('progress_pics')
         .select('id,captured_date,weight_lbs,neck_in,waist_in,chest_in,arms_in,hips_in,thighs_in,notes,body_fat_pct,body_fat_method,body_fat_confidence,front_storage_path,side_storage_path,back_storage_path,ai_analysis,ai_compared_to')
@@ -1974,24 +1974,17 @@ async function saveWizardProfile() {
       units:          d.units || 'imperial',
       body_comp_profile_set_at: new Date().toISOString(),
     };
-    // Use a SECURITY DEFINER RPC instead of a direct .update(). The
-    // user_profiles table only has a SELECT policy — there is no
-    // user-facing UPDATE policy (deliberate: admin-only columns like
-    // access_status / role / tab_permissions live on the same row).
-    // The RPC validates that the caller's JWT email matches the target
-    // row and locks the mutable column set down to body-comp fields
-    // only.
-    const { data: updated, error } = await db.rpc('update_body_comp_profile', {
-      p_email:          currentUser.email,
-      p_sex:            d.sex,
-      p_dob:            d.dob,
-      p_height_in:      Number(d.height_in),
-      p_activity_level: d.activity_level,
-      p_units:          d.units || 'imperial',
-    });
+    // user_preferences has full RLS (user owns their row) so a plain
+    // upsert works — RLS no longer silently 0-affects. Match on user_id
+    // (the table's primary key); inserts when no row exists yet, updates
+    // otherwise.
+    const { data: updated, error } = await db.from('user_preferences')
+      .upsert({ user_id: currentUser.id, ...patch }, { onConflict: 'user_id' })
+      .select()
+      .single();
     if (error) throw error;
     if (!updated) {
-      throw new Error('profile row not found for ' + currentUser.email);
+      throw new Error('user_preferences row not written for ' + currentUser.id);
     }
     _trainProgressState.profile = { ...(_trainProgressState.profile || {}), ...patch };
     _trainProgressState.wizardDraft = null;

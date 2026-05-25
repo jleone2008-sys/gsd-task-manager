@@ -205,29 +205,53 @@ function computeHeroHint(ouraToday, ouraYesterday, baselines7d) {
 }
 
 // ── User resolution ────────────────────────────────────────────────────────
+// Identity (email, supabase_user_id) lives on user_profiles.
+// Preferences (timezone, city, weather coords/label) live on
+// user_preferences after the table split. Two short queries — one per
+// table — and we merge the result.
 async function resolveUser({ email, user_id }, serviceKey) {
-  const sel = 'supabase_user_id,email,timezone,city,weather_lat,weather_lng,weather_label';
-  const url = email
-    ? `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=${sel}`
-    : `${SUPABASE_URL}/rest/v1/user_profiles?supabase_user_id=eq.${user_id}&select=${sel}`;
-  const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`user_profile_lookup_failed: HTTP ${r.status} ${text.slice(0, 200)}`);
+  const profSel = 'supabase_user_id,email';
+  const profUrl = email
+    ? `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=${profSel}`
+    : `${SUPABASE_URL}/rest/v1/user_profiles?supabase_user_id=eq.${user_id}&select=${profSel}`;
+  const profRes = await fetch(profUrl, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
+  if (!profRes.ok) {
+    const text = await profRes.text();
+    throw new Error(`user_profile_lookup_failed: HTTP ${profRes.status} ${text.slice(0, 200)}`);
   }
-  const rows = await r.json();
-  if (!Array.isArray(rows)) {
-    throw new Error(`user_profile_lookup_unexpected: ${JSON.stringify(rows).slice(0, 200)}`);
+  const profRows = await profRes.json();
+  if (!Array.isArray(profRows)) {
+    throw new Error(`user_profile_lookup_unexpected: ${JSON.stringify(profRows).slice(0, 200)}`);
   }
-  const row = rows[0];
-  if (!row) throw new Error(`user_profile_not_found_for_${email || user_id}`);
+  const profile = profRows[0];
+  if (!profile) throw new Error(`user_profile_not_found_for_${email || user_id}`);
+  const resolvedUserId = profile.supabase_user_id || user_id;
+
+  // user_preferences lookup. Missing row (e.g. brand-new user) → no
+  // preferences yet; we fall back to DEFAULT_TIMEZONE + null weather.
+  let prefs = null;
+  if (resolvedUserId) {
+    const prefRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${resolvedUserId}&select=timezone,city,weather_lat,weather_lng,weather_label`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    );
+    if (prefRes.ok) {
+      const prefRows = await prefRes.json();
+      prefs = Array.isArray(prefRows) ? prefRows[0] || null : null;
+    } else {
+      // Non-fatal — log and continue with defaults so a transient
+      // preferences-lookup hiccup doesn't kill the brief.
+      console.warn(`user_preferences_lookup_failed: ${prefRes.status}`);
+    }
+  }
+
   return {
-    email:         row.email,
-    user_id:       row.supabase_user_id || user_id,
-    timezone:      row.timezone || DEFAULT_TIMEZONE,
-    weather_lat:   row.weather_lat   ?? null,
-    weather_lng:   row.weather_lng   ?? null,
-    weather_label: row.weather_label || row.city || null,
+    email:         profile.email,
+    user_id:       resolvedUserId,
+    timezone:      prefs?.timezone || DEFAULT_TIMEZONE,
+    weather_lat:   prefs?.weather_lat   ?? null,
+    weather_lng:   prefs?.weather_lng   ?? null,
+    weather_label: prefs?.weather_label || prefs?.city || null,
   };
 }
 
