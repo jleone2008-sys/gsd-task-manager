@@ -485,13 +485,37 @@ async function callClaude(ctx, anthropicKey) {
   const j = await r.json();
   if (!r.ok) throw new Error(`anthropic_http_${r.status}: ${j?.error?.message || JSON.stringify(j).slice(0, 200)}`);
   const block = (j.content || []).find(b => b.type === 'tool_use' && b.name === 'record_train_feedback');
-  if (!block) throw new Error(`no_tool_use_in_response: stop_reason=${j.stop_reason}`);
+  if (!block) {
+    // Log enough of the response to debug — text-only completion, refusal,
+    // or unexpected stop_reason all land here.
+    console.warn('[train-feedback] no tool_use in response:', JSON.stringify({
+      stop_reason: j.stop_reason,
+      content_types: (j.content || []).map(b => b.type),
+      first_text: (j.content || []).find(b => b.type === 'text')?.text?.slice(0, 200) || null,
+    }));
+    throw new Error(`no_tool_use_in_response: stop_reason=${j.stop_reason}`);
+  }
 
   const raw = block.input || {};
   const insight = String(raw.insight || '').trim().slice(0, 280);
   const observations = Array.isArray(raw.observations)
     ? raw.observations.slice(0, 3).map(o => String(o).trim().slice(0, 140)).filter(Boolean)
     : [];
+
+  // Defense in depth: if Claude tool-called but left insight empty (most
+  // common cause: stop_reason=max_tokens truncating before the insight
+  // string completed), reject and force the deterministic fallback so
+  // the user sees a usable note rather than a blank "AI · Claude" card.
+  if (!insight) {
+    console.warn('[train-feedback] empty insight from claude:', JSON.stringify({
+      stop_reason: j.stop_reason,
+      raw_input_keys: Object.keys(raw),
+      raw_input_preview: JSON.stringify(raw).slice(0, 200),
+      input_tokens: j.usage?.input_tokens || null,
+      output_tokens: j.usage?.output_tokens || null,
+    }));
+    throw new Error(`empty_insight: stop_reason=${j.stop_reason}`);
+  }
 
   return {
     status:            'ok',

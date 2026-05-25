@@ -2596,11 +2596,16 @@ async function historyRecapRerunAI(sessionId) {
     });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || `http_${r.status}`);
-    // Refetch the row so we render with the now-persisted ai_feedback.
-    const { data: refreshed } = await db.from('workout_sessions')
-      .select('id,session_date,day_name,day_type,feel,session_notes,ai_feedback,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)')
+    // Use the function response directly. The server persists ai_feedback
+    // best-effort in the background — if we refetched here we'd race the
+    // write (causing blank "AI · Claude" cards on slow persist) and we'd
+    // miss the result entirely if persist failed. The function response
+    // IS the authoritative answer.
+    const refreshed = await db.from('workout_sessions')
+      .select('id,session_date,day_name,day_type,feel,session_notes,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)')
       .eq('id', sessionId)
-      .single();
+      .single()
+      .then(({ data }) => data ? { ...data, ai_feedback: j } : null);
     if (refreshed) bodyEl.innerHTML = renderHistoryRecapBody(refreshed);
     // Also patch the in-memory history list so the next render shows
     // the new ai_feedback without a full reload.
