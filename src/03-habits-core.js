@@ -234,6 +234,32 @@ function subscribeToHabitChanges() {
     .subscribe(onChannelStatus);
 }
 
+// Cold-open completion load. Pre-Phase 2 audit this was a single
+// .select('*') with no filter, pulling every completion the user
+// had ever logged — N habits × M days, scaling linearly with their
+// lifetime usage. Loaded on every cold open so the bigger the user's
+// history, the slower the app got every day.
+//
+// New shape: cold load covers the last COMPLETIONS_LOOKBACK_DAYS.
+// That window comfortably handles:
+//   - Today / All view (just needs the last few days)
+//   - computeBestStreak day-based (looks back 365)
+//   - Stats yearly view for the CURRENT year (Jan-today)
+//
+// Wider historical lookups (previous-year Stats, x_per_month 24-month
+// streak) lazy-load via ensureCompletionsCovers below.
+const COMPLETIONS_LOOKBACK_DAYS = 365;
+
+function _completionsLookbackSince() {
+  const d = new Date();
+  d.setDate(d.getDate() - COMPLETIONS_LOOKBACK_DAYS);
+  return d.toISOString().slice(0, 10);   // habit_completions.completed_date is a DATE, not timestamp
+}
+
+// Earliest completed_date currently loaded into habitCompletions.
+// Stats navigation reads this to decide whether to lazy-fetch more.
+let completionsLoadedThrough = null;
+
 async function loadHabits() {
   try {
     const { data: hData, error: hErr } = await db.from('habits')
@@ -242,16 +268,56 @@ async function loadHabits() {
     habitsArr = hData.map(rowToHabit);
     hData.forEach(r => habitRowIdMap.set(r.id, r.client_id));
 
+    const since = _completionsLookbackSince();
     const { data: cData, error: cErr } = await db.from('habit_completions')
-      .select('*').eq('user_id', currentUser.id);
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .gte('completed_date', since);
     if (cErr) { console.error('loadCompletions:', cErr.message); return; }
     habitCompletions = cData.map(rowToCompletion);
     cData.forEach(r => completionRowIdMap.set(r.id, r.id));
+    completionsLoadedThrough = since;
 
     subscribeToHabitChanges();
     renderHabits();
   } finally {
     if (_habitsLoadedResolve) { _habitsLoadedResolve(); _habitsLoadedResolve = null; }
+  }
+}
+
+// Lazy-extend habitCompletions back to cover startDate (YYYY-MM-DD).
+// No-op when the requested range is already loaded. Idempotent on the
+// merge — completions are keyed by row id so we skip duplicates. Used
+// by the Stats tab when navigating to previous years or rendering
+// long-window best-streak calculations.
+async function ensureCompletionsCovers(startDate) {
+  if (!startDate) return;
+  if (completionsLoadedThrough && startDate >= completionsLoadedThrough) return;
+  const newEnd = completionsLoadedThrough
+    ? (() => {
+        // newEnd = completionsLoadedThrough - 1 day, so we don't re-fetch what's already loaded
+        const d = new Date(completionsLoadedThrough + 'T12:00:00');
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().slice(0, 10);
+      })()
+    : todayStr();
+  try {
+    const { data, error } = await db.from('habit_completions')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .gte('completed_date', startDate)
+      .lte('completed_date', newEnd);
+    if (error) throw error;
+    const existing = new Set(habitCompletions.map(c => c.id));
+    for (const row of (data || [])) {
+      if (!existing.has(row.id)) {
+        habitCompletions.push(rowToCompletion(row));
+        completionRowIdMap.set(row.id, row.id);
+      }
+    }
+    completionsLoadedThrough = startDate;
+  } catch (e) {
+    console.warn('[habits] ensureCompletionsCovers failed', e);
   }
 }
 
@@ -792,6 +858,29 @@ function renderHabitStats(active) {
       <div style="font-size:13px">Create some habits to see your stats.</div>
     </div>`;
     return;
+  }
+
+  // Phase 2 audit: cold-load only carries the last 365 days. The Stats
+  // view can navigate to ANY year/month and computeBestStreak walks
+  // back 24 months for x_per_month habits — both need older data.
+  // ensureCompletionsCovers is idempotent and a no-op when already
+  // covered. Fire-and-forget; the initial render uses what we have,
+  // and we re-render once the older data lands.
+  const needsStart = (statsView === 'yearly')
+    ? `${statsYear}-01-01`
+    : `${statsMonthYear}-${String(statsMonth + 1).padStart(2, '0')}-01`;
+  if (typeof ensureCompletionsCovers === 'function'
+      && completionsLoadedThrough && needsStart < completionsLoadedThrough) {
+    // Extend a bit further so x_per_month best-streak (24mo lookback)
+    // gets covered in one round trip rather than two.
+    const extendStart = (statsView === 'yearly')
+      ? `${statsYear - 1}-01-01`
+      : needsStart;
+    ensureCompletionsCovers(extendStart).then(() => {
+      // Re-render with the now-extended data. Guard against the user
+      // having navigated away from the Stats tab while we were loading.
+      if (document.getElementById('habit-stats')) renderHabitStats(active);
+    });
   }
 
   el.innerHTML = '<div id="statsContent"></div>';
