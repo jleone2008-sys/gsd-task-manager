@@ -2031,7 +2031,7 @@ function renderProgressDashboard() {
 
   return `
     ${renderDashboardHeader(p)}
-    ${latest ? renderDashboardLatestCard(latest, bfPct) : renderDashboardEmptyCard()}
+    ${latest ? renderDashboardLatestCard(latest, bfPct, entries) : renderDashboardEmptyCard()}
     ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
     ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct)}
     ${entries.length > 1 ? renderDashboardTrendCard(entries) : ''}
@@ -2057,64 +2057,90 @@ function renderDashboardHeader(p) {
   </div>`;
 }
 
-function renderDashboardLatestCard(latest, bfPct) {
+function renderDashboardLatestCard(latest, bfPct, entries) {
   const today = trainTodayLocalDate();
   const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / 86400_000);
   const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
-  // Body fat display: prefer Navy formula (deterministic), fall back to
-  // ai_estimate from the vision pass when neck+waist weren't logged.
-  let bfDisplay;
+  // Body fat: prefer Navy formula (deterministic), fall back to AI estimate.
+  let bfNum, bfBadge;
   if (bfPct != null) {
-    bfDisplay = `${bfPct}% <span class="latest-stat-method">Navy</span>`;
+    bfNum = `${bfPct.toFixed(1)}%`;
+    bfBadge = 'Navy';
   } else if (latest.body_fat_pct != null && latest.body_fat_method === 'ai_estimate') {
-    const conf = latest.body_fat_confidence || 'low';
-    bfDisplay = `${Number(latest.body_fat_pct).toFixed(1)}% <span class="latest-stat-method">AI · ${trainEsc(conf)}</span>`;
+    bfNum = `${Number(latest.body_fat_pct).toFixed(1)}%`;
+    bfBadge = `AI · ${latest.body_fat_confidence || 'low'}`;
   } else {
-    bfDisplay = `<span class="latest-stat-method">log neck + waist or add photos</span>`;
+    bfNum = '—';
+    bfBadge = 'add photos';
   }
 
-  // Photo thumbnail strip — only renders slots with paths.
-  const photoPaths = [
-    { key: 'front', path: latest.front_storage_path },
-    { key: 'side',  path: latest.side_storage_path  },
-    { key: 'back',  path: latest.back_storage_path  },
-  ].filter(x => x.path);
-  let photoStrip = '';
-  if (photoPaths.length) {
-    const signed = _trainProgressState.photoSignedUrls || {};
-    photoStrip = `<div class="progress-photo-strip">${photoPaths.map(p =>
-      signed[p.path]
-        ? `<img class="progress-photo-thumb" src="${signed[p.path]}" alt="${p.key}"/>`
-        : `<div class="progress-photo-thumb is-loading"></div>`
-    ).join('')}</div>`;
-  }
+  // LBM = weight × (1 − bf/100). Deterministic. Skip when either is missing.
+  const w = latest.weight_lbs != null ? Number(latest.weight_lbs) : null;
+  const bf = bfPct != null
+    ? bfPct
+    : (latest.body_fat_pct != null ? Number(latest.body_fat_pct) : null);
+  const lbm = (w != null && bf != null) ? w * (1 - bf / 100) : null;
 
-  return `<div class="progress-card progress-latest-card">
-    <div class="progress-card-head">
-      <div>
-        <div class="progress-card-label">Latest entry</div>
-        <div class="progress-card-meta">Logged ${trainEsc(ageTxt)}</div>
-      </div>
-      <button class="train-btn-primary" data-train-action="progress-new-entry">+ Log entry</button>
+  // Sparklines from recent entries (newest-first → reverse). Last 6 points
+  // each, only entries where the metric exists.
+  const points = (arr) => {
+    const vals = entries.slice(0, 6).reverse()
+      .map(e => arr === 'weight'  ? e.weight_lbs
+              : arr === 'bf'      ? (e.body_fat_pct != null ? Number(e.body_fat_pct) : null)
+              : arr === 'lbm'     ? (e.weight_lbs && e.body_fat_pct ? Number(e.weight_lbs) * (1 - Number(e.body_fat_pct) / 100) : null)
+              :                     e.waist_in)
+      .filter(v => v != null && Number.isFinite(Number(v)))
+      .map(Number);
+    return vals;
+  };
+  const spark = (vals, color) => {
+    if (vals.length < 2) return '';
+    const W = 80, H = 16, pad = 2;
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = (max - min) || 1;
+    const xs = vals.map((_, i) => pad + (i * (W - 2 * pad)) / (vals.length - 1));
+    const ys = vals.map(v => H - pad - ((v - min) / range) * (H - 2 * pad));
+    const d = vals.map((_, i) => `${i === 0 ? 'M' : 'L'}${xs[i].toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+    return `<svg class="metric-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  };
+
+  // Thin 4-cell metrics strip (mockup Variation A's top row). Replaces the
+  // 3-cell stats grid we had before; LBM is the new one.
+  const metricsStrip = `<div class="metrics-strip">
+    <div class="metric-cell">
+      <div class="metric-cell-num">${w != null ? w.toFixed(1) : '—'}</div>
+      <div class="metric-cell-label">Weight</div>
+      ${spark(points('weight'), 'var(--guava-700)')}
     </div>
-    <div class="latest-stats-grid">
-      <div class="latest-stat">
-        <div class="latest-stat-num">${latest.weight_lbs != null ? Number(latest.weight_lbs).toFixed(1) : '—'}</div>
-        <div class="latest-stat-label">Weight (lbs)</div>
-      </div>
-      <div class="latest-stat">
-        <div class="latest-stat-num">${bfDisplay}</div>
-        <div class="latest-stat-label">Body fat</div>
-      </div>
-      <div class="latest-stat">
-        <div class="latest-stat-num">${latest.waist_in != null ? Number(latest.waist_in).toFixed(1) + '"' : '—'}</div>
-        <div class="latest-stat-label">Waist</div>
-      </div>
+    <div class="metric-cell">
+      <div class="metric-cell-num">${bfNum}</div>
+      <div class="metric-cell-label">Body fat <span class="metric-cell-badge">${trainEsc(bfBadge)}</span></div>
+      ${spark(points('bf'), 'var(--guava-700)')}
     </div>
-    ${photoStrip}
-    ${renderProgressAIAnalysis(latest)}
+    <div class="metric-cell">
+      <div class="metric-cell-num">${lbm != null ? lbm.toFixed(1) : '—'}</div>
+      <div class="metric-cell-label">Lean mass</div>
+      ${spark(points('lbm'), 'var(--moss-fg, #5e8c4f)')}
+    </div>
+    <div class="metric-cell">
+      <div class="metric-cell-num">${latest.waist_in != null ? Number(latest.waist_in).toFixed(1) + '"' : '—'}</div>
+      <div class="metric-cell-label">Waist</div>
+      ${spark(points('waist'), 'var(--ink-3)')}
+    </div>
   </div>`;
+
+  // Latest-entry eyebrow row (slim — just date + log-entry CTA). Stats
+  // moved out of this card into the metricsStrip above.
+  return `<div class="progress-latest-eyebrow">
+    <div>
+      <span class="progress-card-label">Latest entry</span>
+      <span class="progress-card-meta" style="margin-left:8px">Logged ${trainEsc(ageTxt)}</span>
+    </div>
+    <button class="train-btn-primary" data-train-action="progress-new-entry">+ Log entry</button>
+  </div>
+  ${metricsStrip}
+  ${renderProgressAIAnalysis(latest)}`;
 }
 
 // Coach Card — Body Comp Report v2 (Variation A "narrative-first").
@@ -2168,10 +2194,14 @@ function renderProgressAIAnalysis(entry) {
 
   // Focus areas — numbered programmed cards. Detect rich vs flat shape.
   const focusItems = Array.isArray(a.focus_areas) ? a.focus_areas : [];
+  // Legacy detection: if every entry is a plain string, this analysis
+  // predates the rich schema. Offer a one-click re-run so the user can
+  // upgrade without re-uploading photos.
+  const isLegacyFocus = focusItems.length > 0 && focusItems.every(f => typeof f === 'string');
   const focusHTML = focusItems.map((f, i) => {
     if (typeof f === 'string') {
       // Legacy flat shape — render as a one-line numbered row.
-      return `<div class="coach-focus-row">
+      return `<div class="coach-focus-row coach-focus-row--legacy">
         <div class="coach-focus-num">${i + 1}</div>
         <div>
           <div class="coach-focus-title">${trainEsc(f)}</div>
@@ -2193,6 +2223,13 @@ function renderProgressAIAnalysis(entry) {
       </div>
     </div>`;
   }).join('');
+  // "Re-run analysis" CTA banner when the stored data is legacy-flat.
+  const legacyUpgradeHTML = isLegacyFocus
+    ? `<div class="coach-upgrade-banner">
+        <div class="coach-upgrade-msg">This analysis was from an older schema. Re-run to get exercise prescriptions + programming hints.</div>
+        <button class="train-btn-primary" data-train-action="progress-analyze" data-id="${entry.id}">Re-run analysis</button>
+       </div>`
+    : '';
 
   // Posture / symmetry callout (moss-green callout box).
   const postureBits = [];
@@ -2221,6 +2258,28 @@ function renderProgressAIAnalysis(entry) {
     ? `<div class="coach-secondary-row"><span class="coach-secondary-label">Balanced</span><span class="coach-chip-group">${a.balanced.map(x => `<span class="coach-secondary-chip">${trainEsc(x)}</span>`).join('')}</span></div>`
     : '';
 
+  // Photos block — moved into the Coach Card per the Variation A mockup
+  // (was on the Latest Entry card). Renders 2-up (front + side) when
+  // both exist; 3-up if back is also present; single column otherwise.
+  const photoPaths = [
+    { key: 'front', path: entry.front_storage_path, label: 'Front' },
+    { key: 'side',  path: entry.side_storage_path,  label: 'Side'  },
+    { key: 'back',  path: entry.back_storage_path,  label: 'Back'  },
+  ].filter(x => x.path);
+  let photosHTML = '';
+  if (photoPaths.length) {
+    const signed = _trainProgressState.photoSignedUrls || {};
+    const cols = photoPaths.length === 1 ? '1fr'
+               : photoPaths.length === 2 ? '1fr 1fr'
+               :                            '1fr 1fr 1fr';
+    photosHTML = `<div class="coach-photos" style="grid-template-columns:${cols}">
+      ${photoPaths.map(p => signed[p.path]
+        ? `<div class="coach-photo"><img src="${signed[p.path]}" alt="${p.label}"/><span class="coach-photo-label">${p.label}</span></div>`
+        : `<div class="coach-photo coach-photo--loading"><span class="coach-photo-label">${p.label}</span></div>`
+      ).join('')}
+    </div>`;
+  }
+
   return `<div class="train-ai-block coach-card" style="margin-top:14px">
     <div class="train-ai-head">
       <div class="train-ai-label">Coach insight</div>
@@ -2229,7 +2288,9 @@ function renderProgressAIAnalysis(entry) {
     ${traitPills ? `<div class="coach-traits">${traitPills}</div>` : ''}
     ${a.overview ? `<div class="coach-overview">${trainEsc(a.overview)}</div>` : ''}
     ${focusHTML ? `<div class="coach-focus-block">${focusHTML}</div>` : ''}
+    ${legacyUpgradeHTML}
     ${(needsHTML || balancedHTML) ? `<div class="coach-secondary">${needsHTML}${balancedHTML}</div>` : ''}
+    ${photosHTML}
     ${calloutHTML}
     ${limitationsHTML}
   </div>`;
@@ -3782,6 +3843,39 @@ function ensureTrainStyles() {
       min-width: 78px; flex-shrink: 0;
     }
 
+    /* ── Latest-entry eyebrow + thin 4-cell metrics strip ────────── */
+    .progress-latest-eyebrow {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 0 2px; margin-bottom: 8px;
+    }
+    .metrics-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+      margin-bottom: 4px;
+    }
+    .metric-cell {
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-sm); padding: 10px 12px;
+      box-shadow: var(--shadow-card);
+    }
+    .metric-cell-num {
+      font-size: 18px; font-weight: 700; color: var(--ink);
+      letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+    }
+    .metric-cell-label {
+      font-size: 9px; font-weight: 700; letter-spacing: .05em;
+      color: var(--ink-4); text-transform: uppercase; margin-top: 2px;
+    }
+    .metric-cell-badge {
+      font-size: 9px; font-weight: 600; color: var(--ink-4);
+      text-transform: none; letter-spacing: 0;
+      margin-left: 4px;
+    }
+    .metric-spark { display: block; width: 100%; height: 16px; margin-top: 4px; }
+    @media (max-width: 480px) {
+      .metrics-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+
     /* ── Coach Card (Body Comp Report v2 — Variation A) ──────────── */
     .coach-card { padding: 16px 18px; }
     .coach-traits {
@@ -3841,6 +3935,44 @@ function ensureTrainStyles() {
     .coach-secondary-chip {
       background: var(--surface-2); padding: 2px 8px; border-radius: 999px;
       font-size: 11px; color: var(--ink-2);
+    }
+    /* Big photo block INSIDE the coach card (Variation A spec). 2-up or
+       3-up depending on slots filled. Bigger than the Latest Entry
+       thumbnails — these are the "look at the read" surface. */
+    .coach-photos {
+      display: grid; gap: 8px;
+      margin-top: 14px;
+    }
+    .coach-photo {
+      position: relative;
+      aspect-ratio: 3/4; border-radius: var(--r-md); overflow: hidden;
+      background: var(--surface-2);
+    }
+    .coach-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .coach-photo--loading {
+      background: linear-gradient(135deg, var(--edge) 0%, var(--surface-2) 100%);
+    }
+    .coach-photo-label {
+      position: absolute; bottom: 6px; left: 8px;
+      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      color: #fff; background: rgba(20,15,10,0.55);
+      padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+    }
+    /* Legacy-data banner — surfaces when stored ai_analysis predates the
+       rich focus_areas schema. CTA upgrades on click. */
+    .coach-upgrade-banner {
+      margin-top: 10px; display: flex; align-items: center;
+      justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; border-radius: var(--r-md);
+      background: var(--surface-2); border: 1px dashed var(--edge-strong);
+    }
+    .coach-upgrade-msg {
+      font-size: 12px; color: var(--ink-3); line-height: 1.5; flex: 1;
+      min-width: 200px;
+    }
+    .coach-focus-row--legacy {
+      background: var(--surface-2);   /* dim, signals "less data than usual" */
+      border-color: transparent;
     }
     .coach-callout {
       margin-top: 12px; display: flex; gap: 10px; align-items: start;
