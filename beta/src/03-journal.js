@@ -764,6 +764,15 @@ function ensureJournalStyles() {
     @media (max-width: 600px) { .j-back-to-top { bottom: 76px; right: 16px; } }
     .j-card-entry { font-size: 13px; margin-top: 4px; }
     .j-card-auto-more { font-size: 11px; color: var(--ink-4); font-style: italic; padding-top: 2px; }
+    /* "Today I learned" block on the day card. Sits under the
+       reflection / mood block, gets its own small label like the
+       'What happened' / 'What you finished' auto sections. */
+    .j-card-learning { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--edge); }
+    .j-card-learning-label {
+      font-size: 10px; font-weight: 700; color: var(--ink-4);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .j-card-learning .j-card-text { font-size: 13px; }
 
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
 
@@ -960,9 +969,10 @@ function renderDayCard(dateStr) {
   const entry = journalState.entries.get(dateStr);
   const isToday = jIsToday(dateStr);
   const hasReflection = !!(entry?.reflections && entry.reflections.trim());
+  const hasLearning   = !!(entry?.learning && entry.learning.trim());
   const hasMood = !!entry?.mood;
   const hasPhotos = !!entry?.photos?.length;
-  const hasManual = hasReflection || hasMood || hasPhotos;
+  const hasManual = hasReflection || hasMood || hasPhotos || hasLearning;
 
   // Auto-collected: events + completed tasks
   const events = journalState.calendarEvents.get(dateStr) || [];
@@ -998,6 +1008,15 @@ function renderDayCard(dateStr) {
     manualHtml = `
       ${title ? `<div class="j-card-title">${escapeHtml(title)}</div>` : ''}
       ${body ? `<div class="j-card-text j-card-text--clamped">${escapeHtml(body)}</div>` : ''}`;
+  }
+  // "Today I learned" — its own labeled block on the card, shown
+  // whenever the entry has learning text. Sits under the reflection /
+  // mood block in the same manual section.
+  if (hasLearning) {
+    manualHtml += `<div class="j-card-learning">
+      <div class="j-card-learning-label">Today I learned</div>
+      <div class="j-card-text j-card-text--clamped">${escapeHtml(entry.learning.trim())}</div>
+    </div>`;
   }
 
   let autoHtml = '';
@@ -1538,8 +1557,9 @@ function closeEditModal(skipRerender) {
 }
 
 function renderViewModalBody(dateStr) {
-  const entry = journalState.entries.get(dateStr) || { reflections:'', mood:null, photos:[] };
+  const entry = journalState.entries.get(dateStr) || { reflections:'', mood:null, photos:[], learning:'' };
   const reflection = (entry.reflections || '').trim();
+  const learning   = (entry.learning   || '').trim();
   const moodTitle = entry.mood
     ? `<div class="j-view-mood-title"><span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>Feeling ${MOOD_LABEL[entry.mood-1]}</div>`
     : '';
@@ -1556,11 +1576,20 @@ function renderViewModalBody(dateStr) {
        </div>`
     : '';
   const manualBlock = (moodTitle || reflectionHtml)
-    ? `<div class="j-section">${moodTitle}${reflectionHtml}</div>`
+    ? `<div class="j-section"><div class="j-section-h">Daily Reflection</div>${moodTitle}${reflectionHtml}</div>`
+    : '';
+  // "Today I learned" — own labeled section, mirrors the edit modal's
+  // section structure so the read view and edit view feel consistent.
+  const learningBlock = learning
+    ? `<div class="j-section">
+         <div class="j-section-h">Today I learned</div>
+         <div class="j-view-text">${escapeHtml(learning)}</div>
+       </div>`
     : '';
   return `
     ${photosHtml}
     ${manualBlock}
+    ${learningBlock}
     <div class="j-section">
       <div class="j-section-h">What happened</div>
       <div id="jViewEventsSlot">${renderEventsSection(dateStr)}</div>
