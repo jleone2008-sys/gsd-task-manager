@@ -2481,7 +2481,7 @@ function renderProgressNewEntry() {
     <div class="progress-wizard-head">
       <button class="train-btn-link" data-train-action="progress-back" style="margin-bottom:6px">← Back to dashboard</button>
       <div class="progress-wizard-title">Log entry</div>
-      <div class="progress-wizard-msg">Claude will analyze your body composition and give actionable insights.</div>
+      <div class="progress-wizard-msg">Claude Vision will analyze your body composition and give your personalized actionable insights to improve.</div>
     </div>
 
     <div class="train-form-card">
@@ -2497,7 +2497,7 @@ function renderProgressNewEntry() {
 
       <div class="train-form-section">
         <div class="train-form-label">Photos</div>
-        <div class="train-form-hint" style="margin-bottom:8px">Claude will analyze your body composition and give actionable insights.</div>
+        <div class="train-form-hint" style="margin-bottom:8px">Claude Vision will analyze your body composition and give your personalized actionable insights to improve.</div>
         <div class="progress-photo-grid">
           ${renderProgressPhotoSlot(d.photos.front, 'front', 'Front', true)}
           ${renderProgressPhotoSlot(d.photos.side,  'side',  'Side',  true)}
