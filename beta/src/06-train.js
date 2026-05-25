@@ -2439,10 +2439,12 @@ function openHistoryRecap(sessionId) {
   wrap.innerHTML = html;
   const overlay = wrap.firstElementChild;
   document.body.appendChild(overlay);
-  // Click-outside closes; .train-modal stops bubble so inner clicks
-  // don't reach the overlay handler.
+  // Click-outside closes. The overlay handler already gates on
+  // e.target === overlay so we DON'T stopPropagation inside .train-modal
+  // — doing that would block the document-level data-train-action
+  // delegator (line ~102) and break "Run analysis" + the close ×, which
+  // are dynamic buttons wired through that delegator.
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHistoryRecap(); });
-  overlay.querySelector('[data-modal-stop]')?.addEventListener('click', (e) => e.stopPropagation());
   // Esc closes.
   const esc = (e) => { if (e.key === 'Escape') closeHistoryRecap(); };
   document.addEventListener('keydown', esc);
