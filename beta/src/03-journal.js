@@ -147,6 +147,7 @@ async function loadJournalMonth(year, month) {
 }
 
 async function loadJournalRange(startDate, endDate) {
+  console.time('[perf] journal.loadInitial:entries');
   try {
     const { data, error } = await db.from('journal_entries')
       .select('entry_date, reflections, mood, photos, learning, updated_at')
@@ -154,9 +155,11 @@ async function loadJournalRange(startDate, endDate) {
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
   } catch (e) { console.warn('[journal] loadRange failed', e); }
+  finally { console.timeEnd('[perf] journal.loadInitial:entries'); }
 }
 
 async function loadCalendarCacheRange(startDate, endDate) {
+  console.time('[perf] journal.loadInitial:cache');
   try {
     const { data, error } = await db.from('journal_calendar_cache')
       .select('entry_date, events')
@@ -164,6 +167,7 @@ async function loadCalendarCacheRange(startDate, endDate) {
     if (error) throw error;
     (data || []).forEach(row => journalState.calendarEvents.set(row.entry_date, row.events || []));
   } catch (e) { /* table may not exist yet — silent */ }
+  finally { console.timeEnd('[perf] journal.loadInitial:cache'); }
 }
 
 async function loadJournalEntry(dateStr) {
@@ -270,10 +274,12 @@ function computeHabitSummaryOption1(dateStr) {
  * Today is intentionally skipped — its value is always live.
  */
 async function loadHabitSummariesForRange(startDate, endDate) {
+  console.time('[perf] journal.loadInitial:habitSummary');
   try {
     const { data, error } = await db.from('journal_habit_summary')
       .select('entry_date, due_count, done_count')
       .gte('entry_date', startDate).lte('entry_date', endDate);
+    console.timeEnd('[perf] journal.loadInitial:habitSummary');
     if (error) { console.warn('[journal] habit summary fetch failed', error); return; }
     if (data) {
       for (const row of data) {

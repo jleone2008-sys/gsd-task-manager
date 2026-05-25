@@ -151,16 +151,23 @@ function subscribeToNoteChanges() {
 
 async function loadNotes() {
   console.time('[perf] notes.load');
-  // Load notebooks first
-  const { data: nbData, error: nbErr } = await db.from('notebooks')
-    .select('*').eq('user_id', currentUser.id).order('order', { ascending: true });
+  // Phase 2 audit: parallelize notebooks + notes (was serial, ~270ms
+  // for 21 rows). They're independent queries that the client joins
+  // by client_id only; no need to wait.
+  const [nbRes, nRes] = await Promise.all([
+    db.from('notebooks')
+      .select('*').eq('user_id', currentUser.id).order('order', { ascending: true }),
+    db.from('notes')
+      .select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false }),
+  ]);
+  const nbData = nbRes.data;
+  const nbErr  = nbRes.error;
+  const data   = nRes.data;
+  const error  = nRes.error;
   if (!nbErr && nbData) {
     notebooksArr = nbData.map(rowToNotebook);
     nbData.forEach(r => notebookRowIdMap.set(r.id, r.client_id));
   }
-  // Load notes
-  const { data, error } = await db.from('notes')
-    .select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false });
   if (error) { console.error('loadNotes:', error.message); console.timeEnd('[perf] notes.load'); return; }
   console.timeEnd('[perf] notes.load');
   console.log(`[perf] notes.load rows: notebooks=${nbData?.length || 0} notes=${data.length}`);
