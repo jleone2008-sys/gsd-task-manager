@@ -78,7 +78,69 @@ async function loadUserSettings() {
     loadWhoopStatus(),
     loadOuraStatus(),
     loadLocationStatus(),
+    loadConnectedCalendars(),
   ]);
+}
+
+// Phase 5 — multi-calendar selection. Loads BOTH the user's stored
+// toggles (google_calendars_synced) AND the live Google calendarList,
+// merges them, and stashes on userSettings so renderSettingsPage can
+// paint the panel. Live list is the source of truth for which
+// calendars exist; the DB row tracks the user's enabled/disabled
+// preference (default true = enabled when first discovered).
+async function loadConnectedCalendars() {
+  if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
+  userSettings.calendars = { items: [], loading: true, error: null };
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    // Live list from Google. Requires calendar.readonly scope (already
+    // granted via the existing OAuth flow).
+    const token = typeof getGoogleAccessToken === 'function'
+      ? await getGoogleAccessToken(false)
+      : null;
+    if (!token) {
+      userSettings.calendars = { items: [], loading: false, error: 'no_token' };
+      return;
+    }
+    const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!listRes.ok) {
+      userSettings.calendars = { items: [], loading: false, error: `api_${listRes.status}` };
+      return;
+    }
+    const listJson = await listRes.json();
+    const live = (listJson.items || []).map(c => ({
+      id:        c.id,
+      summary:   c.summaryOverride || c.summary || c.id,
+      color_hex: c.backgroundColor || null,
+      primary:   !!c.primary,
+    }));
+    // Existing toggles.
+    const { data: synced } = await db.from('google_calendars_synced')
+      .select('google_calendar_id,enabled')
+      .eq('user_id', session.user.id);
+    const enabledMap = {};
+    for (const row of (synced || [])) enabledMap[row.google_calendar_id] = !!row.enabled;
+    // Merge: each live calendar gets an enabled flag (default true if
+    // no row exists yet → matches the historical 'primary only' behavior
+    // only when zero rows exist OR the row says enabled).
+    const hasAnyRow = (synced || []).length > 0;
+    const items = live.map(c => ({
+      ...c,
+      // If user has never configured: default primary to true, others to false.
+      // If user has configured at least one row: respect stored value, default
+      // newly-discovered calendars to false (opt-in for new ones).
+      enabled: enabledMap[c.id] != null
+        ? enabledMap[c.id]
+        : (hasAnyRow ? false : !!c.primary),
+    }));
+    userSettings.calendars = { items, loading: false, error: null };
+  } catch (e) {
+    console.warn('[settings] calendars load failed', e);
+    userSettings.calendars = { items: [], loading: false, error: 'fetch_failed' };
+  }
 }
 
 async function loadDropboxStatus() {
@@ -388,6 +450,12 @@ function renderSettingsPage() {
       </div>
 
       <div class="settings-section">
+        <div class="settings-h">Connected calendars <span class="settings-saved" id="settingsCalendarsSaved">Saved</span></div>
+        <div class="settings-sub">Pick which Google calendars feed events into Journal + Brief. Toggling saves immediately.</div>
+        <div id="settingsCalendarsList" style="margin-top:10px;">${renderConnectedCalendarsList()}</div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-h">Backup &amp; Restore</div>
         <div class="settings-sub">Export a full backup of all your data, or restore from a previous backup file.</div>
         <button class="settings-btn-secondary" data-settings-action="backup">Open Backup &amp; Restore</button>
@@ -544,6 +612,11 @@ document.addEventListener('change', e => {
   const betaCb = e.target.closest('#settingsBetaEnabled');
   if (betaCb) {
     saveUserSettings({ beta_enabled: betaCb.checked }).then(() => flashSettingsSaved());
+    return;
+  }
+  const calCb = e.target.closest('[data-settings-action="toggle-calendar"]');
+  if (calCb) {
+    toggleConnectedCalendar(calCb.dataset.calId, calCb.checked);
     return;
   }
   const healthRadio = e.target.closest('input[data-settings-health-source]');
@@ -867,5 +940,63 @@ async function disconnectDropbox() {
   } catch (e) {
     console.error('[settings] dropbox disconnect failed', e);
     if (typeof showToast === 'function') showToast('Could not disconnect Dropbox', 'offline');
+  }
+}
+
+/* ── Phase 5 — Connected calendars panel ─────────────────────────── */
+
+function renderConnectedCalendarsList() {
+  const state = userSettings?.calendars;
+  if (!state) return `<div class="settings-sub">Loading…</div>`;
+  if (state.loading)        return `<div class="settings-sub">Loading your calendars…</div>`;
+  if (state.error === 'no_token') return `<div class="settings-sub">Sign in with Google to manage connected calendars.</div>`;
+  if (state.error)          return `<div class="settings-sub">Couldn't load calendars (${escapeHtml(state.error)}). Refresh to retry.</div>`;
+  if (!state.items.length)  return `<div class="settings-sub">No calendars found on this Google account.</div>`;
+  return state.items.map(c => `
+    <label class="settings-tab-row" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+      <input type="checkbox" data-settings-action="toggle-calendar" data-cal-id="${escapeHtml(c.id)}" ${c.enabled ? 'checked' : ''}>
+      ${c.color_hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(c.color_hex)};flex-shrink:0;"></span>` : ''}
+      <span class="settings-tab-label" style="flex:1;min-width:0;">${escapeHtml(c.summary)}${c.primary ? ' <span class="settings-sub" style="display:inline">(primary)</span>' : ''}</span>
+    </label>
+  `).join('');
+}
+
+// Persist a single calendar toggle. Upsert keeps things tidy whether
+// or not a row already exists for this (user, calendar) pair.
+async function toggleConnectedCalendar(calId, enabled) {
+  const item = userSettings?.calendars?.items?.find(c => c.id === calId);
+  if (!item) return;
+  // Optimistic local update + saved-flash.
+  item.enabled = enabled;
+  const savedEl = document.getElementById('settingsCalendarsSaved');
+  if (savedEl) { savedEl.style.opacity = '1'; savedEl.textContent = 'Saving…'; }
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('No session');
+    const { error } = await db.from('google_calendars_synced').upsert({
+      user_id:            session.user.id,
+      google_calendar_id: calId,
+      label:              item.summary,
+      color_hex:          item.color_hex,
+      enabled,
+    }, { onConflict: 'user_id,google_calendar_id' });
+    if (error) throw error;
+    if (savedEl) {
+      savedEl.textContent = 'Saved';
+      setTimeout(() => { if (savedEl) savedEl.style.opacity = '0'; }, 1500);
+    }
+    // Trigger a journal refresh on next visit — clear in-memory event
+    // caches so the new set of enabled calendars is reflected.
+    if (typeof journalState !== 'undefined' && journalState?.calendarEvents) {
+      journalState.calendarEvents.clear();
+    }
+  } catch (e) {
+    console.warn('[settings] toggle calendar failed', e);
+    // Revert local state on failure.
+    item.enabled = !enabled;
+    const cb = document.querySelector(`[data-settings-action="toggle-calendar"][data-cal-id="${calId.replace(/"/g, '\\"')}"]`);
+    if (cb) cb.checked = !enabled;
+    if (savedEl) { savedEl.textContent = 'Failed'; savedEl.style.color = 'var(--guava-700)'; }
+    if (typeof showToast === 'function') showToast('Could not save calendar toggle', 'offline');
   }
 }

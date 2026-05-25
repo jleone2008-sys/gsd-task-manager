@@ -385,6 +385,31 @@ async function getGoogleAccessToken(forceRefresh) {
   }
 }
 
+// Phase 5 — multi-Google-calendar sync. Loads enabled calendar IDs
+// once per session (cached in journalState.enabledCalendarIds). Returns
+// ['primary'] as a back-compat fallback when no rows exist yet.
+async function getEnabledCalendarIds() {
+  if (journalState.enabledCalendarIds) return journalState.enabledCalendarIds;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return ['primary'];
+    const { data, error } = await db.from('google_calendars_synced')
+      .select('google_calendar_id,enabled')
+      .eq('user_id', session.user.id)
+      .eq('enabled', true);
+    if (error) throw error;
+    // No rows yet → user hasn't configured anything → fall back to
+    // 'primary' so existing behavior continues unchanged.
+    const ids = (data || []).map(r => r.google_calendar_id);
+    journalState.enabledCalendarIds = ids.length ? ids : ['primary'];
+    return journalState.enabledCalendarIds;
+  } catch (e) {
+    console.warn('[journal] enabled-calendars load failed; falling back to primary', e);
+    journalState.enabledCalendarIds = ['primary'];
+    return journalState.enabledCalendarIds;
+  }
+}
+
 async function fetchLiveCalendarEvents(dateStr) {
   let token = await getGoogleAccessToken(false);
   if (!token) {
@@ -393,40 +418,52 @@ async function fetchLiveCalendarEvents(dateStr) {
   }
   const startISO = new Date(dateStr + 'T00:00:00').toISOString();
   const endISO   = new Date(dateStr + 'T23:59:59').toISOString();
-  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events`
-    + `?timeMin=${encodeURIComponent(startISO)}&timeMax=${encodeURIComponent(endISO)}`
-    + `&singleEvents=true&orderBy=startTime`;
-  try {
+  const calIds = await getEnabledCalendarIds();
+
+  // Fetch each enabled calendar in parallel; merge events.
+  const fetchOne = async (calId) => {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`
+      + `?timeMin=${encodeURIComponent(startISO)}&timeMax=${encodeURIComponent(endISO)}`
+      + `&singleEvents=true&orderBy=startTime`;
     let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.status === 401 || res.status === 403) {
-      // Cached/Supabase token is stale; force a refresh and retry once
       token = await getGoogleAccessToken(true);
-      if (!token) {
-        journalState.eventsError.set(dateStr, 'expired');
-        return null;
-      }
+      if (!token) throw new Error('expired');
       res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     }
-    if (res.status === 401 || res.status === 403) {
-      journalState.eventsError.set(dateStr, 'expired');
-      return null;
-    }
-    if (!res.ok) {
-      console.warn('[journal] calendar API error', res.status, await res.text().catch(()=>'(no body)'));
-      journalState.eventsError.set(dateStr, 'api');
-      return null;
-    }
+    if (res.status === 401 || res.status === 403) throw new Error('expired');
+    if (!res.ok) throw new Error(`api_${res.status}`);
     const data = await res.json();
-    const events = (data.items || []).map(e => ({
-      summary: e.summary || '(no title)',
-      start: e.start?.dateTime || e.start?.date || '',
-      isAllDay: !!e.start?.date && !e.start?.dateTime
+    return (data.items || []).map(e => ({
+      summary:    e.summary || '(no title)',
+      start:      e.start?.dateTime || e.start?.date || '',
+      isAllDay:   !!e.start?.date && !e.start?.dateTime,
+      calendarId: calId,
     }));
+  };
+
+  try {
+    const lists = await Promise.all(calIds.map(id => fetchOne(id).catch(err => {
+      // One calendar failing shouldn't kill the whole fetch; just log and skip.
+      console.warn(`[journal] calendar ${id} fetch failed`, err.message);
+      return [];
+    })));
+    const events = lists.flat();
+    // Sort merged events chronologically (timed first by time, all-day after).
+    events.sort((a, b) => {
+      if (a.isAllDay && !b.isAllDay) return 1;
+      if (!a.isAllDay && b.isAllDay) return -1;
+      return String(a.start).localeCompare(String(b.start));
+    });
     journalState.eventsError.delete(dateStr);
     return events;
   } catch (e) {
-    console.warn('[journal] live fetch failed', e);
-    journalState.eventsError.set(dateStr, 'api');
+    if (e.message === 'expired') {
+      journalState.eventsError.set(dateStr, 'expired');
+    } else {
+      console.warn('[journal] live fetch failed', e);
+      journalState.eventsError.set(dateStr, 'api');
+    }
     return null;
   }
 }
@@ -476,29 +513,44 @@ async function syncCalendarHistory() {
     const start = signupAt > oneYearAgo ? signupAt : oneYearAgo;
     const end = new Date();
     end.setDate(end.getDate() + 30);
+    const calIds = await getEnabledCalendarIds();
+
+    // Iterate enabled calendars; merge events from each into a single
+    // by-date map. One calendar failing is logged + skipped so the
+    // others still land.
     const allEvents = [];
-    let pageToken = '';
-    let pages = 0;
-    do {
-      const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
-      url.searchParams.set('timeMin', start.toISOString());
-      url.searchParams.set('timeMax', end.toISOString());
-      url.searchParams.set('singleEvents', 'true');
-      url.searchParams.set('orderBy', 'startTime');
-      url.searchParams.set('maxResults', '250');
-      if (pageToken) url.searchParams.set('pageToken', pageToken);
-      let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 401 || res.status === 403) {
-        token = await getGoogleAccessToken(true);
-        if (!token) return;
-        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    for (const calId of calIds) {
+      let pageToken = '';
+      let pages = 0;
+      try {
+        do {
+          const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`);
+          url.searchParams.set('timeMin', start.toISOString());
+          url.searchParams.set('timeMax', end.toISOString());
+          url.searchParams.set('singleEvents', 'true');
+          url.searchParams.set('orderBy', 'startTime');
+          url.searchParams.set('maxResults', '250');
+          if (pageToken) url.searchParams.set('pageToken', pageToken);
+          let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+          if (res.status === 401 || res.status === 403) {
+            token = await getGoogleAccessToken(true);
+            if (!token) return;
+            res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+          }
+          if (!res.ok) {
+            console.warn(`[journal] history sync ${calId} failed: ${res.status}`);
+            break;
+          }
+          const data = await res.json();
+          for (const ev of (data.items || [])) allEvents.push({ ...ev, _calId: calId });
+          pageToken = data.nextPageToken || '';
+          pages++;
+        } while (pageToken && pages < 12);
+      } catch (err) {
+        console.warn(`[journal] history sync ${calId} threw`, err);
       }
-      if (!res.ok) return;
-      const data = await res.json();
-      allEvents.push(...(data.items || []));
-      pageToken = data.nextPageToken || '';
-      pages++;
-    } while (pageToken && pages < 12);
+    }
+
     const byDate = {};
     for (const ev of allEvents) {
       const startStr = ev.start?.dateTime || ev.start?.date || '';
@@ -506,9 +558,18 @@ async function syncCalendarHistory() {
       if (!dateKey) continue;
       if (!byDate[dateKey]) byDate[dateKey] = [];
       byDate[dateKey].push({
-        summary: ev.summary || '(no title)',
-        start: startStr,
-        isAllDay: !!ev.start?.date && !ev.start?.dateTime
+        summary:    ev.summary || '(no title)',
+        start:      startStr,
+        isAllDay:   !!ev.start?.date && !ev.start?.dateTime,
+        calendarId: ev._calId,
+      });
+    }
+    // Stable chronological sort within each date (timed first, all-day after).
+    for (const k of Object.keys(byDate)) {
+      byDate[k].sort((a, b) => {
+        if (a.isAllDay && !b.isAllDay) return 1;
+        if (!a.isAllDay && b.isAllDay) return -1;
+        return String(a.start).localeCompare(String(b.start));
       });
     }
     const userId = session.user.id;
