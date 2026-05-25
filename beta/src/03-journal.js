@@ -34,10 +34,13 @@ const journalState = {
 
   // Phase 5: per-event metadata cache (relationship_tag, energy_after,
   // notes). Map<event_id, { relationship_tag, energy_after, notes }>.
-  // Loaded once per session via loadCalendarEventMeta(); updated as the
-  // user saves edits.
+  // Loaded incrementally — only meta for events in the currently-loaded
+  // timeline window is fetched, and only IDs not already in the Map are
+  // requested. eventMetaFetched tracks which IDs we've already asked the
+  // server about (regardless of whether the server returned a row) so we
+  // don't re-query for events that simply have no meta yet.
   eventMeta: new Map(),
-  eventMetaLoaded: false,
+  eventMetaFetched: new Set(),
   eventMetaEditing: null,             // event-id currently open in the editor
 
   // Search
@@ -398,29 +401,90 @@ async function getGoogleAccessToken(forceRefresh) {
 }
 
 // Phase 5 — calendar event metadata (relationship_tag, energy_after,
-// notes). Loaded once per session, then mutated in-place by save/delete
-// from the editor.
-async function loadCalendarEventMeta() {
-  if (journalState.eventMetaLoaded) return;
-  journalState.eventMetaLoaded = true;
+// notes). Loaded incrementally for the events in the currently-loaded
+// timeline window, not the user's entire history. Mutated in-place by
+// save/delete from the editor.
+//
+// Pre-Phase 2 audit this used to be a single all-time query that grew
+// linearly with the user's lifetime tagged-event count — that was the
+// primary "journal slows down every day" symptom because the payload
+// (and resulting Map) got heavier with every metadata save the user
+// ever made. Now: scoped to event IDs we actually have on screen.
+async function loadCalendarEventMetaForEvents(eventIds) {
+  if (!Array.isArray(eventIds) || eventIds.length === 0) return;
+  // Filter to IDs we haven't already asked the server about. The
+  // eventMetaFetched Set tracks "asked" (vs eventMeta which only tracks
+  // "got back a row") so events with no metadata yet don't keep getting
+  // re-queried each time the user re-renders the timeline.
+  const missing = [];
+  for (const id of eventIds) {
+    if (id && !journalState.eventMetaFetched.has(id)) missing.push(id);
+  }
+  if (missing.length === 0) return;
+  // Mark as fetched up-front so concurrent calls don't dogpile the same
+  // IDs. If the request fails we'll un-mark them in the catch.
+  for (const id of missing) journalState.eventMetaFetched.add(id);
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
+    // PostgREST `in.()` can comfortably handle a few hundred values
+    // (URL length limit is the real cap). A 30-day window is typically
+    // ~50-200 events; even 6 months of scroll-back stays well under.
     const { data, error } = await db.from('calendar_event_meta')
       .select('calendar_event_id,relationship_tag,energy_after,notes')
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .in('calendar_event_id', missing);
     if (error) throw error;
+    let added = 0;
     for (const row of (data || [])) {
       journalState.eventMeta.set(row.calendar_event_id, {
         relationship_tag: row.relationship_tag,
         energy_after:     row.energy_after,
         notes:            row.notes,
       });
+      added++;
+    }
+    // If any rows came back, the event rows currently rendered need to
+    // pick up their relationship/energy badges. Touch every loaded date
+    // — cheap because renderEventsSection only re-renders the inner
+    // .j-events-list of each card, not the card itself.
+    if (added > 0 && typeof rerenderEventsAfterMetaLoad === 'function') {
+      rerenderEventsAfterMetaLoad();
     }
   } catch (e) {
-    console.warn('[journal] calendar_event_meta load failed', e);
-    journalState.eventMetaLoaded = false;   // allow retry on next call
+    console.warn('[journal] calendar_event_meta scoped load failed', e);
+    // Allow retry on next call by removing the IDs we just marked.
+    for (const id of missing) journalState.eventMetaFetched.delete(id);
   }
+}
+
+// Re-renders the events sub-section if an entry editor / viewer modal
+// is currently open. Day cards themselves don't show meta-driven
+// badges (those only appear in the modal via renderEventsSection), so
+// the cards don't need a refresh. The modal slots are mounted by ID
+// in the edit/view templates — touch whichever is live.
+function rerenderEventsAfterMetaLoad() {
+  const editSlot = document.getElementById('jEventsSlot');
+  if (editSlot && journalState.editingDate) {
+    editSlot.innerHTML = renderEventsSection(journalState.editingDate);
+  }
+  const viewSlot = document.getElementById('jViewEventsSlot');
+  if (viewSlot && journalState.viewingDate) {
+    viewSlot.innerHTML = renderEventsSection(journalState.viewingDate);
+  }
+}
+
+// Collects every event id present in the currently-loaded calendar
+// cache. Used to scope the meta fetch to what's actually on screen.
+function collectLoadedEventIds() {
+  const ids = [];
+  for (const events of journalState.calendarEvents.values()) {
+    if (!Array.isArray(events)) continue;
+    for (const ev of events) {
+      if (ev && ev.id) ids.push(ev.id);
+    }
+  }
+  return ids;
 }
 
 // Phase 5 — multi-Google-calendar sync. Loads enabled calendar IDs
@@ -1191,6 +1255,11 @@ async function loadInitialTimeline() {
     loadCalendarCacheRange(start, today),
     loadHabitSummariesForRange(start, today),
   ]);
+  // Meta load is scoped to the events that just landed in the cache —
+  // ensures the editor affordance (relationship/energy tags on event
+  // rows) renders without a full-history query. Fire-and-forget so the
+  // timeline can paint immediately.
+  loadCalendarEventMetaForEvents(collectLoadedEventIds());
 }
 
 async function loadOlderTimelineDays(count = 30) {
@@ -1208,6 +1277,9 @@ async function loadOlderTimelineDays(count = 30) {
   journalState.timelineDays += count;
   journalState.timelineLoading = false;
   rerenderTimeline();
+  // Pull meta for the newly-loaded events too (scoped — fetched-set
+  // dedupe means already-loaded IDs won't be re-requested).
+  loadCalendarEventMetaForEvents(collectLoadedEventIds());
 }
 
 async function ensureTimelineCovers(dateStr) {
@@ -1229,6 +1301,7 @@ async function ensureTimelineCovers(dateStr) {
   journalState.timelineDays = days;
   journalState.timelineLoadedThrough = target;
   rerenderTimeline();
+  loadCalendarEventMetaForEvents(collectLoadedEventIds());
 }
 
 function scrollTimelineToDate(dateStr) {
@@ -1832,7 +1905,10 @@ async function renderJournal() {
 
   setupScrollObserver();
   syncCalendarHistory();
-  loadCalendarEventMeta();
+  // Meta load is now driven by loadInitialTimeline / loadOlderTimelineDays
+  // (scoped to the events actually loaded into the cache), not an
+  // unbounded one-shot fetch here. See loadCalendarEventMetaForEvents
+  // for the rationale (Phase 2 journal-slowdown audit).
   updateTopbarHeightVar();
 }
 
