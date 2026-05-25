@@ -2075,16 +2075,14 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
   const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
   // Body fat: prefer Navy formula (deterministic), fall back to AI estimate.
-  let bfNum, bfBadge;
+  // No method badge in the strip — the value alone keeps the card clean.
+  let bfNum;
   if (bfPct != null) {
     bfNum = `${bfPct.toFixed(1)}%`;
-    bfBadge = 'Navy';
   } else if (latest.body_fat_pct != null && latest.body_fat_method === 'ai_estimate') {
     bfNum = `${Number(latest.body_fat_pct).toFixed(1)}%`;
-    bfBadge = `AI · ${latest.body_fat_confidence || 'low'}`;
   } else {
     bfNum = '—';
-    bfBadge = 'add photos';
   }
 
   // LBM = weight × (1 − bf/100). Deterministic. Skip when either is missing.
@@ -2132,7 +2130,7 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     </div>
     <div class="metric-cell">
       <div class="metric-cell-num">${bfNum}</div>
-      <div class="metric-cell-label">Body fat <span class="metric-cell-badge">${trainEsc(bfBadge)}</span></div>
+      <div class="metric-cell-label">Body fat</div>
       ${spark(points('bf'), 'var(--guava-700)')}
     </div>
     <div class="metric-cell">
@@ -3878,29 +3876,27 @@ function ensureTrainStyles() {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; padding: 0 2px; margin-bottom: 8px;
     }
+    /* Always 4-wide. On narrow viewports cells shrink rather than wrap to
+       a 2x2 grid — keeps the four metrics at-a-glance scannable. */
     .metrics-strip {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
       margin-bottom: 10px;
     }
     .metric-cell {
       background: var(--surface); border: 1px solid var(--edge);
-      border-radius: var(--r-md); padding: 12px 14px;
+      border-radius: var(--r-md); padding: 10px 10px;
       box-shadow: var(--shadow-card);
-      display: flex; flex-direction: column; gap: 4px;
+      display: flex; flex-direction: column; gap: 3px;
+      min-width: 0;     /* let cells shrink below their content's intrinsic width */
     }
     .metric-cell-num {
-      font-size: 22px; font-weight: 700; color: var(--ink);
+      font-size: 18px; font-weight: 700; color: var(--ink);
       letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
-      line-height: 1.1;
+      line-height: 1.1; white-space: nowrap;
     }
     .metric-cell-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
-      color: var(--ink-4); text-transform: uppercase;
-    }
-    .metric-cell-badge {
-      font-size: 9px; font-weight: 600; color: var(--ink-4);
-      text-transform: none; letter-spacing: 0;
-      margin-left: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      color: var(--ink-4); text-transform: uppercase; white-space: nowrap;
     }
     /* Sparkline: bigger now (28px) so the time-series story reads. When
        <2 data points exist, render a flat "need more entries" placeholder
@@ -3916,9 +3912,8 @@ function ensureTrainStyles() {
       text-align: center; font-size: 9px; color: var(--ink-4);
       letter-spacing: .04em; text-transform: uppercase; font-weight: 600;
     }
-    @media (max-width: 480px) {
-      .metrics-strip { grid-template-columns: repeat(2, 1fr); }
-    }
+    /* (Removed the 480px → 2x2 fallback per usage feedback — the four
+       cards must always stay side-by-side. Cells shrink instead.) */
 
     /* ── Coach Card (Body Comp Report v2 — Variation A) ──────────────
        Overrides the .train-ai-block surface-2 + dashed-border treatment
