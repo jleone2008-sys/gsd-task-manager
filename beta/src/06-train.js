@@ -3924,8 +3924,10 @@ function ensureTrainStyles() {
        Overrides the .train-ai-block surface-2 + dashed-border treatment
        — for the Progress report we want this card to read as primary
        content (white surface, solid edge, shadow), not a tertiary AI
-       sub-region. */
-    .coach-card {
+       sub-region. Selector intentionally combines BOTH classes to win
+       over the later-defined .train-ai-block rule without relying on
+       source order. */
+    .train-ai-block.coach-card {
       background: var(--surface);
       border: 1px solid var(--edge);
       border-style: solid;
