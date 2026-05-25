@@ -429,9 +429,12 @@ function briefRecapHTML(recap, structured) {
         : col.train.label;
       rows.push({ icon: '🏋️', name: 'Train', value });
     }
+    // Sleep target — always labeled "Bed time" regardless of which
+    // column it's on. The server now puts it on the TODAY column in
+    // both morning and evening modes (it's always tonight's bedtime),
+    // so column-aware labeling ("Tonight" / "Tomorrow") was misleading.
     if (col.sleep_target) {
-      const tonightLabel = (col.label === 'Tomorrow') ? 'Tomorrow' : 'Tonight';
-      rows.push({ icon: '🌙', name: tonightLabel, value: col.sleep_target });
+      rows.push({ icon: '🌙', name: 'Bed time', value: col.sleep_target });
     }
     if (!rows.length) return '';
     return `<div class="brief-recap-col">

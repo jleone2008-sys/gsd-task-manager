@@ -967,13 +967,16 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     bedtime:     null,           // yesterday's bedtime is stale by evening
     mood_label:  ctx.today_recap?.mood_label ?? null,
     train:       trainSummary(ctx.today_recap?.train_session_today),
+    // Sleep target lives under TODAY (it's tonight's bedtime, not
+    // tomorrow's). Was previously on the right/Tomorrow column which
+    // read as "Tomorrow 10:30 PM" — semantically wrong.
+    sleep_target: sleepTargetTime,
   };
   const right = {
     label:        'Tomorrow',
     events:       (ctx.tomorrow_plan?.calendar_events || []).length,
     task_counts:  ctx.tomorrow_plan?.task_counts || null,
     habits_today: null,
-    sleep_target: sleepTargetTime,
     train:        plannedSummary(ctx.tomorrow_plan?.workout),
   };
   return { left, right };
