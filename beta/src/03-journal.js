@@ -1333,7 +1333,7 @@ function openEventMetaEditor(eventId) {
   // Relationship dropdown options. If the stored value is a legacy
   // custom string that's not in this list, it's appended as an extra
   // option below so users don't lose data on re-open.
-  const RELATIONSHIPS = ['Boss', 'Peer', 'Direct report', 'Customer', 'Partner', 'Family', 'Friend', 'Stranger'];
+  const RELATIONSHIPS = ['Boss', 'Peer', 'Direct report', 'Partner', 'Family', 'Friend', 'Date', 'Stranger'];
   const moodRow = MOOD_EMOJI.map((emoji, i) => {
     const val = i + 1;
     const sel = meta.energy_after === val ? ' is-selected' : '';
