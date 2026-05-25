@@ -2029,11 +2029,23 @@ function renderProgressDashboard() {
     ? trainNavyBodyFat(p.sex, latest.neck_in, latest.waist_in, latest.hips_in, p.height_in)
     : null;
 
+  // Dashboard order (latest reshuffle — promotes Goals above the fold):
+  //   1. profile header
+  //   2. latest-entry eyebrow + 4-cell metrics strip       (where you are)
+  //   3. Goals card                                         (where you're heading)
+  //   4. Coach Card — AI photo analysis                     (why + how)
+  //   5. Daily calorie target                               (today's lever)
+  //   6. Weight trend chart                                 (history)
+  //   7. Recent entries list                                (drill-in)
+  // Goals were previously at position 5 and routinely got buried below
+  // the giant Coach Card; promoting them right under the metrics strip
+  // keeps the user's North Star above the fold.
   return `
     ${renderDashboardHeader(p)}
     ${latest ? renderDashboardLatestCard(latest, bfPct, entries) : renderDashboardEmptyCard()}
-    ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
     ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct)}
+    ${latest ? renderProgressAIAnalysis(latest) : ''}
+    ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
     ${entries.length > 1 ? renderDashboardTrendCard(entries) : ''}
     ${renderDashboardEntriesList(entries)}
   `;
@@ -2135,8 +2147,10 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     </div>
   </div>`;
 
-  // Latest-entry eyebrow row (slim — just date + log-entry CTA). Stats
-  // moved out of this card into the metricsStrip above.
+  // Latest-entry eyebrow row (slim — just date + log-entry CTA) + the
+  // 4-cell metrics strip. The Coach Card (renderProgressAIAnalysis) is
+  // now rendered separately by renderProgressDashboard so Goals can
+  // slot between this block and the AI read.
   return `<div class="progress-latest-eyebrow">
     <div>
       <span class="progress-card-label">Latest entry</span>
@@ -2144,8 +2158,7 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     </div>
     <button class="train-btn-primary" data-train-action="progress-new-entry">+ Log entry</button>
   </div>
-  ${metricsStrip}
-  ${renderProgressAIAnalysis(latest)}`;
+  ${metricsStrip}`;
 }
 
 // Coach Card — Body Comp Report v2 (Variation A "narrative-first").
@@ -4033,14 +4046,21 @@ function ensureTrainStyles() {
     }
 
     /* ── Combined Goal Card (weight + body fat in one block) ────────
-       Single white card with two stacked sections divided by a hairline.
-       Variation B's mockup goal-block design adapted to coexist with
-       the body-fat goal in the same surface. */
+       Promoted above the Coach Card in the dashboard order, so the
+       chrome upgrades to a featured-card look: subtle guava tint, a
+       prominent header label, and a wider top accent bar so the card
+       reads as the user's North Star at a glance. */
     .goal-combined-card {
-      background: var(--surface); border: 1px solid var(--edge);
-      border-radius: var(--r-md); padding: 14px 16px;
+      background: linear-gradient(180deg, var(--guava-50) 0%, var(--surface) 60%);
+      border: 1px solid var(--guava-700);
+      border-radius: var(--r-md); padding: 16px 18px;
       box-shadow: var(--shadow-card); margin-bottom: 12px;
+      position: relative;
     }
+    .goal-combined-card .progress-card-label {
+      font-size: 12px; color: var(--guava-700);
+    }
+    .goal-combined-card .progress-card-meta { color: var(--ink-3); }
     .goal-section { padding: 12px 0; }
     .goal-section + .goal-section { border-top: 1px solid var(--edge); }
     .goal-section-head {
