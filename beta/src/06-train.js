@@ -1899,7 +1899,10 @@ async function trainLinkHabitToLibrary(habitId, kind, sessionDate) {
     }
   }
   if (typeof renderHabits === 'function') renderHabits();
-  if (typeof refreshHomeData === 'function') refreshHomeData();
+  // Per-section refresh — train only mutates habit completions, so
+  // tasks/notes don't need a repaint.
+  if (typeof refreshHomeHabits === 'function') refreshHomeHabits();
+  else if (typeof refreshHomeData === 'function') refreshHomeData();
   renderTrain();
 }
 
@@ -2134,7 +2137,9 @@ async function autoMarkLinkedHabitsForSession(session) {
       }
     }
     if (typeof renderHabits === 'function') renderHabits();
-    if (typeof refreshHomeData === 'function') refreshHomeData();
+    // Per-section refresh — train only mutates habit completions.
+    if (typeof refreshHomeHabits === 'function') refreshHomeHabits();
+    else if (typeof refreshHomeData === 'function') refreshHomeData();
   }
   // Tier 1 brief recompute so the daily brief's habit row picks up
   // the new completion without a full reload.

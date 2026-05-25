@@ -684,7 +684,10 @@ function renderHabits() {
   renderHabitStats(active);
   updateHabitStatsBar(active);
   // Keep the beta Home tab's habit section in sync (no-op elsewhere / in prod).
-  if (typeof refreshHomeData === 'function') refreshHomeData();
+  // Per-section refresh — habits-core only changed habits, so don't repaint
+  // the tasks/notes sections.
+  if (typeof refreshHomeHabits === 'function') refreshHomeHabits();
+  else if (typeof refreshHomeData === 'function') refreshHomeData();
 }
 
 /**

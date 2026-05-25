@@ -126,7 +126,12 @@ function homeEnsureSubStyles() {
 function renderHome() {
   const el = document.getElementById('homeContainer');
   if (!el) return;
-  _homeOura = null;
+  // Phase 2 audit: do NOT null _homeOura here. Oura data only changes
+  // when a cron sync fires (overnight + a few times during the day);
+  // wiping the cache on every Home mount made a fresh DB roundtrip
+  // happen every time the user tabbed back. The cache stays warm
+  // across renders; the brief regen flow refreshes underlying data
+  // when it needs to.
   homeSyncChrome();
   homeEnsureSubStyles();
 
@@ -688,13 +693,37 @@ function refreshHomeSection(id, html) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = html;
 }
-function refreshHomeData() {
-  if (typeof activeTool === 'undefined' || activeTool !== 'home') return;
-  if (!document.getElementById('homeContainer')) return;
+
+// Phase 2 audit: split the original blanket refreshHomeData() — which
+// blasted innerHTML of tasks + habits + notes on every change anywhere
+// — into per-section refreshers. Callers know which surface they
+// touched, so a habit tap no longer repaints tasks + notes too.
+function _homeMountedOnHome() {
+  return (typeof activeTool !== 'undefined')
+    && activeTool === 'home'
+    && !!document.getElementById('homeContainer');
+}
+function refreshHomeTasks() {
+  if (!_homeMountedOnHome()) return;
   refreshHomeSection('homeTasks', homeTasksInnerHTML());
+}
+function refreshHomeHabits() {
+  if (!_homeMountedOnHome()) return;
   refreshHomeSection('homeHabits', homeHabitsInnerHTML());
   const hm = document.getElementById('homeHabitsMeta'); if (hm) hm.textContent = homeHabitsMeta();
+}
+function refreshHomeNotes() {
+  if (!_homeMountedOnHome()) return;
   refreshHomeSection('homeNotes', homeNotesInnerHTML());
+}
+// Back-compat shim. Any caller that doesn't know what changed (or
+// callers added before the split) still works; they just pay the
+// full repaint cost. New code should use the specific helper.
+function refreshHomeData() {
+  if (!_homeMountedOnHome()) return;
+  refreshHomeTasks();
+  refreshHomeHabits();
+  refreshHomeNotes();
 }
 
 /* ── In-page modals: note editor + Quick Notes ────────────── */

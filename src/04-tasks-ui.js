@@ -158,10 +158,12 @@ function renderTaskStats() {
 
 function render() {
   const c = document.getElementById('taskContainer');
-  // Keep the beta Home tab's priority/finished sections in sync. render() is
-  // always called after `tasks` is mutated, and refreshHomeData reads the array
-  // (not the DOM), so the start of render() covers every exit path. No-op in prod.
-  if (typeof refreshHomeData === 'function') refreshHomeData();
+  // Keep the beta Home tab's tasks section in sync. render() is always
+  // called after `tasks` is mutated, and refreshHomeTasks reads the array
+  // (not the DOM), so this covers every exit path. Per-section refresh —
+  // task changes don't need to repaint habits/notes. No-op in prod.
+  if (typeof refreshHomeTasks === 'function') refreshHomeTasks();
+  else if (typeof refreshHomeData === 'function') refreshHomeData();
   if (filter === 'stats') {
     c.innerHTML = renderTaskStats();
     updateTaskPillCounts();

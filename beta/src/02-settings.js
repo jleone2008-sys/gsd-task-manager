@@ -71,15 +71,33 @@ async function loadUserSettings() {
         .catch(err => console.warn('[settings] auto-grant tabs persist failed', err));
     }
   }
-  // Layer in live integration status from the server (per-integration status
-  // lives in user_profiles, not user_settings).
-  await Promise.all([
-    loadDropboxStatus(),
-    loadWhoopStatus(),
-    loadOuraStatus(),
-    loadLocationStatus(),
-    loadConnectedCalendars(),
-  ]);
+  // Layer in live integration status from the server. Phase 2 audit:
+  // previously this awaited Promise.all of 5 loaders — three of which
+  // hit cold-startable Netlify functions (Dropbox/Whoop/Oura). That
+  // blocked the BOOT path because loadUserSettings is awaited before
+  // tabs apply and Home renders. None of the status data is needed
+  // for boot — tab visibility comes from enabled_tools + tab_permissions
+  // (already loaded above), the brief reads integrations.health_source
+  // directly from the user_settings jsonb (also loaded above).
+  //
+  // Fire-and-forget instead. The Settings page renders with default
+  // "disconnected" states for each integration; values fill in when
+  // each loader returns (each loader notifies the Settings UI via
+  // settingsRefreshIntegrations if it's open).
+  loadDropboxStatus().then(settingsRefreshIntegrationsIfOpen);
+  loadWhoopStatus().then(settingsRefreshIntegrationsIfOpen);
+  loadOuraStatus().then(settingsRefreshIntegrationsIfOpen);
+  loadLocationStatus().then(settingsRefreshIntegrationsIfOpen);
+  loadConnectedCalendars().then(settingsRefreshIntegrationsIfOpen);
+}
+
+// No-op when the Settings page isn't currently mounted. When it is,
+// re-render the integrations panel so newly-arrived status values
+// replace the default "disconnected" stub. Cheap — the panel is
+// small relative to the full Settings page.
+function settingsRefreshIntegrationsIfOpen() {
+  if (typeof activeTool === 'undefined' || activeTool !== 'settings') return;
+  if (typeof renderSettingsPage === 'function') renderSettingsPage();
 }
 
 // Phase 5 — multi-calendar selection. Loads BOTH the user's stored
