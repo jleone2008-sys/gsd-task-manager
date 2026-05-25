@@ -150,6 +150,7 @@ function subscribeToNoteChanges() {
 }
 
 async function loadNotes() {
+  console.time('[perf] notes.load');
   // Load notebooks first
   const { data: nbData, error: nbErr } = await db.from('notebooks')
     .select('*').eq('user_id', currentUser.id).order('order', { ascending: true });
@@ -160,7 +161,9 @@ async function loadNotes() {
   // Load notes
   const { data, error } = await db.from('notes')
     .select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false });
-  if (error) { console.error('loadNotes:', error.message); return; }
+  if (error) { console.error('loadNotes:', error.message); console.timeEnd('[perf] notes.load'); return; }
+  console.timeEnd('[perf] notes.load');
+  console.log(`[perf] notes.load rows: notebooks=${nbData?.length || 0} notes=${data.length}`);
   notesArr = data.map(rowToNote);
   data.forEach(r => noteRowIdMap.set(r.id, r.client_id));
   // Extract scratch note (client_id -1) — keep it separate from the notes list

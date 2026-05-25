@@ -190,6 +190,11 @@ function subscribeToChanges() {
 }
 
 async function load() {
+  // Phase 2 audit: timing instrumentation. Pure diagnostic. Output goes
+  // to the browser console as "[perf] tasks.load: NNN.NNms". Safe to
+  // leave in place — console.time is a no-op in production environments
+  // without devtools open.
+  console.time('[perf] tasks.load');
   setStatus('syncing');
   const { data, error } = await db.from('tasks')
     .select('*')
@@ -200,9 +205,12 @@ async function load() {
     console.error('load:', error.message);
     setStatus('error');
     render();
+    console.timeEnd('[perf] tasks.load');
     return;
   }
 
+  console.timeEnd('[perf] tasks.load');
+  console.log(`[perf] tasks.load rows: ${data.length}`);
   tasks = data.map(rowToTask);
   // Populate rowIdMap so realtime DELETE events can resolve client_id
   data.forEach(r => rowIdMap.set(r.id, r.client_id));
@@ -243,11 +251,14 @@ function subtaskToRow(s) {
 }
 
 async function loadSubtasks() {
+  console.time('[perf] subtasks.load');
   const { data, error } = await db.from('task_subtasks')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('position', { ascending: true });
-  if (error) { console.error('loadSubtasks:', error.message); return; }
+  if (error) { console.error('loadSubtasks:', error.message); console.timeEnd('[perf] subtasks.load'); return; }
+  console.timeEnd('[perf] subtasks.load');
+  console.log(`[perf] subtasks.load rows: ${data.length}`);
   subtasks = data.map(rowToSubtask);
   data.forEach(r => subtaskRowIdMap.set(r.id, r.client_id));
   rebuildSubtasksIndex();

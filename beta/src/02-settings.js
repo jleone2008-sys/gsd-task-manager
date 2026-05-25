@@ -43,8 +43,10 @@ function getHealthSource() {
 }
 
 async function loadUserSettings() {
+  console.time('[perf] settings.userSettings');
   try {
     const { data, error } = await db.from('user_settings').select('*').maybeSingle();
+    console.timeEnd('[perf] settings.userSettings');
     if (error) throw error;
     userSettings = data ? {
       enabled_tools: data.enabled_tools || SETTINGS_DEFAULTS.enabled_tools,

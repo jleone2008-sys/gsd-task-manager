@@ -766,6 +766,7 @@ if (typeof window !== 'undefined') window.homeBriefRecompute = homeBriefRecomput
 async function homeBriefLoad() {
   if (_briefInflight) return _briefInflight;
   _briefInflight = (async () => {
+    console.time('[perf] brief.load');
     try {
       _briefState = { status: 'loading', brief: null, error: null };
       briefRender();
@@ -773,11 +774,13 @@ async function homeBriefLoad() {
       const yday = briefYesterdayLocal();
       const mode = briefCurrentMode();
 
+      console.time('[perf] brief.load:fetch');
       const { data, error } = await db.from('daily_briefs')
         .select('id,brief_date,generated_at,model,mode,structured,tldr,narrative,confidence,status,fallback_reason')
         .eq('brief_date', yday)
         .eq('mode', mode)
         .maybeSingle();
+      console.timeEnd('[perf] brief.load:fetch');
 
       if (error) throw error;
 
@@ -810,6 +813,7 @@ async function homeBriefLoad() {
       _briefState = { status: 'error', brief: null, error: e?.message || 'load_failed' };
       briefRender();
     } finally {
+      console.timeEnd('[perf] brief.load');
       _briefInflight = null;
     }
   })();

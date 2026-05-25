@@ -1262,6 +1262,7 @@ function rerenderTimeline() {
 }
 
 async function loadInitialTimeline() {
+  console.time('[perf] journal.loadInitial');
   const today = jToday();
   const start = jShiftDays(today, -(journalState.timelineDays - 1));
   journalState.timelineLoadedThrough = start;
@@ -1270,6 +1271,8 @@ async function loadInitialTimeline() {
     loadCalendarCacheRange(start, today),
     loadHabitSummariesForRange(start, today),
   ]);
+  console.timeEnd('[perf] journal.loadInitial');
+  console.log(`[perf] journal.loadInitial window: ${journalState.timelineDays}d, entries=${journalState.entries.size}, events=${journalState.calendarEvents.size}`);
   // Meta load is scoped to the events that just landed in the cache —
   // ensures the editor affordance (relationship/energy tags on event
   // rows) renders without a full-history query. Fire-and-forget so the

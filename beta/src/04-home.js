@@ -50,9 +50,10 @@ function homeHealthSource() {
 /* ── Data ─────────────────────────────────────────────────── */
 
 async function loadOuraScores() {
-  if (_homeOura) return _homeOura;
+  if (_homeOura) { console.log('[perf] home.oura: cache hit'); return _homeOura; }
   if (_homeOuraInflight) return _homeOuraInflight;
   _homeOuraInflight = (async () => {
+    console.time('[perf] home.oura');
     try {
       const { data, error } = await db.from('oura_daily')
         .select('date,sleep_score,readiness_score,activity_score')
@@ -65,6 +66,7 @@ async function loadOuraScores() {
       console.warn('[home] oura scores load failed', e);
       return null;
     } finally {
+      console.timeEnd('[perf] home.oura');
       _homeOuraInflight = null;
     }
   })();
@@ -126,6 +128,7 @@ function homeEnsureSubStyles() {
 function renderHome() {
   const el = document.getElementById('homeContainer');
   if (!el) return;
+  console.time('[perf] home.render');
   // Phase 2 audit: do NOT null _homeOura here. Oura data only changes
   // when a cron sync fires (overnight + a few times during the day);
   // wiping the cache on every Home mount made a fresh DB roundtrip
@@ -167,6 +170,8 @@ function renderHome() {
   hydrateHomeToday();
   hydrateHomeCalendar();
   hydrateHomeWeek();
+  // Synchronous portion done; the hydrate calls above continue async.
+  console.timeEnd('[perf] home.render');
 }
 
 // Greeting takes the page-title slot (other tabs show their name there); the FAB,

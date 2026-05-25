@@ -261,19 +261,25 @@ function _completionsLookbackSince() {
 let completionsLoadedThrough = null;
 
 async function loadHabits() {
+  console.time('[perf] habits.load');
   try {
+    console.time('[perf] habits.load:habits');
     const { data: hData, error: hErr } = await db.from('habits')
       .select('*').eq('user_id', currentUser.id).order('order', { ascending: true });
+    console.timeEnd('[perf] habits.load:habits');
     if (hErr) { console.error('loadHabits:', hErr.message); return; }
     habitsArr = hData.map(rowToHabit);
     hData.forEach(r => habitRowIdMap.set(r.id, r.client_id));
 
     const since = _completionsLookbackSince();
+    console.time('[perf] habits.load:completions');
     const { data: cData, error: cErr } = await db.from('habit_completions')
       .select('*')
       .eq('user_id', currentUser.id)
       .gte('completed_date', since);
+    console.timeEnd('[perf] habits.load:completions');
     if (cErr) { console.error('loadCompletions:', cErr.message); return; }
+    console.log(`[perf] habits.load rows: habits=${hData.length} completions=${cData.length} (last ${COMPLETIONS_LOOKBACK_DAYS}d)`);
     habitCompletions = cData.map(rowToCompletion);
     cData.forEach(r => completionRowIdMap.set(r.id, r.id));
     completionsLoadedThrough = since;
@@ -282,6 +288,7 @@ async function loadHabits() {
     renderHabits();
   } finally {
     if (_habitsLoadedResolve) { _habitsLoadedResolve(); _habitsLoadedResolve = null; }
+    console.timeEnd('[perf] habits.load');
   }
 }
 

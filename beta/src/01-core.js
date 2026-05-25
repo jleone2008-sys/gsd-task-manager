@@ -485,6 +485,13 @@ async function _signInUser(user) {
   setUserUI(user);
   applyTabPermissions(currentUserProfile.tab_permissions);
   if (currentUserProfile.role === 'admin') injectAdminLink();
+  // Phase 2 audit timing. boot.total is the wall-clock from auth to
+  // first-tab render. Individual loaders (load/loadHabits/loadNotes/...)
+  // log their own time inside; this gives the synchronous portion of
+  // the boot before async work continues. The boot.firstPaint marker
+  // ends right after renderHome (or whichever the user's default tab
+  // is) — that's what they actually see.
+  console.time('[perf] boot.firstPaint');
   load();
   loadHabits();
   loadNotes();
@@ -497,6 +504,7 @@ async function _signInUser(user) {
   // Home is the default tab and matches the default activeTool, so routerApplyRoute
   // won't fire switchTool('home') on a bare URL — render it explicitly here.
   if (activeTool === 'home' && typeof renderHome === 'function') renderHome();
+  console.timeEnd('[perf] boot.firstPaint');
 }
 
 async function signOut() {
