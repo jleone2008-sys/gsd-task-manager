@@ -222,20 +222,23 @@ async function load() {
   const since = _tasksLookbackSince();
 
   const [openRes, doneRes] = await Promise.all([
-    // Open: every task that isn't done. No date bound — open list is
-    // bounded by user behavior, not time.
+    // Open: every task that isn't done. Filter on the `done` boolean
+    // (not `status`) because legacy rows can have NULL status — the
+    // client side does `r.status || (r.done ? 'done' : 'todo')` to
+    // tolerate that, but PostgREST `neq('status','done')` excludes
+    // NULLs and would drop every legacy open task.
     db.from('tasks')
       .select('*')
       .eq('user_id', currentUser.id)
-      .neq('status', 'done')
+      .eq('done', false)
       .order('order', { ascending: true }),
-    // Done: last DONE_LOOKBACK_DAYS only. The Tasks-tab "Completed"
-    // toggle and the journal's per-day completed list both read from
-    // here. Older completions load on demand.
+    // Done: last DONE_LOOKBACK_DAYS only. Same reasoning — filter on
+    // the `done` boolean which is reliably set across legacy and new
+    // rows.
     db.from('tasks')
       .select('*')
       .eq('user_id', currentUser.id)
-      .eq('status', 'done')
+      .eq('done', true)
       .gte('completed_at', since)
       .order('completed_at', { ascending: false }),
   ]);
@@ -275,7 +278,7 @@ async function loadDoneTasksForRange(startIso, endIso) {
     const { data, error } = await db.from('tasks')
       .select('*')
       .eq('user_id', currentUser.id)
-      .eq('status', 'done')
+      .eq('done', true)
       .gte('completed_at', startIso)
       .lte('completed_at', endIso);
     if (error) throw error;
