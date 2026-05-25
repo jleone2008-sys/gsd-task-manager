@@ -245,6 +245,12 @@ function trainWireOnce() {
           hips_in:       entry.hips_in      != null ? String(entry.hips_in)      : '',
           thighs_in:     entry.thighs_in    != null ? String(entry.thighs_in)    : '',
           notes:         entry.notes        || '',
+          photos: {
+            front: { file: null, preview: null, path: entry.front_storage_path || null },
+            side:  { file: null, preview: null, path: entry.side_storage_path  || null },
+            back:  { file: null, preview: null, path: entry.back_storage_path  || null },
+          },
+          _existing_id: entry.id,
         };
         _trainProgressState.view = 'new-entry';
         renderTrain();
@@ -276,6 +282,35 @@ function trainWireOnce() {
     if (action === 'entry-save') { saveProgressEntry(); return; }
     if (action === 'goal-save')   { saveProgressGoal(); return; }
     if (action === 'goal-delete') { deleteProgressGoal(); return; }
+    if (action === 'photo-remove') {
+      const slot = actionEl.dataset.slot;
+      ensureEntryDraft();
+      const ph = _trainProgressState.entryDraft.photos[slot];
+      if (ph?.preview) { try { URL.revokeObjectURL(ph.preview); } catch (_) {} }
+      _trainProgressState.entryDraft.photos[slot] = { file: null, preview: null, path: null };
+      renderTrain();
+      return;
+    }
+    if (action === 'progress-analyze') {
+      // Manual re-run of the vision analysis from the dashboard.
+      const id = actionEl.dataset.id;
+      runProgressPicAnalysis(id);
+      return;
+    }
+  });
+
+  // File input change handler — Supabase doesn't fire on 'input' for
+  // type=file consistently across browsers, so listen for 'change' too.
+  document.addEventListener('change', e => {
+    if (typeof activeTool !== 'undefined' && activeTool !== 'train') return;
+    const el = e.target.closest('[data-train-action="photo-pick"]');
+    if (!el) return;
+    const slot = el.dataset.slot;
+    const file = el.files?.[0];
+    if (!file) return;
+    handleProgressPhotoPick(slot, file);
+    // Reset the input so picking the same file twice still fires change.
+    el.value = '';
   });
 
   // Input handler for the Today subtab text inputs. Separate listener so
@@ -1775,7 +1810,7 @@ async function loadTrainProgressData() {
         .eq('email', currentUser.email)
         .maybeSingle(),
       db.from('progress_pics')
-        .select('id,captured_date,weight_lbs,neck_in,waist_in,chest_in,arms_in,hips_in,thighs_in,notes,body_fat_pct,body_fat_method,body_fat_confidence')
+        .select('id,captured_date,weight_lbs,neck_in,waist_in,chest_in,arms_in,hips_in,thighs_in,notes,body_fat_pct,body_fat_method,body_fat_confidence,front_storage_path,side_storage_path,back_storage_path,ai_analysis,ai_compared_to')
         .eq('user_id', currentUser.id)
         .gte('captured_date', since)
         .order('captured_date', { ascending: false }),
@@ -1793,6 +1828,16 @@ async function loadTrainProgressData() {
     _trainProgressState.entries = entryRes.data || [];
     _trainProgressState.goals   = goalRes.data  || [];
     _trainProgressState.loaded  = true;
+
+    // Kick off a single signed-URL batch for every photo across the
+    // visible entries so thumbnails light up without a per-card fetch.
+    const allPaths = [];
+    for (const e of _trainProgressState.entries) {
+      if (e.front_storage_path) allPaths.push(e.front_storage_path);
+      if (e.side_storage_path)  allPaths.push(e.side_storage_path);
+      if (e.back_storage_path)  allPaths.push(e.back_storage_path);
+    }
+    if (allPaths.length) refreshProgressSignedUrls(allPaths);
   } catch (e) {
     console.warn('[train] progress load failed', e);
     _trainProgressState.error = e?.message || 'Failed to load progress.';
@@ -2010,9 +2055,35 @@ function renderDashboardLatestCard(latest, bfPct) {
   const today = trainTodayLocalDate();
   const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / 86400_000);
   const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
-  const bfTxt = bfPct != null
-    ? `${bfPct}% <span class="latest-stat-method">Navy</span>`
-    : `<span class="latest-stat-method">log neck + waist for body fat %</span>`;
+
+  // Body fat display: prefer Navy formula (deterministic), fall back to
+  // ai_estimate from the vision pass when neck+waist weren't logged.
+  let bfDisplay;
+  if (bfPct != null) {
+    bfDisplay = `${bfPct}% <span class="latest-stat-method">Navy</span>`;
+  } else if (latest.body_fat_pct != null && latest.body_fat_method === 'ai_estimate') {
+    const conf = latest.body_fat_confidence || 'low';
+    bfDisplay = `${Number(latest.body_fat_pct).toFixed(1)}% <span class="latest-stat-method">AI · ${trainEsc(conf)}</span>`;
+  } else {
+    bfDisplay = `<span class="latest-stat-method">log neck + waist or add photos</span>`;
+  }
+
+  // Photo thumbnail strip — only renders slots with paths.
+  const photoPaths = [
+    { key: 'front', path: latest.front_storage_path },
+    { key: 'side',  path: latest.side_storage_path  },
+    { key: 'back',  path: latest.back_storage_path  },
+  ].filter(x => x.path);
+  let photoStrip = '';
+  if (photoPaths.length) {
+    const signed = _trainProgressState.photoSignedUrls || {};
+    photoStrip = `<div class="progress-photo-strip">${photoPaths.map(p =>
+      signed[p.path]
+        ? `<img class="progress-photo-thumb" src="${signed[p.path]}" alt="${p.key}"/>`
+        : `<div class="progress-photo-thumb is-loading"></div>`
+    ).join('')}</div>`;
+  }
+
   return `<div class="progress-card progress-latest-card">
     <div class="progress-card-head">
       <div>
@@ -2027,7 +2098,7 @@ function renderDashboardLatestCard(latest, bfPct) {
         <div class="latest-stat-label">Weight (lbs)</div>
       </div>
       <div class="latest-stat">
-        <div class="latest-stat-num">${bfTxt}</div>
+        <div class="latest-stat-num">${bfDisplay}</div>
         <div class="latest-stat-label">Body fat</div>
       </div>
       <div class="latest-stat">
@@ -2035,6 +2106,75 @@ function renderDashboardLatestCard(latest, bfPct) {
         <div class="latest-stat-label">Waist</div>
       </div>
     </div>
+    ${photoStrip}
+    ${renderProgressAIAnalysis(latest)}
+  </div>`;
+}
+
+// AI analysis block — shows the structured fields the vision function
+// stored on progress_pics.ai_analysis. Same visual chrome as the
+// workout-feedback block (dashed border, surface-2 bg, "AI · Claude"
+// tag) so the user can tell AI-derived prose from formulaic numbers.
+function renderProgressAIAnalysis(entry) {
+  if (entry._analyzing) {
+    return `<div class="train-ai-block is-loading" style="margin-top:14px">
+      <div class="train-ai-label">Photo analysis</div>
+      <div class="train-ai-skel"></div>
+      <div class="train-ai-skel" style="width:70%"></div>
+    </div>`;
+  }
+  if (entry._analyzeError) {
+    return `<div class="train-ai-block is-error" style="margin-top:14px">
+      <div class="train-ai-head">
+        <div class="train-ai-label">Photo analysis</div>
+        <button class="train-btn-link" data-train-action="progress-analyze" data-id="${entry.id}">Retry</button>
+      </div>
+      <div class="train-ai-msg">Couldn’t reach the vision coach. Your photos are saved.</div>
+    </div>`;
+  }
+  const a = entry.ai_analysis;
+  if (!a) {
+    if (entry.front_storage_path || entry.side_storage_path || entry.back_storage_path) {
+      return `<div class="train-ai-block" style="margin-top:14px">
+        <div class="train-ai-head">
+          <div class="train-ai-label">Photo analysis</div>
+          <button class="train-btn-link" data-train-action="progress-analyze" data-id="${entry.id}">Run analysis</button>
+        </div>
+        <div class="train-ai-msg">Photos uploaded — tap "Run analysis" to get a Claude vision read.</div>
+      </div>`;
+    }
+    return '';
+  }
+  const overview = a.overview ? `<div class="train-ai-insight">${trainEsc(a.overview)}</div>` : '';
+  const focus = Array.isArray(a.focus_areas) && a.focus_areas.length
+    ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Focus</span><span>${a.focus_areas.map(trainEsc).join(' · ')}</span></div>`
+    : '';
+  const needs = Array.isArray(a.needs_work) && a.needs_work.length
+    ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Needs work</span><span>${a.needs_work.map(trainEsc).join(' · ')}</span></div>`
+    : '';
+  const balanced = Array.isArray(a.balanced) && a.balanced.length
+    ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Balanced</span><span>${a.balanced.map(trainEsc).join(' · ')}</span></div>`
+    : '';
+  const traits = [
+    a.posture     ? `Posture · ${a.posture}`         : '',
+    a.body_type   ? `Type · ${a.body_type}`          : '',
+    a.stage       ? `Stage · ${a.stage}`             : '',
+    a.v_taper     ? `V-taper · ${a.v_taper}`         : '',
+    a.upper_lower ? `Upper/Lower · ${a.upper_lower}` : '',
+    a.symmetry    ? `Symmetry · ${a.symmetry}`       : '',
+  ].filter(Boolean).join(' · ');
+  const traitRow = traits ? `<div class="progress-ai-row"><span class="progress-ai-row-label">Read</span><span>${trainEsc(traits)}</span></div>` : '';
+
+  return `<div class="train-ai-block" style="margin-top:14px">
+    <div class="train-ai-head">
+      <div class="train-ai-label">Photo analysis</div>
+      <span class="train-ai-tag is-ai">AI · Claude vision</span>
+    </div>
+    ${overview}
+    ${traitRow}
+    ${focus}
+    ${needs}
+    ${balanced}
   </div>`;
 }
 
@@ -2194,6 +2334,15 @@ function ensureEntryDraft() {
     hips_in:       latest?.hips_in   != null ? String(latest.hips_in)   : '',
     thighs_in:     latest?.thighs_in != null ? String(latest.thighs_in) : '',
     notes:         '',
+    // Photo state — three slots (front / side / back). `file` holds the
+    // freshly-picked File pending upload; `preview` is a transient
+    // object URL for the thumbnail; `path` is the persisted
+    // storage object path once the row has been saved.
+    photos: {
+      front: { file: null, preview: null, path: null },
+      side:  { file: null, preview: null, path: null },
+      back:  { file: null, preview: null, path: null },
+    },
   };
 }
 
@@ -2250,6 +2399,16 @@ function renderProgressNewEntry() {
       </div>
 
       <div class="train-form-section">
+        <div class="train-form-label">Photos (optional)</div>
+        <div class="train-form-hint" style="margin-bottom:8px">Front / side / back — Claude will compare to your last entry and call out what changed. Photos stay private in your own Supabase folder.</div>
+        <div class="progress-photo-grid">
+          ${renderProgressPhotoSlot(d.photos.front, 'front', 'Front')}
+          ${renderProgressPhotoSlot(d.photos.side,  'side',  'Side')}
+          ${renderProgressPhotoSlot(d.photos.back,  'back',  'Back')}
+        </div>
+      </div>
+
+      <div class="train-form-section">
         <div class="train-form-label">Notes</div>
         <textarea class="train-notes-input" placeholder="How are you feeling? Anything to flag for next entry?" data-train-action="entry-input" data-key="notes">${trainEsc(d.notes || '')}</textarea>
       </div>
@@ -2257,21 +2416,167 @@ function renderProgressNewEntry() {
       <div class="train-form-actions">
         <button class="train-btn-secondary" data-train-action="progress-back">Cancel</button>
         <button class="train-btn-primary" data-train-action="entry-save" ${_trainProgressState.saving ? 'disabled' : ''}>
-          ${_trainProgressState.saving ? 'Saving…' : 'Save entry'}
+          ${_trainProgressState.saving ? _trainProgressState.savingStep || 'Saving…' : 'Save entry'}
         </button>
       </div>
     </div>
   </div>`;
 }
 
+// Renders one photo slot. Three visual states:
+// - Empty: just a "+ Add photo" placeholder. Tap to pick a file.
+// - Picked (file): shows the local preview from URL.createObjectURL.
+// - Persisted (path): shows a signed-URL <img> with a "replace" affordance.
+function renderProgressPhotoSlot(slot, key, label) {
+  const inputId = `progressPhoto_${key}`;
+  if (slot.preview) {
+    return `<label class="progress-photo-slot is-picked" for="${inputId}">
+      <img src="${slot.preview}" alt="${label} preview"/>
+      <span class="progress-photo-label">${label}</span>
+      <button class="progress-photo-remove" data-train-action="photo-remove" data-slot="${key}" title="Remove">×</button>
+      <input id="${inputId}" type="file" accept="image/*" data-train-action="photo-pick" data-slot="${key}" hidden>
+    </label>`;
+  }
+  if (slot.path) {
+    const signed = (_trainProgressState.photoSignedUrls || {})[slot.path];
+    return `<label class="progress-photo-slot is-persisted" for="${inputId}">
+      ${signed ? `<img src="${signed}" alt="${label}"/>` : `<div class="progress-photo-loading">Loading…</div>`}
+      <span class="progress-photo-label">${label}</span>
+      <span class="progress-photo-replace">Replace</span>
+      <input id="${inputId}" type="file" accept="image/*" data-train-action="photo-pick" data-slot="${key}" hidden>
+    </label>`;
+  }
+  return `<label class="progress-photo-slot is-empty" for="${inputId}">
+    <span class="progress-photo-plus">+</span>
+    <span class="progress-photo-label">${label}</span>
+    <input id="${inputId}" type="file" accept="image/*" data-train-action="photo-pick" data-slot="${key}" hidden>
+  </label>`;
+}
+
+// Handle a freshly-picked file: revoke any existing preview, downscale
+// to ≤1600px on the longest edge (Claude vision works fine at this
+// resolution; 5MB phone photos are wasteful + slow), then stash the
+// compressed Blob + a new preview URL on the draft.
+async function handleProgressPhotoPick(slot, file) {
+  ensureEntryDraft();
+  const ph = _trainProgressState.entryDraft.photos[slot];
+  if (ph?.preview) { try { URL.revokeObjectURL(ph.preview); } catch (_) {} }
+
+  // Optimistic preview from the raw file so the thumbnail appears
+  // immediately while the downscale runs.
+  const previewUrl = URL.createObjectURL(file);
+  _trainProgressState.entryDraft.photos[slot] = {
+    file:    file,
+    preview: previewUrl,
+    path:    null,
+  };
+  renderTrain();
+
+  try {
+    const compressed = await downscaleImage(file, 1600);
+    _trainProgressState.entryDraft.photos[slot].file = compressed;
+  } catch (e) {
+    console.warn('[train] photo downscale failed; using original', e);
+    // Keep the original file — upload still works, just slower.
+  }
+}
+
+// Canvas-based downscale. Reads the file into an Image, draws to a
+// canvas at the target max-dimension preserving aspect, returns a JPEG
+// Blob at quality 0.85. Falls back to the original file on any error.
+function downscaleImage(file, maxDim) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('file_read_failed'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('image_decode_failed'));
+      img.onload = () => {
+        const { naturalWidth: w, naturalHeight: h } = img;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        const tw = Math.round(w * scale);
+        const th = Math.round(h * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = tw; canvas.height = th;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, tw, th);
+        canvas.toBlob(blob => {
+          if (!blob) return reject(new Error('canvas_to_blob_failed'));
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Upload a single photo to progress-pics/{user}/{date}/{slot}.jpg via
+// the supabase-js storage client. Returns the object path. Throws on
+// failure so the caller can decide whether to fail the save or keep
+// going.
+async function uploadProgressPhoto(file, capturedDate, slot) {
+  const ext = (file.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+  const path = `${currentUser.id}/${capturedDate}/${slot}.${ext}`;
+  const { error } = await db.storage.from('progress-pics')
+    .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
+  if (error) throw error;
+  return path;
+}
+
+// Background fetch of signed URLs for any persisted photo paths on the
+// current entry draft (or the most recent dashboard entry). 60-min TTL —
+// long enough for typical sessions, short enough that a leaked URL
+// can't be replayed forever.
+async function refreshProgressSignedUrls(paths) {
+  const unique = [...new Set((paths || []).filter(Boolean))];
+  if (!unique.length) return;
+  if (!_trainProgressState.photoSignedUrls) _trainProgressState.photoSignedUrls = {};
+  try {
+    const { data, error } = await db.storage.from('progress-pics').createSignedUrls(unique, 3600);
+    if (error) throw error;
+    for (const row of data || []) {
+      if (row.signedUrl) _trainProgressState.photoSignedUrls[row.path] = row.signedUrl;
+    }
+    if (_trainActiveView === 'progress') renderTrain();
+  } catch (e) {
+    console.warn('[train] signed url batch failed', e);
+  }
+}
+
 async function saveProgressEntry() {
   const d = _trainProgressState.entryDraft;
   const p = _trainProgressState.profile;
   if (!d || !d.captured_date) return;
-  _trainProgressState.saving = true; renderTrain();
+  _trainProgressState.saving = true;
+  _trainProgressState.savingStep = 'Saving…';
+  renderTrain();
   try {
-    // Compute body fat now (deterministic). Falls back to null when
-    // neck + waist (+ hips for women) aren't all filled.
+    // ── Step 1: upload any freshly-picked photos. Existing paths
+    // (no new file) carry over. If a slot was explicitly cleared via
+    // photo-remove the path is null and we record that too.
+    const photoPaths = { front: null, side: null, back: null };
+    const slotsToUpload = ['front','side','back'].filter(k => d.photos[k].file);
+    if (slotsToUpload.length) {
+      _trainProgressState.savingStep = `Uploading ${slotsToUpload.length} photo${slotsToUpload.length === 1 ? '' : 's'}…`;
+      renderTrain();
+      for (const k of ['front','side','back']) {
+        const ph = d.photos[k];
+        if (ph.file) {
+          photoPaths[k] = await uploadProgressPhoto(ph.file, d.captured_date, k);
+        } else if (ph.path) {
+          photoPaths[k] = ph.path;     // keep existing
+        }
+      }
+    } else {
+      for (const k of ['front','side','back']) {
+        if (d.photos[k].path) photoPaths[k] = d.photos[k].path;
+      }
+    }
+
+    // ── Step 2: deterministic body-fat (Navy formula).
+    _trainProgressState.savingStep = 'Saving…';
+    renderTrain();
     const neck = d.neck_in ? Number(d.neck_in) : null;
     const waist = d.waist_in ? Number(d.waist_in) : null;
     const hips  = d.hips_in ? Number(d.hips_in) : null;
@@ -2293,6 +2598,9 @@ async function saveProgressEntry() {
       body_fat_pct:  bfPct,
       body_fat_method: bfMethod,
       body_fat_confidence: bfConf,
+      front_storage_path: photoPaths.front,
+      side_storage_path:  photoPaths.side,
+      back_storage_path:  photoPaths.back,
     };
     // Upsert so re-logging on the same day updates the existing row
     // (matches the unique index in the migration).
@@ -2315,6 +2623,15 @@ async function saveProgressEntry() {
       session_date: saved.captured_date,
     }).catch(err => console.warn('[train] progress auto-mark failed', err));
 
+    // Refresh signed URLs for whatever was just uploaded so the
+    // dashboard thumbnails light up.
+    refreshProgressSignedUrls([photoPaths.front, photoPaths.side, photoPaths.back]);
+
+    // Kick off the AI vision analysis (background — failure is non-fatal).
+    if (slotsToUpload.length || (!saved.ai_analysis && (photoPaths.front || photoPaths.side || photoPaths.back))) {
+      runProgressPicAnalysis(saved.id);
+    }
+
     _trainProgressState.entryDraft = null;
     _trainProgressState.view = 'dashboard';
   } catch (e) {
@@ -2322,7 +2639,48 @@ async function saveProgressEntry() {
     showTrainToast('Save failed — ' + (e.message || 'try again'));
   } finally {
     _trainProgressState.saving = false;
+    _trainProgressState.savingStep = null;
     renderTrain();
+  }
+}
+
+// Background call to /.netlify/functions/beta-progress-pic-analysis with
+// the progress_pic row id. The function reads the row + the photo blobs
+// via the service key, sends them to Claude with a vision prompt, and
+// writes the result back to progress_pics.ai_analysis. The client
+// listens for the response, patches the local cache, and re-renders.
+async function runProgressPicAnalysis(progressPicId) {
+  if (!progressPicId) return;
+  const entry = _trainProgressState.entries.find(e => e.id === progressPicId);
+  if (entry) entry._analyzing = true;
+  if (_trainActiveView === 'progress') renderTrain();
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    const r = await fetch('/.netlify/functions/beta-progress-pic-analysis', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ progress_pic_id: progressPicId }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      console.warn('[train] progress vision call failed', j);
+      if (entry) entry._analyzeError = j.error || `http_${r.status}`;
+      return;
+    }
+    if (entry && j.ai_analysis) {
+      entry.ai_analysis = j.ai_analysis;
+      if (j.body_fat_pct != null) entry.body_fat_pct = j.body_fat_pct;
+      if (j.body_fat_method)      entry.body_fat_method = j.body_fat_method;
+      if (j.body_fat_confidence)  entry.body_fat_confidence = j.body_fat_confidence;
+    }
+  } catch (e) {
+    console.warn('[train] progress vision exception', e);
+    if (entry) entry._analyzeError = e.message;
+  } finally {
+    if (entry) entry._analyzing = false;
+    if (_trainActiveView === 'progress') renderTrain();
   }
 }
 
@@ -3188,6 +3546,77 @@ function ensureTrainStyles() {
       .entry-meas-grid { grid-template-columns: repeat(2, 1fr); }
     }
     .train-form-field { display: flex; flex-direction: column; gap: 4px; }
+
+    /* ── Progress photo picker + thumbnails ──────────────────────── */
+    .progress-photo-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .progress-photo-slot {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      aspect-ratio: 3/4; min-height: 100px;
+      background: var(--surface-2); border: 1px dashed var(--edge-strong);
+      border-radius: var(--r-md); cursor: pointer; overflow: hidden;
+      color: var(--ink-3); font-size: 12px; transition: background 0.15s ease;
+    }
+    .progress-photo-slot:hover { background: var(--surface); }
+    .progress-photo-slot.is-empty .progress-photo-plus {
+      font-size: 28px; line-height: 1; color: var(--ink-4); margin-bottom: 4px;
+    }
+    .progress-photo-slot.is-picked,
+    .progress-photo-slot.is-persisted { border-style: solid; padding: 0; }
+    .progress-photo-slot img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+    .progress-photo-slot .progress-photo-label {
+      position: absolute; bottom: 4px; left: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; color: #fff;
+      background: rgba(20,15,10,0.55); padding: 2px 6px; border-radius: 4px;
+    }
+    .progress-photo-slot.is-empty .progress-photo-label {
+      position: static; background: none; color: var(--ink-3);
+      font-weight: 600;
+    }
+    .progress-photo-slot .progress-photo-remove {
+      position: absolute; top: 4px; right: 4px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(20,15,10,0.65); color: #fff; border: 0;
+      font-size: 14px; cursor: pointer; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .progress-photo-slot .progress-photo-replace {
+      position: absolute; top: 4px; right: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      background: rgba(20,15,10,0.55); color: #fff;
+      padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
+    }
+    .progress-photo-loading {
+      font-size: 11px; color: var(--ink-4);
+    }
+    .progress-photo-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      margin-top: 12px;
+    }
+    .progress-photo-thumb {
+      width: 100%; aspect-ratio: 3/4; object-fit: cover;
+      border-radius: var(--r-sm); background: var(--surface-2);
+    }
+    .progress-photo-thumb.is-loading { background: var(--edge); }
+
+    /* AI photo-analysis rows */
+    .progress-ai-row {
+      display: flex; gap: 8px; align-items: baseline;
+      padding: 4px 0; font-size: 13px; color: var(--ink-2);
+      line-height: 1.4;
+    }
+    .progress-ai-row + .progress-ai-row { border-top: 1px dashed var(--edge); }
+    .progress-ai-row-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--ink-4); text-transform: uppercase;
+      min-width: 78px; flex-shrink: 0;
+    }
 
     /* ── AI feedback overlay (Today subtab) ───────────────────────── */
     .train-ai-block {
