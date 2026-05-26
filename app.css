@@ -467,9 +467,9 @@
   }
   .pill:hover { color: var(--ink); background: var(--surface-2); border-color: var(--edge-strong); }
   .pill.active {
-    background: var(--ink);
+    background: var(--guava-700);
     color: #fff;
-    border-color: var(--ink);
+    border-color: var(--guava-700);
     font-weight: 500;
   }
   .pill-count {
