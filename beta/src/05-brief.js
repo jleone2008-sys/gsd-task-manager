@@ -571,17 +571,31 @@ function briefTaskCountsRow(counts) {
   };
 }
 
-// Today's habit completion as { due, done } using the same isHabitDueToday
-// gate the Habits tab uses — quota habits only count on days they're forced.
+// Today's habit completion as { pct, done, due } using the exact same
+// formula updateHabitStatsBar uses to paint the bottom-nav '60%' badge
+// (todayContribution per habit, summed). Without this alignment the
+// brief shows e.g. '50% · 2/4' (due-habits-only) while the badge shows
+// '60%' (due + completed-extras). Returns null when no habits are
+// currently "mattering" (no due habits and no extras done) so the
+// caller can hide the row.
 function briefComputeHabitsToday() {
   if (typeof habitsArr === 'undefined' || !Array.isArray(habitsArr)) return null;
-  if (typeof isHabitDueToday !== 'function' || typeof isCompletedOn !== 'function') return null;
+  if (typeof todayContribution !== 'function') return null;
   const today = (typeof jToday === 'function') ? jToday()
               : new Date().toISOString().slice(0, 10);
-  const due = habitsArr.filter(h => !h.archived && isHabitDueToday(h));
-  if (!due.length) return null;
-  const done = due.reduce((n, h) => n + (isCompletedOn(h.id, today) ? 1 : 0), 0);
-  return { due: due.length, done };
+  const active = habitsArr.filter(h => !h.archived);
+  let num = 0, den = 0;
+  for (const h of active) {
+    const c = todayContribution(h, today);
+    num += c.num;
+    den += c.den;
+  }
+  if (den === 0) return null;   // no habits required + no extras done
+  return {
+    pct:  Math.round((num / den) * 100),
+    done: num,
+    due:  den,
+  };
 }
 
 // "YYYY-MM-DD" tomorrow in the user's local timezone.
@@ -693,10 +707,10 @@ function homeBriefRecompute() {
     const ref = mode === 'morning' ? briefTodayLocal() : briefTomorrowLocal();
     s.recap.right.task_counts  = briefComputeTaskCounts(ref);
     // Habits done today: server can't see in-progress days; client always wins.
-    const hToday = briefComputeHabitsToday();
-    s.recap.right.habits_today = hToday
-      ? { pct: Math.round((hToday.done / hToday.due) * 100), done: hToday.done, due: hToday.due }
-      : null;
+    // briefComputeHabitsToday now returns { pct, done, due } directly using
+    // the same todayContribution formula the bottom-nav badge uses, so the
+    // brief stays in lock-step with the Habits tab's '60%' indicator.
+    s.recap.right.habits_today = briefComputeHabitsToday();
     // Morning mode: surface tasks-done-today on the Today column so the
     // user sees completions reflected without waiting for tonight's brief
     // regen. (Evening mode already shows this on the left column —
@@ -714,12 +728,11 @@ function homeBriefRecompute() {
   // today". Client owns the live values from here.
   if (mode === 'evening' && s.recap && s.recap.left && s.recap.left.label === 'Today') {
     s.recap.left.tasks_done = briefCountTasksDoneToday();
-    const hToday = briefComputeHabitsToday();
-    // null means "no habits due today" — server's hide-if-null check
-    // already handles that path correctly.
-    s.recap.left.habits = hToday
-      ? { due: hToday.due, done: hToday.done }
-      : null;
+    // briefComputeHabitsToday already returns { pct, done, due } — null
+    // means "no habits matter today" and briefRecapHabitsText hides the
+    // row in that case. Bug I just introduced one commit ago: was
+    // passing { due, done } without pct, which read as '0%'.
+    s.recap.left.habits = briefComputeHabitsToday();
   }
 
   // ── Legacy shape (today_play / tomorrow_setup) ──────────────────────────
