@@ -74,3 +74,21 @@
 #   BRIEF_MAX_TOKENS        Max output tokens for each brief (default: 1500).
 [functions."cron-daily-brief"]
   schedule = "0 * * * *"
+
+# Phase 7 — weekly synthesis. Sundays at 22:00 UTC = early-evening US Eastern /
+# afternoon US Pacific. Close enough to "Sunday evening user-local" for v1.
+# Per-user-local firing would need a more elaborate scheduler.
+#
+# The function iterates active users and triggers
+# beta-weekly-synthesis-background per user (fire-and-forget; each background
+# fn runs up to 15 minutes).
+#
+# Required env vars:
+#   ANTHROPIC_API_KEY        shared with brief
+#   OPENAI_API_KEY           shared with knowledge ingest (needed for the
+#                            search_knowledge tool in the agentic loop)
+#   CRON_SECRET              Bearer the background fn validates on cron-path
+#                            calls (separate from the JWT path for manual
+#                            triggers from the Insights "Generate" button).
+[functions."cron-weekly-synthesis"]
+  schedule = "0 22 * * 0"
