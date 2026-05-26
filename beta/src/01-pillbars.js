@@ -88,12 +88,17 @@
       ],
     },
     {
+      // NB: subtab pills don't carry the 'train-pill' class — that
+      // class is taken by the coach-traits content badge style in
+      // 06-train.js (small caps, pill-shaped, no border) and was
+      // bleeding into the subtab bar. .pill + .train-sub-pills is
+      // enough to scope the click handler.
       selector: '.pill-bar.train-sub-pills',
       dataKey:  'data-train-view',
       pills: [
-        { key: 'workout',  label: 'Workout',     default: true, extraClass: 'train-pill', icon: ICONS.dumbbell },
-        { key: 'history',  label: 'History',     extraClass: 'train-pill', icon: ICONS.clock },
-        { key: 'progress', label: 'My Progress', extraClass: 'train-pill', icon: ICONS.pulse },
+        { key: 'workout',  label: 'Workout',     default: true, icon: ICONS.dumbbell },
+        { key: 'history',  label: 'History',     icon: ICONS.clock },
+        { key: 'progress', label: 'My Progress', icon: ICONS.pulse },
       ],
     },
   ];

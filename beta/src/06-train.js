@@ -58,8 +58,11 @@ function renderTrain() {
 
   if (!TRAIN_VIEWS.includes(_trainActiveView)) _trainActiveView = 'workout';
 
-  // Set the subtab pill-bar's visible-active state.
-  document.querySelectorAll('.train-sub-pills .train-pill').forEach(p => {
+  // Set the subtab pill-bar's visible-active state. Selector targets
+  // .pill (the canonical class) so it matches whatever the pill-bar
+  // renderer produces; .train-pill class is no longer used for the
+  // subtab bar — that name is taken by the coach-traits badge style.
+  document.querySelectorAll('.train-sub-pills .pill').forEach(p => {
     p.classList.toggle('active', p.dataset.trainView === _trainActiveView);
   });
 
@@ -102,7 +105,7 @@ function trainWireOnce() {
   document.addEventListener('click', e => {
     // Subtab pill-bar (always live so the user can switch even from a
     // mid-Train modal).
-    const pill = e.target.closest('.train-sub-pills .train-pill');
+    const pill = e.target.closest('.train-sub-pills .pill');
     if (pill) { trainSwitchView(pill.dataset.trainView); return; }
 
     if (typeof activeTool !== 'undefined' && activeTool !== 'train') return;
