@@ -627,9 +627,17 @@ function switchTool(tool) {
     // FAB is the "new task" / "new habit" / "new note" CTA. It's only
     // meaningful on tabs that have a primary create action — Train has its
     // own Submit + Get Feedback button, Home / Journal / Settings don't
-    // have a single primary create.
-    const hideFabOn = ['home', 'scratch', 'journal', 'settings', 'train'];
+    // have a single primary create. On Insights ('notes') the bottom-right
+    // slot is taken by the chat FAB; "+ Note" lives in the Timeline header.
+    const hideFabOn = ['home', 'scratch', 'journal', 'settings', 'train', 'notes'];
     fab.classList.toggle('hidden', hideFabOn.includes(tool));
+  }
+  // Chat FAB — Insights tab only. Close popup when leaving the tab so it
+  // doesn't linger over other surfaces.
+  const chatFab = document.getElementById('floatingChat');
+  if (chatFab) chatFab.classList.toggle('hidden', tool !== 'notes');
+  if (tool !== 'notes') {
+    document.getElementById('chatPopup')?.classList.remove('is-open');
   }
   if (tool === 'home') { if (typeof renderHome === 'function') renderHome(); }
   else if (tool === 'habits') { renderHabits(); }

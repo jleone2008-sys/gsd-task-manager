@@ -545,17 +545,32 @@
     <div class="notes-left-col">
     <!-- Sidebar -->
     <aside class="notes-sidebar" id="notesSidebar"></aside>
-    <!-- Notes list -->
+    <!-- Insights tab content (data-tool-key stays 'notes' for router
+         compat). Phase 8 redesign: pills are the top-level chrome, not
+         the notes 'All Notes' header. Timeline / Patterns / Weekly are
+         full-width content views inside the same container. Chat
+         (formerly the Ask pill) is now a floating FAB + popup. -->
     <div class="notes-list" id="notesList">
       <div class="mobile-nb-toggle" id="mobileNbToggle" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
-      <div class="nl-header">
-        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span></div>
-        <!-- Phase 6 — Brain upload affordance. Clicking opens the
-             file picker; the new module beta/src/06-brain.js handles
-             reading + base64-encoding + POST to beta-knowledge-ingest.
-             Status surface (.brain-upload-status) appears inline below
-             when an upload is in flight or just landed. -->
+      <!-- Insights subtab pills — top-level chrome. -->
+      <div class="insights-subtabs" id="insightsSubtabs">
+        <button class="insights-pill is-active" data-insights-view="timeline">Timeline</button>
+        <button class="insights-pill" data-insights-view="patterns">Patterns <span class="insights-pill-count" id="insightsPatternsCount">0</span></button>
+        <button class="insights-pill" data-insights-view="weekly">Weekly</button>
+      </div>
+      <!-- Timeline view header (only visible when Timeline pill is
+           active). The All Notes title + count + upload affordance
+           lives here so it doesn't leak into Patterns / Weekly views. -->
+      <div class="nl-header" id="timelineHeader">
+        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All <span class="nl-count" id="nlCount">0</span></div>
+        <!-- "+ Note" affordance — replaces the global FAB on Insights
+             (FAB slot is taken by the chat button). Calls createNote()
+             via a delegated click in 06-brain.js. -->
+        <button class="brain-upload-btn" id="newNoteBtn" title="New note" type="button" style="margin-right:6px">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Note
+        </button>
         <button class="brain-upload-btn" id="brainUploadBtn" title="Upload a PDF or image to your knowledge base" type="button">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Upload
@@ -563,43 +578,17 @@
         <input type="file" id="brainUploadInput" accept=".pdf,image/*" style="position:absolute;left:-9999px;opacity:0" />
       </div>
       <div class="brain-upload-status" id="brainUploadStatus" style="display:none"></div>
-      <!-- Phase 6 Commit 6 — Documents section. Populated by
-           beta/src/06-brain.js (loadBrainDocuments) on tab activation.
-           Lives above the notes list; existing notes scroll below. -->
       <div class="brain-docs" id="brainDocsSection" style="display:none">
         <div class="brain-docs-head">Documents <span class="brain-docs-count" id="brainDocsCount">0</span></div>
         <div class="brain-docs-list" id="brainDocsList"></div>
       </div>
-      <!-- Phase 7 + 8 — Insights subtab pills. Timeline (notes + docs)
-           / Patterns (weekly synthesis output) / Weekly (current
-           synthesis brief) / Ask (Phase 8 chat surface). -->
-      <div class="insights-subtabs" id="insightsSubtabs">
-        <button class="insights-pill is-active" data-insights-view="timeline">Timeline</button>
-        <button class="insights-pill" data-insights-view="patterns">Patterns <span class="insights-pill-count" id="insightsPatternsCount">0</span></button>
-        <button class="insights-pill" data-insights-view="weekly">Weekly</button>
-        <button class="insights-pill" data-insights-view="ask">Ask</button>
-      </div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
+      <!-- Timeline view content (unified notes + docs feed) -->
       <div class="nl-scroll" id="nlScroll"></div>
       <!-- Patterns view (hidden by default) -->
       <div class="insights-patterns" id="insightsPatterns" style="display:none"></div>
       <!-- Weekly synthesis view (hidden by default) -->
       <div class="insights-weekly" id="insightsWeekly" style="display:none"></div>
-      <!-- Ask chat view (hidden by default) -->
-      <div class="insights-ask" id="insightsAsk" style="display:none">
-        <div class="ask-thread-bar">
-          <button class="ask-nav-btn" data-ask-action="prev-day" title="Previous day">‹</button>
-          <span class="ask-thread-date" id="askThreadDate">Today</span>
-          <button class="ask-nav-btn" data-ask-action="next-day" title="Next day">›</button>
-          <span class="ask-thread-spacer"></span>
-          <button class="ask-nav-btn ask-today-btn" data-ask-action="today" title="Jump to today">Today</button>
-        </div>
-        <div class="ask-messages" id="askMessages"></div>
-        <div class="ask-composer" id="askComposer">
-          <textarea class="ask-input" id="askInput" placeholder="Ask anything about your data…" rows="1"></textarea>
-          <button class="ask-send" id="askSend" type="button" title="Send">↑</button>
-        </div>
-      </div>
     </div>
     </div><!-- /notes-left-col -->
     <!-- Editor -->
@@ -671,6 +660,36 @@
 <button class="floating-scratch hidden" id="floatingScratch" title="Open scratchpad" aria-label="Open scratchpad">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
 </button>
+
+<!-- FLOATING CHAT BUTTON — Phase 8 Insights redesign. Same chrome as
+     .floating-search and .floating-scratch (white surface, edge
+     border, --r-lg, --shadow-card). Only visible on the Insights
+     tab; toggle handled by switchTool. Tap opens .chat-popup. -->
+<button class="floating-chat hidden" id="floatingChat" title="Ask" aria-label="Ask">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  <span class="floating-chat-dot" id="floatingChatDot" style="display:none"></span>
+</button>
+
+<!-- CHAT POPUP — global overlay (not tab-scoped) so it can sit above
+     bottom nav + FABs. Hidden by default; chat-fab toggles .is-open.
+     Contains the day-nav header, message list, and composer. -->
+<div class="chat-popup" id="chatPopup">
+  <div class="chat-popup-card">
+    <div class="ask-thread-bar">
+      <button class="ask-nav-btn" data-ask-action="prev-day" title="Previous day">‹</button>
+      <span class="ask-thread-date" id="askThreadDate">Today</span>
+      <button class="ask-nav-btn" data-ask-action="next-day" title="Next day">›</button>
+      <span class="ask-thread-spacer"></span>
+      <button class="ask-nav-btn ask-today-btn" data-ask-action="today" title="Jump to today">Today</button>
+      <button class="ask-nav-btn ask-close-btn" data-ask-action="close" title="Close">×</button>
+    </div>
+    <div class="ask-messages" id="askMessages"></div>
+    <div class="ask-composer" id="askComposer">
+      <textarea class="ask-input" id="askInput" placeholder="Ask anything…" rows="1"></textarea>
+      <button class="ask-send" id="askSend" type="button" title="Send">↑</button>
+    </div>
+  </div>
+</div>
 
 <!-- FLOATING NEW TASK BUTTON — start hidden; switchTool toggles the .hidden class
      based on the active tab so it appears only where appropriate. -->

@@ -62,6 +62,16 @@
       input.click();
     });
 
+    // "+ Note" — replaces the global FAB on Insights (FAB slot is now
+    // the chat button). Calls into the shared createNote() flow.
+    const newNote = document.getElementById('newNoteBtn');
+    if (newNote && !newNote._wired) {
+      newNote._wired = true;
+      newNote.addEventListener('click', () => {
+        if (typeof createNote === 'function') createNote();
+      });
+    }
+
     input.addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       input.value = '';   // reset so picking same file re-fires change

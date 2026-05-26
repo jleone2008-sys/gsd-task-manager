@@ -1656,6 +1656,86 @@
               + var(--search-size) + var(--fab-search-gap));
   }
 
+  /* Phase 8 Insights redesign — floating chat button.
+     Same chrome as .floating-search / .floating-scratch.
+     Sits where the FAB would normally be (Insights tab has no
+     primary 'create' action — FAB is hidden on this tab — so the
+     chat affordance takes that slot). */
+  .floating-chat {
+    position: fixed;
+    bottom: var(--fab-bottom-mobile);
+    right: var(--fab-right-mobile);
+    width: var(--fab-size); height: var(--fab-size);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow-card);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    z-index: var(--z-fab-mobile);
+    cursor: pointer;
+    transition: box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease),
+                transform var(--dur) var(--ease);
+  }
+  .floating-chat:hover  { box-shadow: var(--shadow-card-hover); }
+  .floating-chat:active { transform: translateY(1px); }
+  .floating-chat svg    { color: var(--ink-3); width: 20px; height: 20px; }
+  .floating-chat:hover svg { color: var(--ink); }
+  .floating-chat.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
+  .floating-chat-dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--moss-fg); border: 2px solid var(--surface);
+  }
+
+  /* Chat popup — opens above the bottom nav + FAB stack. */
+  .chat-popup {
+    position: fixed;
+    bottom: calc(var(--fab-bottom-mobile) + var(--fab-size) + 10px);
+    right: var(--fab-right-mobile);
+    width: 360px; max-width: calc(100vw - 32px);
+    height: 70vh; max-height: 560px;
+    z-index: calc(var(--z-fab-mobile) + 1);
+    opacity: 0; pointer-events: none;
+    transform: translateY(8px) scale(0.98); transform-origin: bottom right;
+    transition: opacity var(--dur) var(--ease),
+                transform var(--dur) var(--ease);
+  }
+  .chat-popup.is-open {
+    opacity: 1; pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+  .chat-popup-card {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-raised);
+    height: 100%;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .ask-close-btn { margin-left: 6px; }
+
+  @media (max-width: 600px) {
+    .chat-popup {
+      bottom: calc(var(--fab-bottom-mobile) + var(--fab-size) + 10px);
+      right: 12px; left: 12px;
+      width: auto; max-width: none;
+      height: 65vh; max-height: 520px;
+    }
+  }
+  @media (min-width: 900px) {
+    .floating-chat {
+      bottom: var(--fab-bottom-desktop);
+      right: var(--fab-right-desktop);
+    }
+    .chat-popup {
+      bottom: calc(var(--fab-bottom-desktop) + var(--fab-size) + 10px);
+      right: var(--fab-right-desktop);
+    }
+  }
+
   @media (min-width: 900px) {
     .floating-search {
       bottom: calc(var(--fab-bottom-desktop) + (var(--fab-size) - var(--search-size)) / 2);
@@ -2986,10 +3066,8 @@
   .weekly-empty-cta:hover { background: var(--guava-800); }
   .weekly-empty-cta:disabled { background: var(--ink-4); cursor: wait; }
 
-  /* Phase 8 — Ask chat surface */
-  .insights-ask {
-    flex: 1; display: flex; flex-direction: column; min-height: 0;
-  }
+  /* Phase 8 — Ask chat (now a popup, not a subtab — see .chat-popup
+     for the popup container; these classes style its contents). */
   .ask-thread-bar {
     display: flex; align-items: center; gap: 6px;
     padding: 8px 12px; border-bottom: 1px solid var(--edge);

@@ -44,9 +44,42 @@
 
   _onReady(() => {
     wireSubtabPills();
+    wireChatFab();
     // Prefetch patterns count so the pill badge is accurate on first paint
     waitForUser().then(() => refreshPatternsCount());
   });
+
+  // ── Chat FAB + popup wiring ───────────────────────────────────
+  // The Ask experience moved out of a subtab into a floating chatbox
+  // (popup that opens from the bottom-right). The FAB is shown only on
+  // Insights (toggled by switchTool in 01-core.js).
+  function wireChatFab() {
+    const fab = document.getElementById('floatingChat');
+    const popup = document.getElementById('chatPopup');
+    if (!fab || !popup) return;
+    fab.addEventListener('click', () => {
+      const opening = !popup.classList.contains('is-open');
+      popup.classList.toggle('is-open', opening);
+      if (opening) {
+        // Lazy-init on first open + every open refreshes the thread
+        initAsk();
+        setTimeout(() => document.getElementById('askInput')?.focus(), 50);
+      }
+    });
+    // Close on outside-click (not the FAB itself)
+    document.addEventListener('click', (e) => {
+      if (!popup.classList.contains('is-open')) return;
+      if (popup.contains(e.target)) return;
+      if (e.target.closest('#floatingChat')) return;
+      popup.classList.remove('is-open');
+    });
+    // ESC closes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && popup.classList.contains('is-open')) {
+        popup.classList.remove('is-open');
+      }
+    });
+  }
 
   async function waitForUser() {
     const start = Date.now();
@@ -68,7 +101,8 @@
   }
 
   function setActiveView(view) {
-    if (!['timeline', 'patterns', 'weekly', 'ask'].includes(view)) return;
+    // Ask is no longer a subtab — it's a floating popup. Only three views now.
+    if (!['timeline', 'patterns', 'weekly'].includes(view)) return;
     _activeView = view;
     // Toggle pill active state
     document.querySelectorAll('[data-insights-view]').forEach(b => {
@@ -79,8 +113,7 @@
     const docsTop  = document.getElementById('brainDocsSection');
     const patterns = document.getElementById('insightsPatterns');
     const weekly   = document.getElementById('insightsWeekly');
-    const ask      = document.getElementById('insightsAsk');
-    const upload   = document.getElementById('brainUploadBtn');
+    const header   = document.getElementById('timelineHeader');
     const uploadStatus = document.getElementById('brainUploadStatus');
 
     const showTimeline = view === 'timeline';
@@ -88,13 +121,12 @@
     if (docsTop)  docsTop.style.display  = showTimeline ? '' : 'none';
     if (patterns) patterns.style.display = view === 'patterns' ? '' : 'none';
     if (weekly)   weekly.style.display   = view === 'weekly'   ? '' : 'none';
-    if (ask)      ask.style.display      = view === 'ask'      ? '' : 'none';
-    if (upload)   upload.style.display   = showTimeline ? '' : 'none';
+    // The Timeline header (title + "+ Note" + Upload) is Timeline-only chrome.
+    if (header)   header.style.display   = showTimeline ? '' : 'none';
     if (uploadStatus) uploadStatus.style.display = showTimeline ? (uploadStatus.style.display) : 'none';
 
     if (view === 'patterns') loadPatterns();
     if (view === 'weekly')   loadWeekly();
-    if (view === 'ask')      initAsk();
   }
 
   // ── Patterns ──────────────────────────────────────────────────
@@ -402,8 +434,11 @@
     // Wire interactions once
     if (!initAsk._wired) {
       initAsk._wired = true;
-      const bar = document.getElementById('insightsAsk');
-      if (bar) bar.addEventListener('click', onAskClick);
+      // The chat surface moved into a floating popup (#chatPopup → .chat-popup-card).
+      // Delegate at the popup root so the thread bar, messages, and composer
+      // all share a single click handler.
+      const popup = document.getElementById('chatPopup');
+      if (popup) popup.addEventListener('click', onAskClick);
       const input = document.getElementById('askInput');
       const send  = document.getElementById('askSend');
       if (input) {
@@ -510,6 +545,9 @@
       loadAskThread();
     }
     else if (action === 'today') { _askThreadDate = todayStr(); loadAskThread(); }
+    else if (action === 'close') {
+      document.getElementById('chatPopup')?.classList.remove('is-open');
+    }
   }
 
   async function sendAskMessage() {
