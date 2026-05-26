@@ -394,6 +394,7 @@ function trainWireOnce() {
         // Patch .is-done on the row inline so the moss tint follows
         // typing without a full re-render (which would steal focus).
         el.closest('.ex-set-row')?.classList.toggle('is-done', row.done);
+        trainPatchLiveTotals();
       }
       return;
     }
@@ -404,6 +405,7 @@ function trainWireOnce() {
         row.reps = v;
         row.done = !!(String(row.weight ?? '').trim() && String(row.reps ?? '').trim());
         el.closest('.ex-set-row')?.classList.toggle('is-done', row.done);
+        trainPatchLiveTotals();
       }
       return;
     }
@@ -1719,6 +1721,19 @@ function trainComputeLiveTotals(st) {
     left:  { num: setsDone, label: 'Sets' },
     right: { num: volume.toLocaleString(), label: 'Volume (lbs)' },
   };
+}
+
+// Patches the two .train-total-num cells in the footer with the current
+// computed totals — no re-render, so input focus stays put. Called from
+// set-weight / set-reps handlers (every keystroke) since those handlers
+// intentionally skip renderTrain().
+function trainPatchLiveTotals() {
+  const totals = trainComputeLiveTotals(_trainTodayState);
+  const cells = document.querySelectorAll('.train-totals .train-total-num');
+  if (cells.length >= 2) {
+    cells[0].textContent = totals.left.num;
+    cells[1].textContent = totals.right.num;
+  }
 }
 
 function renderTodayFeedback(st) {
