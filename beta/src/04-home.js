@@ -658,12 +658,20 @@ async function hydrateHomeToday() {
     const msg = homeWhoopConnected() ? 'Whoop rings on Home are coming soon.' : 'Connect Whoop to track your health on Home.';
     const cta = homeWhoopConnected() ? '' : '<button class="home-cta" data-home-cta="settings">Connect Whoop →</button>';
     if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">${msg}</div>${cta}`;
-  } else if (!homeOuraConnected()) {
-    if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">Connect your Oura Ring to see sleep, readiness, and activity.</div>
-      <button class="home-cta" data-home-cta="settings">Connect Oura →</button>`;
   } else {
+    // Phase 2 audit follow-up: don't gate on homeOuraConnected() — that
+    // reads the fire-and-forget integration status which races with
+    // Home render on cold boot. Try the data fetch directly; if days
+    // come back, render rings; if not, show the Connect CTA. Either
+    // way the decision is based on actual data, not a stale flag.
     const oura = await loadOuraScores();
-    if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
+    const hasData = oura && Array.isArray(oura.days) && oura.days.length > 0;
+    if (hasData) {
+      if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
+    } else {
+      if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">Connect your Oura Ring to see sleep, readiness, and activity.</div>
+        <button class="home-cta" data-home-cta="settings">Connect Oura →</button>`;
+    }
   }
   // Phase 5 — intra-day mood check-ins. Single fetch on mount.
   // Patched in-place by insert/delete handlers; daily journal mood is
@@ -751,7 +759,14 @@ async function hydrateHomeWeek() {
   const today = homeToday();
   const start = (typeof jShiftDays === 'function') ? jShiftDays(today, -6) : today;
   if (typeof loadJournalRange === 'function') { try { await loadJournalRange(start, today); } catch (_) {} }
-  const oura = homeOuraConnected() && homeHealthSource() === 'oura' ? await loadOuraScores() : null;
+  // Phase 2 audit follow-up: removed the homeOuraConnected() gate.
+  // Integration-status loaders went fire-and-forget in the boot-unblock
+  // commit, which meant Home rendered before integrations.oura.connected
+  // was populated → gate returned false → Oura skipped → all dashes
+  // (the regression Joe hit 2026-05-26). loadOuraScores is bounded
+  // (limit 14) and safe to call always; if the user truly has no Oura
+  // data the days array comes back empty (still dashes, but accurate).
+  const oura = homeHealthSource() === 'oura' ? await loadOuraScores() : null;
   const entriesByDate = (typeof journalState !== 'undefined') ? journalState.entries : new Map();
   const el = document.getElementById('homeWeek');
   if (el) el.innerHTML = homeWeekInnerHTML(oura, entriesByDate);
