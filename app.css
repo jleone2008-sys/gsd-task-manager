@@ -3077,25 +3077,20 @@
     font-size: var(--fs-search);
   }
 
-  /* Phase 7 — Insights subtab pills + Patterns view + Weekly view.
-     Pills live in the topbar's .pill-bar.insights-sub-pills row (same
-     pattern as .train-sub-pills); they're .pill .insights-pill so they
-     inherit topbar pill bar layout but override visuals to match the
-     guava-on-white selected style. */
-  .pill.insights-pill {
-    background: transparent; border: 1px solid transparent;
-    color: var(--ink-3); padding: 6px 12px; border-radius: 999px;
-    font-size: var(--fs-meta); font-weight: 600; cursor: pointer;
-    display: inline-flex; align-items: center; gap: 5px;
-  }
-  .pill.insights-pill:hover { background: var(--surface-2); color: var(--ink-2); }
-  .pill.insights-pill.is-active { background: var(--guava-700); color: white; }
+  /* Insights subtab pills + Patterns view + Weekly view.
+     Pills are .pill .insights-pill, so they inherit the canonical
+     pill chrome from the base .pill rules (transparent default,
+     guava-100 / guava-700 .active state — the "Train" style used
+     across every tab). The class is kept only as a hook for the
+     patterns count badge. */
   .insights-pill-count {
-    background: rgba(255,255,255,0.25); padding: 0 6px; border-radius: 999px;
-    font-size: 10px; font-weight: 500;
-  }
-  .pill.insights-pill:not(.is-active) .insights-pill-count {
+    font-size: 10px; font-weight: 600;
     background: var(--surface-2); color: var(--ink-4);
+    padding: 1px 7px; border-radius: 999px;
+    margin-left: 5px;
+  }
+  .pill.insights-pill.active .insights-pill-count {
+    background: rgba(184,45,59,0.12); color: var(--guava-700); opacity: 0.85;
   }
 
   .insights-patterns, .insights-weekly {

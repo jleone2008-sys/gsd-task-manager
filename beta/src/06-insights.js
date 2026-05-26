@@ -108,7 +108,7 @@
     _activeView = view;
     // Toggle pill active state
     document.querySelectorAll('[data-insights-view]').forEach(b => {
-      b.classList.toggle('is-active', b.dataset.insightsView === view);
+      b.classList.toggle('active', b.dataset.insightsView === view);
     });
     // Toggle surfaces
     const scroll   = document.getElementById('nlScroll');

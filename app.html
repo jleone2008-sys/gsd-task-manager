@@ -469,55 +469,22 @@
 <!-- Tasks pill-bar starts hidden so it doesn't flash during cold load while the
      beta init pipeline (auth + load) is in flight; switchTool('tasks') sets
      display back to ''. Matches the habits pill-bar pattern below. -->
+<!-- Every subtab pill row below is rendered from one config in
+     beta/src/01-pillbars.js. The shells stay here so switchTool's
+     [data-tool-view] visibility toggle finds them; the inner pills
+     are populated by JS at DOMContentLoaded. To add / remove / rename
+     a pill, edit PILL_BARS in beta/src/01-pillbars.js — not this file. -->
 <div class="pill-bar" data-tool-view="tasks" style="display:none">
-  <div class="pill-bar-inner">
-    <!-- Pill bar collapsed to two pills: Tasks (the merged 'all' view —
-         Overdue / Personal / Work / Later / Completed now live as
-         filter options inside the Sort-or-Filter dropdown) and
-         Statistics. The internal data-filter key for the merged view
-         stays 'all' so callers + the URL router keep working. -->
-    <button class="pill active" data-filter="all">Tasks<span class="pill-count" id="pc-all">0</span></button>
-    <button class="pill" data-filter="stats">Statistics</button>
-  </div>
+  <div class="pill-bar-inner"></div>
 </div>
 <div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
-  <div class="pill-bar-inner">
-    <!-- Two pills: Habits (merged Today + All — DUE TODAY section
-         plus every other active habit) and Statistics. The internal
-         data-habit-view key stays 'today' so the panel id + router
-         compat keeps working untouched; only the label changed. -->
-    <button class="pill habit-pill active" data-habit-view="today">Habits<span class="pill-count" id="pc-habit-today">0</span></button>
-    <button class="pill stat-pill" data-habit-view="stats">Statistics</button>
-  </div>
+  <div class="pill-bar-inner"></div>
 </div>
-<!-- Train subtab pill-bar (Plan / Today / Progress). Same pill-bar pattern as
-     the habits sub-pills; switchTool toggles this via [data-tool-view]. -->
 <div class="pill-bar train-sub-pills" data-tool-view="train" style="display:none">
-  <div class="pill-bar-inner">
-    <button class="pill train-pill active" data-train-view="workout">
-      <svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="8" rx="1"/><rect x="19" y="8" width="3" height="8" rx="1"/><rect x="5" y="10" width="2" height="4"/><rect x="17" y="10" width="2" height="4"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-      Workout
-    </button>
-    <button class="pill train-pill" data-train-view="history">
-      <svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/><polyline points="12 7 12 12 15 14"/></svg>
-      History
-    </button>
-    <button class="pill train-pill" data-train-view="progress">
-      <svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      My Progress
-    </button>
-  </div>
+  <div class="pill-bar-inner"></div>
 </div>
-<!-- Insights subtab pill-bar (Knowledgebase / Patterns / Weekly Insights).
-     Hoisted out of the notes-list container into the topbar so it sits
-     as the first row under the title (same pattern as train-sub-pills).
-     switchTool toggles visibility via [data-tool-view]. -->
 <div class="pill-bar insights-sub-pills" data-tool-view="notes" style="display:none">
-  <div class="pill-bar-inner">
-    <button class="pill insights-pill is-active" data-insights-view="timeline">Knowledgebase</button>
-    <button class="pill insights-pill" data-insights-view="patterns">Patterns <span class="insights-pill-count" id="insightsPatternsCount">0</span></button>
-    <button class="pill insights-pill" data-insights-view="weekly">Weekly Insights</button>
-  </div>
+  <div class="pill-bar-inner"></div>
 </div>
 <!-- Notes filter pill-bar removed per user direction — filtering happens
      via the notebooks sidebar inside the notes section. -->
@@ -1071,6 +1038,11 @@
 </div>
 
 <script src="/beta/src/00-router.js" defer></script>
+<!-- Renders every subtab pill bar (Tasks / Habits / Insights / Train)
+     from one config so the rows stay visually consistent and pill
+     edits are one-place. Loads BEFORE the per-tab JS so pills exist
+     by the time those scripts wire their click handlers. -->
+<script src="/beta/src/01-pillbars.js" defer></script>
 <script src="/beta/src/01-core.js" defer></script>
 <script src="/beta/src/02-settings.js" defer></script>
 <script src="/beta/src/03-journal.js" defer></script>
