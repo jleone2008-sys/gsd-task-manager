@@ -560,6 +560,13 @@
         <input type="file" id="brainUploadInput" accept=".pdf,image/*" style="position:absolute;left:-9999px;opacity:0" />
       </div>
       <div class="brain-upload-status" id="brainUploadStatus" style="display:none"></div>
+      <!-- Phase 6 Commit 6 — Documents section. Populated by
+           beta/src/06-brain.js (loadBrainDocuments) on tab activation.
+           Lives above the notes list; existing notes scroll below. -->
+      <div class="brain-docs" id="brainDocsSection" style="display:none">
+        <div class="brain-docs-head">Documents <span class="brain-docs-count" id="brainDocsCount">0</span></div>
+        <div class="brain-docs-list" id="brainDocsList"></div>
+      </div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
     </div>

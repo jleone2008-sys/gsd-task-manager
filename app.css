@@ -2740,6 +2740,84 @@
   .brain-upload-status.is-ready { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
   .brain-upload-status .b-status-title { font-weight: 600; }
   .brain-upload-status .b-status-meta  { color: var(--ink-3); font-size: var(--t-xs, 11px); margin-top: 2px; }
+
+  /* Phase 6 Commit 6 — Documents section above the notes list.
+     Matches the timeline aesthetic from knowledge-tab-mockups.html
+     Variation B: card per doc with kind icon + title + key facts. */
+  .brain-docs {
+    padding: 14px var(--space-2) 6px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .brain-docs-head {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-4);
+    margin-bottom: 8px; padding-left: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .brain-docs-count {
+    font-size: var(--fs-meta); font-weight: 500; color: var(--ink-3);
+    background: var(--surface-2); padding: 1px 7px; border-radius: var(--r-md);
+    text-transform: none; letter-spacing: 0;
+  }
+  .brain-docs-list { display: flex; flex-direction: column; gap: 8px; }
+  .brain-doc-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 14px;
+    box-shadow: var(--shadow-card);
+    display: flex; gap: 12px; cursor: pointer;
+    transition: box-shadow 0.12s;
+    flex-wrap: wrap;
+  }
+  .brain-doc-card:hover { box-shadow: var(--shadow-card-hover); }
+  .brain-doc-card.is-processing { opacity: 0.7; cursor: wait; }
+  .brain-doc-card.is-failed { border-color: var(--guava-300); background: var(--guava-50); }
+  .brain-doc-icon { font-size: 22px; line-height: 1.1; flex-shrink: 0; }
+  .brain-doc-body { flex: 1; min-width: 0; }
+  .brain-doc-title {
+    font-size: var(--fs-body, 14px); font-weight: 600; color: var(--ink);
+    line-height: 1.3; letter-spacing: -0.005em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .brain-doc-facts {
+    font-size: var(--fs-meta, 12px); color: var(--ink-2);
+    margin-top: 4px; line-height: 1.45;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .brain-doc-meta {
+    font-size: var(--t-xs, 11px); color: var(--ink-4);
+    margin-top: 6px; display: flex; gap: 6px; align-items: center;
+  }
+  .brain-doc-meta .b-doc-status {
+    font-weight: 600; padding: 1px 7px; border-radius: 999px;
+    font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .brain-doc-meta .b-doc-status.is-processing { background: var(--surface-2); color: var(--ink-3); }
+  .brain-doc-meta .b-doc-status.is-ready      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
+  .brain-doc-meta .b-doc-status.is-failed     { background: var(--guava-100); color: var(--guava-800); }
+
+  /* Inline detail when card is tapped */
+  .brain-doc-card.is-expanded { cursor: default; }
+  .brain-doc-detail {
+    flex-basis: 100%;
+    margin-top: 8px; padding-top: 10px;
+    border-top: 1px solid var(--edge);
+    font-size: var(--fs-meta, 12px); color: var(--ink-2);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .brain-doc-summary { line-height: 1.55; }
+  .brain-doc-keyfacts { margin: 0; padding-left: 18px; line-height: 1.5; }
+  .brain-doc-keyfacts li { margin-bottom: 3px; }
+  .brain-doc-actions { display: flex; gap: 8px; margin-top: 2px; }
+  .brain-doc-actions button {
+    background: none; border: 1px solid var(--edge); color: var(--ink-3);
+    padding: 4px 10px; border-radius: var(--r-md);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  .brain-doc-actions button:hover { color: var(--ink); border-color: var(--edge-strong); }
+  .brain-doc-actions button.is-destructive { color: var(--guava-700); border-color: var(--guava-200); }
+  .brain-doc-actions button.is-destructive:hover { background: var(--guava-50); }
+
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
   /* Notes list item — spec NoteCard layout.
      Card shell with column flex: title row (title left + date right),
