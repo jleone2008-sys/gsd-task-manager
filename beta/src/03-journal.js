@@ -790,6 +790,114 @@ async function uploadJournalPhoto(blob, dateStr) {
   return path;
 }
 
+// ── ONE-TIME BACKFILL ───────────────────────────────────────────────
+// Moves existing journal_entries.photos[] data-URLs into the Storage
+// bucket and populates photo_paths[]. Run from the DevTools Console:
+//
+//   await backfillJournalPhotos();           // dry run, lists rows
+//   await backfillJournalPhotos({ apply: true });   // actually upload
+//
+// Uses the user's own session (RLS enforced naturally — no service-
+// key juggling). Idempotent: skips any row that already has a
+// non-empty photo_paths[]. Re-running is safe.
+//
+// Leaves photos[] intact so existing render keeps working until the
+// final cleanup pass nulls it out after manual spot-check.
+async function backfillJournalPhotos(opts) {
+  opts = opts || {};
+  const apply = !!opts.apply;
+  console.log(`[backfill] mode: ${apply ? 'APPLY' : 'DRY RUN (pass { apply: true } to actually upload)'}`);
+
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { console.error('[backfill] not signed in'); return; }
+  const userId = session.user.id;
+
+  const { data: rows, error } = await db.from('journal_entries')
+    .select('entry_date, photos, photo_paths')
+    .eq('user_id', userId)
+    .order('entry_date', { ascending: false });
+  if (error) { console.error('[backfill] list failed', error); return; }
+
+  let needBackfill = 0, alreadyDone = 0, emptyPhotos = 0;
+  for (const r of rows || []) {
+    const hasPhotos = Array.isArray(r.photos) && r.photos.length > 0;
+    const hasPaths  = Array.isArray(r.photo_paths) && r.photo_paths.length > 0;
+    if (!hasPhotos) { emptyPhotos++; continue; }
+    if (hasPaths)   { alreadyDone++; continue; }
+    needBackfill++;
+  }
+  console.log(`[backfill] rows total: ${rows.length}, need backfill: ${needBackfill}, already done: ${alreadyDone}, empty photos: ${emptyPhotos}`);
+
+  if (!apply) {
+    console.log('[backfill] dry run — pass { apply: true } to upload and write paths');
+    return { needBackfill, alreadyDone, emptyPhotos };
+  }
+
+  // Decode a data-URL like "data:image/jpeg;base64,/9j/..." to a Blob.
+  // Returns null on malformed input so the caller can skip + log.
+  const decodeToBlob = (dataUrl) => {
+    if (typeof dataUrl !== 'string') return null;
+    const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!m) return null;
+    const mime = m[1] || 'image/jpeg';
+    try {
+      const bin = atob(m[2]);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    } catch (e) { return null; }
+  };
+
+  let okRows = 0, failedRows = 0, totalUploaded = 0, totalSkipped = 0;
+  for (const r of rows || []) {
+    const hasPhotos = Array.isArray(r.photos) && r.photos.length > 0;
+    const hasPaths  = Array.isArray(r.photo_paths) && r.photo_paths.length > 0;
+    if (!hasPhotos || hasPaths) continue;
+
+    const paths = [];
+    let rowFailed = false;
+    for (const dataUrl of r.photos) {
+      const blob = decodeToBlob(dataUrl);
+      if (!blob) { totalSkipped++; continue; }
+      try {
+        const path = await uploadJournalPhoto(blob, r.entry_date);
+        paths.push(path);
+        totalUploaded++;
+      } catch (e) {
+        console.error(`[backfill] upload failed on ${r.entry_date}:`, e.message || e);
+        rowFailed = true;
+        break;
+      }
+    }
+
+    if (rowFailed || paths.length === 0) { failedRows++; continue; }
+
+    // Patch only photo_paths. Leave photos[] intact for safety.
+    const { error: patchErr } = await db.from('journal_entries')
+      .update({ photo_paths: paths })
+      .eq('user_id', userId)
+      .eq('entry_date', r.entry_date);
+    if (patchErr) {
+      console.error(`[backfill] patch failed on ${r.entry_date}:`, patchErr.message);
+      failedRows++;
+      continue;
+    }
+
+    // Patch in-memory state too so the UI picks up the new paths
+    // without a full reload.
+    const cached = journalState.entries.get(r.entry_date);
+    if (cached) journalState.entries.set(r.entry_date, { ...cached, photo_paths: paths });
+
+    okRows++;
+    console.log(`[backfill] ✓ ${r.entry_date} — ${paths.length} photos`);
+  }
+
+  console.log(`[backfill] done. rows updated: ${okRows}, row failures: ${failedRows}, photos uploaded: ${totalUploaded}, skipped non-data-URLs: ${totalSkipped}`);
+  return { okRows, failedRows, totalUploaded, totalSkipped };
+}
+// Expose globally so it's callable from the DevTools console.
+if (typeof window !== 'undefined') window.backfillJournalPhotos = backfillJournalPhotos;
+
 // Resolve a list of photo_paths to signed URLs for display. The
 // Storage client batches the request — one round-trip for N paths.
 // Cached per-path on the session to avoid re-signing on every render
