@@ -562,8 +562,6 @@
          full-width content views inside the same container. Chat
          (formerly the Ask pill) is now a floating FAB + popup. -->
     <div class="notes-list" id="notesList">
-      <div class="mobile-nb-toggle" id="mobileNbToggle" style="display:none"></div>
-      <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <!-- Insights subtab pills (Knowledgebase / Patterns / Weekly
            Insights) live in the topbar pill-bar (.insights-sub-pills).
            Below them is the Knowledgebase view: search → action row →
@@ -575,10 +573,13 @@
           <svg class="insights-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" class="insights-search-input" id="insightsSearchInput" placeholder="Search notes &amp; docs…" />
         </div>
-        <!-- Action row: + Note (new note), Scratchpad (Quick Notes
-             modal), Upload (PDF/image to knowledge base). The first
-             two replace floating FABs; Upload was already inline. -->
+        <!-- Action row: [All Notes ⌄] · + Note · Scratchpad · Upload.
+             The "All Notes" filter dropdown (still keyed off
+             #mobileNbToggle so src/06-notes.js wiring keeps working)
+             sits as the leftmost item and shares the action-btn chrome.
+             The drawer drops down beneath the row when opened. -->
         <div class="insights-actions">
+          <button class="insights-action-btn mobile-nb-toggle" id="mobileNbToggle" type="button" title="Filter notes"></button>
           <button class="insights-action-btn" id="newNoteBtn" title="New note" type="button">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Note
@@ -593,6 +594,7 @@
           </button>
           <input type="file" id="brainUploadInput" accept=".pdf,image/*" style="position:absolute;left:-9999px;opacity:0" />
         </div>
+        <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       </div>
       <div class="brain-upload-status" id="brainUploadStatus" style="display:none"></div>
       <!-- Documents are merged into the unified timeline in #nlScroll

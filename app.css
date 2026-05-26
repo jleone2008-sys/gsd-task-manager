@@ -3003,10 +3003,11 @@
   }
   .insights-search-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
 
-  /* Action row: + Note · Scratchpad · Upload. Uniform white-on-edge
-     toolbar (so no one of the three steals attention). */
+  /* Action row: [All Notes ⌄] · + Note · Scratchpad · Upload. Uniform
+     white-on-edge toolbar (so no one action steals attention). */
   .insights-actions {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    position: relative;   /* anchor for the .mobile-nb-drawer dropdown */
   }
   .insights-action-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -3014,12 +3015,56 @@
     border: 1px solid var(--edge); border-radius: var(--r-md);
     padding: 7px 12px; font-size: var(--fs-meta); font-weight: 600;
     cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s;
+    font-family: inherit;
   }
   .insights-action-btn:hover  { background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong); }
   .insights-action-btn:active { transform: translateY(1px); }
   .insights-action-btn svg    { color: var(--ink-3); }
   .insights-action-btn:hover svg { color: var(--ink); }
   .insights-action-btn:disabled { opacity: 0.6; cursor: wait; }
+
+  /* "All Notes ⌄" filter dropdown lives in the actions row. The element
+     still carries the legacy .mobile-nb-toggle class so the existing
+     handler in src/06-notes.js (line ~1223) keeps working — but we
+     fully override the old full-width-bar visuals here so it reads as
+     a normal action-btn at every viewport. */
+  .insights-action-btn.mobile-nb-toggle {
+    /* Strip the old mobile-only full-width-bar rule remnants and adopt
+       the normal action-btn look. The display override is needed to
+       outrank the desktop `display: none` rule at the bottom of the
+       file (specificity 0,2,0 beats the legacy 0,1,0). */
+    display: inline-flex;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-bottom: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    padding: 7px 12px;
+    font-size: var(--fs-meta);
+    font-weight: 600;
+    color: var(--ink-2);
+    gap: 6px;
+  }
+  .insights-action-btn.mobile-nb-toggle .current-nb { color: var(--ink-2); font-weight: 600; }
+  .insights-action-btn.mobile-nb-toggle:hover .current-nb { color: var(--ink); }
+  .insights-action-btn.mobile-nb-toggle > svg:first-of-type { width: 14px; height: 14px; }
+  .insights-action-btn.mobile-nb-toggle > svg:last-of-type  { width: 12px; height: 12px; margin-left: 2px; }
+
+  /* Dropdown panel — drops down inside .insights-tools, anchored full-
+     width below the actions row so it doesn't get clipped on mobile. */
+  .insights-tools .mobile-nb-drawer {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-raised);
+    padding: 6px;
+    max-height: 60vh; overflow-y: auto;
+  }
+  .insights-tools .mobile-nb-drawer.open { display: block; }
+  .insights-tools .mobile-nb-drawer .ns-item {
+    padding: 8px 10px; border-radius: var(--r-md);
+    font-size: var(--fs-search);
+  }
 
   /* Phase 7 — Insights subtab pills + Patterns view + Weekly view.
      Pills live in the topbar's .pill-bar.insights-sub-pills row (same
