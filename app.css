@@ -2869,6 +2869,123 @@
   .brain-empty-title { font-size: 15px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
   .brain-empty-hint { font-size: 12px; line-height: 1.5; }
 
+  /* Phase 7 — Insights subtab pills + Patterns view + Weekly view */
+  .insights-subtabs {
+    display: flex; gap: 4px; padding: 6px 10px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .insights-pill {
+    background: transparent; border: 1px solid transparent;
+    color: var(--ink-3); padding: 6px 12px; border-radius: 999px;
+    font-size: var(--fs-meta); font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .insights-pill:hover { background: var(--surface-2); color: var(--ink-2); }
+  .insights-pill.is-active { background: var(--guava-700); color: white; }
+  .insights-pill-count {
+    background: rgba(255,255,255,0.25); padding: 0 6px; border-radius: 999px;
+    font-size: 10px; font-weight: 500;
+  }
+  .insights-pill:not(.is-active) .insights-pill-count {
+    background: var(--surface-2); color: var(--ink-4);
+  }
+
+  .insights-patterns, .insights-weekly {
+    flex: 1; overflow-y: auto; padding: 14px;
+  }
+
+  /* Pattern cards */
+  .pattern-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 10px;
+    box-shadow: var(--shadow-card);
+  }
+  .pattern-card-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; margin-bottom: 6px;
+  }
+  .pattern-card-label {
+    font-size: var(--fs-body, 14px); font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em; line-height: 1.3; flex: 1;
+  }
+  .pattern-card-strength {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+    background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f);
+    flex-shrink: 0;
+  }
+  .pattern-card-strength.is-weak { background: var(--surface-2); color: var(--ink-4); }
+  .pattern-card-description {
+    font-size: var(--fs-meta, 12px); color: var(--ink-2); line-height: 1.55;
+    margin-bottom: 8px;
+  }
+  .pattern-card-meta {
+    font-size: var(--t-xs, 11px); color: var(--ink-4);
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .pattern-card-actions {
+    display: flex; gap: 8px; margin-top: 10px;
+    padding-top: 10px; border-top: 1px solid var(--edge);
+  }
+  .pattern-card-actions button {
+    background: none; border: 1px solid var(--edge); color: var(--ink-3);
+    padding: 4px 10px; border-radius: var(--r-md);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  .pattern-card-actions button:hover { color: var(--ink); border-color: var(--edge-strong); }
+  .pattern-card-actions button.is-destructive { color: var(--guava-700); border-color: var(--guava-200); }
+
+  /* Weekly brief card */
+  .weekly-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 16px 18px; margin-bottom: 10px;
+    box-shadow: var(--shadow-card);
+  }
+  .weekly-card-eyebrow {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--guava-700);
+    margin-bottom: 6px;
+  }
+  .weekly-card-headline {
+    font-size: var(--t-lg); font-weight: 700; color: var(--ink);
+    letter-spacing: -0.02em; margin-bottom: 4px;
+  }
+  .weekly-card-subhead {
+    font-size: var(--fs-body); color: var(--ink-2); line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .weekly-section {
+    margin-bottom: 12px; padding-top: 10px; border-top: 1px solid var(--edge);
+  }
+  .weekly-section:first-of-type { border-top: 0; padding-top: 0; }
+  .weekly-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--ink-4); text-transform: uppercase; margin-bottom: 4px;
+  }
+  .weekly-section-body {
+    font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.55;
+  }
+  .weekly-narrative {
+    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--edge);
+    font-size: var(--fs-meta); color: var(--ink-2); line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .weekly-meta {
+    font-size: 10px; color: var(--ink-4); margin-top: 10px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .weekly-empty {
+    text-align: center; padding: 50px 20px; color: var(--ink-3);
+  }
+  .weekly-empty-cta {
+    background: var(--guava-700); color: white; border: none;
+    padding: 8px 14px; border-radius: var(--r-md);
+    font-size: var(--fs-meta); font-weight: 600; cursor: pointer;
+    margin-top: 14px;
+  }
+  .weekly-empty-cta:hover { background: var(--guava-800); }
+  .weekly-empty-cta:disabled { background: var(--ink-4); cursor: wait; }
+
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
   /* Notes list item — spec NoteCard layout.
      Card shell with column flex: title row (title left + date right),

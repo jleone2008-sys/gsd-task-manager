@@ -570,8 +570,20 @@
         <div class="brain-docs-head">Documents <span class="brain-docs-count" id="brainDocsCount">0</span></div>
         <div class="brain-docs-list" id="brainDocsList"></div>
       </div>
+      <!-- Phase 7 — Insights subtab pills. Switches between the
+           unified timeline (Notes + Docs from Phase 6) and the
+           Patterns view (weekly-synthesis-discovered patterns). -->
+      <div class="insights-subtabs" id="insightsSubtabs">
+        <button class="insights-pill is-active" data-insights-view="timeline">Timeline</button>
+        <button class="insights-pill" data-insights-view="patterns">Patterns <span class="insights-pill-count" id="insightsPatternsCount">0</span></button>
+        <button class="insights-pill" data-insights-view="weekly">Weekly</button>
+      </div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
+      <!-- Patterns view (hidden by default) -->
+      <div class="insights-patterns" id="insightsPatterns" style="display:none"></div>
+      <!-- Weekly synthesis view (hidden by default) -->
+      <div class="insights-weekly" id="insightsWeekly" style="display:none"></div>
     </div>
     </div><!-- /notes-left-col -->
     <!-- Editor -->
@@ -1015,6 +1027,7 @@
 <script src="/beta/src/04-home.js" defer></script>
 <script src="/beta/src/06-train.js" defer></script>
 <script src="/beta/src/06-brain.js" defer></script>
+<script src="/beta/src/06-insights.js" defer></script>
 <div class="sort-dropdown" id="sortDropdown">
   <div class="sort-opt active" data-sort="default">User Sorted</div>
   <div class="sort-opt" data-sort="recent">Recently Created</div>
