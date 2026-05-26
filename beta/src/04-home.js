@@ -506,11 +506,14 @@ function homeHabitsMeta() {
 function homeHabitsInnerHTML() {
   const today = homeToday();
   const active = (typeof habitsArr !== 'undefined' && Array.isArray(habitsArr)) ? habitsArr.filter(h => !h.archived) : [];
-  const due = (typeof isHabitDueToday === 'function') ? active.filter(h => isHabitDueToday(h)) : active;
   if (!active.length) return `<div class="home-empty">No habits yet. Start one in Habits.</div>`;
-  if (!due.length) return `<div class="home-empty">Nothing scheduled today — nice.</div>`;
+
+  const isDueToday = (typeof isHabitDueToday === 'function') ? isHabitDueToday : () => true;
+  const due   = active.filter(h => isDueToday(h));
+  const other = active.filter(h => !isDueToday(h));   // quota-met, not-on-schedule, optional-day habits
+
   const esc = (typeof escHTML === 'function') ? escHTML : hEsc;
-  return due.map(h => {
+  const rowHTML = (h) => {
     const isDone = (typeof isCompletedOn === 'function') && isCompletedOn(h.id, today);
     const streak = (typeof computeStreak === 'function') ? computeStreak(h.id) : 0;
     const streakHtml = streak > 0 ? `<span class="home-habit-streak">🔥 ${streak}</span>` : '';
@@ -522,7 +525,28 @@ function homeHabitsInnerHTML() {
           <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
       </div>`;
-  }).join('');
+  };
+
+  // Main list: habits due today. If nothing's due, surface a soft empty
+  // line BUT still allow the dropdown so the user can knock out an
+  // optional habit without leaving Home.
+  const mainHtml = due.length
+    ? due.map(rowHTML).join('')
+    : `<div class="home-empty">Nothing scheduled today — nice.</div>`;
+
+  // Dropdown: everything else active. Mirrors the Tasks card's
+  // FINISHED TODAY pattern — same toggle chrome, same row markup, same
+  // checkbox handler (data-habit-action='toggle-complete'). Hidden by
+  // default; data-home-habits-toggle in 04-home.js flips it open.
+  const otherHtml = other.length
+    ? `<div class="home-done-toggle" data-home-habits-toggle role="button" tabindex="0">
+        <span class="home-done-label">OTHER HABITS <span class="home-done-pill">${other.length}</span></span>
+        <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="home-habits-other" id="homeHabitsOther" hidden>${other.map(rowHTML).join('')}</div>`
+    : '';
+
+  return mainHtml + otherHtml;
 }
 
 /* ── Card 3: Recent notes (+ Quick Notes) ─────────────────── */
@@ -954,6 +978,19 @@ function homeWireOnce() {
     if (doneToggle) {
       const list = document.getElementById('homeTasksDone');
       if (list) { list.hidden = !list.hidden; doneToggle.classList.toggle('is-open', !list.hidden); }
+      return;
+    }
+
+    // Habits card — 'OTHER HABITS' dropdown reveals every non-due-today
+    // active habit so the user can mark anything without leaving Home.
+    // Mirrors the FINISHED TODAY dropdown above; the checkbox button
+    // inside each row fires data-habit-action='toggle-complete' which is
+    // already handled at the document level in 03-habits-core.js — no
+    // additional plumbing needed for the actual completion path.
+    const habitsToggle = e.target.closest('[data-home-habits-toggle]');
+    if (habitsToggle) {
+      const list = document.getElementById('homeHabitsOther');
+      if (list) { list.hidden = !list.hidden; habitsToggle.classList.toggle('is-open', !list.hidden); }
       return;
     }
 
