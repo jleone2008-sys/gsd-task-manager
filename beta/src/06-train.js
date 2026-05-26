@@ -383,13 +383,28 @@ function trainWireOnce() {
     const v = el.value;
     if (action === 'set-weight') {
       const ex = el.dataset.ex, i = Number(el.dataset.i);
-      if (_trainTodayState.liftSets[ex]?.[i]) _trainTodayState.liftSets[ex][i].weight = v;
-      // Don't re-render on every keystroke — the inline cell already shows the value.
+      const row = _trainTodayState.liftSets[ex]?.[i];
+      if (row) {
+        row.weight = v;
+        // Auto-mark done when both cells are filled; clear when either
+        // is empty. Replaces the dedicated completion-circle button —
+        // the row's .is-done class still drives the moss tint on the
+        // next render so completion is visible.
+        row.done = !!(String(row.weight ?? '').trim() && String(row.reps ?? '').trim());
+        // Patch .is-done on the row inline so the moss tint follows
+        // typing without a full re-render (which would steal focus).
+        el.closest('.ex-set-row')?.classList.toggle('is-done', row.done);
+      }
       return;
     }
     if (action === 'set-reps') {
       const ex = el.dataset.ex, i = Number(el.dataset.i);
-      if (_trainTodayState.liftSets[ex]?.[i]) _trainTodayState.liftSets[ex][i].reps = v;
+      const row = _trainTodayState.liftSets[ex]?.[i];
+      if (row) {
+        row.reps = v;
+        row.done = !!(String(row.weight ?? '').trim() && String(row.reps ?? '').trim());
+        el.closest('.ex-set-row')?.classList.toggle('is-done', row.done);
+      }
       return;
     }
     if (action === 'cardio-duration') { _trainTodayState.cardio.duration = v; return; }
@@ -1524,14 +1539,14 @@ function renderTodayLiftCard(ex, st) {
       ? `<input class="ex-cell-input is-bw" type="text" placeholder="BW" value="${trainEsc(s.weight)}" data-train-action="set-weight" data-ex="${trainEsc(ex.name)}" data-i="${i}">`
       : `<input class="ex-cell-input" type="text" inputmode="decimal" placeholder="lbs" value="${trainEsc(s.weight)}" data-train-action="set-weight" data-ex="${trainEsc(ex.name)}" data-i="${i}">`;
     const repsInput = `<input class="ex-cell-input" type="text" inputmode="numeric" placeholder="reps" value="${trainEsc(s.reps)}" data-train-action="set-reps" data-ex="${trainEsc(ex.name)}" data-i="${i}">`;
-    const check = s.done
-      ? `<button class="ex-set-check is-done" data-train-action="toggle-done" data-ex="${trainEsc(ex.name)}" data-i="${i}" title="Mark not done">✓</button>`
-      : `<button class="ex-set-check" data-train-action="toggle-done" data-ex="${trainEsc(ex.name)}" data-i="${i}" title="Mark complete"></button>`;
+    // Completion is implied by both lbs + reps being populated — no
+    // separate check button. set-weight / set-reps handlers derive
+    // `done` themselves so the row picks up the .is-done moss tint
+    // as soon as both cells have values.
     return `<div class="ex-set-row ${s.done ? 'is-done' : ''}">
       <span class="ex-set-num">S${i + 1}</span>
       <span class="ex-set-last">${trainEsc(lastCell)}</span>
       <div class="ex-set-today">${weightInput}${repsInput}</div>
-      ${check}
     </div>`;
   }).join('');
 
@@ -1546,7 +1561,6 @@ function renderTodayLiftCard(ex, st) {
     <div class="ex-table-head">
       <span>Set</span><span>Last session</span>
       <span class="col-today"><span>Today · ${ex.sets} × ${trainEsc(String(ex.reps || ''))}</span></span>
-      <span></span>
     </div>
     ${rows}
   </div>`;
@@ -4205,8 +4219,12 @@ function ensureTrainStyles() {
     .train-day-picker .day-pill-card.is-active {
       border-color: var(--guava-700); border-width: 2px; padding: 5px 1px;
     }
-    .train-day-picker .day-pill-card.is-rest   { background: var(--surface-2); }
-    .train-day-picker .day-pill-card.is-any    { border-style: dashed; background: var(--surface-2); }
+    /* Rest / Bonus days no longer get a beige fill — bg stays white
+       to match every other day card. The mute comes from text color
+       (.is-rest .day-pill-name uses ink-4) and, for Bonus, the dashed
+       border. */
+    .train-day-picker .day-pill-card.is-rest   { background: var(--surface); }
+    .train-day-picker .day-pill-card.is-any    { border-style: dashed; background: var(--surface); }
     .train-day-picker .day-pill-dow {
       font-size: 9px; font-weight: 700; color: var(--ink-4);
       letter-spacing: .04em; text-transform: uppercase; line-height: 1.1;
@@ -4242,43 +4260,37 @@ function ensureTrainStyles() {
     .ex-target.target-warning { background: var(--amber-bg, #faf1dc); color: var(--amber-fg, #a87622); border: 1px solid var(--amber-edge, #e2c98c); }
 
     .ex-table-head {
-      display: grid; grid-template-columns: 28px 80px 1fr 28px; gap: 8px;
+      /* Grid dropped from 4 → 3 columns: the trailing 28px completion
+         circle column is gone. Set · Last session · Today (lbs+reps). */
+      display: grid; grid-template-columns: 28px 80px 1fr; gap: 8px;
       padding: 6px 0; border-bottom: 1px solid var(--edge);
       font-size: 9px; font-weight: 700; color: var(--ink-4);
       letter-spacing: .08em; text-transform: uppercase;
     }
     .ex-set-row {
-      display: grid; grid-template-columns: 28px 80px 1fr 28px; gap: 8px;
+      display: grid; grid-template-columns: 28px 80px 1fr; gap: 8px;
       padding: 7px 0; align-items: center;
     }
     .ex-set-row + .ex-set-row { border-top: 1px dashed var(--edge); }
     .ex-set-num { font-size: 11px; font-weight: 700; color: var(--ink-3); }
     .ex-set-last { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
     .ex-set-today { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    /* Input cells: white bg by default, guava ring on focus. The old
+       surface-2 (beige) fill is gone — completion is implied by the
+       row carrying both values + the moss tint applied via .is-done. */
     .ex-cell-input {
-      background: var(--surface-2); border: 1px solid var(--edge);
+      background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-sm); padding: 5px 8px;
       font-family: inherit; font-size: 13px; color: var(--ink);
       width: 100%; text-align: center; box-sizing: border-box;
       font-variant-numeric: tabular-nums;
     }
     .ex-cell-input:focus {
-      outline: none; background: var(--surface);
+      outline: none;
       border-color: var(--guava-700); box-shadow: 0 0 0 2px var(--guava-50);
     }
     .ex-cell-input.is-bw { color: var(--ink-4); }
     .ex-set-row.is-done .ex-cell-input { background: var(--moss-bg, #eaf0e3); color: var(--ink-2); }
-    .ex-set-check {
-      width: 22px; height: 22px; border-radius: 50%;
-      border: 2px solid var(--edge-strong); background: var(--surface);
-      cursor: pointer; padding: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-family: inherit; font-size: 12px; color: transparent;
-    }
-    .ex-set-check.is-done {
-      background: var(--moss-fg, #5e8c4f); border-color: var(--moss-fg, #5e8c4f);
-      color: #fff;
-    }
 
     /* Cardio card */
     .cardio-card {
