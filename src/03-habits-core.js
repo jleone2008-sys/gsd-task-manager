@@ -738,11 +738,14 @@ function renderHabitToday(active) {
   //   DUE TODAY — habits that must be completed today to stay on pace. Both
   //     remaining and already-done-today entries show here (done ones visibly
   //     checked); this gives a complete view of "what was required today".
-  //   HABITS — habits that CAN still be completed today but aren't strictly
-  //     required. Excludes habits that are fully complete for their period
-  //     and don't allow extras.
+  //   HABITS — every other active habit. Previously this section only showed
+  //     habits that could *also* still be done today (canHabitDoToday gate);
+  //     now that the separate "All" tab is gone, this section surfaces every
+  //     non-due habit so the user can see + drill into the full list from
+  //     one place. Tapping the card drills in (data-habit-action="drill")
+  //     for richer per-habit detail.
   const dueToday = active.filter(h => isHabitDueToday(h));
-  const optional = active.filter(h => !isHabitDueToday(h) && canHabitDoToday(h));
+  const optional = active.filter(h => !isHabitDueToday(h));
 
   if (active.length === 0) {
     el.innerHTML = `<div class="empty-state">

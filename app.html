@@ -480,8 +480,11 @@
 </div>
 <div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
   <div class="pill-bar-inner">
-    <button class="pill habit-pill active" data-habit-view="today">Today<span class="pill-count" id="pc-habit-today">0</span></button>
-    <button class="pill" data-habit-view="all">All<span class="pill-count" id="pc-habit-all">0</span></button>
+    <!-- Two pills: Habits (merged Today + All — DUE TODAY section
+         plus every other active habit) and Statistics. The internal
+         data-habit-view key stays 'today' so the panel id + router
+         compat keeps working untouched; only the label changed. -->
+    <button class="pill habit-pill active" data-habit-view="today">Habits<span class="pill-count" id="pc-habit-today">0</span></button>
     <button class="pill stat-pill" data-habit-view="stats">Statistics</button>
   </div>
 </div>
