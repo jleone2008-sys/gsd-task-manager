@@ -611,11 +611,14 @@ function switchTool(tool) {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
   // Home shows the greeting as its heading (set in renderHome), so its topbar title is blank.
-  // Phase 6: 'notes' tab renamed to 'Brain' (covers notes + uploaded
-  // knowledge documents). Internal tool key + data layer (notesArr,
-  // notebooksArr, sidebarNotesCount, etc.) stay as 'notes' to avoid
-  // schema/code churn — only the user-facing label changed.
-  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Brain', journal: 'Journal', train: 'Train', settings: 'Settings' };
+  // Phase 6: 'notes' tab renamed to 'Insights' (per the master plan's
+  // final 5-tab structure: Today · Tasks · Train · Reflect · Insights).
+  // Today the tab houses notes + uploaded knowledge documents; Phase 7
+  // adds Patterns as a sibling subtab here; Phase 8 adds Ask. Internal
+  // tool key + data layer (notesArr, notebooksArr, sidebarNotesCount,
+  // etc.) stay as 'notes' to avoid schema/code churn — only the
+  // user-facing label changed.
+  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Insights', journal: 'Journal', train: 'Train', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
