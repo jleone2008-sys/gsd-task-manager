@@ -2715,9 +2715,31 @@
     display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
     transition: width var(--dur-slower) ease;
   }
-  .nl-header { padding: var(--space-3) var(--space-3-5) var(--space-2); border-bottom: 1px solid var(--edge); }
-  .nl-title { font-size: var(--fs-body); font-weight: var(--fw-bold); margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-1-5); }
+  .nl-header { padding: var(--space-3) var(--space-3-5) var(--space-2); border-bottom: 1px solid var(--edge); display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .nl-title { font-size: var(--fs-body); font-weight: var(--fw-bold); margin-bottom: 0; display: flex; align-items: center; gap: var(--space-1-5); }
   .nl-count { font-size: var(--fs-meta); font-weight: var(--fw-medium); color: var(--ink-3); background: var(--surface-2); padding: var(--space-0-5) var(--space-2); border-radius: var(--r-md); }
+  /* Phase 6 — Brain upload button + status pill. Lives in .nl-header
+     alongside the All Notes title. */
+  .brain-upload-btn {
+    display: inline-flex; align-items: center;
+    background: var(--guava-700); color: white; border: none;
+    padding: 6px 10px; border-radius: var(--r-md);
+    font-size: var(--fs-meta); font-weight: 600; cursor: pointer;
+    transition: background 0.12s;
+  }
+  .brain-upload-btn:hover  { background: var(--guava-800); }
+  .brain-upload-btn:active { background: var(--guava-900); }
+  .brain-upload-btn:disabled { background: var(--ink-4); cursor: wait; }
+  .brain-upload-status {
+    padding: 10px 14px; margin: 0 var(--space-2);
+    font-size: var(--fs-meta); color: var(--ink-2);
+    background: var(--surface-2); border-radius: var(--r-md);
+    margin-top: 8px;
+  }
+  .brain-upload-status.is-error { background: var(--guava-100); color: var(--guava-800); }
+  .brain-upload-status.is-ready { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
+  .brain-upload-status .b-status-title { font-weight: 600; }
+  .brain-upload-status .b-status-meta  { color: var(--ink-3); font-size: var(--t-xs, 11px); margin-top: 2px; }
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
   /* Notes list item — spec NoteCard layout.
      Card shell with column flex: title row (title left + date right),

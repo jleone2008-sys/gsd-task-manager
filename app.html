@@ -548,7 +548,18 @@
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <div class="nl-header">
         <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All Notes <span class="nl-count" id="nlCount">0</span></div>
+        <!-- Phase 6 — Brain upload affordance. Clicking opens the
+             file picker; the new module beta/src/06-brain.js handles
+             reading + base64-encoding + POST to beta-knowledge-ingest.
+             Status surface (.brain-upload-status) appears inline below
+             when an upload is in flight or just landed. -->
+        <button class="brain-upload-btn" id="brainUploadBtn" title="Upload a PDF or image to your knowledge base" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload
+        </button>
+        <input type="file" id="brainUploadInput" accept=".pdf,image/*" style="position:absolute;left:-9999px;opacity:0" />
       </div>
+      <div class="brain-upload-status" id="brainUploadStatus" style="display:none"></div>
       <div class="nl-bulk-bar" id="nlBulkBar" style="display:none"></div>
       <div class="nl-scroll" id="nlScroll"></div>
     </div>
@@ -993,6 +1004,7 @@
 <script src="/beta/src/05-brief.js" defer></script>
 <script src="/beta/src/04-home.js" defer></script>
 <script src="/beta/src/06-train.js" defer></script>
+<script src="/beta/src/06-brain.js" defer></script>
 <div class="sort-dropdown" id="sortDropdown">
   <div class="sort-opt active" data-sort="default">User Sorted</div>
   <div class="sort-opt" data-sort="recent">Recently Created</div>
