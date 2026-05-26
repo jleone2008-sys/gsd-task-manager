@@ -96,9 +96,9 @@
       selector: '.pill-bar.train-sub-pills',
       dataKey:  'data-train-view',
       pills: [
-        { key: 'workout',  label: 'Workout',     default: true, icon: ICONS.dumbbell },
+        { key: 'progress', label: 'My Progress', default: true, icon: ICONS.pulse },
+        { key: 'workout',  label: 'Workout',     icon: ICONS.dumbbell },
         { key: 'history',  label: 'History',     icon: ICONS.clock },
-        { key: 'progress', label: 'My Progress', icon: ICONS.pulse },
       ],
     },
   ];

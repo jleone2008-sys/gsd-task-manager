@@ -396,9 +396,12 @@
       <span class="count" id="sidebarJournalCount"></span>
     </button>
     <button class="sidebar-btn" data-tool="train">
-      <!-- Dumbbell icon: two plates flanking a bar. -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="8" rx="1"/><rect x="19" y="8" width="3" height="8" rx="1"/><rect x="5" y="10" width="2" height="4"/><rect x="17" y="10" width="2" height="4"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-      <span>Train</span>
+      <!-- Heart + pulse line — section reframed from 'Train' to
+           'Health' since it covers progress, body comp, and training
+           load all together. Internal data-tool key stays 'train' so
+           the router + state code keep working. -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+      <span>Health</span>
       <span class="count" id="sidebarTrainCount"></span>
     </button>
   </nav>
@@ -421,10 +424,17 @@
   <!-- Row 1: wordmark (mobile only) + page title + avatar (mobile only) -->
   <div class="header-row header-top">
     <div class="header-inner">
-    <a class="logo" href="/app" id="headerLogo">
-      <span class="logo-main"><span>gsd</span><em class="logo-dot">.</em></span>
+    <!-- Wordmark + title stack. Only the 'gsd.' wordmark is a
+         clickable link back to Home; the page title sits outside the
+         anchor so tapping the current section's name doesn't
+         navigate away. .logo-stack inherits the flex-column layout
+         the old .logo anchor used. -->
+    <div class="logo-stack">
+      <a class="logo" href="/app" id="headerLogo">
+        <span class="logo-main"><span>gsd</span><em class="logo-dot">.</em></span>
+      </a>
       <span class="page-title-mobile" id="pageTitle">Home</span>
-    </a>
+    </div>
     <!-- Desktop-only header actions (new-task button, search, etc.) -->
     <div class="header-actions" id="headerActions"></div>
     <div class="user-menu" id="userMenu" style="display:none">
@@ -616,7 +626,9 @@
     <span class="mobile-nav-badge" id="tasksBadgeMobile">0</span>
   </button>
   <button class="mobile-nav-btn" data-tool="habits">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+    <!-- Cycle/repeat icon — same one used on the Habits pill so the
+         tab + its pill share an identity. -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
     <span>Habits</span>
     <span class="mobile-nav-badge" id="habitsBadgeMobile">0</span>
   </button>
@@ -631,10 +643,9 @@
     <span class="mobile-nav-badge" id="journalBadgeMobile">!</span>
   </button>
   <button class="mobile-nav-btn" data-tool="train">
-    <!-- Dumbbell icon matching the sidebar's. No badge — there's no
-         "count" metric for Train that maps onto a nav-dot affordance. -->
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="3" height="8" rx="1"/><rect x="19" y="8" width="3" height="8" rx="1"/><rect x="5" y="10" width="2" height="4"/><rect x="17" y="10" width="2" height="4"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-    <span>Train</span>
+    <!-- Heart + pulse line — matches the sidebar Health icon. -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+    <span>Health</span>
   </button>
 </nav>
 

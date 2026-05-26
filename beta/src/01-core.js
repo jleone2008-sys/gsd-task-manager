@@ -618,7 +618,7 @@ function switchTool(tool) {
   // tool key + data layer (notesArr, notebooksArr, sidebarNotesCount,
   // etc.) stay as 'notes' to avoid schema/code churn — only the
   // user-facing label changed.
-  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Insights', journal: 'Journal', train: 'Train', settings: 'Settings' };
+  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Insights', journal: 'Journal', train: 'Health', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();

@@ -23,7 +23,7 @@ let _trainWired = false;
 // behind a "Manage Plans" button on the Workout sub-view (_workoutSubview
 // flips between 'pick' = day picker + session UI and 'plans' = the
 // existing plan management UI that used to be its own pill).
-let _trainActiveView = 'workout';      // 'workout' | 'history' | 'progress'
+let _trainActiveView = 'progress';     // 'progress' | 'workout' | 'history' (order matches pill order)
 const TRAIN_VIEWS = ['workout', 'history', 'progress'];
 let _workoutSubview = 'pick';          // 'pick' | 'plans'
 
@@ -56,7 +56,7 @@ function renderTrain() {
   const root = document.getElementById('trainContainer');
   if (!root) return;
 
-  if (!TRAIN_VIEWS.includes(_trainActiveView)) _trainActiveView = 'workout';
+  if (!TRAIN_VIEWS.includes(_trainActiveView)) _trainActiveView = 'progress';
 
   // Set the subtab pill-bar's visible-active state. Selector targets
   // .pill (the canonical class) so it matches whatever the pill-bar
