@@ -706,11 +706,20 @@ function homeBriefRecompute() {
     }
   }
 
-  // Evening mode: recap.left.label === 'Today' and tasks_done is what
-  // got finished today. Server snapshotted it at brief-generation time —
-  // client owns the live value from here on.
+  // Evening mode: recap.left.label === 'Today'. Server-side, today's
+  // habits + tasks-done are sourced from journal_habit_summary, which
+  // only finalizes after midnight — so the server fills these fields
+  // with yesterday's snapshot as a placeholder labeled "Today". That
+  // shows up to the user as "yesterday's habits being credited to
+  // today". Client owns the live values from here.
   if (mode === 'evening' && s.recap && s.recap.left && s.recap.left.label === 'Today') {
     s.recap.left.tasks_done = briefCountTasksDoneToday();
+    const hToday = briefComputeHabitsToday();
+    // null means "no habits due today" — server's hide-if-null check
+    // already handles that path correctly.
+    s.recap.left.habits = hToday
+      ? { due: hToday.due, done: hToday.done }
+      : null;
   }
 
   // ── Legacy shape (today_play / tomorrow_setup) ──────────────────────────
@@ -761,6 +770,25 @@ function homeBriefRecompute() {
 // Other modules call this without imports — expose on window for global access.
 if (typeof window !== 'undefined') window.homeBriefRecompute = homeBriefRecompute;
 
+// Set _briefState.brief to a freshly-loaded brief AND apply the Tier-1
+// client patches before rendering. The server's evening-mode recap
+// fills recap.left.habits with yesterday's snapshot (the column is
+// labeled "Today" but the data isn't finalized until midnight), which
+// reads as "yesterday's habits being credited to today" — the patcher
+// rewrites it from live state. Pre-this helper, the patcher only ran
+// on user-triggered state mutations (task toggle, mood tap, etc.),
+// so the *first* render of every brief showed stale habit / task data.
+function _briefSetReady(brief) {
+  _briefState = { status: 'ok', brief, error: null };
+  // homeBriefRecompute returns early when there's no structured payload
+  // (legacy briefs) — make sure we still render in that case.
+  if (brief?.structured) {
+    homeBriefRecompute();
+  } else {
+    briefRender();
+  }
+}
+
 /* ── Data ─────────────────────────────────────────────────── */
 
 async function homeBriefLoad() {
@@ -794,20 +822,17 @@ async function homeBriefLoad() {
         _briefState = { status: 'loading', brief: data, error: null };
         briefRender();
         const brief = await briefGenerate({ force: true, mode });
-        _briefState = { status: 'ok', brief, error: null };
-        briefRender();
+        _briefSetReady(brief);
         return;
       }
 
       if (data) {
-        _briefState = { status: 'ok', brief: data, error: null };
-        briefRender();
+        _briefSetReady(data);
         return;
       }
 
       const brief = await briefGenerate({ force: false, mode });
-      _briefState = { status: 'ok', brief, error: null };
-      briefRender();
+      _briefSetReady(brief);
     } catch (e) {
       console.warn('[brief] load failed', e);
       _briefState = { status: 'error', brief: null, error: e?.message || 'load_failed' };
@@ -857,8 +882,7 @@ async function homeBriefRefresh(force = true, resyncOura = false) {
       }
     }
     const brief = await briefGenerate({ force, mode: briefCurrentMode() });
-    _briefState = { status: 'ok', brief, error: null };
-    briefRender();
+    _briefSetReady(brief);
     // Dismiss the in-progress "Syncing..." toast now that work is complete.
     if (typeof hideToast === 'function') hideToast();
   } catch (e) {
