@@ -136,7 +136,7 @@ async function loadJournalMonth(year, month) {
   const end = `${year}-${String(month+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, learning, updated_at')
+      .select('entry_date, reflections, mood, photos, photo_paths, learning, updated_at')
       .gte('entry_date', start).lte('entry_date', end);
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
@@ -150,7 +150,7 @@ async function loadJournalRange(startDate, endDate) {
   console.time('[perf] journal.loadInitial:entries');
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, learning, updated_at')
+      .select('entry_date, reflections, mood, photos, photo_paths, learning, updated_at')
       .gte('entry_date', startDate).lte('entry_date', endDate);
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
@@ -174,7 +174,7 @@ async function loadJournalEntry(dateStr) {
   if (journalState.entries.has(dateStr)) return journalState.entries.get(dateStr);
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, learning, updated_at')
+      .select('entry_date, reflections, mood, photos, photo_paths, learning, updated_at')
       .eq('entry_date', dateStr).maybeSingle();
     if (error) throw error;
     if (data) journalState.entries.set(dateStr, data);
@@ -202,6 +202,12 @@ async function saveJournalEntry(dateStr, patch) {
       reflections: merged.reflections || null,
       mood: merged.mood ?? null,
       photos: merged.photos || [],
+      // Phase 2 audit: photo_paths is the new home for Storage-hosted
+      // photos (relative bucket paths). Coexists with the legacy
+      // photos[] (data-URLs inline) during the migration window;
+      // unmigrated entries keep rendering until backfill runs. After
+      // backfill + spot-check, photos[] will be nulled out.
+      photo_paths: merged.photo_paths || [],
       learning: merged.learning || null,
       updated_at: new Date().toISOString()
     };
@@ -702,8 +708,11 @@ async function syncCalendarHistory() {
   } catch (e) { console.warn('[journal] history sync failed', e); }
 }
 
-/* ── IMAGE RESIZE ─────────────────────────────────────────── */
+/* ── IMAGE RESIZE + STORAGE UPLOAD ────────────────────────── */
 
+// Legacy data-URL resizer — kept for the backfill script and any code
+// path still reading the deprecated photos[] column. New uploads go
+// through resizeImageToBlob + uploadJournalPhoto below.
 async function resizeImageFile(file, maxDim = 1600, quality = 0.85) {
   const dataUrl = await new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -726,6 +735,93 @@ async function resizeImageFile(file, maxDim = 1600, quality = 0.85) {
   canvas.width = width; canvas.height = height;
   canvas.getContext('2d').drawImage(img, 0, 0, width, height);
   return canvas.toDataURL('image/jpeg', quality);
+}
+
+// Phase 2 audit: resize an image file and return a JPEG Blob (instead
+// of a data URL). The Blob can be uploaded directly to Supabase
+// Storage without the base64 round-trip — keeps memory + bandwidth
+// linear with image size rather than +33%.
+async function resizeImageToBlob(file, maxDim = 1600, quality = 0.85) {
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  let { width, height } = img;
+  if (width > maxDim || height > maxDim) {
+    const ratio = Math.min(maxDim / width, maxDim / height);
+    width = Math.round(width * ratio); height = Math.round(height * ratio);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob_failed')), 'image/jpeg', quality);
+  });
+}
+
+// Upload a resized photo Blob to the journal-photos Storage bucket
+// and return the relative path (what gets stored in photo_paths[]).
+// Path convention: {user_id}/{entry_date}/{uuid}.jpg
+// Errors propagate to the caller; the upload helpers above handle
+// per-file failure by skipping that file.
+async function uploadJournalPhoto(blob, dateStr) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) throw new Error('not_authenticated');
+  const userId = session.user.id;
+  // crypto.randomUUID is available in all modern browsers (Safari
+  // 15.4+, Chrome 92+, Firefox 95+). Fallback to a timestamp+random
+  // string for older runtimes.
+  const uuid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const path = `${userId}/${dateStr}/${uuid}.jpg`;
+  const { error } = await db.storage
+    .from('journal-photos')
+    .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+// Resolve a list of photo_paths to signed URLs for display. The
+// Storage client batches the request — one round-trip for N paths.
+// Cached per-path on the session to avoid re-signing on every render
+// (signed URLs are valid for 1 hour; render-cycle reuse is safe).
+const _photoUrlCache = new Map();   // path -> { url, expiresAt }
+async function signedUrlsForPaths(paths) {
+  if (!Array.isArray(paths) || paths.length === 0) return {};
+  const now = Date.now();
+  const need = [];
+  const out = {};
+  for (const p of paths) {
+    const hit = _photoUrlCache.get(p);
+    if (hit && hit.expiresAt > now + 60_000) out[p] = hit.url;
+    else need.push(p);
+  }
+  if (need.length === 0) return out;
+  try {
+    const { data, error } = await db.storage
+      .from('journal-photos')
+      .createSignedUrls(need, 3600);   // 1 hour
+    if (error) throw error;
+    const expiresAt = now + 3600_000;
+    for (const item of (data || [])) {
+      if (item.signedUrl && item.path) {
+        _photoUrlCache.set(item.path, { url: item.signedUrl, expiresAt });
+        out[item.path] = item.signedUrl;
+      }
+    }
+  } catch (e) {
+    console.warn('[journal] signedUrlsForPaths failed', e);
+  }
+  return out;
 }
 
 /* ── STYLES ───────────────────────────────────────────────── */
@@ -1068,7 +1164,53 @@ function renderJournalCalendar() {
 
 /* ── PHOTO GRID (in card) ────────────────────────────────── */
 
-function renderCardPhotos(dateStr, photos) {
+// Combine an entry's photo sources into a single ordered list of
+// renderable src strings. Order: legacy photos[] data-URLs first (so
+// existing layouts don't reshuffle), then Storage-hosted photo_paths
+// resolved via signed URLs. Paths whose signed URLs aren't cached yet
+// return null in the list — render skips them on this pass and kicks
+// an async resolution that re-renders the card when URLs arrive.
+// Phase 2 audit: keeps cards painting fast (data-URLs render
+// immediately, Storage photos pop in shortly after).
+function resolveEntryPhotoSrcs(dateStr, entry) {
+  const legacyData = Array.isArray(entry?.photos) ? entry.photos : [];
+  const paths = Array.isArray(entry?.photo_paths) ? entry.photo_paths : [];
+  const srcs = [...legacyData];
+  let needFetch = false;
+  for (const p of paths) {
+    const hit = _photoUrlCache.get(p);
+    if (hit && hit.expiresAt > Date.now() + 60_000) {
+      srcs.push(hit.url);
+    } else {
+      needFetch = true;
+      // Skip this entry from the renderable list for now — it'll
+      // appear after async resolution + rerenderTimelineCard.
+    }
+  }
+  if (needFetch && paths.length) {
+    // Fire-and-forget. signedUrlsForPaths is idempotent (cache hits
+    // skip the network); rerenderTimelineCard is a no-op for cards
+    // not in the DOM (content-visibility:auto + offscreen-skip).
+    signedUrlsForPaths(paths).then(() => {
+      if (typeof rerenderTimelineCard === 'function') rerenderTimelineCard(dateStr);
+    });
+  }
+  return srcs;
+}
+
+function renderCardPhotos(dateStr, photosOrEntry) {
+  // Accept either a raw photos array (legacy callers) or an entry
+  // object with photos + photo_paths (new callers). The entry path
+  // resolves Storage paths to signed URLs and falls back to legacy
+  // data-URLs when present.
+  let photos;
+  if (Array.isArray(photosOrEntry)) {
+    photos = photosOrEntry;
+  } else if (photosOrEntry && typeof photosOrEntry === 'object') {
+    photos = resolveEntryPhotoSrcs(dateStr, photosOrEntry);
+  } else {
+    photos = [];
+  }
   if (!photos?.length) return '';
   const n = photos.length;
   let cls, items;
@@ -1105,7 +1247,10 @@ function renderDayCard(dateStr) {
   const hasReflection = !!(entry?.reflections && entry.reflections.trim());
   const hasLearning   = !!(entry?.learning && entry.learning.trim());
   const hasMood = !!entry?.mood;
-  const hasPhotos = !!entry?.photos?.length;
+  // hasPhotos checks BOTH the legacy photos[] (data-URLs) and the new
+  // photo_paths[] (Storage paths) — either source indicates the entry
+  // has photos to render.
+  const hasPhotos = !!(entry?.photos?.length || entry?.photo_paths?.length);
   const hasManual = hasReflection || hasMood || hasPhotos || hasLearning;
 
   // Auto-collected: events + completed tasks
@@ -1121,8 +1266,9 @@ function renderDayCard(dateStr) {
       </div>`;
   }
 
-  // Card content
-  const photosHtml = hasPhotos ? renderCardPhotos(dateStr, entry.photos) : '';
+  // Card content. Pass the full entry so renderCardPhotos can resolve
+  // photo_paths[] → signed URLs + fall back to legacy photos[] data-URLs.
+  const photosHtml = hasPhotos ? renderCardPhotos(dateStr, entry) : '';
   const reflection = (entry?.reflections || '').trim();
   const lines = reflection.split(/\n+/);
   const title = lines[0] || '';
@@ -1633,8 +1779,12 @@ function renderTasksSection(ds) {
 }
 
 function renderEditModalBody(ds) {
-  const entry = journalState.entries.get(ds) || { reflections: '', mood: null, photos: [], learning: '' };
-  const photosHtml = (entry.photos || []).map((src, i) =>
+  const entry = journalState.entries.get(ds) || { reflections: '', mood: null, photos: [], photo_paths: [], learning: '' };
+  // Combined photo list — legacy data-URLs + Storage-hosted signed URLs.
+  // resolveEntryPhotoSrcs handles the path → signed URL resolution
+  // and kicks an async rerender if any signatures aren't cached.
+  const allSrcs = resolveEntryPhotoSrcs(ds, entry);
+  const photosHtml = allSrcs.map((src, i) =>
     `<div class="j-photo"><img src="${src}" alt="" data-jlightbox="${ds}|${i}" /><button class="j-photo-del" data-jphoto-del="${i}" title="Remove">×</button></div>`
   ).join('');
   // Phase 5 — for TODAY, the mood picker becomes read-only with a
@@ -1738,15 +1888,18 @@ function closeEditModal(skipRerender) {
 }
 
 function renderViewModalBody(dateStr) {
-  const entry = journalState.entries.get(dateStr) || { reflections:'', mood:null, photos:[], learning:'' };
+  const entry = journalState.entries.get(dateStr) || { reflections:'', mood:null, photos:[], photo_paths:[], learning:'' };
   const reflection = (entry.reflections || '').trim();
   const learning   = (entry.learning   || '').trim();
   const moodTitle = entry.mood
     ? `<div class="j-view-mood-title"><span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>Feeling ${MOOD_LABEL[entry.mood-1]}</div>`
     : '';
   const reflectionHtml = reflection ? `<div class="j-view-text">${escapeHtml(reflection)}</div>` : '';
-  const photosHtml = (entry.photos || []).length
-    ? `<div class="j-view-photos">${entry.photos.map((src, i) =>
+  // Combined photo list (legacy + Storage). resolveEntryPhotoSrcs
+  // handles signed-URL resolution and async rerender.
+  const allSrcs = resolveEntryPhotoSrcs(dateStr, entry);
+  const photosHtml = allSrcs.length
+    ? `<div class="j-view-photos">${allSrcs.map((src, i) =>
         `<img src="${src}" data-jlightbox="${dateStr}|${i}" alt="" />`).join('')}</div>`
     : '';
   const habitStats = isJournalSectionEnabled('habits') ? getHabitCompletionForDate(dateStr) : null;
@@ -1863,9 +2016,18 @@ function updateSaveIndicator() {
 
 /* ── LIGHTBOX ────────────────────────────────────────────── */
 
+// Phase 2 audit: lightbox now reads photos from resolveEntryPhotoSrcs
+// so it covers BOTH legacy photos[] (data-URLs) and the new
+// photo_paths[] (Storage signed URLs). _entryHasAnyPhotos checks
+// either source — guards openLightbox/navLightbox against being
+// called for an empty entry.
+function _entryHasAnyPhotos(entry) {
+  return !!(entry?.photos?.length || entry?.photo_paths?.length);
+}
+
 function openLightbox(dateStr, index) {
   const entry = journalState.entries.get(dateStr);
-  if (!entry?.photos?.length) return;
+  if (!_entryHasAnyPhotos(entry)) return;
   journalState.lightboxPhotos = { date: dateStr, index };
   renderLightbox();
 }
@@ -1875,8 +2037,22 @@ function renderLightbox() {
   if (!journalState.lightboxPhotos) return;
   const { date, index } = journalState.lightboxPhotos;
   const entry = journalState.entries.get(date);
-  if (!entry?.photos?.length) return;
-  const total = entry.photos.length;
+  if (!_entryHasAnyPhotos(entry)) return;
+  // Resolve to the combined src list (data-URLs + signed URLs). If a
+  // Storage path hasn't been signed yet, resolveEntryPhotoSrcs kicks
+  // the async fetch and will rerender the card — but the lightbox is
+  // already open here. To keep the lightbox in sync, request the
+  // signed URLs explicitly and re-render once they land.
+  const srcs = resolveEntryPhotoSrcs(date, entry);
+  const total = srcs.length;
+  if (!total) {
+    // Paths exist but signed URLs not ready yet — kick the resolve
+    // and let it re-call us when ready.
+    if (Array.isArray(entry.photo_paths) && entry.photo_paths.length) {
+      signedUrlsForPaths(entry.photo_paths).then(() => renderLightbox());
+    }
+    return;
+  }
   const safeIdx = Math.max(0, Math.min(index, total - 1));
   const navHtml = total > 1
     ? `<button class="j-lightbox-nav prev" data-jlightbox-nav="-1" title="Previous">‹</button>
@@ -1886,7 +2062,7 @@ function renderLightbox() {
   const html = `
     <div class="j-lightbox" id="jLightbox">
       <button class="j-lightbox-close" id="jLightboxClose" title="Close">×</button>
-      <img class="j-lightbox-img" src="${entry.photos[safeIdx]}" onclick="event.stopPropagation()" alt="" />
+      <img class="j-lightbox-img" src="${srcs[safeIdx]}" onclick="event.stopPropagation()" alt="" />
       ${navHtml}
     </div>`;
   const wrap = document.createElement('div');
@@ -1904,8 +2080,11 @@ function navLightbox(delta) {
   if (!journalState.lightboxPhotos) return;
   const { date, index } = journalState.lightboxPhotos;
   const entry = journalState.entries.get(date);
-  if (!entry?.photos?.length) return;
-  const total = entry.photos.length;
+  if (!_entryHasAnyPhotos(entry)) return;
+  // Count via the resolved src list so navigation matches what's
+  // actually visible (the same list renderLightbox uses).
+  const total = resolveEntryPhotoSrcs(date, entry).length;
+  if (!total) return;
   const next = (index + delta + total) % total;
   journalState.lightboxPhotos = { date, index: next };
   renderLightbox();
@@ -2140,19 +2319,42 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  // Photo delete (in edit modal)
+  // Photo delete (in edit modal). The visible list combines legacy
+  // photos[] (data-URLs) and photo_paths[] (Storage), in that order
+  // (see resolveEntryPhotoSrcs). Translate the visible index back
+  // to the right underlying array. For Storage-backed photos we
+  // also delete the object from the bucket so we're not leaving
+  // orphaned files.
   const photoDel = e.target.closest('[data-jphoto-del]');
   if (photoDel) {
     e.stopPropagation();
-    const idx = parseInt(photoDel.dataset.jphotoDel, 10);
+    const visibleIdx = parseInt(photoDel.dataset.jphotoDel, 10);
     const ds = journalState.editingDate;
     if (!ds) return;
-    const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[] };
-    const photos = [...(entry.photos || [])];
-    photos.splice(idx, 1);
-    journalState.entries.set(ds, { ...entry, photos });
+    const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[], photo_paths:[] };
+    const photos      = [...(entry.photos      || [])];
+    const photo_paths = [...(entry.photo_paths || [])];
+    const patch = {};
+    if (visibleIdx < photos.length) {
+      // Legacy data-URL — splice out of photos[].
+      photos.splice(visibleIdx, 1);
+      patch.photos = photos;
+    } else {
+      // Storage path — splice out of photo_paths[] and remove the
+      // bucket object. Index into photo_paths is visibleIdx -
+      // photos.length (since data-URLs come first in the combined list).
+      const pIdx = visibleIdx - photos.length;
+      const removed = photo_paths[pIdx];
+      photo_paths.splice(pIdx, 1);
+      patch.photo_paths = photo_paths;
+      if (removed) {
+        db.storage.from('journal-photos').remove([removed])
+          .catch(err => console.warn('[journal] storage remove failed', err));
+      }
+    }
+    journalState.entries.set(ds, { ...entry, photos, photo_paths });
     rerenderEditBody();
-    saveJournalEntry(ds, { photos });
+    saveJournalEntry(ds, patch);
     return;
   }
 
@@ -2321,27 +2523,38 @@ function closePhotoSourceModal() {
 async function addPhotosFromFiles(files) {
   const ds = journalState.editingDate;
   if (!ds) return;
-  const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[] };
-  const photos = [...(entry.photos || [])];
+  const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[], photo_paths:[] };
+  // Phase 2 audit: new uploads go to Storage. photo_paths accumulates
+  // the relative bucket paths; the legacy photos[] array is preserved
+  // unchanged (existing data-URLs still render via the dual-read path
+  // in renderCardPhotos / renderLightbox). Backfill moves old photos
+  // to photo_paths in a separate one-time script.
+  const photo_paths = [...(entry.photo_paths || [])];
   journalState.saveStatus = 'saving';
   updateSaveIndicator();
   for (const f of files) {
-    try { photos.push(await resizeImageFile(f)); }
-    catch (err) { console.warn('[journal] image resize failed', err); }
+    try {
+      const blob = await resizeImageToBlob(f);
+      const path = await uploadJournalPhoto(blob, ds);
+      photo_paths.push(path);
+    } catch (err) { console.warn('[journal] photo upload failed', err); }
   }
-  journalState.entries.set(ds, { ...entry, photos });
+  journalState.entries.set(ds, { ...entry, photo_paths });
   rerenderEditBody();
-  saveJournalEntry(ds, { photos });
+  saveJournalEntry(ds, { photo_paths });
 }
 
 async function addPhotosFromCardFiles(files, ds) {
-  const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[] };
-  const photos = [...(entry.photos || [])];
+  const entry = journalState.entries.get(ds) || { reflections:'', mood:null, photos:[], photo_paths:[] };
+  const photo_paths = [...(entry.photo_paths || [])];
   for (const f of files) {
-    try { photos.push(await resizeImageFile(f)); }
-    catch (err) { console.warn('[journal] image resize failed', err); }
+    try {
+      const blob = await resizeImageToBlob(f);
+      const path = await uploadJournalPhoto(blob, ds);
+      photo_paths.push(path);
+    } catch (err) { console.warn('[journal] photo upload failed', err); }
   }
-  journalState.entries.set(ds, { ...entry, photos });
+  journalState.entries.set(ds, { ...entry, photo_paths });
   rerenderTimeline();
-  saveJournalEntry(ds, { photos });
+  saveJournalEntry(ds, { photo_paths });
 }
