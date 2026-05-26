@@ -1562,10 +1562,11 @@ function renderTodayLoggedSessions(sessions, viewDate, todayStr) {
     } else {
       // Lift / bonus lifting
       const exerciseNames = Array.from(new Set(sets.map(r => r.exercise_name)));
-      const volume = sets.reduce((acc, r) => {
-        if (r.is_bodyweight) return acc;
-        return acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0);
-      }, 0);
+      // No is_bodyweight gate — pure-BW rows have actual_weight = 0 which
+      // already contributes 0 to volume; BW rows with added load (e.g.
+      // pull-ups + 10 lbs belt) should count their entered weight.
+      const volume = sets.reduce((acc, r) =>
+        acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0), 0);
       summary = `${sets.length} set${sets.length === 1 ? '' : 's'} across ${exerciseNames.length} lift${exerciseNames.length === 1 ? '' : 's'}${volume ? ' · ' + volume.toLocaleString() + ' lbs vol' : ''}`;
     }
     const badge = typeBadge[s.day_type] || { txt: s.day_type, cls: '' };
@@ -1649,10 +1650,15 @@ function renderTodayLift(st) {
 function renderTodayLiftCard(ex, st) {
   const sets = st.liftSets[ex.name] || [];
   const last = (_trainState.lastSetsByExercise || {})[ex.name];
+  // "Last session" pretty-print — pure BW shows "N reps", BW + added
+  // weight shows "+10×N", weighted exercises show "135×N".
+  const fmtLastSet = (s) => {
+    const w = Number(s.actual_weight) || 0;
+    if (s.is_bodyweight) return w > 0 ? `+${w}×${s.actual_reps}` : `${s.actual_reps} reps`;
+    return `${s.actual_weight}×${s.actual_reps}`;
+  };
   const lastSummary = last && last.sets.length
-    ? last.sets.map(s => s.is_bodyweight
-        ? `${s.actual_reps} reps`
-        : `${s.actual_weight}×${s.actual_reps}`).join(', ')
+    ? last.sets.map(fmtLastSet).join(', ')
     : 'No prior data';
 
   const target = ex.target_text
@@ -1661,9 +1667,7 @@ function renderTodayLiftCard(ex, st) {
 
   const rows = sets.map((s, i) => {
     const lastSet = last && last.sets[i];
-    const lastCell = lastSet
-      ? (lastSet.is_bodyweight ? `${lastSet.actual_reps} reps` : `${lastSet.actual_weight}×${lastSet.actual_reps}`)
-      : '—';
+    const lastCell = lastSet ? fmtLastSet(lastSet) : '—';
     const weightInput = ex.bodyweight && !s.weight
       ? `<input class="ex-cell-input is-bw" type="text" placeholder="BW" value="${trainEsc(s.weight)}" data-train-action="set-weight" data-ex="${trainEsc(ex.name)}" data-i="${i}">`
       : `<input class="ex-cell-input" type="text" inputmode="decimal" placeholder="lbs" value="${trainEsc(s.weight)}" data-train-action="set-weight" data-ex="${trainEsc(ex.name)}" data-i="${i}">`;
@@ -1841,7 +1845,9 @@ function trainComputeLiveTotals(st) {
       setsDone += 1;
       const w = Number(s.weight) || 0;
       const r = Number(s.reps)   || 0;
-      if (!s.is_bodyweight) volume += w * r;
+      // No is_bodyweight gate — w is 0 for pure-BW rows so they still
+      // contribute 0; BW + added load (weight belt etc.) now counts.
+      volume += w * r;
     }
   }
   return {
@@ -2145,7 +2151,13 @@ async function trainSubmitTodaySession() {
             exercise_name: exName,
             set_index:     i + 1,
             actual_reps:   Number(s.reps) || null,
-            actual_weight: s.is_bodyweight ? null : (Number(s.weight) || null),
+            // Save the user's entered weight regardless of is_bodyweight.
+            // The flag still marks the exercise as bodyweight-based for
+            // display ("BW" placeholder, etc.), but if the user typed a
+            // value (e.g. 10 lbs added on a weight belt for pull-ups),
+            // we need to keep it or volume math + PR detection silently
+            // drop it.
+            actual_weight: Number(s.weight) || null,
             is_bodyweight: !!s.is_bodyweight,
             completed_at:  new Date().toISOString(),
           });
@@ -2354,10 +2366,15 @@ function trainBuildFormulaicFeedback(st, setRows) {
   const prs = [];
   for (const row of setRows) {
     totalSets += 1;
-    if (!row.is_bodyweight) totalVolume += (Number(row.actual_weight) || 0) * (Number(row.actual_reps) || 0);
-    // PR check: compare this row's weight×reps to the last-session top set for the same exercise
+    // Volume always uses actual_weight × actual_reps. Pure-BW rows have
+    // actual_weight = 0 → contribute 0; BW + added load (10 lb belt etc.)
+    // now counts toward volume + PR detection.
+    totalVolume += (Number(row.actual_weight) || 0) * (Number(row.actual_reps) || 0);
+    // PR check: compare this row's weight×reps to the last-session top
+    // set for the same exercise. Skip if the row carries no load
+    // (pure BW with no added weight) — a "PR" of 0×N is meaningless.
     const last = (_trainState.lastSetsByExercise || {})[row.exercise_name];
-    if (last && !row.is_bodyweight) {
+    if (last && (Number(row.actual_weight) || 0) > 0) {
       const lastTop = last.sets.reduce((max, s) =>
         ((s.actual_weight || 0) * (s.actual_reps || 0) > max
           ? (s.actual_weight || 0) * (s.actual_reps || 0)
@@ -2570,10 +2587,10 @@ function renderHistoryCard(s) {
     }
   } else {
     const exerciseNames = Array.from(new Set(sets.map(r => r.exercise_name)));
-    const volume = sets.reduce((acc, r) => {
-      if (r.is_bodyweight) return acc;
-      return acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0);
-    }, 0);
+    // No is_bodyweight gate (matches the live-totals + formulaic-feedback
+    // logic above). BW + added load contributes; pure BW contributes 0.
+    const volume = sets.reduce((acc, r) =>
+      acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0), 0);
     summary = `${sets.length} set${sets.length === 1 ? '' : 's'} across ${exerciseNames.length} lift${exerciseNames.length === 1 ? '' : 's'}${volume ? ' · ' + volume.toLocaleString() + ' lbs vol' : ''}`;
   }
   return `<div class="history-card" data-train-action="history-recap" data-session-id="${trainEsc(s.id)}">
@@ -2686,7 +2703,9 @@ function renderHistoryRecapBody(s) {
   } else {
     // Lift / multi-row bonus → per-exercise table.
     const totalSets = sets.length;
-    const totalVolume = sets.reduce((acc, r) => acc + (r.is_bodyweight ? 0 : (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0)), 0);
+    // No is_bodyweight gate — pure-BW rows have actual_weight = 0 and
+    // contribute 0; BW + added load now counts.
+    const totalVolume = sets.reduce((acc, r) => acc + (Number(r.actual_weight) || 0) * (Number(r.actual_reps) || 0), 0);
     const exCount = Object.keys(byEx).length;
     const stats = `<div class="history-recap-stat-grid">
       <div class="history-recap-stat"><div class="history-recap-stat-num">${totalSets}</div><div class="history-recap-stat-label">Sets</div></div>
@@ -2695,7 +2714,14 @@ function renderHistoryRecapBody(s) {
     </div>`;
     const exBlocks = Object.entries(byEx).map(([name, list]) => {
       const rows = list.map((r, i) => {
-        const w = r.is_bodyweight ? 'BW' : (r.actual_weight != null ? r.actual_weight : '—');
+        // Display rule:
+        //   pure BW (is_bodyweight, no added weight)  → 'BW'
+        //   BW + load (is_bodyweight, weight entered) → 'BW + 10'
+        //   standard exercise                          → '135' or '—'
+        const aw = (r.actual_weight != null && Number(r.actual_weight) > 0) ? Number(r.actual_weight) : null;
+        const w = r.is_bodyweight
+          ? (aw ? `BW + ${aw}` : 'BW')
+          : (r.actual_weight != null ? r.actual_weight : '—');
         const reps = r.actual_reps != null ? r.actual_reps : '—';
         return `<div class="history-recap-set-row">
           <span class="history-recap-set-num">S${(r.set_index || (i + 1))}</span>
