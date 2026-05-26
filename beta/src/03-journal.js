@@ -1432,6 +1432,14 @@ function openEventMetaEditor(eventId) {
     if (hit) { ev = hit; break; }
   }
   if (!ev) return;
+  // Inject journal styles up-front. The modal uses .j-edit-modal /
+  // .j-edit-card classes, which live in ensureJournalStyles() and are
+  // normally injected only on the first renderJournal() call. When the
+  // editor is opened from Home (Phase 5 home-event-click feature)
+  // BEFORE the user has visited Journal, those styles don't exist yet
+  // and the modal renders as flat HTML at the bottom of the page.
+  // ensureJournalStyles is idempotent — safe to call from any surface.
+  if (typeof ensureJournalStyles === 'function') ensureJournalStyles();
   closeEventMetaEditor();
   journalState.eventMetaEditing = eventId;
   const meta = journalState.eventMeta.get(eventId) || {};
