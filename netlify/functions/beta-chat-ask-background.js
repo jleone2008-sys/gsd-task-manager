@@ -72,40 +72,21 @@ exports.handler = async (event) => {
 
   const threadDate = String(body.thread_date || '').trim();
   const content    = String(body.content || '').trim();
-  const clientMsgId = String(body.client_msg_id || '').trim();
   const assistantMsgId = String(body.assistant_msg_id || '').trim();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(threadDate)) return cors(json(400, { error: 'thread_date_required' }));
   if (!content)         return cors(json(400, { error: 'content_required' }));
   if (content.length > 4000) return cors(json(400, { error: 'content_too_long' }));
   if (!isUuid(assistantMsgId)) return cors(json(400, { error: 'assistant_msg_id_required' }));
-  // client_msg_id optional — assistant row uses assistant_msg_id
+
+  // Phase 8 — Both message rows are written by the CLIENT via
+  // PostgREST (RLS-protected) BEFORE this function is called. The
+  // function only patches the assistant placeholder after the loop
+  // finishes. This sidesteps the on_conflict + partial-unique-index
+  // edge case the previous version hit.
 
   try {
-    // ── Step a: user message row ────────────────────────────────
-    // Use server-side ON CONFLICT to safely upsert on client_msg_id
-    // (idempotent retries from the client).
-    await dbInsert(`${SUPABASE_URL}/rest/v1/chat_messages?on_conflict=user_id,client_msg_id`, {
-      user_id:       userId,
-      thread_date:   threadDate,
-      role:          'user',
-      content:       content,
-      client_msg_id: clientMsgId || null,
-      status:        'complete',
-    }, serviceKey, /* mergeOnConflict */ true);
-
-    // ── Step b: assistant placeholder ────────────────────────────
-    await dbInsert(`${SUPABASE_URL}/rest/v1/chat_messages`, {
-      id:          assistantMsgId,
-      user_id:     userId,
-      thread_date: threadDate,
-      role:        'assistant',
-      content:     null,
-      status:      'streaming',
-      model:       KNOWLEDGE_MODEL,
-    }, serviceKey);
-
-    // ── Step c: load conversation history ───────────────────────
+    // ── Load conversation history ─────────────────────────────────
     const hdr = () => ({ apikey: serviceKey, Authorization: `Bearer ${serviceKey}` });
 
     // Pull this thread's messages so far (excluding the placeholder).

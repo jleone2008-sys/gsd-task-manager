@@ -522,13 +522,14 @@
     _askSending = true;
     if (send) send.disabled = true;
 
-    const clientMsgId = fallbackUuid();
+    const userMsgId = fallbackUuid();
     const assistantMsgId = fallbackUuid();
 
-    // Optimistic: insert user message + streaming placeholder locally
+    // Optimistic: render both rows locally first so user sees their
+    // bubble + 'Thinking…' instantly.
     const nowIso = new Date().toISOString();
     _askMessages.push({
-      id: clientMsgId,                // server may rewrite; doesn't matter for display
+      id: userMsgId,
       role: 'user',
       content,
       status: 'complete',
@@ -547,6 +548,34 @@
     input.style.height = '';
 
     try {
+      // Step 1: write both message rows via PostgREST (RLS-protected).
+      // Function-side persistence had upsert-vs-partial-index issues;
+      // client-side direct write is simpler + works reliably.
+      const userId = currentUser?.id;
+      if (!userId) throw new Error('not_signed_in');
+
+      const { error: insertErr } = await db.from('chat_messages').insert([
+        {
+          id:            userMsgId,
+          user_id:       userId,
+          thread_date:   _askThreadDate,
+          role:          'user',
+          content,
+          client_msg_id: userMsgId,
+          status:        'complete',
+        },
+        {
+          id:          assistantMsgId,
+          user_id:     userId,
+          thread_date: _askThreadDate,
+          role:        'assistant',
+          content:     null,
+          status:      'streaming',
+        },
+      ]);
+      if (insertErr) throw insertErr;
+
+      // Step 2: call the background fn to run the agentic loop.
       const { data: { session } } = await db.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error('not_signed_in');
@@ -557,7 +586,6 @@
         body: JSON.stringify({
           thread_date:      _askThreadDate,
           content,
-          client_msg_id:    clientMsgId,
           assistant_msg_id: assistantMsgId,
         }),
       });
@@ -566,17 +594,22 @@
         throw new Error(body?.detail || body?.error || `http_${res.status}`);
       }
 
-      // Poll the assistant row until status terminal
+      // Step 3: poll the assistant row until status terminal.
       _askPollAbort = false;
       pollAskAssistant(assistantMsgId);
     } catch (e) {
       console.error('[insights] ask send failed', e);
-      // Patch the local placeholder to failed
+      // Patch the local placeholder to failed AND patch the DB row
+      // so a refresh shows the failure too.
       const idx = _askMessages.findIndex(m => m.id === assistantMsgId);
       if (idx >= 0) {
         _askMessages[idx] = { ..._askMessages[idx], status: 'failed', failure_reason: String(e.message || e) };
         renderAskMessages();
       }
+      db.from('chat_messages').update({
+        status: 'failed',
+        failure_reason: String(e.message || e).slice(0, 500),
+      }).eq('id', assistantMsgId).then(() => {}, () => {});
     } finally {
       _askSending = false;
       if (send) send.disabled = false;
