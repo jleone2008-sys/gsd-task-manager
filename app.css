@@ -2949,24 +2949,24 @@
   .brain-empty-title { font-size: 15px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
   .brain-empty-hint { font-size: 12px; line-height: 1.5; }
 
-  /* Phase 7 — Insights subtab pills + Patterns view + Weekly view */
-  .insights-subtabs {
-    display: flex; gap: 4px; padding: 6px 10px;
-    border-bottom: 1px solid var(--edge);
-  }
-  .insights-pill {
+  /* Phase 7 — Insights subtab pills + Patterns view + Weekly view.
+     Pills live in the topbar's .pill-bar.insights-sub-pills row (same
+     pattern as .train-sub-pills); they're .pill .insights-pill so they
+     inherit topbar pill bar layout but override visuals to match the
+     guava-on-white selected style. */
+  .pill.insights-pill {
     background: transparent; border: 1px solid transparent;
     color: var(--ink-3); padding: 6px 12px; border-radius: 999px;
     font-size: var(--fs-meta); font-weight: 600; cursor: pointer;
     display: inline-flex; align-items: center; gap: 5px;
   }
-  .insights-pill:hover { background: var(--surface-2); color: var(--ink-2); }
-  .insights-pill.is-active { background: var(--guava-700); color: white; }
+  .pill.insights-pill:hover { background: var(--surface-2); color: var(--ink-2); }
+  .pill.insights-pill.is-active { background: var(--guava-700); color: white; }
   .insights-pill-count {
     background: rgba(255,255,255,0.25); padding: 0 6px; border-radius: 999px;
     font-size: 10px; font-weight: 500;
   }
-  .insights-pill:not(.is-active) .insights-pill-count {
+  .pill.insights-pill:not(.is-active) .insights-pill-count {
     background: var(--surface-2); color: var(--ink-4);
   }
 

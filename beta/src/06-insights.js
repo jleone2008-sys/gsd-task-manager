@@ -90,11 +90,13 @@
   }
 
   // ── Subtab pill wiring ────────────────────────────────────────
+  // The bar moved out of the notes container up into the topbar
+  // (.insights-sub-pills). Delegate at the document level so we don't
+  // depend on the bar existing at boot time — switchTool toggles its
+  // display via [data-tool-view] but the element is always in the DOM.
   function wireSubtabPills() {
-    const bar = document.getElementById('insightsSubtabs');
-    if (!bar) return;
-    bar.addEventListener('click', (e) => {
-      const pill = e.target.closest('[data-insights-view]');
+    document.addEventListener('click', (e) => {
+      const pill = e.target.closest('.insights-sub-pills [data-insights-view]');
       if (!pill) return;
       setActiveView(pill.dataset.insightsView);
     });

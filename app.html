@@ -503,6 +503,17 @@
     </button>
   </div>
 </div>
+<!-- Insights subtab pill-bar (Knowledgebase / Patterns / Weekly Insights).
+     Hoisted out of the notes-list container into the topbar so it sits
+     as the first row under the title (same pattern as train-sub-pills).
+     switchTool toggles visibility via [data-tool-view]. -->
+<div class="pill-bar insights-sub-pills" data-tool-view="notes" style="display:none">
+  <div class="pill-bar-inner">
+    <button class="pill insights-pill is-active" data-insights-view="timeline">Knowledgebase</button>
+    <button class="pill insights-pill" data-insights-view="patterns">Patterns <span class="insights-pill-count" id="insightsPatternsCount">0</span></button>
+    <button class="pill insights-pill" data-insights-view="weekly">Weekly Insights</button>
+  </div>
+</div>
 <!-- Notes filter pill-bar removed per user direction — filtering happens
      via the notebooks sidebar inside the notes section. -->
 
@@ -553,15 +564,13 @@
     <div class="notes-list" id="notesList">
       <div class="mobile-nb-toggle" id="mobileNbToggle" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
-      <!-- Insights subtab pills — top-level chrome. -->
-      <div class="insights-subtabs" id="insightsSubtabs">
-        <button class="insights-pill is-active" data-insights-view="timeline">Timeline</button>
-        <button class="insights-pill" data-insights-view="patterns">Patterns <span class="insights-pill-count" id="insightsPatternsCount">0</span></button>
-        <button class="insights-pill" data-insights-view="weekly">Weekly</button>
-      </div>
-      <!-- Timeline view header (only visible when Timeline pill is
-           active). The All Notes title + count + upload affordance
-           lives here so it doesn't leak into Patterns / Weekly views. -->
+      <!-- Insights subtab pills (Knowledgebase / Patterns / Weekly
+           Insights) moved up into the topbar pill-bar (.insights-sub-pills)
+           so they sit as the first row under the title — same shape as
+           the Train tab. Element id #insightsSubtabs is no longer used. -->
+      <!-- Timeline view header (only visible when Knowledgebase pill is
+           active). The title + count + upload affordance lives here so
+           it doesn't leak into Patterns / Weekly views. -->
       <div class="nl-header" id="timelineHeader">
         <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All <span class="nl-count" id="nlCount">0</span></div>
         <!-- "+ Note" affordance — replaces the global FAB on Insights
