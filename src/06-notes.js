@@ -24,6 +24,13 @@ function rowToNote(r) {
   // every freshly-loaded row share the exact same "now" — which is why every
   // note in the list was rendering "47m ago" at once. Fall back to the other
   // timestamp if available, else leave null so formatNoteDate can show nothing.
+  //
+  // For trashed_at: defensive fallback to updated_at on legacy rows where
+  // trashed=true but trashed_at=null (older trash flows didn't always set
+  // the timestamp). Without this, those rows are invisible to the 30-day
+  // auto-purge filter and live in trash forever.
+  const trashed = r.trashed || false;
+  const trashedAt = r.trashed_at || (trashed ? (r.updated_at || null) : null);
   return {
     id: r.client_id,
     title: r.title || '',
@@ -31,8 +38,8 @@ function rowToNote(r) {
     notebookId: r.notebook_id || null,
     tags: r.tags || [],
     starred: r.starred || false,
-    trashed: r.trashed || false,
-    trashedAt: r.trashed_at || null,
+    trashed,
+    trashedAt,
     order: r.order || 0,
     createdAt: r.created_at || r.updated_at || null,
     updatedAt: r.updated_at || r.created_at || null,
@@ -78,9 +85,28 @@ async function saveNoteToDB(n, retries = 2) {
 
 async function deleteNoteFromDB(id) {
   setStatus('syncing');
-  const { error } = await db.from('notes').delete().eq('user_id', currentUser.id).eq('client_id', id);
-  setStatus(error ? 'error' : 'saved');
-  if (error) console.error('deleteNote:', error.message);
+  // .select('id') so we can tell whether a row actually matched. If 0
+  // rows match (e.g. row was already removed by a prior realtime delete
+  // event, by another tab, or never persisted), treat that as success
+  // — the user's intent is satisfied. Only true network / RLS / auth
+  // errors should surface the "Sync failed" toast.
+  const { data, error } = await db.from('notes')
+    .delete()
+    .eq('user_id', currentUser.id)
+    .eq('client_id', id)
+    .select('id');
+  if (error) {
+    // Log the full shape so root-cause is visible if it ever happens.
+    console.error('deleteNote:', error.code || '', error.message || '', error);
+    setStatus('error');
+    return;
+  }
+  setStatus('saved');
+  if (!data || !data.length) {
+    // 0 rows matched — the row is already gone server-side. Nothing
+    // more to do; client-side state was already updated by the caller.
+    console.warn('deleteNote: no rows matched client_id=' + id + ' (already deleted)');
+  }
 }
 
 let _noteRenderTimer = null;
@@ -183,12 +209,27 @@ async function loadNotes() {
     // First load for this user — persist scratch to DB
     saveNoteToDB(scratchNote);
   }
-  // Auto-clear trash older than 30 days
+  // Auto-clear trash older than 30 days. Fire DB delete FIRST and only
+  // splice from notesArr after it succeeds — otherwise a failed delete
+  // leaves the row in the DB but missing locally, so the next reload
+  // brings it back and the cycle repeats.
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  notesArr.filter(n => n.trashed && n.trashedAt && new Date(n.trashedAt).getTime() < thirtyDaysAgo).forEach(n => {
-    notesArr = notesArr.filter(x => x.id !== n.id);
-    deleteNoteFromDB(n.id);
-  });
+  const expired = notesArr.filter(n => n.trashed && n.trashedAt && new Date(n.trashedAt).getTime() < thirtyDaysAgo);
+  for (const n of expired) {
+    // Sequential await keeps the status toast from flapping across many
+    // parallel deletes. Volume is tiny (a handful per day at most).
+    // eslint-disable-next-line no-await-in-loop
+    const { error } = await db.from('notes')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('client_id', n.id)
+      .select('id');
+    if (!error) {
+      notesArr = notesArr.filter(x => x.id !== n.id);
+    } else {
+      console.warn('auto-purge skipped client_id=' + n.id, error.code || '', error.message || '');
+    }
+  }
   subscribeToNoteChanges();
   subscribeToNotebookChanges();
   renderNotes();
@@ -559,15 +600,26 @@ function renderNoteList() {
       ? `<span class="chip chip--${toneFor(nb.color)}">${escHTML(nb.name)}</span>`
       : '';
     if (notesSidebarView === 'trash') {
+      // Show how long until the 30-day auto-purge fires so the user can
+      // see this isn't a manual-cleanup queue.
+      const ms = n.trashedAt ? Date.now() - new Date(n.trashedAt).getTime() : 0;
+      const daysIn = Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000)));
+      const daysLeft = Math.max(0, 30 - daysIn);
+      const retentionHint = n.trashedAt
+        ? `Auto-deletes in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
+        : 'Auto-delete pending';
       html += `<div class="nl-item${active}${selClass}" data-note-id="${n.id}" data-notes-ctx="note">
         <div class="nl-item-head">
           <div class="nl-item-title">${escHTML(n.title || 'Untitled')}</div>
           <div class="nl-item-date">${date}</div>
         </div>
         <div class="nl-item-preview">${escHTML(preview)}</div>
-        <div class="nl-item-meta" style="gap:6px">
-          <button data-notes-action="note-restore" class="expand-action">Restore</button>
-          <button data-notes-action="note-permanent-delete" class="expand-action" style="color:var(--guava-700);border-color:var(--guava-200)">Delete</button>
+        <div class="nl-item-meta" style="gap:6px;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--ink-3)">${retentionHint}</span>
+          <span style="display:flex;gap:6px">
+            <button data-notes-action="note-restore" class="expand-action">Restore</button>
+            <button data-notes-action="note-permanent-delete" class="expand-action" style="color:var(--guava-700);border-color:var(--guava-200)">Delete</button>
+          </span>
         </div>
       </div>`;
     } else {
