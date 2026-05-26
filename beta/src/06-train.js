@@ -196,6 +196,7 @@ function trainWireOnce() {
       st.cardio = { modality: null, duration: '', distance: '' };
       st.submittedFeedback = null;
       renderTrain();
+      trainSaveDraft();
       return;
     }
     if (action === 'pick-any') {
@@ -207,32 +208,37 @@ function trainWireOnce() {
       st.bonusDuration = '';
       st.submittedFeedback = null;
       renderTrain();
+      trainSaveDraft();
       return;
     }
     if (action === 'bonus-date') {
       _trainTodayState.bonusDate = actionEl.dataset.date;
       renderTrain();
+      trainSaveDraft();
       return;
     }
     if (action === 'bonus-modality') {
       _trainTodayState.bonusModality = actionEl.dataset.modality;
       renderTrain();
+      trainSaveDraft();
       return;
     }
     if (action === 'cardio-modality') {
       _trainTodayState.cardio.modality = actionEl.dataset.modality;
       renderTrain();
+      trainSaveDraft();
       return;
     }
     if (action === 'toggle-done') {
       const ex = actionEl.dataset.ex, i = Number(actionEl.dataset.i);
       const row = _trainTodayState.liftSets[ex]?.[i];
-      if (row) { row.done = !row.done; renderTrain(); }
+      if (row) { row.done = !row.done; renderTrain(); trainSaveDraft(); }
       return;
     }
     if (action === 'feel') {
       _trainTodayState.feel = Number(actionEl.dataset.val);
       renderTrain();
+      trainSaveDraft();
       return;
     }
     if (action === 'submit-session') {
@@ -395,6 +401,7 @@ function trainWireOnce() {
         // typing without a full re-render (which would steal focus).
         el.closest('.ex-set-row')?.classList.toggle('is-done', row.done);
         trainPatchLiveTotals();
+        trainScheduleDraftSave();
       }
       return;
     }
@@ -406,13 +413,14 @@ function trainWireOnce() {
         row.done = !!(String(row.weight ?? '').trim() && String(row.reps ?? '').trim());
         el.closest('.ex-set-row')?.classList.toggle('is-done', row.done);
         trainPatchLiveTotals();
+        trainScheduleDraftSave();
       }
       return;
     }
-    if (action === 'cardio-duration') { _trainTodayState.cardio.duration = v; return; }
-    if (action === 'cardio-distance') { _trainTodayState.cardio.distance = v; return; }
-    if (action === 'notes')           { _trainTodayState.notes          = v; return; }
-    if (action === 'bonus-duration')  { _trainTodayState.bonusDuration  = v; return; }
+    if (action === 'cardio-duration') { _trainTodayState.cardio.duration = v; trainScheduleDraftSave(); return; }
+    if (action === 'cardio-distance') { _trainTodayState.cardio.distance = v; trainScheduleDraftSave(); return; }
+    if (action === 'notes')           { _trainTodayState.notes          = v; trainScheduleDraftSave(); return; }
+    if (action === 'bonus-duration')  { _trainTodayState.bonusDuration  = v; trainScheduleDraftSave(); return; }
 
     // ── Progress subtab inputs ────────────────────────────────────
     if (action === 'wizard-dob') {
@@ -1156,6 +1164,84 @@ function trainTodayLocalDate() {
   }).format(new Date());
 }
 
+/* ── Workout draft autosave ─────────────────────────────────────────────
+   The in-flight session lives in _trainTodayState until the user taps
+   "Submit + Get Feedback", at which point the data is shipped to
+   workout_sessions + workout_sets. If the tab closes mid-session, that
+   in-memory state vanishes — so we mirror the editable fields into
+   localStorage on every input change. On re-init, if a draft exists for
+   the same user + same local date, we hydrate from it.
+
+   Storage key is per-user so a shared device with multiple accounts
+   doesn't cross-contaminate. The draft is cleared on a successful
+   submit; date mismatch on load also invalidates it (yesterday's
+   draft is discarded since the day's plan may have rolled over). */
+function trainDraftKey() {
+  const uid = (typeof currentUser !== 'undefined' && currentUser?.id) || 'anon';
+  return `gsd-train-draft:${uid}`;
+}
+function trainSaveDraft() {
+  try {
+    const st = _trainTodayState;
+    if (!st.initialized) return;
+    const draft = {
+      date:           st.date,
+      selectedDow:    st.selectedDow,
+      isBonus:        st.isBonus,
+      bonusDate:      st.bonusDate,
+      liftSets:       st.liftSets,
+      cardio:         st.cardio,
+      bonusModality:  st.bonusModality,
+      bonusDuration:  st.bonusDuration,
+      feel:           st.feel,
+      notes:          st.notes,
+      savedAt:        Date.now(),
+    };
+    localStorage.setItem(trainDraftKey(), JSON.stringify(draft));
+  } catch (_) { /* quota / serialization issues — silent, this is a best-effort cache */ }
+}
+function trainLoadDraft() {
+  try {
+    const raw = localStorage.getItem(trainDraftKey());
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || typeof d !== 'object') return null;
+    return d;
+  } catch (_) { return null; }
+}
+function trainClearDraft() {
+  clearTimeout(_trainDraftSaveTimer);
+  _trainDraftSaveTimer = null;
+  try { localStorage.removeItem(trainDraftKey()); } catch (_) { /* ignore */ }
+}
+// Debounced save for high-volume input handlers (typing lbs/reps,
+// notes). 400ms after the last keystroke is fast enough that closing
+// the tab almost never loses anything, and slow enough that we're not
+// thrashing localStorage on every key.
+let _trainDraftSaveTimer = null;
+function trainScheduleDraftSave() {
+  clearTimeout(_trainDraftSaveTimer);
+  _trainDraftSaveTimer = setTimeout(trainSaveDraft, 400);
+}
+// Belt-and-suspenders: if the page is being hidden / closed and a
+// debounced save is pending, flush it synchronously so nothing is
+// lost. pagehide fires reliably on iOS / mobile when the browser is
+// backgrounded, where beforeunload may not.
+if (typeof window !== 'undefined') {
+  const flush = () => {
+    if (_trainDraftSaveTimer) {
+      clearTimeout(_trainDraftSaveTimer);
+      _trainDraftSaveTimer = null;
+      trainSaveDraft();
+    }
+  };
+  window.addEventListener('pagehide', flush);
+  window.addEventListener('beforeunload', flush);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
+  });
+}
+
 // Initialize today state if first render OR the day-of-week changed
 // (e.g., user left the app open overnight). Re-uses any work-in-progress
 // state for the same day.
@@ -1177,6 +1263,47 @@ function ensureTrainTodayInit() {
   _trainTodayState.notes = '';
   _trainTodayState.submittedFeedback = null;
   _trainTodayState.aiFeedback = null;
+
+  // Hydrate from a saved draft if one exists for today. Stale drafts
+  // (different date) are discarded — the day's plan may have rolled
+  // over, so we'd be hydrating into the wrong exercises. The submit
+  // flow clears the draft on success, so anything still in localStorage
+  // here represents an unfinished session the user wants resumed.
+  const draft = trainLoadDraft();
+  if (draft && draft.date === today) {
+    _trainTodayState.selectedDow   = draft.selectedDow   || dow;
+    _trainTodayState.isBonus       = !!draft.isBonus;
+    _trainTodayState.bonusDate     = draft.bonusDate || today;
+    _trainTodayState.day           = trainFindDay(_trainTodayState.selectedDow);
+    // Re-seed sets from the selected day's plan first so a renamed /
+    // re-ordered template doesn't strand legacy exercise names, then
+    // merge in any saved values for matching exercise names. New
+    // exercises added since save get their default empty cells; removed
+    // exercises drop out cleanly.
+    const seeded = trainSeedSetsFromDay(_trainTodayState.day);
+    if (draft.liftSets && typeof draft.liftSets === 'object') {
+      for (const exName of Object.keys(seeded)) {
+        const savedSets = draft.liftSets[exName];
+        if (!Array.isArray(savedSets)) continue;
+        seeded[exName].forEach((row, i) => {
+          const sv = savedSets[i];
+          if (!sv) return;
+          row.weight = sv.weight || row.weight || '';
+          row.reps   = sv.reps   || row.reps   || '';
+          row.done   = !!(String(row.weight ?? '').trim() && String(row.reps ?? '').trim());
+        });
+      }
+    }
+    _trainTodayState.liftSets      = seeded;
+    _trainTodayState.cardio        = Object.assign({ modality: null, duration: '', distance: '' }, draft.cardio || {});
+    _trainTodayState.bonusModality = draft.bonusModality || null;
+    _trainTodayState.bonusDuration = draft.bonusDuration || '';
+    _trainTodayState.feel          = draft.feel || null;
+    _trainTodayState.notes         = draft.notes || '';
+  } else if (draft) {
+    // Different date → stale, drop it.
+    trainClearDraft();
+  }
 }
 
 // "YYYY-MM-DD" shifted by N days from a base date string. Negative N
@@ -2030,6 +2157,13 @@ async function trainSubmitTodaySession() {
       const { error: stErr } = await db.from('workout_sets').insert(setRows);
       if (stErr) throw stErr;
     }
+
+    // The session + sets are now persisted in Supabase, so the
+    // localStorage resume-draft is no longer needed — clear it. (If
+    // anything below this fails after the inserts succeeded, that's
+    // already a partial-success state we can't roll back cleanly; the
+    // draft would be misleading at that point anyway.)
+    trainClearDraft();
 
     // Compute formulaic feedback inline. Cheap; everything we need is in
     // memory already. AI insight layer ships in commit 6.
