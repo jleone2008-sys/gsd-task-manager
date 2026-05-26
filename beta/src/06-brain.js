@@ -69,11 +69,12 @@
       await handleBrainFileSelected(file);
     });
 
-    // Delegated click handler for document card actions.
-    const list = document.getElementById('brainDocsList');
-    if (list) {
-      list.addEventListener('click', onBrainDocsClick);
-    }
+    // Phase 6 Commit 7: doc cards now live inside the unified
+    // timeline in #nlScroll (not the standalone #brainDocsList).
+    // Delegate at the document level so the handler catches clicks
+    // regardless of where the card is mounted. Filters at the top
+    // to avoid running on non-doc clicks.
+    document.addEventListener('click', onBrainDocsClick);
   }
 
   // ── Documents load + render ─────────────────────────────────────────
@@ -96,22 +97,178 @@
   }
 
   function renderBrainDocuments() {
+    // Phase 6 Commit 7: the standalone Documents section is now
+    // hidden — documents live inside the unified timeline in
+    // .nl-scroll (rendered by renderBrainUnifiedList below).
+    // Trigger that re-render whenever brain state changes.
     const section = document.getElementById('brainDocsSection');
-    const list    = document.getElementById('brainDocsList');
-    const countEl = document.getElementById('brainDocsCount');
-    if (!section || !list) return;
+    if (section) section.style.display = 'none';
+    if (typeof renderNoteList === 'function') {
+      try { renderNoteList(); } catch (_) {}
+    }
+  }
 
-    if (!_brainDocs.length) {
-      section.style.display = 'none';
+  // Phase 6 Commit 7 — unified Variation B timeline. Called by
+  // src/06-notes.js renderNoteList AFTER it's done its filter +
+  // bulk-bar setup. Receives the filtered notes list and the
+  // target element (#nlScroll). Merges with _brainDocs, sorts by
+  // date desc, groups by relative time bucket, renders.
+  function renderBrainUnifiedList(el, notes) {
+    if (!el) return;
+
+    // Build a unified list of typed items, normalized to {type, date, raw}.
+    const items = [];
+    for (const n of (notes || [])) {
+      const date = n.updatedAt || n.createdAt;
+      if (!date) continue;
+      items.push({ type: 'note', date: new Date(date).getTime(), raw: n });
+    }
+    for (const d of _brainDocs) {
+      const date = d.uploaded_at;
+      if (!date) continue;
+      items.push({ type: 'doc', date: new Date(date).getTime(), raw: d });
+    }
+    items.sort((a, b) => b.date - a.date);
+
+    if (!items.length) {
+      el.innerHTML = renderUnifiedEmptyState();
       return;
     }
-    section.style.display = '';
 
-    const readyCount = _brainDocs.filter(d => d.status === 'ready').length;
-    if (countEl) countEl.textContent = String(readyCount);
-
-    list.innerHTML = _brainDocs.map(renderDocCard).join('');
+    // Group by bucket. Keys: 'today', 'this-week', 'last-week',
+    // 'this-month', '<YYYY-MM>'.
+    const buckets = bucketItems(items);
+    let html = '';
+    for (const b of buckets) {
+      html += `<div class="brain-tl-section-h">${escapeHtml(b.label)}</div>`;
+      html += b.items.map(it => it.type === 'note' ? renderNoteCard(it.raw) : renderDocCardInline(it.raw)).join('');
+    }
+    el.innerHTML = html;
   }
+
+  function renderUnifiedEmptyState() {
+    return `<div class="brain-empty">
+      <div class="brain-empty-icon">🧠</div>
+      <div class="brain-empty-title">Your Brain is empty</div>
+      <div class="brain-empty-hint">Upload a document or create your first note to get started.</div>
+    </div>`;
+  }
+
+  function bucketItems(items) {
+    const now = Date.now();
+    const day = 86_400_000;
+    const startOfToday = (() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+    const startOfWeek  = startOfToday - (new Date().getDay()) * day;     // Sun-start week
+    const startOfLastWeek = startOfWeek - 7 * day;
+    const startOfMonth = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); })();
+
+    const buckets = new Map();   // key -> { label, order, items[] }
+    function ensure(key, label, order) {
+      if (!buckets.has(key)) buckets.set(key, { label, order, items: [] });
+      return buckets.get(key);
+    }
+
+    for (const it of items) {
+      let key, label, order;
+      if (it.date >= startOfToday) {
+        key = 'today'; label = 'Today'; order = 0;
+      } else if (it.date >= startOfWeek) {
+        key = 'this-week'; label = 'This week'; order = 1;
+      } else if (it.date >= startOfLastWeek) {
+        key = 'last-week'; label = 'Last week'; order = 2;
+      } else if (it.date >= startOfMonth) {
+        key = 'this-month'; label = 'Earlier this month'; order = 3;
+      } else {
+        const d = new Date(it.date);
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        key = ym;
+        label = d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        // Order older months by reverse YYYY-MM string so newer months come first.
+        order = 100 + (9999 - d.getFullYear()) * 12 + (12 - d.getMonth());
+      }
+      ensure(key, label, order).items.push(it);
+    }
+
+    return Array.from(buckets.values()).sort((a, b) => a.order - b.order);
+  }
+
+  function renderNoteCard(n) {
+    // Preserve the existing notes click + drag affordances so the
+    // existing handlers in src/06-notes.js keep working unchanged.
+    const isActive = (typeof activeNoteId !== 'undefined' && activeNoteId === n.id);
+    const active = isActive ? ' is-active' : '';
+    const preview = (n.content || '').replace(/<[^>]+>/g, '').slice(0, 180).trim();
+    const date = formatRelTime(n.updatedAt || n.createdAt);
+    // Notebook chip — looks up the note's notebook for the tag-like
+    // pill (Personal / People / Work / etc.) shown in the legacy card.
+    let nbChip = '';
+    if (n.notebookId && typeof notebooksArr !== 'undefined') {
+      const nb = notebooksArr.find(x => x.id === n.notebookId);
+      if (nb) {
+        const tone = toneForNotebookColor(nb.color);
+        nbChip = `<span class="chip chip--${tone}">${escapeHtml(nb.name)}</span>`;
+      }
+    }
+    return `<div class="nl-item brain-tl-card brain-tl-note${active}" data-notes-action="note-click" data-note-id="${escapeHtml(n.id)}" draggable="true" data-notes-ctx="note">
+      <div class="brain-tl-card-icon">📝</div>
+      <div class="brain-tl-card-body">
+        <div class="brain-tl-card-title">${escapeHtml(n.title || 'Untitled')}</div>
+        ${preview ? `<div class="brain-tl-card-facts">${escapeHtml(preview)}</div>` : ''}
+        <div class="brain-tl-card-meta">
+          ${nbChip}
+          <span>${escapeHtml(date)}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Map notebook color string to a chip-tone class. Mirrors the
+  // toneFor function in src/06-notes.js renderNoteList so chip
+  // colors stay consistent with the rest of the notes UI.
+  function toneForNotebookColor(color) {
+    const c = (color || '').toLowerCase();
+    if (c.includes('blue') || c.includes('sky'))    return 'sky';
+    if (c.includes('green') || c.includes('moss'))  return 'moss';
+    if (c.includes('purple') || c.includes('lilac'))return 'lilac';
+    if (c.includes('yellow') || c.includes('top3')) return 'ochre';
+    if (c.includes('coral') || c.includes('danger'))return 'guava';
+    return 'slate';
+  }
+
+  // Document card inside the unified timeline. Same data-brain-doc-id
+  // hook as the standalone docs card so the existing click handler
+  // (toggle expand / collapse / delete) keeps working.
+  function renderDocCardInline(doc) {
+    const isExpanded = _brainExpandedId === doc.id;
+    const cls = ['nl-item', 'brain-tl-card', 'brain-tl-doc'];
+    if (doc.status === 'processing') cls.push('is-processing');
+    if (doc.status === 'failed')     cls.push('is-failed');
+    if (isExpanded)                  cls.push('is-expanded');
+
+    const icon = kindIcon(doc.kind);
+    const factsArr = Array.isArray(doc.ai_key_facts) ? doc.ai_key_facts : [];
+    const factsLine = factsArr.length
+      ? factsArr.slice(0, 2).map(escapeHtml).join(' · ')
+      : (doc.ai_summary ? escapeHtml(doc.ai_summary.slice(0, 180)) : '');
+    const statusBadge = `<span class="b-doc-status is-${doc.status}">${doc.status}</span>`;
+    const detailHtml = isExpanded ? renderDocDetail(doc) : '';
+
+    return `<div class="${cls.join(' ')}" data-brain-doc-id="${escapeHtml(doc.id)}">
+      <div class="brain-tl-card-icon">${icon}</div>
+      <div class="brain-tl-card-body">
+        <div class="brain-tl-card-title">${escapeHtml(doc.title || 'Untitled')}</div>
+        ${factsLine ? `<div class="brain-tl-card-facts">${factsLine}</div>` : ''}
+        <div class="brain-tl-card-meta">
+          ${statusBadge}<span>·</span><span>${escapeHtml(formatRelTime(doc.uploaded_at))}</span>
+          <span>·</span><span>${escapeHtml(kindLabel(doc.kind))}</span>
+        </div>
+      </div>
+      ${detailHtml}
+    </div>`;
+  }
+
+  // Expose so src/06-notes.js renderNoteList can call it.
+  window.renderBrainUnifiedList = renderBrainUnifiedList;
 
   function renderDocCard(doc) {
     const isExpanded = _brainExpandedId === doc.id;
@@ -174,9 +331,10 @@
 
   // ── Card click delegation ───────────────────────────────────────────
   function onBrainDocsClick(e) {
-    const actionBtn = e.target.closest('[data-brain-action]');
+    // Bail fast for non-doc clicks (this handler is document-level).
     const card = e.target.closest('[data-brain-doc-id]');
     if (!card) return;
+    const actionBtn = e.target.closest('[data-brain-action]');
     const docId = card.dataset.brainDocId;
 
     if (actionBtn) {

@@ -505,6 +505,20 @@ function renderNoteList() {
     }
   }
 
+  // Phase 6 Commit 7 — Brain unified timeline takes over rendering
+  // when available. It merges notes + uploaded knowledge documents
+  // into one chronological feed grouped by week. Falls back to the
+  // legacy notes-only render below when brain.js isn't loaded yet
+  // (initial paint race) or when in trash/select modes which the
+  // unified render doesn't cover yet.
+  const canUseUnified = typeof window.renderBrainUnifiedList === 'function'
+    && notesSidebarView !== 'trash'
+    && !noteSelectMode;
+  if (canUseUnified) {
+    window.renderBrainUnifiedList(el, list);
+    return;
+  }
+
   if (!list.length && !noteSearchQuery) {
     el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--ink-3)">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;opacity:0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>

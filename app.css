@@ -2818,6 +2818,53 @@
   .brain-doc-actions button.is-destructive { color: var(--guava-700); border-color: var(--guava-200); }
   .brain-doc-actions button.is-destructive:hover { background: var(--guava-50); }
 
+  /* Phase 6 Commit 7 — unified Brain timeline cards inside #nlScroll.
+     Notes and documents render side by side, grouped by week. Cards
+     share the same skeleton; only icon + body shape differs. */
+  .brain-tl-section-h {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-4);
+    padding: 14px 4px 6px;
+  }
+  .brain-tl-section-h:first-child { padding-top: 4px; }
+  .brain-tl-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 8px;
+    box-shadow: var(--shadow-card);
+    display: flex; gap: 12px; align-items: flex-start; cursor: pointer;
+    transition: box-shadow 0.12s;
+    flex-wrap: wrap;
+  }
+  .brain-tl-card:hover { box-shadow: var(--shadow-card-hover); }
+  .brain-tl-card.is-active { border-color: var(--guava-700); background: var(--guava-50); }
+  .brain-tl-card.is-processing { opacity: 0.7; cursor: wait; }
+  .brain-tl-card.is-failed { border-color: var(--guava-300); background: var(--guava-50); }
+  .brain-tl-card-icon { font-size: 22px; line-height: 1.1; flex-shrink: 0; }
+  .brain-tl-card-body { flex: 1; min-width: 0; }
+  .brain-tl-card-title {
+    font-size: var(--fs-body, 14px); font-weight: 600; color: var(--ink);
+    line-height: 1.3; letter-spacing: -0.005em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .brain-tl-card-facts {
+    font-size: var(--fs-meta, 12px); color: var(--ink-2);
+    margin-top: 4px; line-height: 1.45;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .brain-tl-card-meta {
+    font-size: var(--t-xs, 11px); color: var(--ink-4);
+    margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  }
+
+  /* Empty state when both notes and docs are absent */
+  .brain-empty {
+    text-align: center; padding: 60px 24px; color: var(--ink-3);
+  }
+  .brain-empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
+  .brain-empty-title { font-size: 15px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+  .brain-empty-hint { font-size: 12px; line-height: 1.5; }
+
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
   /* Notes list item — spec NoteCard layout.
      Card shell with column flex: title row (title left + date right),
