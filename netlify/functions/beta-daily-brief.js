@@ -288,10 +288,20 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     return d.toISOString().slice(0, 10);
   })();
 
+  // Phase 6 Layer 1 — pull recent lab results so the brief can frame
+  // recommendations against actual current bloodwork values. 90-day
+  // window keeps stale labs out automatically; dedupe to latest per
+  // test_name happens client-side after the fetch.
+  const labSince = (() => {
+    const d = new Date(today + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 90);
+    return d.toISOString().slice(0, 10);
+  })();
+
   const [
     ouraToday, ouraYesterday, whoopY, oTagsY, oWorkoutsY, journalY, tasksAll,
     calY, calT, habitsY, baselines30, baselines7, tasksTopOpen, tasksOpen,
-    activePlanRows, recentSessions,
+    activePlanRows, recentSessions, recentLabs,
   ] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${today}&select=${ouraRecoveryCols}`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=${ouraActivityCols}`, hdr),
@@ -309,6 +319,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&select=text,top3,due&limit=200`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/workout_plans?user_id=eq.${user.user_id}&is_active=eq.true&is_template=eq.false&select=id,name,day_template&limit=1`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/workout_sessions?user_id=eq.${user.user_id}&session_date=gte.${trainSince}&select=id,session_date,day_name,day_type,feel,session_notes,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)&order=session_date.desc`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/health_lab_results?user_id=eq.${user.user_id}&test_date=gte.${labSince}&select=test_name,value,unit,ref_range_low,ref_range_high,ref_range_text,flag,test_date&order=test_date.desc`, hdr),
   ]);
 
   // Evening mode needs tomorrow's calendar + today's data for the recap row
@@ -541,10 +552,46 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     baselines_7d:  baseline7,
     baselines_30d: baseline30,
     hero_hint: hero_hint,   // server's pick for the hero ring; Claude may keep or override (within enum)
+    // Phase 6 Layer 1 — structured recent lab results from the user's
+    // uploaded bloodwork docs. Dedupe to the latest value per test_name
+    // within the last 90 days. age_days lets the prompt explicitly
+    // frame freshness ("from 2 weeks ago" vs "still your most recent").
+    // Null when the user hasn't uploaded any labs yet.
+    health_labs: buildHealthLabsSnapshot(recentLabs, today),
     _oura_stale: ouraStale,
   };
 
   return ctx;
+}
+
+// Dedupe lab results to the latest test_date per test_name. Returns a
+// compact snapshot or null when no labs in the 90-day window.
+function buildHealthLabsSnapshot(labs, today) {
+  if (!Array.isArray(labs) || labs.length === 0) return null;
+  // Input is ordered test_date DESC, so the first time we see each
+  // test_name is its latest value.
+  const latest = new Map();
+  for (const row of labs) {
+    if (!latest.has(row.test_name)) latest.set(row.test_name, row);
+  }
+  const results = Array.from(latest.values()).map(r => ({
+    test_name:      r.test_name,
+    value:          r.value,
+    unit:           r.unit,
+    flag:           r.flag,   // 'low'|'normal'|'high'|'critical_low'|'critical_high'|null
+    ref_range_low:  r.ref_range_low,
+    ref_range_high: r.ref_range_high,
+    ref_range_text: r.ref_range_text,
+    test_date:      r.test_date,
+  }));
+  // age_days based on the most recent test_date in the snapshot.
+  const newestDate = results.reduce((acc, r) => (r.test_date > acc ? r.test_date : acc), '0000-01-01');
+  const ageDays = Math.max(0, Math.floor((Date.parse(today + 'T00:00:00Z') - Date.parse(newestDate + 'T00:00:00Z')) / 86_400_000));
+  return {
+    as_of_date: newestDate,
+    age_days:   ageDays,
+    results,
+  };
 }
 
 function stripPercentiles(b) {
@@ -1196,6 +1243,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- today_plan.workout.logged_today = a session already in the books for today (evening mode or same-day refire). When present, frame the brief around what got done, not what\'s prescribed.',
     '- yesterday.workout = the Train session logged yesterday (if any). Useful for "Lifted yesterday" pills.',
     '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
+    '- health_labs = the user\'s most recent bloodwork values, ONE per test_name, within the last 90 days. health_labs.age_days = how old the snapshot is. Use these as REASONING context for the brief\'s framing — e.g. if Lp(a) is flagged HIGH and today is a recovery day, you can frame the play with awareness ("CV-friendly recovery day" in subhead) without quoting numbers. NEVER echo specific lab values in headline/subhead — the server has no UI surface for them yet and quoting them out of context risks medical-claim territory. When you reference labs in an evidence_pill, frame freshness explicitly ("Bloodwork 2 wks ago" not "Bloodwork shows X"). Skip entirely if health_labs is null or all flags are normal — labs without an anomaly aren\'t worth surfacing.',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
