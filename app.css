@@ -418,8 +418,7 @@
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;     /* pills centered on every subtab bar */
-    gap: 6px;
+    gap: 4px;
     padding: 0;
     background: transparent;
     border: none;
