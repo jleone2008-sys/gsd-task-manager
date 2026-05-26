@@ -305,7 +305,7 @@ function renderNotesSidebar() {
   let html = `<div class="ns-section">
     <div class="ns-item${notesSidebarView==='all'?' active':''}" data-notes-action="view" data-view="all">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span>All Notes</span><span class="cnt">${allCount}</span>
+      <span>Notes</span><span class="cnt">${allCount}</span>
     </div>
     <div class="ns-item${notesSidebarView==='starred'?' active':''}" data-notes-action="view" data-view="starred">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76V6a2 2 0 1 1 4 0v4.76l3 1.54V15H6v-2.7l3-1.54z"/></svg>
@@ -404,7 +404,7 @@ function renderNotesSidebar() {
   const mobileToggle = document.getElementById('mobileNbToggle');
   const mobileDrawer = document.getElementById('mobileNbDrawer');
   if (mobileToggle) {
-    let currentLabel = 'All Notes';
+    let currentLabel = 'Notes';
     if (notesSidebarView === 'starred') currentLabel = 'Pinned';
     else if (notesSidebarView === 'trash') currentLabel = 'Trash';
     else if (notesSidebarView.startsWith('notebook-')) {
@@ -421,7 +421,7 @@ function renderNotesSidebar() {
     let drawerHtml = `
       <div class="ns-item${notesSidebarView==='all'?' active':''}" data-notes-action="view-mobile" data-view="all">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        All Notes <span class="cnt">${allCount}</span>
+        Notes <span class="cnt">${allCount}</span>
       </div>
       <div class="ns-item${notesSidebarView==='starred'?' active':''}" data-notes-action="view-mobile" data-view="starred">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76V6a2 2 0 1 1 4 0v4.76l3 1.54V15H6v-2.7l3-1.54z"/></svg>
@@ -455,7 +455,7 @@ function updateNlTitle() {
   const countEl = document.getElementById('nlCount');
   if (!titleEl) return;
   const list = getFilteredNotes();
-  let label = 'All Notes';
+  let label = 'Notes';
   if (notesSidebarView === 'starred') label = 'Pinned';
   else if (notesSidebarView === 'trash') label = 'Trash';
   else if (notesSidebarView.startsWith('notebook-')) {
@@ -968,7 +968,7 @@ function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onCon
 function deleteNotebook(id) {
   const nb = notebooksArr.find(n => n.id === id);
   if (!nb) return;
-  showInlineConfirm(`Delete "${nb.name}"?`, 'Notes inside will be moved to All Notes.', () => {
+  showInlineConfirm(`Delete "${nb.name}"?`, 'Notes inside will be moved to Notes.', () => {
     notesArr.filter(n => n.notebookId === id).forEach(n => { n.notebookId = null; saveNoteToDB(n); });
     notebooksArr = notebooksArr.filter(n => n.id !== id);
     if (notesSidebarView === 'notebook-' + id) notesSidebarView = 'all';
