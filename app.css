@@ -2831,7 +2831,11 @@
     background: var(--surface); border: 1px solid var(--edge);
     border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 8px;
     box-shadow: var(--shadow-card);
-    display: flex; gap: 12px; align-items: flex-start; cursor: pointer;
+    /* flex-direction: row explicit — the legacy .nl-item class
+       (preserved for click-handler compat) sets column, which
+       stacks icon ABOVE title and wastes vertical space. */
+    display: flex; flex-direction: row; gap: 12px;
+    align-items: flex-start; cursor: pointer;
     transition: box-shadow 0.12s;
     flex-wrap: wrap;
   }
