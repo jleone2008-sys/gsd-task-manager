@@ -160,12 +160,43 @@ exports.handler = async (event) => {
     }
 
     const stored = await storeBrief(user, date, mode, result, serviceKey);
+    // Phase 7 — mark pending anomaly alerts consumed by THIS brief.
+    // Reads from the ctx we built earlier; alerts that influenced this
+    // generation won't repeat in the next brief. Best-effort — a
+    // failure here doesn't fail the whole brief response.
+    if (Array.isArray(ctx.pending_anomalies) && ctx.pending_anomalies.length && stored?.id) {
+      const alertIds = ctx.pending_anomalies.map(a => a.id).filter(Boolean);
+      consumeAnomalyAlerts(alertIds, stored.id, serviceKey)
+        .catch(err => console.warn('[daily-brief] consume anomalies failed:', err.message));
+    }
     return cors(json(200, stored));
   } catch (err) {
     console.error('daily-brief handler error:', err.message);
     return cors(json(500, { error: 'internal_error', detail: err.message }));
   }
 };
+
+// Mark anomaly alerts as consumed by a brief. PostgREST in.(ids) filter
+// with PATCH. The alerts won't reappear in future briefs.
+async function consumeAnomalyAlerts(alertIds, briefId, serviceKey) {
+  if (!Array.isArray(alertIds) || alertIds.length === 0) return;
+  const ids = alertIds.map(id => `"${id}"`).join(',');
+  const url = `${SUPABASE_URL}/rest/v1/pending_anomaly_alerts?id=in.(${ids})`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type':  'application/json',
+      apikey:          serviceKey,
+      Authorization:   `Bearer ${serviceKey}`,
+      Prefer:          'return=minimal',
+    },
+    body: JSON.stringify({
+      consumed_at: new Date().toISOString(),
+      consumed_by: briefId,
+    }),
+  });
+  if (!r.ok) throw new Error(`consume_anomalies_${r.status}: ${(await r.text()).slice(0, 200)}`);
+}
 
 // ── Mode + helper resolution ───────────────────────────────────────────────
 function normalizeMode(input, tz) {
@@ -301,7 +332,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   const [
     ouraToday, ouraYesterday, whoopY, oTagsY, oWorkoutsY, journalY, tasksAll,
     calY, calT, habitsY, baselines30, baselines7, tasksTopOpen, tasksOpen,
-    activePlanRows, recentSessions, recentLabs,
+    activePlanRows, recentSessions, recentLabs, pendingAnomalies,
   ] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${today}&select=${ouraRecoveryCols}`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${yday}&select=${ouraActivityCols}`, hdr),
@@ -320,6 +351,10 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/workout_plans?user_id=eq.${user.user_id}&is_active=eq.true&is_template=eq.false&select=id,name,day_template&limit=1`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/workout_sessions?user_id=eq.${user.user_id}&session_date=gte.${trainSince}&select=id,session_date,day_name,day_type,feel,session_notes,workout_sets(exercise_name,set_index,actual_weight,actual_reps,is_bodyweight)&order=session_date.desc`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/health_lab_results?user_id=eq.${user.user_id}&test_date=gte.${labSince}&select=test_name,value,unit,ref_range_low,ref_range_high,ref_range_text,flag,test_date&order=test_date.desc`, hdr),
+    // Phase 7 — pending anomaly alerts. SQL trigger on oura_daily
+    // wrote these when metrics deviated >2σ from 30-day baseline.
+    // Brief leads with them in subhead/pills, then marks them consumed.
+    fetchJson(`${SUPABASE_URL}/rest/v1/pending_anomaly_alerts?user_id=eq.${user.user_id}&consumed_at=is.null&order=detected_at.desc&limit=10&select=id,for_date,metric,value,baseline_value,z_score,direction`, hdr),
   ]);
 
   // Evening mode needs tomorrow's calendar + today's data for the recap row
@@ -558,6 +593,11 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     // frame freshness ("from 2 weeks ago" vs "still your most recent").
     // Null when the user hasn't uploaded any labs yet.
     health_labs: buildHealthLabsSnapshot(recentLabs, today),
+    // Phase 7 — unconsumed anomaly alerts. The brief leads with these
+    // when present. Each alert has metric, value, baseline_value,
+    // z_score, direction. After the brief consumes them, they're
+    // marked consumed_at so they don't repeat.
+    pending_anomalies: (pendingAnomalies || []),
     _oura_stale: ouraStale,
   };
 
@@ -1244,6 +1284,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- yesterday.workout = the Train session logged yesterday (if any). Useful for "Lifted yesterday" pills.',
     '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
     '- health_labs = the user\'s most recent bloodwork values, ONE per test_name, within the last 90 days. health_labs.age_days = how old the snapshot is. Use these as REASONING context for the brief\'s framing — e.g. if Lp(a) is flagged HIGH and today is a recovery day, you can frame the play with awareness ("CV-friendly recovery day" in subhead) without quoting numbers. NEVER echo specific lab values in headline/subhead — the server has no UI surface for them yet and quoting them out of context risks medical-claim territory. When you reference labs in an evidence_pill, frame freshness explicitly ("Bloodwork 2 wks ago" not "Bloodwork shows X"). Skip entirely if health_labs is null or all flags are normal — labs without an anomaly aren\'t worth surfacing.',
+    '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
