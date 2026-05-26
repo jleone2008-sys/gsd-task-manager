@@ -446,8 +446,15 @@ function trainOpenDayDetail(dow) {
     rest:   { txt: 'Rest',   cls: 'is-rest'   },
   }[day.type || 'lift'] || { txt: day.type, cls: '' };
 
-  const html = `<div class="train-modal-overlay" id="trainDayDetailModal" data-train-action="close-day-detail">
-    <div class="train-modal" onclick="event.stopPropagation()">
+  // Same close pattern as the History Recap modal (line ~2452): the
+  // overlay handles backdrop-only close via `e.target === overlay`, and
+  // the × button uses data-train-action through the document delegator.
+  // We DON'T put `data-train-action="close-day-detail"` on the overlay
+  // (clicks on inner elements like exercise rows would bubble to it and
+  // close the modal), and we DON'T stopPropagation on .train-modal
+  // (that would block the × button from reaching the delegator).
+  const html = `<div class="train-modal-overlay" id="trainDayDetailModal">
+    <div class="train-modal">
       <div class="train-modal-head">
         <div>
           <div class="day-detail-dow">${trainEsc(day.dow)}</div>
@@ -461,7 +468,9 @@ function trainOpenDayDetail(dow) {
   </div>`;
   const wrap = document.createElement('div');
   wrap.innerHTML = html;
-  document.body.appendChild(wrap.firstElementChild);
+  const overlay = wrap.firstElementChild;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) trainCloseDayDetail(); });
 }
 
 function trainCloseDayDetail() {
