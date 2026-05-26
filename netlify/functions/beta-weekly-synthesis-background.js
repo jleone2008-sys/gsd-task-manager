@@ -48,9 +48,11 @@ exports.handler = async (event) => {
   // ── Authenticate (JWT for manual; cron secret for cron) ────────
   let userId = null;
   let userEmail = null;
+  let isCronPath = false;
   const bearer = (event.headers.authorization || event.headers.Authorization || '').replace(/^Bearer\s+/i, '').trim();
   if (bearer && bearer === cronSecret) {
     // Cron path — must pass user_id in the body
+    isCronPath = true;
     let body;
     try { body = event.body ? JSON.parse(event.body) : {}; }
     catch (e) { return cors(json(400, { error: 'invalid_json' })); }
@@ -76,11 +78,18 @@ exports.handler = async (event) => {
   try { body = event.body ? JSON.parse(event.body) : {}; }
   catch (e) { /* already parsed above for cron path */ }
 
-  // Default to this week's Monday (UTC). week_start_date should
-  // arrive as YYYY-MM-DD; if absent, compute.
+  // week_start_date resolution. Three cases:
+  //   1. Explicit week_start_date in body → use it (caller pinned the week)
+  //   2. Cron path with no week_start_date → this week's Monday
+  //      (cron fires Sun 22:00 UTC which is end-of-this-week, so the
+  //      current Monday IS the week that just ended)
+  //   3. JWT manual path with no week_start_date → LAST completed Monday
+  //      (user clicking 'Generate' mid-week wants the week that finished,
+  //      not the partial in-progress week — Opus called this out on
+  //      first run)
   let weekStart = String(body.week_start_date || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
-    weekStart = mondayOfThisWeek();
+    weekStart = isCronPath ? mondayOfThisWeek() : mondayOfLastCompletedWeek();
   }
   const weekEnd = shiftDate(weekStart, +6);
 
@@ -185,7 +194,8 @@ function buildSystemPrompt(weekStart, weekEnd) {
     'YOUR JOB:',
     '1. Use the available tools to investigate the week\'s data. Pull baselines, query daily rows, search prior patterns, search the user\'s knowledge base when relevant, and compute correlations when you have a real hypothesis.',
     '2. Identify recurring patterns. Examples: "Sleep score drops on rest days after heavy lift weeks", "Mood lags HRV by 1 day", "Late-night Fridays kill Saturday recovery". A pattern is worth surfacing when: n >= 5 paired observations OR correlation |r| >= 0.4 OR a clear binary streak.',
-    '3. Avoid re-discovering existing patterns — the initial context lists active ones. If you re-confirm one, note that in your output so the server can bump its last_seen_at instead of creating a duplicate.',
+    '3. Avoid re-discovering existing patterns — the initial context lists active ones. If you re-confirm one, set reconfirms_pattern_id on that entry so the server bumps its last_seen_at instead of creating a duplicate.',
+    '4. DEDUPE YOUR OWN OUTPUT: No two entries in your patterns[] array may describe the same underlying finding. If two analyses point at the same correlation, observation, or insight (e.g. "body temp tracks HRV" and "body temp inversely correlates with HRV" are the same pattern in different words), pick ONE — the better-worded version — and drop the other. Same correlation r-value + same evidence window + same metrics ≈ same pattern. Lean toward fewer, higher-quality patterns rather than padding the list.',
     '4. Synthesize into a weekly brief: headline, 2-3 short sections, and a long-form narrative.',
     '',
     'OUTPUT FORMAT: When you have enough evidence, respond with a single JSON object (NO surrounding prose, NO markdown fences) in this shape:',
@@ -256,15 +266,47 @@ function parseSynthesisOutput(text) {
 }
 
 // ── Pattern persistence ───────────────────────────────────────────
+// Opus sometimes emits two patterns in one run that describe the same
+// finding with slightly different wording (the "Body temp tracks HRV"
+// vs "Body temp inversely tracks HRV" dupe Joe caught after the first
+// run). We defend against this two ways:
+//   1. Fetch the user's existing un-dismissed patterns ONCE at the
+//      start of this run.
+//   2. For each candidate pattern, compare against existing patterns
+//      AND against ones we've already inserted THIS run. Treat
+//      matches as reconfirms (strengthen) instead of insert.
+//   3. The match criterion is a simple distinctive-token overlap:
+//      ≥3 shared non-stopword tokens between the new pattern's
+//      label+description and the existing pattern's label+description,
+//      AND evidence-window overlap of ≥50% if both have windows.
 async function persistPatterns(patterns, userId, weekStart, weekEnd, serviceKey) {
   const ids = [];
+  // Load existing un-dismissed patterns for dedupe check.
+  let existing = [];
+  try {
+    existing = await fetchJson(
+      `${SUPABASE_URL}/rest/v1/patterns_discovered`
+        + `?user_id=eq.${userId}&dismissed_by_user=eq.false`
+        + `&select=id,label,description,evidence_window&limit=200`,
+      { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    );
+  } catch (_) { existing = []; }
+
+  // Track what we've inserted/touched this run so two candidates with
+  // the same finding within ONE run collapse to one row.
+  const touchedThisRun = [];
+
   for (const p of (patterns || [])) {
     if (!p?.label || !p?.description) continue;
     try {
-      if (p.reconfirms_pattern_id) {
+      // Pre-existing match: model said reconfirms OR we fuzzy-match
+      const dupeId = p.reconfirms_pattern_id
+        || findDuplicateId(p, existing, weekStart, weekEnd)
+        || findDuplicateId(p, touchedThisRun, weekStart, weekEnd);
+      if (dupeId) {
         // Strengthen existing
         await dbPatch(
-          `${SUPABASE_URL}/rest/v1/patterns_discovered?id=eq.${encodeURIComponent(p.reconfirms_pattern_id)}&user_id=eq.${userId}`,
+          `${SUPABASE_URL}/rest/v1/patterns_discovered?id=eq.${encodeURIComponent(dupeId)}&user_id=eq.${userId}`,
           {
             last_seen_at:   new Date().toISOString(),
             strength_score: typeof p.strength_score === 'number' ? p.strength_score : undefined,
@@ -273,7 +315,7 @@ async function persistPatterns(patterns, userId, weekStart, weekEnd, serviceKey)
           },
           serviceKey,
         );
-        ids.push(p.reconfirms_pattern_id);
+        if (!ids.includes(dupeId)) ids.push(dupeId);
       } else {
         // Insert new
         const row = await dbInsertReturning(`${SUPABASE_URL}/rest/v1/patterns_discovered`, {
@@ -285,13 +327,72 @@ async function persistPatterns(patterns, userId, weekStart, weekEnd, serviceKey)
           strength_score: typeof p.strength_score === 'number' ? p.strength_score : null,
           metadata:       p.metadata || null,
         }, serviceKey);
-        if (row?.id) ids.push(row.id);
+        if (row?.id) {
+          ids.push(row.id);
+          touchedThisRun.push({
+            id:              row.id,
+            label:           row.label,
+            description:     row.description,
+            evidence_window: row.evidence_window,
+          });
+        }
       }
     } catch (e) {
       console.warn('[weekly-synthesis] pattern persist failed:', e.message);
     }
   }
   return ids;
+}
+
+// Find an existing pattern that's effectively a duplicate of the
+// candidate. Returns the matching id, or null. See persistPatterns
+// header for the matching rules.
+const _STOPWORDS = new Set([
+  'a','an','and','are','as','at','be','but','by','for','from','has','have',
+  'he','her','his','i','in','is','it','its','of','on','or','our','she',
+  'so','that','the','their','them','they','this','to','was','were','will',
+  'with','you','your','my','me','we','us','also','than','then','these',
+  'those','here','there','about','across','after','before','between',
+  'into','over','through','during','can','could','should','would','may',
+  'might','do','does','did','done','goes','went','more','most','very',
+  'much','some','any','all','only','same','vs','via','per',
+]);
+function tokenize(s) {
+  return Array.from(new Set(
+    String(s || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_\s-]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length > 2 && !_STOPWORDS.has(t)),
+  ));
+}
+function findDuplicateId(candidate, pool, weekStart, weekEnd) {
+  if (!Array.isArray(pool) || pool.length === 0) return null;
+  const candTokens = new Set(tokenize((candidate.label || '') + ' ' + (candidate.description || '')));
+  if (candTokens.size === 0) return null;
+  const candEW = candidate.evidence_window || { start_date: weekStart, end_date: weekEnd };
+  for (const existing of pool) {
+    const existTokens = tokenize((existing.label || '') + ' ' + (existing.description || ''));
+    const overlap = existTokens.filter(t => candTokens.has(t)).length;
+    if (overlap < 3) continue;
+    if (!windowsOverlap(candEW, existing.evidence_window, 0.5)) continue;
+    return existing.id;
+  }
+  return null;
+}
+function windowsOverlap(a, b, minFraction) {
+  if (!a?.start_date || !a?.end_date || !b?.start_date || !b?.end_date) return true; // permissive
+  const aS = Date.parse(a.start_date + 'T00:00:00Z');
+  const aE = Date.parse(a.end_date   + 'T00:00:00Z');
+  const bS = Date.parse(b.start_date + 'T00:00:00Z');
+  const bE = Date.parse(b.end_date   + 'T00:00:00Z');
+  if (!aS || !aE || !bS || !bE) return true;
+  const overlap = Math.max(0, Math.min(aE, bE) - Math.max(aS, bS));
+  const aLen = Math.max(1, aE - aS);
+  const bLen = Math.max(1, bE - bS);
+  const fracA = overlap / aLen;
+  const fracB = overlap / bLen;
+  return Math.max(fracA, fracB) >= minFraction;
 }
 
 // ── Date helpers ──────────────────────────────────────────────────
@@ -301,6 +402,10 @@ function mondayOfThisWeek() {
   const delta = (dow === 0) ? -6 : (1 - dow);
   d.setUTCDate(d.getUTCDate() + delta);
   return d.toISOString().slice(0, 10);
+}
+function mondayOfLastCompletedWeek() {
+  // Last completed Mon-Sun = the Monday 7 days before this week's Monday.
+  return shiftDate(mondayOfThisWeek(), -7);
 }
 function shiftDate(ymd, deltaDays) {
   const d = new Date(ymd + 'T12:00:00Z');
