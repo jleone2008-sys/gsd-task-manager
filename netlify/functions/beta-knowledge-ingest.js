@@ -32,8 +32,12 @@ const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMS  = 1536;
 
-const SUMMARY_MODEL    = 'claude-sonnet-4-7';
-const EXTRACT_MODEL    = 'claude-sonnet-4-7';
+// claude-opus-4-7 is what beta-daily-brief defaults to and is known to
+// work in this user's account. claude-sonnet-4-7 returned 404 on first
+// attempt. Configurable via env var (KNOWLEDGE_MODEL) for future tuning.
+const KNOWLEDGE_MODEL  = process.env.KNOWLEDGE_MODEL || 'claude-opus-4-7';
+const SUMMARY_MODEL    = KNOWLEDGE_MODEL;
+const EXTRACT_MODEL    = KNOWLEDGE_MODEL;
 const MAX_TEXT_TOKENS  = 100_000;   // ~400KB of text; safety cap before chunking
 
 const CHUNK_TARGET_CHARS  = 2000;   // ~500 tokens at ~4 chars/token
