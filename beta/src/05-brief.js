@@ -706,11 +706,14 @@ function homeBriefRecompute() {
   if (s.recap && s.recap.right) {
     const ref = mode === 'morning' ? briefTodayLocal() : briefTomorrowLocal();
     s.recap.right.task_counts  = briefComputeTaskCounts(ref);
-    // Habits done today: server can't see in-progress days; client always wins.
-    // briefComputeHabitsToday now returns { pct, done, due } directly using
-    // the same todayContribution formula the bottom-nav badge uses, so the
-    // brief stays in lock-step with the Habits tab's '60%' indicator.
-    s.recap.right.habits_today = briefComputeHabitsToday();
+    // Habits only make sense on a column whose data exists today —
+    // morning right-column = 'Today', evening right-column = 'Tomorrow'.
+    // Tomorrow's habit progress doesn't exist yet, so explicitly clear
+    // it in evening mode. Without this gate the live today-count was
+    // bleeding into the Tomorrow column.
+    s.recap.right.habits_today = (mode === 'morning')
+      ? briefComputeHabitsToday()
+      : null;
     // Morning mode: surface tasks-done-today on the Today column so the
     // user sees completions reflected without waiting for tonight's brief
     // regen. (Evening mode already shows this on the left column —
