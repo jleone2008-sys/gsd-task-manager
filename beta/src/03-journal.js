@@ -136,7 +136,7 @@ async function loadJournalMonth(year, month) {
   const end = `${year}-${String(month+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, photo_paths, learning, updated_at')
+      .select('entry_date, reflections, mood, photo_paths, learning, updated_at')
       .gte('entry_date', start).lte('entry_date', end);
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
@@ -150,7 +150,7 @@ async function loadJournalRange(startDate, endDate) {
   console.time('[perf] journal.loadInitial:entries');
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, photo_paths, learning, updated_at')
+      .select('entry_date, reflections, mood, photo_paths, learning, updated_at')
       .gte('entry_date', startDate).lte('entry_date', endDate);
     if (error) throw error;
     (data || []).forEach(row => journalState.entries.set(row.entry_date, row));
@@ -174,7 +174,7 @@ async function loadJournalEntry(dateStr) {
   if (journalState.entries.has(dateStr)) return journalState.entries.get(dateStr);
   try {
     const { data, error } = await db.from('journal_entries')
-      .select('entry_date, reflections, mood, photos, photo_paths, learning, updated_at')
+      .select('entry_date, reflections, mood, photo_paths, learning, updated_at')
       .eq('entry_date', dateStr).maybeSingle();
     if (error) throw error;
     if (data) journalState.entries.set(dateStr, data);
@@ -201,12 +201,12 @@ async function saveJournalEntry(dateStr, patch) {
       entry_date: dateStr,
       reflections: merged.reflections || null,
       mood: merged.mood ?? null,
-      photos: merged.photos || [],
-      // Phase 2 audit: photo_paths is the new home for Storage-hosted
-      // photos (relative bucket paths). Coexists with the legacy
-      // photos[] (data-URLs inline) during the migration window;
-      // unmigrated entries keep rendering until backfill runs. After
-      // backfill + spot-check, photos[] will be nulled out.
+      // Phase 2 audit cleanup: photos[] column is the deprecated
+      // legacy data-URL store. Save flow stops touching it now that
+      // the backfill is complete and the cleanup migration emptied
+      // it for all backfilled rows. New rows pick up the column's
+      // default ('[]') automatically. photo_paths is the only source
+      // of truth for journal photos going forward.
       photo_paths: merged.photo_paths || [],
       learning: merged.learning || null,
       updated_at: new Date().toISOString()
