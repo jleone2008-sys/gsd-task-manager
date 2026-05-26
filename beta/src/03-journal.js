@@ -1272,38 +1272,47 @@ function renderJournalCalendar() {
 
 /* ── PHOTO GRID (in card) ────────────────────────────────── */
 
-// Combine an entry's photo sources into a single ordered list of
-// renderable src strings. Order: legacy photos[] data-URLs first (so
-// existing layouts don't reshuffle), then Storage-hosted photo_paths
-// resolved via signed URLs. Paths whose signed URLs aren't cached yet
-// return null in the list — render skips them on this pass and kicks
-// an async resolution that re-renders the card when URLs arrive.
-// Phase 2 audit: keeps cards painting fast (data-URLs render
-// immediately, Storage photos pop in shortly after).
+// Resolve an entry's photos to renderable src strings. PREFER the
+// Storage-hosted photo_paths[] (post-backfill source of truth) when
+// present; fall back to legacy photos[] data-URLs only when no paths
+// exist yet (entries not yet migrated). Never combine both — the
+// backfill copies photos to Storage but leaves photos[] intact for
+// safety, so combining would render every photo twice (the duplicate-
+// photos bug user hit on first post-backfill load).
+//
+// Paths whose signed URLs aren't cached yet are skipped on this pass;
+// an async resolution fires and triggers rerenderTimelineCard when
+// the URLs land. Phase 2 audit.
 function resolveEntryPhotoSrcs(dateStr, entry) {
-  const legacyData = Array.isArray(entry?.photos) ? entry.photos : [];
-  const paths = Array.isArray(entry?.photo_paths) ? entry.photo_paths : [];
-  const srcs = [...legacyData];
-  let needFetch = false;
-  for (const p of paths) {
-    const hit = _photoUrlCache.get(p);
-    if (hit && hit.expiresAt > Date.now() + 60_000) {
-      srcs.push(hit.url);
-    } else {
-      needFetch = true;
-      // Skip this entry from the renderable list for now — it'll
-      // appear after async resolution + rerenderTimelineCard.
+  const paths      = Array.isArray(entry?.photo_paths) ? entry.photo_paths : [];
+  const legacyData = Array.isArray(entry?.photos)      ? entry.photos      : [];
+
+  // Backfilled / new-upload path: photo_paths is populated → use only it.
+  if (paths.length > 0) {
+    const srcs = [];
+    let needFetch = false;
+    for (const p of paths) {
+      const hit = _photoUrlCache.get(p);
+      if (hit && hit.expiresAt > Date.now() + 60_000) {
+        srcs.push(hit.url);
+      } else {
+        needFetch = true;
+      }
     }
+    if (needFetch) {
+      // Fire-and-forget. signedUrlsForPaths is idempotent (cache hits
+      // skip the network); rerenderTimelineCard is a no-op for cards
+      // not in the DOM (content-visibility:auto + offscreen-skip).
+      signedUrlsForPaths(paths).then(() => {
+        if (typeof rerenderTimelineCard === 'function') rerenderTimelineCard(dateStr);
+      });
+    }
+    return srcs;
   }
-  if (needFetch && paths.length) {
-    // Fire-and-forget. signedUrlsForPaths is idempotent (cache hits
-    // skip the network); rerenderTimelineCard is a no-op for cards
-    // not in the DOM (content-visibility:auto + offscreen-skip).
-    signedUrlsForPaths(paths).then(() => {
-      if (typeof rerenderTimelineCard === 'function') rerenderTimelineCard(dateStr);
-    });
-  }
-  return srcs;
+
+  // Legacy fallback: entries with only data-URLs in photos[] (haven't
+  // been backfilled yet). Render as-is.
+  return legacyData;
 }
 
 function renderCardPhotos(dateStr, photosOrEntry) {
