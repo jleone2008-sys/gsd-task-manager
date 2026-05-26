@@ -307,7 +307,7 @@ function slabel(l,n,showSort) {
   // Combined Sort + Filter trigger. Label no longer shows the chosen
   // sort inline — the dropdown carries both axes and the user sees
   // their selection inside.
-  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" data-task-action="toggle-sort">Sort or Filter by <span style="font-size:7px">▼</span></button></div>` : '';
+  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" data-task-action="toggle-sort">SORT / FILTER <span style="font-size:7px">▼</span></button></div>` : '';
   return `<div class="section-label">${cleaned}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 

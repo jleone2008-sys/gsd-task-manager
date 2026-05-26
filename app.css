@@ -437,12 +437,17 @@
     align-items: center;
   }
   .filters::-webkit-scrollbar { display: none; }
+  /* Canonical pill chrome — every subtab bar (Tasks, Habits, Insights,
+     Train) uses this. Outlined white surface by default, dark-ink
+     fill when active (this is the "Train style"). Icons inside pills
+     inherit currentColor so they flip from ink-3 → white automatically
+     on the active state. */
   .pill {
     flex: 0 0 auto;
     padding: 6px 12px;
-    border-radius: var(--r-sm);
-    border: none;
-    background: transparent;
+    border-radius: var(--r-md);
+    background: var(--surface);
+    border: 1px solid var(--edge);
     color: var(--ink-3);
     font-family: inherit;
     font-size: var(--t-sm);
@@ -450,7 +455,8 @@
     cursor: pointer;
     white-space: nowrap;
     text-align: center;
-    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
     /* Tap target inflation per spec §9.1 — visual stays small; tap box = 44h. */
     position: relative;
     min-height: 32px;
@@ -459,20 +465,22 @@
     content: ''; position: absolute;
     inset: -6px 0;     /* extends the tap region vertically to 44h */
   }
-  .pill:hover { color: var(--ink); background: var(--surface-2); }
+  .pill:hover { color: var(--ink); background: var(--surface-2); border-color: var(--edge-strong); }
   .pill.active {
-    background: var(--guava-100);
-    color: var(--guava-700);
-    border-color: transparent;
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
     font-weight: 500;
   }
   .pill-count {
     font-size: 10px;
     font-weight: 600;
-    color: var(--ink-5);
-    margin-left: 5px;
+    color: var(--ink-3);
+    background: var(--surface-2);
+    padding: 1px 7px; border-radius: 999px;
+    margin-left: 2px;
   }
-  .pill.active .pill-count { color: var(--guava-700); opacity: 0.7; }
+  .pill.active .pill-count { color: #fff; background: rgba(255,255,255,0.18); }
 
   /* ADD SECTION */
   .add-section { max-width: var(--max-content); margin: 0 auto; padding: var(--space-3-5) var(--space-4) 0; }
@@ -2278,15 +2286,10 @@
   .habit-sub-pills { /* inherits .pill-bar layout */ }
   .habit-sub-content { display: none; }
   .habit-sub-content.active { display: block; }
-  /* Legacy per-tool pill color variants removed — all pills share the flat
-     lifestyle style (transparent + guava-on-active). This keeps the header
-     nav visually identical across Tasks / Habits / Notes. */
-  .pill.habit-pill,
-  .pill.stat-pill { background: transparent; color: var(--ink-3); border: none; }
-  .pill.habit-pill:hover,
-  .pill.stat-pill:hover { background: var(--surface-2); color: var(--ink); }
-  .pill.habit-pill.active,
-  .pill.stat-pill.active { background: var(--guava-100); color: var(--guava-700); border: none; }
+  /* Habit-pill / stat-pill variants no longer override the canonical
+     .pill chrome — every subtab bar (Tasks, Habits, Insights, Train)
+     shares the outlined-default + dark-ink-active treatment defined
+     at .pill / .pill.active above. */
 
   /* ──────────────────────────────────────────────────────────────
      HABITS — stats strip + cards per gsd-handoff/screens-lifestyle.jsx
@@ -3078,20 +3081,17 @@
   }
 
   /* Insights subtab pills + Patterns view + Weekly view.
-     Pills are .pill .insights-pill, so they inherit the canonical
-     pill chrome from the base .pill rules (transparent default,
-     guava-100 / guava-700 .active state — the "Train" style used
-     across every tab). The class is kept only as a hook for the
-     patterns count badge. */
+     Pills inherit the canonical .pill chrome — the only Insights-
+     specific bit is the patterns count badge, which uses the same
+     visual treatment as the global .pill-count (count is just a
+     differently-named span). */
   .insights-pill-count {
     font-size: 10px; font-weight: 600;
-    background: var(--surface-2); color: var(--ink-4);
+    color: var(--ink-3); background: var(--surface-2);
     padding: 1px 7px; border-radius: 999px;
-    margin-left: 5px;
+    margin-left: 2px;
   }
-  .pill.insights-pill.active .insights-pill-count {
-    background: rgba(184,45,59,0.12); color: var(--guava-700); opacity: 0.85;
-  }
+  .pill.active .insights-pill-count { color: #fff; background: rgba(255,255,255,0.18); }
 
   .insights-patterns, .insights-weekly {
     flex: 1; overflow-y: auto; padding: 14px;

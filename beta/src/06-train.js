@@ -3800,18 +3800,10 @@ function ensureTrainStyles() {
     }
     .train-empty-msg { font-size: 13px; color: var(--ink-3); }
 
-    /* Train subtab pill-bar (Workout / History / My Progress). Same
-       chrome as habits sub-pills with an inline icon prepended to each
-       label. Icon inherits currentColor so the active black-on-pill
-       state flips it automatically. */
-    .train-sub-pills .train-pill {
-      background: var(--surface); border: 1px solid var(--edge);
-      color: var(--ink-3);
-      display: inline-flex; align-items: center; gap: 6px;
-    }
-    .train-sub-pills .train-pill.active {
-      background: var(--ink); color: #fff; border-color: var(--ink);
-    }
+    /* Train pill chrome moved to app.css under the global .pill-bar
+       rules so Tasks / Habits / Insights all share the exact same
+       look. Only the icon-size rule remains here as the canonical
+       size for icons inside any pill that uses one. */
     .train-pill-icon { width: 14px; height: 14px; flex-shrink: 0; }
 
     /* ── Shared train tab chrome ──────────────────────────────────── */
