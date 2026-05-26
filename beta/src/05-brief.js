@@ -272,16 +272,29 @@ function briefInjectStyles() {
       font-size: 11px; font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase; margin: 0 0 8px 0;
     }
+    /* Row layout:
+       Col 1 = icon (18px fixed)
+       Col 2 = label (auto-sized to its short text — 'Train', 'Habits', etc.)
+       Col 3 = value (minmax(0, 1fr) so it eats whatever space remains AND
+               can shrink below its content width to allow ellipsis when
+               the value is long; without min: 0 a grid item's default
+               min-content size keeps it from ever shrinking, which is
+               exactly what was letting 'Full Body C · 19 sets · 1,920 lbs'
+               push past the column edge).
+       This is the canonical brief-row contract — any new row added here
+       inherits the same overflow protection. */
     .brief-recap-row {
-      display: grid; grid-template-columns: 18px 1fr auto; gap: 8px;
+      display: grid; grid-template-columns: 18px auto minmax(0, 1fr); gap: 8px;
       align-items: baseline; padding: 6px 0; font-size: var(--t-sm);
     }
     .brief-recap-row + .brief-recap-row { border-top: 1px dashed var(--edge); }
     .brief-recap-icon { font-size: 14px; line-height: 1; }
-    .brief-recap-name { color: var(--ink-3); }
+    .brief-recap-name { color: var(--ink-3); white-space: nowrap; }
     .brief-recap-value {
       color: var(--ink); font-weight: 600; text-align: right;
-      font-variant-numeric: tabular-nums; white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0;
     }
     @media (max-width: 420px) {
       /* Narrow phones: collapse the grid to stacked sections so the values

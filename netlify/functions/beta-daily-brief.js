@@ -984,28 +984,25 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     return { pct: Math.round((done / due) * 100), done, due };
   };
 
-  // Compact Train summary for a recap column. Returns a short string the
-  // client renders as one of the Yesterday/Today rows. Falls back to null
-  // when nothing relevant happened (so the client skips the row entirely).
+  // Compact Train summary for a recap column. Returns { label, detail? }
+  // — the client renders 'label' (or 'label · detail' when detail exists).
+  // Detail is intentionally minimal: cardio/bonus get one stat (the
+  // minute count), lifts get the workout name only. The full stat grid
+  // for a logged lift lives on the History tab + the Workout subtab's
+  // submitted feedback card; trying to squeeze 'N sets · X lbs' into
+  // the recap column overflowed even the wider day name. Returns null
+  // when nothing relevant happened (client skips the row).
   const trainSummary = (session) => {
     if (!session) return null;
     const t = session.day_type;
     const name = session.day_name || (t === 'cardio' ? 'Cardio' : t === 'bonus' ? 'Bonus' : 'Lift');
-    if (t === 'cardio') {
+    if (t === 'cardio' || t === 'bonus') {
       const ex = (session.exercises && session.exercises[0]) || null;
       const mins = ex?.top_reps || 0;          // cardio parks minutes in reps
       return { label: name, detail: mins ? `${mins} min` : null };
     }
-    if (t === 'bonus') {
-      const ex = (session.exercises && session.exercises[0]) || null;
-      const mins = ex?.top_reps || 0;
-      return { label: name, detail: mins ? `${mins} min` : null };
-    }
-    // Lift
-    const sets = session.total_sets;
-    const vol  = session.total_volume;
-    if (vol > 0) return { label: name, detail: `${sets} sets · ${vol.toLocaleString()} lbs` };
-    return { label: name, detail: sets ? `${sets} sets` : null };
+    // Lift — name only, no detail. See History / Workout tabs for the breakdown.
+    return { label: name, detail: null };
   };
   // Planned-for-today / tomorrow Train row (when nothing logged yet).
   // Just the workout name — the recap column is space-constrained and
