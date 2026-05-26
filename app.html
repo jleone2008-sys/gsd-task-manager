@@ -471,10 +471,12 @@
      display back to ''. Matches the habits pill-bar pattern below. -->
 <div class="pill-bar" data-tool-view="tasks" style="display:none">
   <div class="pill-bar-inner">
-    <button class="pill active" data-filter="all">All<span class="pill-count" id="pc-all">0</span></button>
-    <button class="pill" data-filter="overdue">Overdue<span class="pill-count" id="pc-overdue">0</span></button>
-    <button class="pill" data-filter="personal">Personal<span class="pill-count" id="pc-personal">0</span></button>
-    <button class="pill" data-filter="biz">Work<span class="pill-count" id="pc-biz">0</span></button>
+    <!-- Pill bar collapsed to two pills: Tasks (the merged 'all' view —
+         Overdue / Personal / Work / Later / Completed now live as
+         filter options inside the Sort-or-Filter dropdown) and
+         Statistics. The internal data-filter key for the merged view
+         stays 'all' so callers + the URL router keep working. -->
+    <button class="pill active" data-filter="all">Tasks<span class="pill-count" id="pc-all">0</span></button>
     <button class="pill" data-filter="stats">Statistics</button>
   </div>
 </div>
@@ -1088,10 +1090,26 @@
 <script src="/beta/src/06-train.js" defer></script>
 <script src="/beta/src/06-brain.js" defer></script>
 <script src="/beta/src/06-insights.js" defer></script>
+<!-- Sort + Filter dropdown — opened by the "Sort or Filter by" button
+     in slabel(). Two sections:
+       SORT   — User Sorted / Recently Created / Due Date
+       FILTER — All / Overdue / Personal / Work / Later / Completed
+     A click on a SORT row calls setSort(...) and re-renders; a click on
+     a FILTER row calls setCatFilter(...) which also updates the active
+     pill state (Tasks vs Statistics) plus the URL. -->
 <div class="sort-dropdown" id="sortDropdown">
+  <div class="sort-section-label">Sort</div>
   <div class="sort-opt active" data-sort="default">User Sorted</div>
   <div class="sort-opt" data-sort="recent">Recently Created</div>
   <div class="sort-opt" data-sort="due">Due Date</div>
+  <div class="sort-section-divider"></div>
+  <div class="sort-section-label">Filter</div>
+  <div class="sort-opt sort-filter-opt active" data-filter="all">All</div>
+  <div class="sort-opt sort-filter-opt" data-filter="overdue">Overdue</div>
+  <div class="sort-opt sort-filter-opt" data-filter="personal">Personal</div>
+  <div class="sort-opt sort-filter-opt" data-filter="biz">Work</div>
+  <div class="sort-opt sort-filter-opt" data-filter="later">Later</div>
+  <div class="sort-opt sort-filter-opt" data-filter="completed">Completed</div>
 </div>
 </body>
 </html>

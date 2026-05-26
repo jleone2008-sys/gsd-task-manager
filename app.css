@@ -647,12 +647,23 @@
   .sort-dropdown {
     display: none; position: fixed;
     background: #fff; border: 1px solid var(--edge); border-radius: var(--r-md);
-    box-shadow: var(--shadow-raised); z-index: 9999; min-width: 150px; overflow: hidden;
+    box-shadow: var(--shadow-raised); z-index: 9999; min-width: 170px; overflow: hidden;
+    padding: 4px 0;
   }
   .sort-dropdown.open { display: block; }
   .sort-opt { padding: var(--space-2) var(--space-3); font-size: var(--fs-meta); cursor: pointer; color: var(--fg); letter-spacing: 0; text-transform: none; font-weight: var(--fw-regular); }
   .sort-opt:hover { background: var(--edge); }
   .sort-opt.active { color: var(--guava-700); font-weight: var(--fw-semibold); }
+  /* Two-section dropdown (Sort + Filter). The label row is a small-
+     caps eyebrow; the divider is a 1px rule between sections. */
+  .sort-section-label {
+    padding: 8px var(--space-3) 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-4);
+  }
+  .sort-section-divider {
+    height: 1px; background: var(--edge); margin: 4px 0;
+  }
 
   /* ──────────────────────────────────────────────────────────────
      TASK LIST — Lifestyle card per gsd-handoff/screens-lifestyle.jsx

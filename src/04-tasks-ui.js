@@ -176,14 +176,20 @@ function render() {
   let active = tasks.filter(t => !t.done);
   let done = tasks.filter(t=>t.done).sort((a,b) => (b.completedAt||b.id) - (a.completedAt||a.id));
   let view = [...active];
-  // Tasks filter set: all · overdue · personal · biz (Work).
+  // Filter set: all · overdue · personal · biz (Work) · later (someday)
+  // · completed (done) · priority (internal). Pills surface only 'all'
+  // + 'stats'; the rest live as filter rows inside the Sort-or-Filter
+  // dropdown so they're one tap away without crowding the pill bar.
   const _todayStr = typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10);
   if (filter==='overdue')  { view = view.filter(t => t.due && t.due < _todayStr); done = done.filter(t => t.due && t.due < _todayStr); }
   if (filter==='priority') { view = view.filter(t => t.top3); done = done.filter(t => t.top3); }
   if (filter==='biz')      { view = view.filter(t=>t.tags?.includes('biz')); done = done.filter(t=>t.tags?.includes('biz')); }
   if (filter==='personal') { view = view.filter(t=>t.tags?.includes('personal')); done = done.filter(t=>t.tags?.includes('personal')); }
-  // Legacy internal filter still honored by callers not going through the pills.
-  if (filter==='someday')  view = view.filter(t=>t.someday);
+  // 'later' is the user-facing name for someday-tagged tasks; keep the
+  // legacy 'someday' alias so older internal callers still route here.
+  if (filter==='someday' || filter==='later') view = view.filter(t=>t.someday);
+  // 'completed' shows the done list as the primary view (active hidden).
+  if (filter==='completed') { view = []; /* done stays as-is */ }
   // filterStarred drives the Priority pill.
   if (filterStarred && filter !== 'priority') { view = view.filter(t=>t.top3); done = done.filter(t=>t.top3); }
 
@@ -218,7 +224,15 @@ function render() {
       html += slabel(`Results for "${searchQuery}"`, all.length);
       html += `<div class="task-list" data-section="search">${all.map(t=>tHTMLsearch(t, searchQuery)).join('')}</div>`;
     }
-  } else if (filter!=='someday') {
+  } else if (filter === 'completed') {
+    // Completed filter — done list is the primary view, expanded.
+    if (done.length) {
+      html += slabel('Completed', done.length, true);
+      html += `<div class="task-list" data-section="done">${done.map(t=>tHTML(t)).join('')}</div>`;
+    } else {
+      html += emptyState('done');
+    }
+  } else if (filter!=='someday' && filter!=='later') {
     if (filterStarred) {
       // Legacy priority-only branch (filter='priority' no longer has a pill,
       // but internal callers may still route through here).
@@ -290,8 +304,10 @@ function render() {
 function slabel(l,n,showSort) {
   // Strip legacy "&#9733; " (☆) prefix used for Starred sections — strip is the only signal now
   const cleaned = l.replace(/^&#9733;\s*/,'').replace(/^Starred\s*/,'Priority ').trim();
-  const sortLabels = {default:'User Sorted',recent:'Recent',due:'Due Date'};
-  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" data-task-action="toggle-sort">Sort by <span class="sort-val">${sortLabels[sortBy]}</span> <span style="font-size:7px">▼</span></button></div>` : '';
+  // Combined Sort + Filter trigger. Label no longer shows the chosen
+  // sort inline — the dropdown carries both axes and the user sees
+  // their selection inside.
+  const sortHtml = showSort ? `<div class="sort-wrap"><button class="sort-btn" data-task-action="toggle-sort">Sort or Filter by <span style="font-size:7px">▼</span></button></div>` : '';
   return `<div class="section-label">${cleaned}<span class="cnt">${n}</span>${sortHtml}</div>`;
 }
 
@@ -567,10 +583,21 @@ function setCatFilter(f, el) {
   if (f !== 'stats') document.getElementById('fabBtn')?.classList.remove('hidden');
   filter = f;
   filterStarred = false;
+  // Pill bar carries only Tasks + Statistics now; every other filter
+  // (Overdue / Personal / Work / Later / Completed) lives in the
+  // Sort-or-Filter dropdown but should keep the "Tasks" pill highlighted
+  // as a "you're still inside the Tasks tab" cue.
   const bar = document.querySelector('[data-tool-view="tasks"].pill-bar');
-  if (bar) bar.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-  if (!el && bar) el = bar.querySelector(`.pill[data-filter="${f}"]`);
-  if (el) el.classList.add('active');
+  if (bar) {
+    bar.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    const pillKey = f === 'stats' ? 'stats' : 'all';
+    const activePill = bar.querySelector(`.pill[data-filter="${pillKey}"]`);
+    if (activePill) activePill.classList.add('active');
+  }
+  // Repaint dropdown's filter-row selection so dropdown + state stay in sync.
+  document.querySelectorAll('#sortDropdown .sort-filter-opt').forEach(o => {
+    o.classList.toggle('active', o.dataset.filter === f);
+  });
   render();
   if (typeof routerSyncUrl === 'function' && activeTool === 'tasks') {
     routerSyncUrl({ tool: 'tasks', filter: f === 'all' ? null : f }, { replace: true });

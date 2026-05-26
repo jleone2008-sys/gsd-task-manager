@@ -200,7 +200,9 @@ function setSort(val) {
   const dd = document.getElementById('sortDropdown');
   if (dd) {
     dd.classList.remove('open');
-    dd.querySelectorAll('.sort-opt').forEach(o => o.classList.toggle('active', o.textContent === {default:'User Sorted',recent:'Recently Created',due:'Due Date'}[val]));
+    // Only iterate sort rows — filter rows live in the same dropdown
+    // but track a separate axis (don't clobber their active state).
+    dd.querySelectorAll('.sort-opt[data-sort]').forEach(o => o.classList.toggle('active', o.dataset.sort === val));
   }
   render();
 }
@@ -550,8 +552,24 @@ document.getElementById('btnAddTask').addEventListener('click', addTask);
 
 document.getElementById('sortDropdown').addEventListener('click', e => {
   e.stopPropagation();
-  const opt = e.target.closest('.sort-opt[data-sort]');
-  if (opt) setSort(opt.dataset.sort);
+  // Two columns of options now live here: data-sort=… picks the sort
+  // axis (User Sorted / Recent / Due Date) and data-filter=… picks the
+  // filter axis (All / Overdue / Personal / Work / Later / Completed).
+  // Filter rows route through setCatFilter so the active pill state +
+  // URL stay in sync.
+  const sortOpt = e.target.closest('.sort-opt[data-sort]');
+  if (sortOpt) { setSort(sortOpt.dataset.sort); return; }
+  const filterOpt = e.target.closest('.sort-opt[data-filter]');
+  if (filterOpt) {
+    const f = filterOpt.dataset.filter;
+    if (typeof setCatFilter === 'function') setCatFilter(f, null);
+    // Repaint dropdown selection state.
+    document.querySelectorAll('#sortDropdown .sort-filter-opt').forEach(o => {
+      o.classList.toggle('active', o.dataset.filter === f);
+    });
+    // Close after pick.
+    document.getElementById('sortDropdown').classList.remove('open');
+  }
 });
 
 /* ── TASK EDIT MODAL HANDLERS ── */
