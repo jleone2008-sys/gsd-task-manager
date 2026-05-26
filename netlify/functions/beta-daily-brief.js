@@ -365,6 +365,41 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_workouts?user_email=eq.${encodeURIComponent(user.email)}&day=eq.${today}&select=activity,duration_min,intensity`, hdr),
   ]) : [[], [], []];
 
+  // Phase 5 follow-up — pull individual mood check-ins (with the user's
+  // optional reflection notes) for the 2-day window around the brief
+  // date. journal_entries.mood is the rounded-average daily summary;
+  // these rows carry the qualitative context that the daily AI brief
+  // can reference ("you noted 'meeting overload' twice yesterday").
+  // Filter is on captured_at (timestamptz), spanning yday 00:00 local
+  // through today 23:59 local — approximated with a UTC window that's
+  // generously wide; client-side split below buckets per local date.
+  const moodWinStart = `${yday}T00:00:00Z`;
+  const moodWinEnd   = `${today}T23:59:59.999Z`;
+  const moodCheckinsRaw = await fetchJson(
+    `${SUPABASE_URL}/rest/v1/mood_checkins?user_id=eq.${user.user_id}` +
+    `&captured_at=gte.${encodeURIComponent(moodWinStart)}` +
+    `&captured_at=lte.${encodeURIComponent(moodWinEnd)}` +
+    `&select=captured_at,mood,note&order=captured_at.asc`,
+    hdr
+  );
+  const moodCheckinForDate = (dateStr) => (moodCheckinsRaw || [])
+    .filter(c => {
+      // Compare in user's tz so a 12:30am local check-in lands on the
+      // right day, not the prior UTC date.
+      const d = new Intl.DateTimeFormat('en-CA', {
+        timeZone: user.timezone || DEFAULT_TIMEZONE,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(new Date(c.captured_at));
+      return d === dateStr;
+    })
+    .map(c => ({
+      at:         c.captured_at,
+      mood_label: moodLabel(c.mood),
+      note:       (typeof c.note === 'string' && c.note.trim()) ? c.note.trim() : null,
+    }));
+  const moodCheckinsYesterday = moodCheckinForDate(yday);
+  const moodCheckinsToday     = moodCheckinForDate(today);
+
   const [oura7, journal7, habits7, tags7] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=gte.${win7}&date=lte.${yday}&select=date,sleep_score,readiness_score,activity_score,total_sleep_min,hrv_ms&order=date.asc`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_entries?user_id=eq.${user.user_id}&entry_date=gte.${win7}&entry_date=lte.${yday}&select=entry_date,mood&order=entry_date.asc`, hdr),
@@ -494,6 +529,11 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       tags: (oTagsY || []).map(t => ({ kind: t.tag_type_code, name: t.custom_name, at: t.start_time })),
       workouts: oWorkoutsY || [],
       mood: yMood == null ? null : { value_label: moodLabel(yMood) },
+      // Individual mood check-ins from yesterday with the user's
+      // optional reflection notes. Surfaced separately from the
+      // rounded-average `mood` field so Claude can quote the user's
+      // own words when relevant ("you logged 'rough morning' at 9am").
+      mood_checkins: moodCheckinsYesterday,
       reflection: reflection || null,
       tasks_completed_count: tasksYesterday.length,
       tasks_completed_sample: tasksYesterday.slice(0, 10).map(t => t.text).filter(Boolean),
@@ -565,6 +605,11 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     // function doesn't have.
     today_recap: (mode === 'evening') ? {
       mood_label:     moodLabel(journalToday?.[0]?.mood ?? null),
+      // Today's individual mood check-ins with optional reflection
+      // notes — same shape as yesterday.mood_checkins, scoped to today.
+      // Lets the evening brief reference qualitative shifts across
+      // the day (morning vs afternoon mood notes).
+      mood_checkins:  moodCheckinsToday,
       workouts_today: (ouraWorkoutsToday || []).map(w => ({
         activity: w.activity, duration_min: w.duration_min, intensity: w.intensity,
       })),
@@ -1283,6 +1328,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- health_labs = the user\'s most recent bloodwork values, ONE per test_name, within the last 90 days. health_labs.age_days = how old the snapshot is. Use these as REASONING context for the brief\'s framing — e.g. if Lp(a) is flagged HIGH and today is a recovery day, you can frame the play with awareness ("CV-friendly recovery day" in subhead) without quoting numbers. NEVER echo specific lab values in headline/subhead — the server has no UI surface for them yet and quoting them out of context risks medical-claim territory. When you reference labs in an evidence_pill, frame freshness explicitly ("Bloodwork 2 wks ago" not "Bloodwork shows X"). Skip entirely if health_labs is null or all flags are normal — labs without an anomaly aren\'t worth surfacing.',
     '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
+    '- yesterday.mood_checkins / today_recap.mood_checkins = individual mood entries with optional user reflection notes (e.g. "rough morning, slept badly"). When a note carries a clear theme that connects to other data (low HRV + "anxious meeting day"), reference it in subhead/pills using neutral paraphrase — NEVER quote the user\'s words verbatim back at them in the headline. Mood notes alone aren\'t enough to override the wearable signal but they sharpen the "why" framing.',
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
       : '',

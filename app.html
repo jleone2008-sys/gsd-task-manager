@@ -49,7 +49,61 @@
   .home-ring-trend.is-down { color: var(--guava-700); }
 
   /* Mood picker — lives in the Journal card, below the reflection box. */
-  .home-journal-mood { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--edge); }
+  /* Mood subsection sits flush with the rest of the journal block — the
+     'Mood' label gives enough separation on its own, no need for a
+     border-top divider between title and emoji row. */
+  .home-journal-mood { margin-top: 0; padding-top: 0; border-top: none; }
+
+  /* Mood reflection modal — opened after a mood emoji tap on Home.
+     Centered card with the chosen emoji on the left of the header,
+     a multi-line textarea, then Skip / Submit. */
+  .mood-reflect-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20, 15, 10, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1100;
+    padding: 16px;
+    animation: fadeIn 0.16s ease both;
+  }
+  .mood-reflect-overlay[hidden] { display: none; }
+  .mood-reflect-card {
+    width: 100%; max-width: 420px;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-lg, 10px);
+    box-shadow: var(--shadow-raised);
+    padding: 18px 18px 14px;
+    display: flex; flex-direction: column; gap: 12px;
+    animation: fadeUp 0.18s ease both;
+  }
+  .mood-reflect-head { display: flex; align-items: center; gap: 12px; }
+  .mood-reflect-emoji { font-size: 36px; line-height: 1; flex-shrink: 0; }
+  .mood-reflect-headcopy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .mood-reflect-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--guava-700); }
+  .mood-reflect-sub   { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .mood-reflect-input {
+    width: 100%; box-sizing: border-box;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+    font-family: inherit; font-size: 14px; line-height: 1.45;
+    color: var(--ink); resize: vertical; min-height: 88px;
+  }
+  .mood-reflect-input:focus { outline: none; border-color: var(--guava-700); box-shadow: 0 0 0 2px var(--guava-50); }
+  .mood-reflect-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .mood-reflect-skip, .mood-reflect-submit {
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 8px 16px; border-radius: var(--r-md); cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .mood-reflect-skip {
+    background: var(--surface); color: var(--ink-2);
+    border: 1px solid var(--edge);
+  }
+  .mood-reflect-skip:hover { background: var(--surface-2); border-color: var(--edge-strong); }
+  .mood-reflect-submit {
+    background: var(--guava-700); color: #fff; border: 1px solid var(--guava-700);
+  }
+  .mood-reflect-submit:hover { background: var(--guava-800); border-color: var(--guava-800); }
   .home-mood { display: flex; gap: 8px; }
   .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 9px 4px; cursor: pointer; font-size: 21px; line-height: 1; transition: background 0.12s ease, transform 0.08s ease; }
   .home-mood-btn:hover { background: var(--surface-2); }
@@ -62,6 +116,15 @@
     display: inline-flex; align-items: center; gap: 4px;
     background: var(--surface-2); border-radius: 999px;
     padding: 2px 4px 2px 8px; font-size: 11px; color: var(--ink-2);
+    max-width: 100%;
+  }
+  /* Reflection text on a chip — italic, ink-3, truncates rather than
+     wrapping the chip onto two lines. Hover/long-press tooltip via the
+     chip's title attr shows the full text. */
+  .home-mood-chip-note {
+    font-style: italic; color: var(--ink-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 220px;
   }
   .home-mood-chip-time { font-variant-numeric: tabular-nums; }
   .home-mood-chip-emoji { font-size: 13px; line-height: 1; }
@@ -692,6 +755,28 @@
     <div class="ask-composer" id="askComposer">
       <textarea class="ask-input" id="askInput" placeholder="Ask anything…" rows="1"></textarea>
       <button class="ask-send" id="askSend" type="button" title="Send">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOOD REFLECTION MODAL — opens after a Home-tab mood emoji tap. The
+     check-in isn't persisted until the user hits Skip or Submit; the
+     selected mood lives on the dialog's dataset until then. The
+     textarea is optional context that's saved to mood_checkins.note
+     and surfaced to the AI brief / weekly synthesis prompts. -->
+<div class="mood-reflect-overlay" id="moodReflectOverlay" hidden>
+  <div class="mood-reflect-card" role="dialog" aria-modal="true" aria-labelledby="moodReflectTitle">
+    <div class="mood-reflect-head">
+      <span class="mood-reflect-emoji" id="moodReflectEmoji">·</span>
+      <div class="mood-reflect-headcopy">
+        <div class="mood-reflect-label" id="moodReflectLabel">—</div>
+        <div class="mood-reflect-sub" id="moodReflectTitle">What's on your mind?</div>
+      </div>
+    </div>
+    <textarea class="mood-reflect-input" id="moodReflectInput" placeholder="Optional — anything you want to remember about this moment." rows="4" maxlength="2000" spellcheck="true"></textarea>
+    <div class="mood-reflect-actions">
+      <button class="mood-reflect-skip"   id="moodReflectSkip"   type="button">Skip</button>
+      <button class="mood-reflect-submit" id="moodReflectSubmit" type="button">Submit</button>
     </div>
   </div>
 </div>

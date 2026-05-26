@@ -287,9 +287,16 @@ function homeMoodCheckinsHTML(checkins, entry) {
   const chips = list.map(c => {
     const t = new Date(c.captured_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     const em = emoji[c.mood - 1] || '·';
-    return `<span class="home-mood-chip">
+    // Reflection note: shown as a hover tooltip on the chip itself
+    // (compact), and inline beneath the chip row (visible without a
+    // hover gesture on mobile). Both fields are hEsc'd to avoid any
+    // injection via free-text the user typed.
+    const noteText = (typeof c.note === 'string' && c.note.trim()) ? c.note.trim() : '';
+    const titleAttr = noteText ? ` title="${hEsc(noteText)}"` : '';
+    return `<span class="home-mood-chip"${titleAttr}>
       <span class="home-mood-chip-time">${hEsc(t)}</span>
       <span class="home-mood-chip-emoji">${em}</span>
+      ${noteText ? `<span class="home-mood-chip-note">“${hEsc(noteText)}”</span>` : ''}
       <button class="home-mood-chip-del" data-home-mood-checkin-delete="${hEsc(c.id)}" title="Remove this check-in">×</button>
     </span>`;
   }).join('');
@@ -319,7 +326,7 @@ async function loadHomeMoodCheckins() {
     const startISO = new Date(today + 'T00:00:00').toISOString();
     const endISO   = new Date(today + 'T23:59:59.999').toISOString();
     const { data, error } = await db.from('mood_checkins')
-      .select('id, captured_at, mood')
+      .select('id, captured_at, mood, note')
       .gte('captured_at', startISO)
       .lte('captured_at', endISO)
       .order('captured_at', { ascending: true });
@@ -334,16 +341,20 @@ async function loadHomeMoodCheckins() {
 // Insert a check-in + recompute today's daily mood. Patches in-memory
 // state + repaints the mood subsection. Calls homeBriefRecompute so any
 // mood reference in the brief recap refreshes inline.
-async function insertMoodCheckin(value) {
+// `note` is optional reflection text from the modal — null when user
+// taps Skip or dismisses without typing.
+async function insertMoodCheckin(value, note) {
   const v = parseInt(value, 10);
   if (!Number.isFinite(v) || v < 1 || v > 5) return;
+  const trimmed = typeof note === 'string' ? note.trim() : '';
+  const noteVal = trimmed.length ? trimmed.slice(0, 2000) : null;
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
     const captured_at = new Date().toISOString();
     const { data, error } = await db.from('mood_checkins')
-      .insert({ user_id: session.user.id, captured_at, mood: v })
-      .select('id, captured_at, mood')
+      .insert({ user_id: session.user.id, captured_at, mood: v, note: noteVal })
+      .select('id, captured_at, mood, note')
       .single();
     if (error) throw error;
     _homeMoodCheckins.push(data);
@@ -352,6 +363,42 @@ async function insertMoodCheckin(value) {
   } catch (e) {
     console.warn('[home] insertMoodCheckin failed', e);
   }
+}
+
+// Mood reflection modal — opened after a Home-tab mood emoji tap. The
+// check-in is NOT inserted until the user resolves the dialog via Skip
+// or Submit. State (the picked mood value) lives in a closure here so
+// it doesn't leak into the global home state.
+let _moodReflectPending = null;     // 1-5 mood int or null
+function openMoodReflectModal(value) {
+  const v = parseInt(value, 10);
+  if (!Number.isFinite(v) || v < 1 || v > 5) return;
+  _moodReflectPending = v;
+  const overlay  = document.getElementById('moodReflectOverlay');
+  const emojiEl  = document.getElementById('moodReflectEmoji');
+  const labelEl  = document.getElementById('moodReflectLabel');
+  const input    = document.getElementById('moodReflectInput');
+  if (!overlay || !input) return;
+  const emoji = homeMoodEmoji();
+  const labels = homeMoodLabels();
+  if (emojiEl) emojiEl.textContent = emoji[v - 1] || '·';
+  if (labelEl) labelEl.textContent = labels[v - 1] || 'Mood';
+  input.value = '';
+  overlay.hidden = false;
+  setTimeout(() => input.focus(), 30);
+}
+function closeMoodReflectModal() {
+  const overlay = document.getElementById('moodReflectOverlay');
+  if (overlay) overlay.hidden = true;
+  _moodReflectPending = null;
+}
+function moodReflectResolve(withNote) {
+  // Capture before close — closeMoodReflectModal clears _moodReflectPending.
+  const v = _moodReflectPending;
+  const input = document.getElementById('moodReflectInput');
+  const note  = withNote && input ? input.value : null;
+  closeMoodReflectModal();
+  if (Number.isFinite(v)) insertMoodCheckin(v, note);
 }
 
 async function deleteMoodCheckin(id) {
@@ -1003,14 +1050,13 @@ function homeWireOnce() {
     if (e.target.closest('[data-home-newnote]')) { homeCreateNote(); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
 
-    // Phase 5 — intra-day mood check-in. Tapping an emoji creates a
-    // new check-in at the current timestamp (no toggle/deselect — each
-    // tap is a fresh log). The daily journal_entries.mood is recomputed
-    // as the rounded average of today's check-ins.
+    // Phase 5 — intra-day mood check-in. Tapping an emoji opens the
+    // reflection modal; the check-in is persisted when the user hits
+    // Skip (note=null) or Submit (note=textarea value).
     const moodEl = e.target.closest('[data-home-mood]');
     if (moodEl) {
       const val = parseInt(moodEl.dataset.homeMood, 10);  // 1–5
-      insertMoodCheckin(val);
+      openMoodReflectModal(val);
       return;
     }
     const moodDelEl = e.target.closest('[data-home-mood-checkin-delete]');
@@ -1064,7 +1110,30 @@ function homeWireOnce() {
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    const moodOverlay = document.getElementById('moodReflectOverlay');
+    if (moodOverlay && !moodOverlay.hidden) {
+      // Esc on the mood modal counts as Skip — still persist the check-in.
+      moodReflectResolve(false);
+      return;
+    }
     if (document.getElementById('homeNoteModal')) closeHomeNoteModal();
     else if (document.getElementById('homeQuickNotesModal')) closeQuickNotesModal();
+  });
+
+  // Mood reflection modal buttons. Skip = persist without note. Submit =
+  // persist with the textarea contents. Backdrop click also counts as
+  // Skip so an unfinished thought still saves the mood itself.
+  document.addEventListener('click', e => {
+    if (e.target.id === 'moodReflectSkip')   { moodReflectResolve(false); return; }
+    if (e.target.id === 'moodReflectSubmit') { moodReflectResolve(true);  return; }
+    if (e.target.id === 'moodReflectOverlay'){ moodReflectResolve(false); return; }
+  });
+  // Cmd/Ctrl+Enter submits from inside the textarea.
+  document.addEventListener('keydown', e => {
+    if (e.target?.id !== 'moodReflectInput') return;
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      moodReflectResolve(true);
+    }
   });
 }
