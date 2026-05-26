@@ -72,6 +72,32 @@
       });
     }
 
+    // "Scratchpad" — replaces the floating-scratch FAB. Same handler as
+    // the Home tab Quick Notes shortcut.
+    const scratchBtn = document.getElementById('scratchpadBtn');
+    if (scratchBtn && !scratchBtn._wired) {
+      scratchBtn._wired = true;
+      scratchBtn.addEventListener('click', () => {
+        if (typeof openQuickNotesModal === 'function') openQuickNotesModal();
+      });
+    }
+
+    // Inline search bar — replaces the floating-search FAB on Insights.
+    // Wires straight into the existing noteSearchQuery + renderNoteList
+    // (defined in src/04-tasks-ui.js) so filtering matches the old flow.
+    const searchInput = document.getElementById('insightsSearchInput');
+    if (searchInput && !searchInput._wired) {
+      searchInput._wired = true;
+      searchInput.addEventListener('input', (e) => {
+        const val = (e.target.value || '').trim();
+        // noteSearchQuery is declared with `let` in src/06-notes.js
+        // and is in the shared classic-script scope.
+        // eslint-disable-next-line no-undef
+        noteSearchQuery = val;
+        if (typeof renderNoteList === 'function') renderNoteList();
+      });
+    }
+
     input.addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       input.value = '';   // reset so picking same file re-fires change

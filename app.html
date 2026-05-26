@@ -565,28 +565,39 @@
       <div class="mobile-nb-toggle" id="mobileNbToggle" style="display:none"></div>
       <div class="mobile-nb-drawer" id="mobileNbDrawer"></div>
       <!-- Insights subtab pills (Knowledgebase / Patterns / Weekly
-           Insights) moved up into the topbar pill-bar (.insights-sub-pills)
-           so they sit as the first row under the title — same shape as
-           the Train tab. Element id #insightsSubtabs is no longer used. -->
-      <!-- Timeline view header (only visible when Knowledgebase pill is
-           active). The title + count + upload affordance lives here so
-           it doesn't leak into Patterns / Weekly views. -->
-      <div class="nl-header" id="timelineHeader">
-        <div class="nl-title" id="nlTitle" style="display:flex;align-items:center">All <span class="nl-count" id="nlCount">0</span></div>
-        <!-- "+ Note" affordance — replaces the global FAB on Insights
-             (FAB slot is taken by the chat button). Calls createNote()
-             via a delegated click in 06-brain.js. -->
-        <button class="brain-upload-btn" id="newNoteBtn" title="New note" type="button" style="margin-right:6px">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Note
-        </button>
-        <button class="brain-upload-btn" id="brainUploadBtn" title="Upload a PDF or image to your knowledge base" type="button">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload
-        </button>
-        <input type="file" id="brainUploadInput" accept=".pdf,image/*" style="position:absolute;left:-9999px;opacity:0" />
+           Insights) live in the topbar pill-bar (.insights-sub-pills).
+           Below them is the Knowledgebase view: search → action row →
+           standalone cards (no surrounding "Notes box"). Layout is
+           modeled after the Journal tab. -->
+      <div class="insights-tools" id="timelineHeader">
+        <!-- Inline search (replaces the floating-search FAB on Insights). -->
+        <div class="insights-search">
+          <svg class="insights-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="insights-search-input" id="insightsSearchInput" placeholder="Search notes &amp; docs…" />
+        </div>
+        <!-- Action row: + Note (new note), Scratchpad (Quick Notes
+             modal), Upload (PDF/image to knowledge base). The first
+             two replace floating FABs; Upload was already inline. -->
+        <div class="insights-actions">
+          <button class="insights-action-btn" id="newNoteBtn" title="New note" type="button">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Note
+          </button>
+          <button class="insights-action-btn" id="scratchpadBtn" title="Open Scratchpad" type="button">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Scratchpad
+          </button>
+          <button class="insights-action-btn" id="brainUploadBtn" title="Upload a PDF or image to your knowledge base" type="button">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload
+          </button>
+          <input type="file" id="brainUploadInput" accept=".pdf,image/*" style="position:absolute;left:-9999px;opacity:0" />
+        </div>
       </div>
       <div class="brain-upload-status" id="brainUploadStatus" style="display:none"></div>
+      <!-- Documents are merged into the unified timeline in #nlScroll
+           by 06-brain.js (Phase 6 Commit 7). Section kept hidden as a
+           dead anchor so the legacy DOM IDs still resolve. -->
       <div class="brain-docs" id="brainDocsSection" style="display:none">
         <div class="brain-docs-head">Documents <span class="brain-docs-count" id="brainDocsCount">0</span></div>
         <div class="brain-docs-list" id="brainDocsList"></div>

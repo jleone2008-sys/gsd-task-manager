@@ -2949,6 +2949,78 @@
   .brain-empty-title { font-size: 15px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
   .brain-empty-hint { font-size: 12px; line-height: 1.5; }
 
+  /* ── Insights tab — flatten the notes-list box ──────────────────
+     The old layout wrapped the timeline in a card-shaped .notes-list
+     (white surface, border, right divider). Per the latest spec the
+     Insights tab should look like the Journal tab: standalone cards
+     on the page background, not a container. We strip the .notes-layout
+     + .notes-list chrome on this tab only — the editor (.has-active-note)
+     still pulls in its own surface bg from .notes-editor, so the
+     active-note view stays unchanged. */
+  [data-tool-view="notes"] .notes-layout {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    height: auto;
+    min-height: 0;
+  }
+  [data-tool-view="notes"] .notes-list {
+    background: transparent;
+    border: none;
+    border-right: none;
+    overflow: visible;
+    width: 100%;
+    padding-top: 0;
+  }
+  /* The active-note swap puts the editor in .notes-list's slot. Restore
+     a surface look only when an editor is showing. */
+  [data-tool-view="notes"] .notes-layout.has-active-note {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    height: calc(100vh - 164px);
+  }
+
+  /* Inline search bar (replaces the floating-search FAB on Insights). */
+  .insights-tools {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px var(--space-3) 10px;
+  }
+  .insights-search { position: relative; }
+  .insights-search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px; color: var(--ink-4); pointer-events: none;
+  }
+  .insights-search-input {
+    width: 100%; padding: 10px 14px 10px 36px;
+    border: 1px solid var(--edge-strong); border-radius: var(--r-md);
+    font-family: inherit; font-size: 13px; color: var(--ink);
+    background: var(--surface); outline: none; box-sizing: border-box;
+  }
+  .insights-search-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
+
+  /* Action row: + Note · Scratchpad · Upload. Uniform white-on-edge
+     toolbar (so no one of the three steals attention). */
+  .insights-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  .insights-action-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface); color: var(--ink-2);
+    border: 1px solid var(--edge); border-radius: var(--r-md);
+    padding: 7px 12px; font-size: var(--fs-meta); font-weight: 600;
+    cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .insights-action-btn:hover  { background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong); }
+  .insights-action-btn:active { transform: translateY(1px); }
+  .insights-action-btn svg    { color: var(--ink-3); }
+  .insights-action-btn:hover svg { color: var(--ink); }
+  .insights-action-btn:disabled { opacity: 0.6; cursor: wait; }
+
   /* Phase 7 — Insights subtab pills + Patterns view + Weekly view.
      Pills live in the topbar's .pill-bar.insights-sub-pills row (same
      pattern as .train-sub-pills); they're .pill .insights-pill so they

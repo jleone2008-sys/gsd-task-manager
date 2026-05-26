@@ -370,10 +370,11 @@ function updateFloatingSearch() {
   const el = document.getElementById('floatingSearch');
   const input = document.getElementById('floatingSearchInput');
   if (!el) return;
-  // Show only for tasks and notes
-  if (activeTool === 'tasks' || activeTool === 'notes') {
+  // Floating search is now only used on Tasks. Insights ('notes') has
+  // an inline search bar at the top of the Knowledgebase view.
+  if (activeTool === 'tasks') {
     el.classList.remove('hidden');
-    input.placeholder = activeTool === 'tasks' ? 'Search tasks...' : 'Search notes...';
+    input.placeholder = 'Search tasks...';
   } else {
     el.classList.add('hidden');
   }
@@ -381,18 +382,12 @@ function updateFloatingSearch() {
   input.value = '';
   el.classList.remove('expanded', 'has-query');
 
-  // Notes tab gets a lightning button between search and FAB that opens
-  // the Scratchpad modal. Push search one slot further from the edge so
-  // the visual order reads [search] [lightning] [+].
+  // Scratchpad FAB is now inline as an action button on Insights, so
+  // the floating-scratch button is hidden everywhere.
   const scratchBtn = document.getElementById('floatingScratch');
   if (scratchBtn) {
-    if (activeTool === 'notes') {
-      scratchBtn.classList.remove('hidden');
-      el.classList.add('has-scratch-neighbor');
-    } else {
-      scratchBtn.classList.add('hidden');
-      el.classList.remove('has-scratch-neighbor');
-    }
+    scratchBtn.classList.add('hidden');
+    el.classList.remove('has-scratch-neighbor');
   }
 }
 // Collapse when clicking outside
