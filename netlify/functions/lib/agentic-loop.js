@@ -83,13 +83,39 @@ async function runAgenticLoop(opts) {
   let lastResponse = null;
   let totalPromptTokens = 0;
   let totalCompletionTokens = 0;
+  let cacheCreationTokens = 0;
+  let cacheReadTokens = 0;
+
+  // Prompt caching — Anthropic caches a prefix of (system + tools)
+  // for 5 minutes when cache_control is set, giving 90% discount on
+  // hits. The agentic loop re-sends system + tools every iteration
+  // (typical run: 5-12 iters for synthesis, 1-3 iters for chat),
+  // so caching is a meaningful cost win — and the prefix is
+  // identical run-to-run for the same user, so cross-run hits
+  // happen too when calls come close together.
+  //
+  // We wrap:
+  //   - system_prompt as a single text content block with cache_control
+  //   - tools array: cache_control on the LAST tool definition (the
+  //     Anthropic API caches everything up to and including that block)
+  const cachedSystem = [{
+    type: 'text',
+    text: system_prompt,
+    cache_control: { type: 'ephemeral' },
+  }];
+  const cachedTools = toolDefs.length
+    ? [
+        ...toolDefs.slice(0, -1),
+        { ...toolDefs[toolDefs.length - 1], cache_control: { type: 'ephemeral' } },
+      ]
+    : toolDefs;
 
   for (let iter = 0; iter < max_iterations; iter++) {
     const reqBody = {
       model,
       max_tokens,
-      system: system_prompt,
-      tools: toolDefs,
+      system: cachedSystem,
+      tools: cachedTools,
       messages,
     };
 
@@ -112,6 +138,8 @@ async function runAgenticLoop(opts) {
         iterations: iter,
         prompt_tokens: totalPromptTokens || null,
         completion_tokens: totalCompletionTokens || null,
+        cache_creation_tokens: cacheCreationTokens || null,
+        cache_read_tokens: cacheReadTokens || null,
         error: `anthropic_${r.status}: ${j?.error?.message || JSON.stringify(j).slice(0, 200)}`,
       };
     }
@@ -119,6 +147,11 @@ async function runAgenticLoop(opts) {
     lastResponse = j;
     if (j.usage?.input_tokens)  totalPromptTokens     += j.usage.input_tokens;
     if (j.usage?.output_tokens) totalCompletionTokens += j.usage.output_tokens;
+    // Prompt-caching telemetry. cache_creation_input_tokens are full-price
+    // (the run that warmed the cache); cache_read_input_tokens are the
+    // 90%-off hits. Sum both for visibility.
+    if (j.usage?.cache_creation_input_tokens) cacheCreationTokens += j.usage.cache_creation_input_tokens;
+    if (j.usage?.cache_read_input_tokens)     cacheReadTokens     += j.usage.cache_read_input_tokens;
 
     const content = j.content || [];
     const toolUses = content.filter(b => b.type === 'tool_use');
@@ -134,6 +167,8 @@ async function runAgenticLoop(opts) {
         iterations: iter + 1,
         prompt_tokens: totalPromptTokens || null,
         completion_tokens: totalCompletionTokens || null,
+        cache_creation_tokens: cacheCreationTokens || null,
+        cache_read_tokens: cacheReadTokens || null,
       };
     }
 
