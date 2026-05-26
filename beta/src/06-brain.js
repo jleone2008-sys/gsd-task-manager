@@ -80,57 +80,108 @@ const BRAIN_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;   // 4 MB pre-base64
     if (btn) btn.disabled = true;
     setBrainStatus('busy', `Uploading ${file.name}…`, `${formatBytes(file.size)} · ${kind}`);
 
+    // Client-generated document_id so we can poll status without
+    // waiting on the background function (which returns 202 with no
+    // body). crypto.randomUUID is available in all current browsers.
+    const documentId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : fallbackUuid();
+
     try {
       // Read file as base64. FileReader → DataURL → strip prefix.
       const base64 = await fileToBase64(file);
-
-      setBrainStatus('busy', `Processing ${file.name}…`, 'Extracting text, embedding chunks, generating summary — this can take 10-30s for a typical PDF.');
 
       const { data: { session } } = await db.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error('not_signed_in');
 
-      const res = await fetch('/.netlify/functions/beta-knowledge-ingest', {
+      // POST to the BACKGROUND function (15-min timeout). It returns
+      // 202 immediately with no body; we poll knowledge_documents for
+      // status updates.
+      const res = await fetch('/.netlify/functions/beta-knowledge-ingest-background', {
         method: 'POST',
         headers: {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          document_id:    documentId,
           kind,
           title,
           content_base64: base64,
-          filename: file.name,
-          media_type: file.type || undefined,
-          metadata: { original_size_bytes: file.size },
+          filename:       file.name,
+          media_type:     file.type || undefined,
+          metadata:       { original_size_bytes: file.size },
         }),
       });
 
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const detail = body?.detail || body?.error || `http_${res.status}`;
-        throw new Error(detail);
+      // 202 Accepted is the success path for background functions.
+      // 400/401/etc still come back with a JSON body explaining why.
+      if (res.status !== 202 && !res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.detail || body?.error || `http_${res.status}`);
       }
 
-      if (body.status === 'failed') {
-        setBrainStatus('error', `Failed to process ${file.name}`, body.error || 'See server logs.');
-        return;
-      }
+      // ── Poll until status terminal ─────────────────────────────
+      setBrainStatus('busy', `Processing ${file.name}…`, 'Extracting text, embedding chunks, generating summary. PDFs with images can take up to 60s.');
 
-      console.log('[brain] document ingested:', body);
-      const facts = [
-        body.chunks ? `${body.chunks} chunks indexed` : null,
-        body.lab_results ? `${body.lab_results} lab results extracted` : null,
-      ].filter(Boolean).join(' · ');
-      setBrainStatus('ready',
-        `Ready: ${file.name}`,
-        facts || `Document ${body.document_id?.slice(0, 8)} is searchable.`);
+      const result = await pollDocumentStatus(documentId, 180_000);   // 3-min poll budget
+      if (result.status === 'ready') {
+        const facts = buildReadyFacts(result);
+        setBrainStatus('ready', `Ready: ${file.name}`, facts);
+        console.log('[brain] document ready:', result);
+      } else if (result.status === 'failed') {
+        setBrainStatus('error', `Failed to process ${file.name}`, result.failure_reason || 'See server logs.');
+      } else if (result.status === 'timeout') {
+        setBrainStatus('error', 'Still processing…', `Background task is taking longer than expected. Refresh in a minute and check the timeline — doc id ${documentId.slice(0, 8)}.`);
+      }
     } catch (err) {
       console.error('[brain] upload failed:', err);
       setBrainStatus('error', 'Upload failed', String(err.message || err));
     } finally {
       if (btn) btn.disabled = false;
     }
+  }
+
+  // Poll knowledge_documents.status for the given id every 3s, with
+  // a total budget. Returns { status, failure_reason?, ... } or
+  // { status: 'timeout' } if we exceed budget.
+  async function pollDocumentStatus(documentId, budgetMs) {
+    const start = Date.now();
+    const INTERVAL = 3000;
+    while (Date.now() - start < budgetMs) {
+      const { data, error } = await db.from('knowledge_documents')
+        .select('id, status, failure_reason, ai_summary, ai_key_facts, kind')
+        .eq('id', documentId)
+        .maybeSingle();
+      if (error) {
+        console.warn('[brain] poll error', error);
+      } else if (data && (data.status === 'ready' || data.status === 'failed')) {
+        return data;
+      }
+      await new Promise(r => setTimeout(r, INTERVAL));
+    }
+    return { status: 'timeout' };
+  }
+
+  function buildReadyFacts(doc) {
+    const facts = [];
+    if (Array.isArray(doc.ai_key_facts) && doc.ai_key_facts.length) {
+      facts.push(doc.ai_key_facts[0]);   // first key fact as the headline
+    } else if (doc.ai_summary) {
+      facts.push(doc.ai_summary.slice(0, 140));
+    }
+    facts.push('Searchable now.');
+    return facts.join(' · ');
+  }
+
+  function fallbackUuid() {
+    // RFC4122 v4-shape fallback for old browsers. crypto.randomUUID
+    // is available in Safari 15.4+ / Chrome 92+ / Firefox 95+ so this
+    // path rarely fires.
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────

@@ -1,9 +1,17 @@
-// Phase 6 — knowledge base ingest pipeline.
+// Phase 6 — knowledge base ingest pipeline (BACKGROUND function).
 //
-// JWT-authenticated POST. Accepts one of three input shapes:
-//   1. { kind: 'text', title, text, metadata? }
-//   2. { kind: 'pdf'|'lab', title, content_base64, filename, metadata? }
-//   3. { kind: 'image',   title, content_base64, media_type, filename, metadata? }
+// File is named beta-knowledge-ingest-background.js so Netlify runs it
+// as a background function (15-min timeout). Synchronous functions max
+// out at 10s, which isn't enough for Claude vision on a multi-page PDF
+// plus embeddings plus summary generation. Caller gets 202 Accepted
+// immediately; status is tracked via knowledge_documents.status
+// (processing → ready / failed) which the client polls.
+//
+// JWT-authenticated POST. Requires document_id (client-generated UUID
+// so it can poll status without a sync response body). Accepts one of:
+//   1. { document_id, kind: 'text',  title, text, metadata? }
+//   2. { document_id, kind: 'pdf'|'lab', title, content_base64, filename, metadata? }
+//   3. { document_id, kind: 'image', title, content_base64, media_type, filename, metadata? }
 //
 // Pipeline:
 //   a. Create knowledge_documents row with status='processing'.
@@ -77,6 +85,16 @@ exports.handler = async (event) => {
   const title = (body.title || '').trim().slice(0, 200);
   if (!title) return cors(json(400, { error: 'title_required' }));
 
+  // Background functions return 202 with no body — the client can't
+  // read back a server-generated UUID. So the client generates the
+  // document_id (via crypto.randomUUID) and passes it in. The function
+  // uses that id for the insert + all downstream writes, and the
+  // client polls knowledge_documents for that id to track progress.
+  const documentId = String(body.document_id || '').trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentId)) {
+    return cors(json(400, { error: 'document_id_required', detail: 'expected a v4-shaped UUID from the client' }));
+  }
+
   // Validate per-kind required fields
   if (kind === 'text') {
     if (!body.text || typeof body.text !== 'string') {
@@ -89,16 +107,16 @@ exports.handler = async (event) => {
   }
 
   // ── Step a: insert document row (status='processing') ──────────
-  let documentId;
+  // Use the client-supplied document_id so the client can poll.
   try {
-    const insertRes = await dbInsertReturning(`${SUPABASE_URL}/rest/v1/knowledge_documents`, {
+    await dbInsert(`${SUPABASE_URL}/rest/v1/knowledge_documents`, {
+      id:       documentId,
       user_id:  userId,
       kind,
       title,
       status:   'processing',
       metadata: body.metadata || null,
     }, serviceKey);
-    documentId = insertRes.id;
   } catch (e) {
     console.error('[knowledge-ingest] document insert failed:', e.message);
     return cors(json(500, { error: 'document_insert_failed', detail: e.message }));
