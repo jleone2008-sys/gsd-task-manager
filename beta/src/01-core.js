@@ -611,7 +611,11 @@ function switchTool(tool) {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
   // Home shows the greeting as its heading (set in renderHome), so its topbar title is blank.
-  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Notes', journal: 'Journal', train: 'Train', settings: 'Settings' };
+  // Phase 6: 'notes' tab renamed to 'Brain' (covers notes + uploaded
+  // knowledge documents). Internal tool key + data layer (notesArr,
+  // notebooksArr, sidebarNotesCount, etc.) stay as 'notes' to avoid
+  // schema/code churn — only the user-facing label changed.
+  const titles = { home: '', tasks: 'Tasks', habits: 'Habits', notes: 'Brain', journal: 'Journal', train: 'Train', settings: 'Settings' };
   const pt = document.getElementById('pageTitle');
   if (pt) pt.textContent = titles[tool] || '';
   updateFloatingSearch();
