@@ -24,6 +24,13 @@
   let _weeklyLoading = false;
   let _weeklyInflight = false;   // for the "Generate now" flow
 
+  // Phase 8 — Ask chat state
+  let _askThreadDate = null;     // YYYY-MM-DD; defaults to today
+  let _askMessages = [];          // ordered ASC
+  let _askLoading = false;
+  let _askSending = false;
+  let _askPollAbort = false;     // set when user navigates away mid-poll
+
   let _activeView = 'timeline';
 
   // ── Bootstrap ─────────────────────────────────────────────────
@@ -61,7 +68,7 @@
   }
 
   function setActiveView(view) {
-    if (!['timeline', 'patterns', 'weekly'].includes(view)) return;
+    if (!['timeline', 'patterns', 'weekly', 'ask'].includes(view)) return;
     _activeView = view;
     // Toggle pill active state
     document.querySelectorAll('[data-insights-view]').forEach(b => {
@@ -72,22 +79,22 @@
     const docsTop  = document.getElementById('brainDocsSection');
     const patterns = document.getElementById('insightsPatterns');
     const weekly   = document.getElementById('insightsWeekly');
+    const ask      = document.getElementById('insightsAsk');
     const upload   = document.getElementById('brainUploadBtn');
-    const uploadInput = document.getElementById('brainUploadInput');
     const uploadStatus = document.getElementById('brainUploadStatus');
-    // Header pieces that are timeline-only
-    const headerTitle = document.getElementById('nlTitle');
 
     const showTimeline = view === 'timeline';
     if (scroll)   scroll.style.display   = showTimeline ? '' : 'none';
     if (docsTop)  docsTop.style.display  = showTimeline ? '' : 'none';
     if (patterns) patterns.style.display = view === 'patterns' ? '' : 'none';
     if (weekly)   weekly.style.display   = view === 'weekly'   ? '' : 'none';
+    if (ask)      ask.style.display      = view === 'ask'      ? '' : 'none';
     if (upload)   upload.style.display   = showTimeline ? '' : 'none';
     if (uploadStatus) uploadStatus.style.display = showTimeline ? (uploadStatus.style.display) : 'none';
 
     if (view === 'patterns') loadPatterns();
     if (view === 'weekly')   loadWeekly();
+    if (view === 'ask')      initAsk();
   }
 
   // ── Patterns ──────────────────────────────────────────────────
@@ -370,5 +377,236 @@
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`;
     return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  // ── Phase 8 — Ask chat ────────────────────────────────────────────
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function shiftDate(ymd, deltaDays) {
+    const d = new Date(ymd + 'T12:00:00');
+    d.setDate(d.getDate() + deltaDays);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function fallbackUuid() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  async function initAsk() {
+    // Wire interactions once
+    if (!initAsk._wired) {
+      initAsk._wired = true;
+      const bar = document.getElementById('insightsAsk');
+      if (bar) bar.addEventListener('click', onAskClick);
+      const input = document.getElementById('askInput');
+      const send  = document.getElementById('askSend');
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendAskMessage();
+          }
+        });
+        // Auto-grow
+        input.addEventListener('input', () => {
+          input.style.height = 'auto';
+          input.style.height = Math.min(200, input.scrollHeight) + 'px';
+        });
+      }
+      if (send) send.addEventListener('click', () => sendAskMessage());
+    }
+    // Default thread = today
+    if (!_askThreadDate) _askThreadDate = todayStr();
+    await loadAskThread();
+  }
+
+  async function loadAskThread() {
+    if (_askLoading) return;
+    _askLoading = true;
+    _askPollAbort = true;     // stop any in-flight poll from a prior thread
+    updateAskThreadLabel();
+    try {
+      const { data, error } = await db.from('chat_messages')
+        .select('id, role, content, status, failure_reason, iterations, created_at')
+        .eq('thread_date', _askThreadDate)
+        .order('created_at', { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      _askMessages = data || [];
+      renderAskMessages();
+      // If any assistant row is streaming, kick a poll
+      _askPollAbort = false;
+      const streaming = _askMessages.find(m => m.role === 'assistant' && m.status === 'streaming');
+      if (streaming) pollAskAssistant(streaming.id);
+    } catch (e) {
+      console.warn('[insights] ask load failed', e);
+    } finally {
+      _askLoading = false;
+    }
+  }
+
+  function updateAskThreadLabel() {
+    const el = document.getElementById('askThreadDate');
+    if (!el) return;
+    const today = todayStr();
+    if (_askThreadDate === today) {
+      el.textContent = 'Today';
+    } else {
+      const d = new Date(_askThreadDate + 'T12:00:00');
+      el.textContent = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+  }
+
+  function renderAskMessages() {
+    const el = document.getElementById('askMessages');
+    if (!el) return;
+    if (!_askMessages.length) {
+      el.innerHTML = `<div class="ask-empty">
+        <div class="ask-empty-icon">💬</div>
+        <div class="ask-empty-title">Ask anything about your data</div>
+        <div class="ask-empty-hint">Try: "How did I sleep this week vs last?", "What's my latest LDL?", "Why was Saturday's HRV so low?" — I can query your full data, knowledge base, and patterns.</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = _askMessages.map(renderAskMsg).join('');
+    // Scroll to bottom
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function renderAskMsg(m) {
+    if (m.role === 'user') {
+      return `<div class="ask-msg is-user">${escapeHtml(m.content || '')}</div>`;
+    }
+    // assistant
+    const cls = ['ask-msg', 'is-assistant'];
+    if (m.status === 'streaming') cls.push('is-streaming');
+    if (m.status === 'failed')    cls.push('is-failed');
+    const body = (m.status === 'streaming')
+      ? 'Thinking…'
+      : (m.status === 'failed')
+        ? `Failed: ${escapeHtml(m.failure_reason || 'unknown error')}`
+        : escapeHtml(m.content || '');
+    const tools = (m.status === 'complete' && m.iterations)
+      ? `<div class="ask-msg-tools">${m.iterations} tool call${m.iterations === 1 ? '' : 's'}</div>`
+      : '';
+    return `<div class="${cls.join(' ')}">${body}${tools}</div>`;
+  }
+
+  function onAskClick(e) {
+    const btn = e.target.closest('[data-ask-action]');
+    if (!btn) return;
+    const action = btn.dataset.askAction;
+    if (action === 'prev-day') { _askThreadDate = shiftDate(_askThreadDate, -1); loadAskThread(); }
+    else if (action === 'next-day') {
+      const next = shiftDate(_askThreadDate, +1);
+      if (next > todayStr()) return;   // don't navigate past today
+      _askThreadDate = next;
+      loadAskThread();
+    }
+    else if (action === 'today') { _askThreadDate = todayStr(); loadAskThread(); }
+  }
+
+  async function sendAskMessage() {
+    if (_askSending) return;
+    const input = document.getElementById('askInput');
+    const send  = document.getElementById('askSend');
+    if (!input) return;
+    const content = (input.value || '').trim();
+    if (!content) return;
+    _askSending = true;
+    if (send) send.disabled = true;
+
+    const clientMsgId = fallbackUuid();
+    const assistantMsgId = fallbackUuid();
+
+    // Optimistic: insert user message + streaming placeholder locally
+    const nowIso = new Date().toISOString();
+    _askMessages.push({
+      id: clientMsgId,                // server may rewrite; doesn't matter for display
+      role: 'user',
+      content,
+      status: 'complete',
+      created_at: nowIso,
+    });
+    _askMessages.push({
+      id: assistantMsgId,
+      role: 'assistant',
+      content: null,
+      status: 'streaming',
+      created_at: nowIso,
+    });
+    renderAskMessages();
+
+    input.value = '';
+    input.style.height = '';
+
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('not_signed_in');
+
+      const res = await fetch('/.netlify/functions/beta-chat-ask-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          thread_date:      _askThreadDate,
+          content,
+          client_msg_id:    clientMsgId,
+          assistant_msg_id: assistantMsgId,
+        }),
+      });
+      if (res.status !== 202 && !res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.detail || body?.error || `http_${res.status}`);
+      }
+
+      // Poll the assistant row until status terminal
+      _askPollAbort = false;
+      pollAskAssistant(assistantMsgId);
+    } catch (e) {
+      console.error('[insights] ask send failed', e);
+      // Patch the local placeholder to failed
+      const idx = _askMessages.findIndex(m => m.id === assistantMsgId);
+      if (idx >= 0) {
+        _askMessages[idx] = { ..._askMessages[idx], status: 'failed', failure_reason: String(e.message || e) };
+        renderAskMessages();
+      }
+    } finally {
+      _askSending = false;
+      if (send) send.disabled = false;
+    }
+  }
+
+  async function pollAskAssistant(assistantMsgId) {
+    const start = Date.now();
+    const BUDGET = 3 * 60_000;
+    const INTERVAL = 2500;
+    while (Date.now() - start < BUDGET) {
+      if (_askPollAbort) return;
+      await new Promise(r => setTimeout(r, INTERVAL));
+      if (_askPollAbort) return;
+      if (_activeView !== 'ask') { _askPollAbort = true; return; }
+      try {
+        const { data, error } = await db.from('chat_messages')
+          .select('id, role, content, status, failure_reason, iterations')
+          .eq('id', assistantMsgId)
+          .maybeSingle();
+        if (error) continue;
+        if (data) {
+          const idx = _askMessages.findIndex(m => m.id === assistantMsgId);
+          if (idx >= 0) {
+            _askMessages[idx] = { ..._askMessages[idx], ...data };
+            renderAskMessages();
+          }
+          if (data.status === 'complete' || data.status === 'failed') return;
+        }
+      } catch (_) { /* keep polling */ }
+    }
   }
 })();

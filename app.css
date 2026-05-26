@@ -2986,6 +2986,91 @@
   .weekly-empty-cta:hover { background: var(--guava-800); }
   .weekly-empty-cta:disabled { background: var(--ink-4); cursor: wait; }
 
+  /* Phase 8 — Ask chat surface */
+  .insights-ask {
+    flex: 1; display: flex; flex-direction: column; min-height: 0;
+  }
+  .ask-thread-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-bottom: 1px solid var(--edge);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .ask-thread-spacer { flex: 1; }
+  .ask-thread-date {
+    font-size: var(--fs-meta); font-weight: 600; color: var(--ink-2);
+    padding: 0 6px;
+  }
+  .ask-nav-btn {
+    background: var(--surface); border: 1px solid var(--edge);
+    color: var(--ink-3); width: 26px; height: 26px;
+    border-radius: var(--r-md); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+  }
+  .ask-nav-btn.ask-today-btn { width: auto; padding: 0 10px; font-size: 11px; }
+  .ask-nav-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .ask-messages {
+    flex: 1; overflow-y: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .ask-msg {
+    max-width: 85%; padding: 10px 14px;
+    border-radius: var(--r-lg);
+    font-size: var(--fs-meta); line-height: 1.55;
+    word-wrap: break-word; white-space: pre-wrap;
+  }
+  .ask-msg.is-user {
+    align-self: flex-end; background: var(--guava-700); color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .ask-msg.is-assistant {
+    align-self: flex-start; background: var(--surface);
+    border: 1px solid var(--edge); color: var(--ink);
+    border-bottom-left-radius: 4px; box-shadow: var(--shadow-card);
+  }
+  .ask-msg.is-streaming {
+    color: var(--ink-3); font-style: italic;
+  }
+  .ask-msg.is-failed {
+    background: var(--guava-50); border-color: var(--guava-200);
+    color: var(--guava-800);
+  }
+  .ask-msg-tools {
+    font-size: 10px; color: var(--ink-4); margin-top: 6px;
+    padding-top: 6px; border-top: 1px solid var(--edge);
+  }
+  .ask-empty {
+    text-align: center; padding: 50px 20px; color: var(--ink-3);
+    align-self: stretch;
+  }
+  .ask-empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.6; }
+  .ask-empty-title { font-size: 15px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+  .ask-empty-hint { font-size: 12px; line-height: 1.55; max-width: 360px; margin: 0 auto; }
+
+  .ask-composer {
+    display: flex; gap: 8px; align-items: flex-end;
+    padding: 10px 12px; border-top: 1px solid var(--edge);
+    background: var(--bg); flex-shrink: 0;
+  }
+  .ask-input {
+    flex: 1; resize: none; min-height: 40px; max-height: 200px;
+    padding: 10px 12px; border: 1px solid var(--edge);
+    border-radius: var(--r-md); background: var(--surface);
+    font-family: inherit; font-size: var(--fs-meta);
+    color: var(--ink); outline: none; line-height: 1.5;
+    box-sizing: border-box;
+  }
+  .ask-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
+  .ask-send {
+    background: var(--guava-700); color: white; border: none;
+    width: 40px; height: 40px; border-radius: var(--r-md);
+    font-size: 18px; font-weight: 700; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ask-send:hover { background: var(--guava-800); }
+  .ask-send:disabled { background: var(--ink-4); cursor: wait; }
+
   .nl-scroll { flex: 1; overflow-y: auto; padding: var(--space-1) var(--space-1-5); }
   /* Notes list item — spec NoteCard layout.
      Card shell with column flex: title row (title left + date right),
