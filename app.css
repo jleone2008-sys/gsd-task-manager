@@ -3603,122 +3603,131 @@
 
   /* ══════════════════════════════════════════════════════════════
      BRAND FRAMEWORK — canonical class API.
-     Documented in docs/brand-framework.html. New UI should use these
-     classes; legacy variants (.pill, .btn-add, .btn-sm, .btn-sm-accent,
-     .expand-action, ad-hoc font-sizes) will be swept incrementally.
-     SKIPPED here: .card and .chip collide with existing legacy
-     definitions higher in this file. Those keep their current tighter
-     specs until a deliberate migration sweep changes every call site.
+     Documented in docs/brand-framework.html. Direction is Variation A
+     (Refined Brand): tightened proportions, consistent r-md (4px)
+     corners, no shadows on buttons, flat surfaces. Matches what the
+     app already looks like \xe2\x80\x94 these classes are the named version
+     of the existing visual identity, NOT a redesign.
+
+     Legacy classes (.pill, .btn-add, .btn-sm, .btn-sm-accent,
+     .expand-action, ad-hoc font-sizes) are still in this file with
+     their original definitions; the canonical classes below subsume
+     them. Sweep migrates call sites incrementally.
   ══════════════════════════════════════════════════════════════ */
 
-  /* ── Typography roles ────────────────────────────────────────── */
-  .text-display { font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
-  .text-h1      { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; color: var(--ink); }
-  .text-h2      { font-size: 18px; font-weight: 700; line-height: 1.3; color: var(--ink); }
-  .text-h3      { font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--ink); }
-  .text-body    { font-size: 14px; font-weight: 400; line-height: 1.55; color: var(--ink); }
-  .text-body-sm { font-size: 13px; font-weight: 400; line-height: 1.5;  color: var(--ink-2); }
-  .text-meta    { font-size: 11.5px; font-weight: 500; line-height: 1.45; color: var(--ink-3); }
-  .text-label   { font-size: 10.5px; font-weight: 700; line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+  /* ── Typography roles (semantic wrappers over the --fs-* tokens) ── */
+  .text-display { font-size: var(--fs-display); font-weight: var(--fw-black);    line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
+  .text-h1      { font-size: var(--fs-title);   font-weight: var(--fw-bold);     line-height: 1.25; letter-spacing: -0.01em; color: var(--ink); }
+  .text-h2      { font-size: var(--fs-section); font-weight: var(--fw-bold);     line-height: 1.3;  color: var(--ink); }
+  .text-h3      { font-size: var(--fs-card);    font-weight: var(--fw-semibold); line-height: 1.35; color: var(--ink); }
+  .text-body    { font-size: var(--fs-body);    font-weight: var(--fw-regular);  line-height: 1.55; color: var(--ink); }
+  .text-body-sm { font-size: var(--fs-search);  font-weight: var(--fw-regular);  line-height: 1.5;  color: var(--ink-2); }
+  .text-meta    { font-size: var(--fs-meta);    font-weight: var(--fw-medium);   line-height: 1.45; color: var(--ink-3); }
+  .text-label   { font-size: var(--fs-label);   font-weight: var(--fw-bold);     line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
   .text-numeric { font-variant-numeric: tabular-nums; }
 
-  /* ── Buttons (Variation B — Soft Pill) ───────────────────────── */
+  /* ── Buttons (Variation A \xe2\x80\x94 Refined Brand) ────────────────────
+     r-md corners, no shadows, flat surfaces. Subsumes .btn-sm /
+     .btn-sm-accent / .btn-add / .expand-action / .pill via modifiers. */
   .btn {
     font-family: inherit; cursor: pointer; border: 1px solid transparent;
-    font-size: 13px; font-weight: 600;
-    padding: 10px 18px; border-radius: 999px;
+    font-size: var(--fs-search); font-weight: var(--fw-semibold);
+    padding: 8px 14px; border-radius: var(--r-md);
     line-height: 1;
-    transition: background var(--dur-base) var(--ease),
-                transform var(--dur-fast) var(--ease),
-                border-color var(--dur-base) var(--ease),
-                color var(--dur-base) var(--ease),
-                box-shadow var(--dur-base) var(--ease);
+    transition: background var(--dur-fast) var(--ease),
+                border-color var(--dur-fast) var(--ease),
+                color var(--dur-fast) var(--ease);
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     white-space: nowrap;
   }
-  .btn:active { transform: scale(0.97); }
   .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
   .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 
   .btn--primary {
     background: var(--guava-700); color: #fff; border-color: var(--guava-700);
-    box-shadow: 0 2px 6px rgba(184,45,59,0.22);
   }
-  .btn--primary:hover:not([disabled]) { background: var(--guava-800); border-color: var(--guava-800); box-shadow: 0 3px 10px rgba(184,45,59,0.30); }
+  .btn--primary:hover:not([disabled]) { background: var(--guava-800); border-color: var(--guava-800); }
 
   .btn--secondary {
-    background: var(--surface); color: var(--ink-2); border-color: var(--edge);
-    box-shadow: 0 1px 2px rgba(20,15,10,0.04);
+    background: var(--surface); color: var(--ink); border-color: var(--edge-strong);
+    font-weight: var(--fw-medium);
   }
-  .btn--secondary:hover:not([disabled]) { background: var(--surface-2); border-color: var(--edge-strong); }
+  .btn--secondary:hover:not([disabled]) { border-color: var(--ink-3); }
 
   .btn--destructive {
-    background: var(--guava-50); color: var(--guava-800); border-color: var(--guava-200);
+    background: var(--surface); color: var(--guava-700); border-color: var(--guava-300);
   }
-  .btn--destructive:hover:not([disabled]) { background: var(--guava-100); border-color: var(--guava-300); }
+  .btn--destructive:hover:not([disabled]) { background: var(--guava-50); border-color: var(--guava-700); }
 
   .btn--ghost {
-    background: transparent; color: var(--ink-2); border-color: transparent;
+    background: transparent; color: var(--ink-3); border-color: transparent;
+    font-weight: var(--fw-medium);
   }
   .btn--ghost:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
 
-  .btn--sm { font-size: 11.5px; padding: 6px 13px; }
-  .btn--lg { font-size: 14.5px; padding: 13px 22px; }
+  /* Sizes — sm matches .expand-action / .btn-sm-accent footprint;
+     lg matches .btn-add (full-width-feeling primary). */
+  .btn--sm { font-size: var(--fs-pill); padding: 5px 10px; }
+  .btn--lg { font-size: var(--fs-body); padding: 0 24px; height: 36px; }
 
   .btn--icon {
-    width: 36px; height: 36px; padding: 0; border-radius: 50%;
+    width: 32px; height: 32px; padding: 0; border-radius: var(--r-md);
     background: var(--surface); border-color: var(--edge); color: var(--ink-2);
-    box-shadow: 0 1px 2px rgba(20,15,10,0.05);
   }
   .btn--icon:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
   .btn--icon svg { width: 16px; height: 16px; stroke-width: 1.8; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* ── Overlay (modal backdrop) ────────────────────────────────── */
+  /* ── Overlay (modal backdrop) ──────────────────────────────────
+     Matches the existing .modal-overlay tint + blur so .overlay can
+     subsume it in a future sweep without a visual shift. */
   .overlay {
     display: none;
     position: fixed; inset: 0;
-    background: rgba(20,15,10,0.45);
+    background: rgba(20,30,80,0.45);
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     align-items: center; justify-content: center;
-    padding: 16px; z-index: var(--z-modal);
+    padding: var(--space-4); z-index: var(--z-modal);
   }
   .overlay.is-open { display: flex; }
   .overlay-card {
-    width: 100%; max-width: 480px;
+    width: 100%; max-width: var(--max-modal);
     background: var(--surface); border: 1px solid var(--edge);
-    border-radius: var(--r-lg); padding: 24px 26px;
+    border-radius: var(--r-lg); padding: var(--space-5);
     box-shadow: var(--shadow-raised);
   }
 
-  /* ── Inputs ──────────────────────────────────────────────────── */
+  /* ── Inputs (matches .modal input / .add-row input footprint) ── */
   .input, .textarea, .select {
-    width: 100%; background: var(--surface);
+    width: 100%; background: var(--surface-2);
     border: 1px solid var(--edge-strong);
     border-radius: var(--r-md);
-    padding: 9px 12px;
-    font-family: inherit; font-size: 13.5px; color: var(--ink);
-    transition: border-color var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+    padding: var(--space-2) var(--space-2-5);
+    font-family: inherit; font-size: var(--fs-task); color: var(--ink);
+    transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
     outline: none;
   }
   .input:focus, .textarea:focus, .select:focus {
-    border-color: var(--guava-700);
-    box-shadow: var(--shadow-focus);
+    border-color: var(--guava-500);
+    background: var(--surface);
   }
-  .textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  .textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
 
-  /* ── List rows ───────────────────────────────────────────────── */
+  /* ── List rows ─────────────────────────────────────────────────
+     Used inside cards or modals \xe2\x80\x94 horizontal row with optional meta. */
   .list-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-3-5);
     border-bottom: 1px solid var(--edge);
     transition: background var(--dur-fast) var(--ease);
   }
   .list-row:hover { background: var(--surface-2); }
   .list-row:last-child { border-bottom: 0; }
   .list-row-main { flex: 1; min-width: 0; }
-  .list-row-meta { color: var(--ink-3); font-size: 12px; }
+  .list-row-meta { color: var(--ink-3); font-size: var(--fs-pill); }
 
-  /* ── Badges ──────────────────────────────────────────────────── */
+  /* ── Badges ────────────────────────────────────────────────────
+     Notification dot + count. r-pill is OK here \xe2\x80\x94 a circle, not
+     a rounded rectangle, is semantically a badge dot. */
   .badge-dot {
     display: inline-block; width: 6px; height: 6px;
     border-radius: 50%; background: var(--guava-700);
@@ -3729,5 +3738,5 @@
     min-width: 18px; height: 18px; padding: 0 5px;
     border-radius: 999px;
     background: var(--guava-700); color: #fff;
-    font-size: 10.5px; font-weight: 700;
+    font-size: var(--fs-label); font-weight: var(--fw-bold);
   }

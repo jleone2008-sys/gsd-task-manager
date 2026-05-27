@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <!--
-  GSD Brand Framework — source of truth for all design decisions.
+  GSD Brand Framework — source of truth for design decisions.
 
-  Read at the start of any UI work, alongside docs/app-knowledge-bank.html.
-  Every new component or visual change should use the tokens, classes, and
-  patterns defined here. Diverging from this requires a deliberate update
-  to this file, not a one-off in markup.
+  Direction: Variation A (Refined Brand). Documents the visual identity
+  the app actually ships today — tightened, compact, r-md corners, flat
+  surfaces, guava-700 as the single accent. This file is the NAMED
+  version of what's already in app.css, not an aspirational redesign.
 
-  Direction: lifestyle OS — soft, considered, calm-energetic. Pill-shaped
-  controls, gentle shadows, warm neutrals, guava-700 as the single accent.
+  Every new UI change uses the documented classes (.btn, .text-h1,
+  .card, .chip--*, .overlay, etc.) defined alongside the existing
+  --fs-* / --space-* / --r-* / --shadow-* tokens in app.css.
 
-  Each section bracketed by markers for find-and-patch:
-    <!-- BRAND:section:color -->
+  Section markers for find-and-patch: <!-- BRAND:section:color -->
 -->
 <html lang="en">
 <head>
@@ -19,10 +19,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>GSD — Brand Framework</title>
 <style>
-  /* ──────────────────────────────────────────────────────────────
-     CANONICAL TOKENS — copied from app.css :root.
-     Re-sync these here whenever app.css tokens change.
-  ────────────────────────────────────────────────────────────── */
+  /* Tokens mirrored from app.css :root. Resync when app.css tokens move. */
   :root {
     --bg:          #f6f2ea;
     --surface:     #ffffff;
@@ -49,7 +46,7 @@
     --slate-fg: #5a6673;  --slate-bg: #dee2e7;
     --ochre-fg: #a37826;  --ochre-bg: #f0e4c9;
     --plum-fg:  #6b4862;  --plum-bg:  #e5dae2;
-    --r-sm: 3px;  --r-md: 4px;  --r-lg: 10px;  --r-pill: 999px;
+    --r-sm: 3px;  --r-md: 4px;  --r-lg: 10px;
     --shadow-card:       0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
     --shadow-card-hover: 0 1px 0 rgba(20,15,10,0.04), 0 2px 4px rgba(20,15,10,0.08);
     --shadow-raised:     0 2px 4px rgba(20,15,10,0.06), 0 8px 20px rgba(20,15,10,0.08);
@@ -62,11 +59,24 @@
     --dur:      180ms;
     --dur-mid:  220ms;
     --dur-slow: 280ms;
+    /* Font-size scale (mirrors --fs-* in app.css) */
+    --fs-label:   10px;
+    --fs-meta:    11px;
+    --fs-pill:    12px;
+    --fs-search:  13px;
+    --fs-task:    13.5px;
+    --fs-body:    14px;
+    --fs-card:    16px;
+    --fs-section: 18px;
+    --fs-title:   22px;
+    --fs-display: 28px;
+    --fw-regular:  400;
+    --fw-medium:   500;
+    --fw-semibold: 600;
+    --fw-bold:     700;
+    --fw-black:    800;
   }
 
-  /* ──────────────────────────────────────────────────────────────
-     DOC CHROME
-  ────────────────────────────────────────────────────────────── */
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.55; }
   a { color: var(--guava-700); text-decoration: none; }
@@ -91,7 +101,7 @@
   .toc a:hover { background: var(--surface); color: var(--ink); text-decoration: none; }
 
   main { padding: 32px 36px 96px 36px; max-width: 1000px; }
-  h1 { font-size: 28px; font-weight: 700; margin: 0 0 6px 0; letter-spacing: -0.02em; }
+  h1 { font-size: 28px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.02em; }
   h2 { font-size: 22px; font-weight: 700; margin: 48px 0 12px 0; padding-bottom: 6px; border-bottom: 1px solid var(--edge); letter-spacing: -0.01em; }
   h3 { font-size: 16px; font-weight: 700; margin: 28px 0 8px 0; color: var(--ink); }
   h4 { font-size: 12px; font-weight: 700; margin: 14px 0 6px 0; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -100,11 +110,10 @@
   li { margin: 4px 0; }
   .quiet { color: var(--ink-3); font-size: 13px; }
 
-  /* ── Live example container — every section uses this ── */
   .example {
     background: var(--surface);
     border: 1px solid var(--edge);
-    border-radius: var(--r-lg);
+    border-radius: var(--r-md);
     padding: 22px 24px;
     margin: 14px 0;
     box-shadow: var(--shadow-card);
@@ -112,7 +121,6 @@
   .example h4 { margin-top: 0; }
   .example + .example { margin-top: 10px; }
 
-  /* ── Specimen blocks: a small label + the actual rendered chip/swatch ── */
   .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
   .swatch {
     border: 1px solid var(--edge);
@@ -126,7 +134,6 @@
   .swatch-name { font-weight: 600; color: var(--ink); }
   .swatch-hex { color: var(--ink-3); font-family: var(--font-mono); font-size: 10.5px; }
 
-  /* ── Token tables ── */
   .tokens { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
   .tokens th { text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-4); border-bottom: 1px solid var(--edge); font-weight: 700; }
   .tokens td { padding: 8px 10px; border-bottom: 1px solid var(--edge); vertical-align: middle; }
@@ -134,185 +141,106 @@
   .tokens tr:last-child td { border-bottom: 0; }
 
   /* ──────────────────────────────────────────────────────────────
-     CANONICAL CLASSES — the system documented BELOW.
-     These are the classes new code should use. The existing
-     legacy classes (.pill, .btn-add, .btn-sm, etc.) will be swept
-     to use these in a follow-up commit.
+     CANONICAL CLASSES — mirror of app.css.
+     Embedded here so this doc is self-contained for review.
   ────────────────────────────────────────────────────────────── */
 
-  /* ── TYPE ROLES ── */
-  .text-display { font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
-  .text-h1      { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; color: var(--ink); }
-  .text-h2      { font-size: 18px; font-weight: 700; line-height: 1.3; color: var(--ink); }
-  .text-h3      { font-size: 16px; font-weight: 600; line-height: 1.35; color: var(--ink); }
-  .text-body    { font-size: 14px; font-weight: 400; line-height: 1.55; color: var(--ink); }
-  .text-body-sm { font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--ink-2); }
-  .text-meta    { font-size: 11.5px; font-weight: 500; line-height: 1.45; color: var(--ink-3); }
-  .text-label   { font-size: 10.5px; font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
-  .text-numeric { font-variant-numeric: tabular-nums; }
+  .text-display { font-size: var(--fs-display); font-weight: var(--fw-black);    line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
+  .text-h1      { font-size: var(--fs-title);   font-weight: var(--fw-bold);     line-height: 1.25; letter-spacing: -0.01em; color: var(--ink); }
+  .text-h2      { font-size: var(--fs-section); font-weight: var(--fw-bold);     line-height: 1.3;  color: var(--ink); }
+  .text-h3      { font-size: var(--fs-card);    font-weight: var(--fw-semibold); line-height: 1.35; color: var(--ink); }
+  .text-body    { font-size: var(--fs-body);    font-weight: var(--fw-regular);  line-height: 1.55; color: var(--ink); }
+  .text-body-sm { font-size: var(--fs-search);  font-weight: var(--fw-regular);  line-height: 1.5;  color: var(--ink-2); }
+  .text-meta    { font-size: var(--fs-meta);    font-weight: var(--fw-medium);   line-height: 1.45; color: var(--ink-3); }
+  .text-label   { font-size: var(--fs-label);   font-weight: var(--fw-bold);     line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
 
-  /* ── BUTTONS (Variation B — Soft Pill) ── */
+  /* Buttons — Variation A (Refined Brand). r-md, no shadows, flat. */
   .btn {
     font-family: inherit; cursor: pointer; border: 1px solid transparent;
-    font-size: 13px; font-weight: 600;
-    padding: 10px 18px; border-radius: var(--r-pill);
+    font-size: var(--fs-search); font-weight: var(--fw-semibold);
+    padding: 8px 14px; border-radius: var(--r-md);
     line-height: 1;
-    transition: background var(--dur) var(--ease),
-                transform var(--dur-fast) var(--ease),
-                border-color var(--dur) var(--ease),
-                color var(--dur) var(--ease),
-                box-shadow var(--dur) var(--ease);
+    transition: background var(--dur-fast) var(--ease),
+                border-color var(--dur-fast) var(--ease),
+                color var(--dur-fast) var(--ease);
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     white-space: nowrap;
   }
-  .btn:active { transform: scale(0.97); }
   .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
   .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
-
-  .btn--primary {
-    background: var(--guava-700); color: #fff; border-color: var(--guava-700);
-    box-shadow: 0 2px 6px rgba(184,45,59,0.22);
-  }
-  .btn--primary:hover:not([disabled]) { background: var(--guava-800); border-color: var(--guava-800); box-shadow: 0 3px 10px rgba(184,45,59,0.30); }
-
-  .btn--secondary {
-    background: var(--surface); color: var(--ink-2); border-color: var(--edge);
-    box-shadow: 0 1px 2px rgba(20,15,10,0.04);
-  }
-  .btn--secondary:hover:not([disabled]) { background: var(--surface-2); border-color: var(--edge-strong); }
-
-  .btn--destructive {
-    background: var(--guava-50); color: var(--guava-800); border-color: var(--guava-200);
-  }
-  .btn--destructive:hover:not([disabled]) { background: var(--guava-100); border-color: var(--guava-300); }
-
-  .btn--ghost {
-    background: transparent; color: var(--ink-2); border-color: transparent;
-  }
+  .btn--primary { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
+  .btn--primary:hover:not([disabled]) { background: var(--guava-800); border-color: var(--guava-800); }
+  .btn--secondary { background: var(--surface); color: var(--ink); border-color: var(--edge-strong); font-weight: var(--fw-medium); }
+  .btn--secondary:hover:not([disabled]) { border-color: var(--ink-3); }
+  .btn--destructive { background: var(--surface); color: var(--guava-700); border-color: var(--guava-300); }
+  .btn--destructive:hover:not([disabled]) { background: var(--guava-50); border-color: var(--guava-700); }
+  .btn--ghost { background: transparent; color: var(--ink-3); border-color: transparent; font-weight: var(--fw-medium); }
   .btn--ghost:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
-
-  .btn--sm { font-size: 11.5px; padding: 6px 13px; }
-  .btn--lg { font-size: 14.5px; padding: 13px 22px; }
-
-  .btn--icon {
-    width: 36px; height: 36px; padding: 0; border-radius: 50%;
-    background: var(--surface); border-color: var(--edge); color: var(--ink-2);
-    box-shadow: 0 1px 2px rgba(20,15,10,0.05);
-  }
-  .btn--icon:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
+  .btn--sm { font-size: var(--fs-pill); padding: 5px 10px; }
+  .btn--lg { font-size: var(--fs-body); padding: 0 24px; height: 36px; }
+  .btn--icon { width: 32px; height: 32px; padding: 0; border-radius: var(--r-md); background: var(--surface); border-color: var(--edge); color: var(--ink-2); }
   .btn--icon svg { width: 16px; height: 16px; stroke-width: 1.8; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* ── CARDS ── */
-  .card {
+  /* Cards — match the existing .card / .task-item footprint (r-md, dense). */
+  .card-demo {
     background: var(--surface); border: 1px solid var(--edge);
-    border-radius: var(--r-lg); padding: 16px 18px;
+    border-radius: var(--r-md); padding: 13px 14px 13px 22px;
     box-shadow: var(--shadow-card);
     transition: box-shadow var(--dur) var(--ease);
   }
-  .card--hover:hover { box-shadow: var(--shadow-card-hover); }
-  .card--dense { padding: 10px 14px; }
-  .card--hero { padding: 24px 28px; }
-  .card--raised { box-shadow: var(--shadow-raised); }
+  .card-demo:hover { box-shadow: var(--shadow-card-hover); }
+  .card-demo--hero { padding: 18px 20px; }
 
-  /* ── CHIPS / BADGES / PILLS ── */
-  .chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 9px; border-radius: var(--r-pill);
-    font-size: 11px; font-weight: 600; line-height: 1.3;
-    background: var(--surface-2); color: var(--ink-3);
-    border: 1px solid transparent;
-  }
-  .chip--sage  { background: var(--sage-bg);  color: var(--sage-fg); }
-  .chip--sky   { background: var(--sky-bg);   color: var(--sky-fg); }
-  .chip--clay  { background: var(--clay-bg);  color: var(--clay-fg); }
-  .chip--moss  { background: var(--moss-bg);  color: var(--moss-fg); }
-  .chip--slate { background: var(--slate-bg); color: var(--slate-fg); }
-  .chip--ochre { background: var(--ochre-bg); color: var(--ochre-fg); }
-  .chip--plum  { background: var(--plum-bg);  color: var(--plum-fg); }
-  .chip--guava { background: var(--guava-100); color: var(--guava-800); }
-  .chip--ghost { background: transparent; border-color: var(--edge); color: var(--ink-3); }
+  /* Chips — match the existing .chip + earth-palette modifiers. */
+  .chip-demo { display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 7px; border-radius: var(--r-sm); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; }
+  .chip-demo--sage  { background: var(--sage-bg);  color: var(--sage-fg); }
+  .chip-demo--sky   { background: var(--sky-bg);   color: var(--sky-fg); }
+  .chip-demo--clay  { background: var(--clay-bg);  color: var(--clay-fg); }
+  .chip-demo--moss  { background: var(--moss-bg);  color: var(--moss-fg); }
+  .chip-demo--slate { background: var(--slate-bg); color: var(--slate-fg); }
+  .chip-demo--ochre { background: var(--ochre-bg); color: var(--ochre-fg); }
+  .chip-demo--plum  { background: var(--plum-bg);  color: var(--plum-fg); }
+  .chip-demo--guava { background: var(--guava-100); color: var(--guava-700); }
+  .chip-demo--ghost { background: transparent; border: 1px solid var(--edge); color: var(--ink-3); }
 
-  .badge-dot {
-    display: inline-block; width: 6px; height: 6px;
-    border-radius: 50%; background: var(--guava-700);
-    vertical-align: middle;
-  }
-  .badge-count {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 18px; height: 18px; padding: 0 5px;
-    border-radius: var(--r-pill);
-    background: var(--guava-700); color: #fff;
-    font-size: 10.5px; font-weight: 700;
-  }
+  .badge-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--guava-700); vertical-align: middle; }
+  .badge-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--guava-700); color: #fff; font-size: 10px; font-weight: 700; }
 
-  /* ── INPUTS ── */
-  .input, .textarea, .select {
-    width: 100%; background: var(--surface);
+  /* Inputs — match the existing .modal input footprint (surface-2 bg). */
+  .input-demo, .textarea-demo {
+    width: 100%; background: var(--surface-2);
     border: 1px solid var(--edge-strong);
     border-radius: var(--r-md);
-    padding: 9px 12px;
+    padding: 8px 10px;
     font-family: inherit; font-size: 13.5px; color: var(--ink);
-    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
     outline: none;
+    transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   }
-  .input:focus, .textarea:focus, .select:focus {
-    border-color: var(--guava-700);
-    box-shadow: var(--shadow-focus);
+  .input-demo:focus, .textarea-demo:focus {
+    border-color: var(--guava-500);
+    background: var(--surface);
   }
-  .textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  .textarea-demo { resize: vertical; min-height: 60px; line-height: 1.5; }
 
-  /* ── OVERLAY (modal backdrop) ── */
-  .overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(20,15,10,0.45);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    align-items: center; justify-content: center;
-    padding: 16px; z-index: 1000;
-  }
-  .overlay.is-open { display: flex; }
-  .overlay-card {
-    width: 100%; max-width: 480px;
-    background: var(--surface); border: 1px solid var(--edge);
-    border-radius: var(--r-lg); padding: 24px 26px;
-    box-shadow: var(--shadow-raised);
-  }
+  .overlay-card-demo { width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 20px 24px; box-shadow: var(--shadow-raised); }
 
-  /* ── LIST ROW ── */
-  .list-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--edge);
-    transition: background var(--dur-fast) var(--ease);
-  }
-  .list-row:hover { background: var(--surface-2); }
-  .list-row:last-child { border-bottom: 0; }
+  .list-row-demo { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--edge); }
+  .list-row-demo:last-child { border-bottom: 0; }
   .list-row-main { flex: 1; min-width: 0; }
   .list-row-meta { color: var(--ink-3); font-size: 12px; }
 
-  /* ── PHONE FRAMES (used in examples) ── */
-  .frame {
-    max-width: 390px;
-    background: var(--bg);
-    border: 1px solid var(--edge-strong); border-radius: 22px;
-    padding: 16px; box-shadow: var(--shadow-raised);
-  }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .col { display: flex; flex-direction: column; gap: 10px; }
-
-  /* ── Type-scale specimen rows ── */
   .type-row { display: grid; grid-template-columns: 130px 1fr 90px; gap: 16px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--edge); }
   .type-row:last-child { border-bottom: 0; }
   .type-spec { color: var(--ink-4); font-family: var(--font-mono); font-size: 10.5px; }
   .type-token { color: var(--guava-700); font-family: var(--font-mono); font-size: 11px; }
 
-  /* ── Tip / Warn callouts ── */
   .callout { padding: 12px 16px; border-radius: var(--r-md); font-size: 13px; margin: 12px 0; }
   .callout--tip { background: var(--moss-bg); color: var(--moss-fg); border-left: 3px solid var(--moss-fg); }
   .callout--warn { background: var(--guava-50); color: var(--guava-800); border-left: 3px solid var(--guava-700); }
   .callout--info { background: var(--sky-bg); color: var(--sky-fg); border-left: 3px solid var(--sky-fg); }
 
-  /* ── Don't grid ── */
   .dont-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
   .dont-card { border: 1px solid var(--edge); border-radius: var(--r-md); padding: 14px; background: var(--surface); }
   .dont-card.is-good { border-left: 3px solid var(--moss-fg); }
@@ -352,11 +280,11 @@
   <!-- BRAND:section:intro -->
   <section id="intro">
     <h1>GSD Brand Framework</h1>
-    <p class="quiet">Single source of truth for color, type, components, and motion. Every new UI change reads from this file. Diverging from it requires deliberately updating this file — not adding a one-off to markup.</p>
+    <p class="quiet">Single source of truth for color, type, components, and motion. This file is the <em>named version</em> of what the app already looks like — not an aspirational redesign. Direction: <strong>Refined Brand (Variation A)</strong> — tightened proportions, consistent <code>--r-md</code> (4px) corners, flat surfaces, no decorative shadows.</p>
 
     <div class="callout callout--tip"><strong>How to use this:</strong> when designing a new screen or modifying an existing one, find the relevant section here and use the documented class. If your need isn't covered, propose an addition to this file first, then implement.</div>
 
-    <p>Direction: <strong>lifestyle OS — soft, considered, calm-energetic</strong>. Pill-shaped controls, gentle shadows, warm neutrals, <code>guava-700</code> as the single accent. Closer to Headspace/Strava than to Linear/Notion.</p>
+    <p>Color palette: <code>--guava-700</code> is the single accent. Earth chips (sage/sky/clay/moss/slate/ochre/plum) carry semantic differentiation. No second accent color — if you reach for one, reach for guava with a different weight or one of the earth chips instead.</p>
   </section>
 
   <!-- BRAND:section:identity -->
@@ -364,11 +292,11 @@
     <h2>Identity</h2>
     <p>GSD is a personal lifestyle operating system. Single-tenant in practice, but designed like a polished consumer product. The aesthetic balances:</p>
     <ul>
-      <li><strong>Calm</strong> — warm paper background, generous whitespace, no harsh contrast</li>
-      <li><strong>Energetic</strong> — one decisive accent (guava-700), pill-shaped affordances, micro-interactions on tap</li>
+      <li><strong>Calm</strong> — warm paper background, generous whitespace at the page level, no harsh contrast</li>
       <li><strong>Considered</strong> — every chip and badge maps to a token; no one-off colors; consistent rhythm</li>
+      <li><strong>Compact</strong> — components are dense enough to fit real data on a 375px phone without scrolling for every detail. <code>--r-md</code> corners, <code>20px</code> chip height, modest padding</li>
     </ul>
-    <p>The pill button (Variation B) anchors the whole direction. If you find yourself reaching for square corners and hairline borders, you're drifting into "productivity tool" — pull back.</p>
+    <p>If you find yourself reaching for fully-pill controls (<code>r-pill</code>) or soft shadows on buttons, you're drifting into "consumer wellness app" — pull back. The app reads as a tool that respects density, not a marketing page.</p>
   </section>
 
   <!-- BRAND:section:color -->
@@ -388,7 +316,7 @@
     <h3>Ink (text)</h3>
     <p class="quiet">5-step text scale. Use <code>--ink</code> for primary body, <code>--ink-3</code> for captions/meta, <code>--ink-4</code> for muted/disabled.</p>
     <div class="swatches">
-      <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-meta"><span class="swatch-name" style="color:#fff;background:var(--ink);margin:-6px -10px;padding:6px 10px;display:block">--ink</span></div><div style="padding:6px 10px;font-size:10.5px;color:var(--ink-3);font-family:var(--font-mono)">#1a1714</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-meta"><span class="swatch-name">--ink</span><span class="swatch-hex">#1a1714</span></div></div>
       <div class="swatch"><div class="swatch-color" style="background:var(--ink-2)"></div><div class="swatch-meta"><span class="swatch-name">--ink-2</span><span class="swatch-hex">#3d362d</span></div></div>
       <div class="swatch"><div class="swatch-color" style="background:var(--ink-3)"></div><div class="swatch-meta"><span class="swatch-name">--ink-3</span><span class="swatch-hex">#6e6559</span></div></div>
       <div class="swatch"><div class="swatch-color" style="background:var(--ink-4)"></div><div class="swatch-meta"><span class="swatch-name">--ink-4</span><span class="swatch-hex">#a8a094</span></div></div>
@@ -396,7 +324,7 @@
     </div>
 
     <h3>Guava (single accent)</h3>
-    <p class="quiet">8-step ramp. <strong><code>--guava-700</code> is THE accent</strong> — use it for primary CTAs, active state, single-emphasis moments. Don't introduce a second accent color.</p>
+    <p class="quiet">8-step ramp. <strong><code>--guava-700</code> is THE accent</strong> — primary CTAs, active state, single-emphasis moments. Don't introduce a second accent color.</p>
     <div class="swatches">
       <div class="swatch"><div class="swatch-color" style="background:var(--guava-50)"></div><div class="swatch-meta"><span class="swatch-name">--guava-50</span><span class="swatch-hex">#fef5f6</span></div></div>
       <div class="swatch"><div class="swatch-color" style="background:var(--guava-100)"></div><div class="swatch-meta"><span class="swatch-name">--guava-100</span><span class="swatch-hex">#fde8ea</span></div></div>
@@ -412,9 +340,9 @@
     <ul>
       <li><strong>700</strong> — primary CTA backgrounds, active tab indicator, accent dots</li>
       <li><strong>800</strong> — hover state for primary CTA backgrounds</li>
-      <li><strong>500</strong> — focus borders, secondary accent (rarely)</li>
+      <li><strong>500</strong> — input focus borders</li>
       <li><strong>200/300</strong> — destructive-button borders + hover</li>
-      <li><strong>50/100</strong> — destructive-button surface, soft warning callouts</li>
+      <li><strong>50/100</strong> — destructive-button hover surface, soft warning callouts</li>
     </ul>
 
     <h3>Earth chips (semantic palette)</h3>
@@ -444,11 +372,11 @@
   <section id="typography">
     <h2>Typography</h2>
 
-    <p>Two families: <code>--font-sans</code> (Inter, body) and <code>--font-mono</code> (JetBrains Mono, numbers and code). 8 named roles below — use these classes, not literal pixel values.</p>
+    <p>Two families: <code>--font-sans</code> (Inter, body) and <code>--font-mono</code> (JetBrains Mono, numbers and code). 8 named roles below — semantic wrappers over the existing <code>--fs-*</code> token system. Use these classes, not literal pixel values.</p>
 
     <div class="example">
       <div class="type-row">
-        <div><div class="type-spec">32px / 700 / -0.02em</div><div class="type-token">.text-display</div></div>
+        <div><div class="type-spec">28px / 800 / -0.02em</div><div class="type-token">.text-display</div></div>
         <div class="text-display">8 days · 47%</div>
         <div class="type-spec">hero stat, ring</div>
       </div>
@@ -478,21 +406,33 @@
         <div class="type-spec">small body</div>
       </div>
       <div class="type-row">
-        <div><div class="type-spec">11.5px / 500</div><div class="type-token">.text-meta</div></div>
+        <div><div class="type-spec">11px / 500</div><div class="type-token">.text-meta</div></div>
         <div class="text-meta">2 days ago · 6:42 AM</div>
         <div class="type-spec">meta</div>
       </div>
       <div class="type-row">
-        <div><div class="type-spec">10.5px / 700 / +0.08em</div><div class="type-token">.text-label</div></div>
+        <div><div class="type-spec">10px / 700 / +0.08em</div><div class="type-token">.text-label</div></div>
         <div class="text-label">TUESDAY BRIEF</div>
         <div class="type-spec">label / eyebrow</div>
       </div>
     </div>
 
-    <h4>Modifiers</h4>
+    <h4>Tokens behind each role</h4>
+    <table class="tokens">
+      <tr><th>Class</th><th>Wraps</th></tr>
+      <tr><td><code>.text-display</code></td><td><code>--fs-display</code> 28px + <code>--fw-black</code> 800</td></tr>
+      <tr><td><code>.text-h1</code></td><td><code>--fs-title</code> 22px + <code>--fw-bold</code> 700</td></tr>
+      <tr><td><code>.text-h2</code></td><td><code>--fs-section</code> 18px + <code>--fw-bold</code> 700</td></tr>
+      <tr><td><code>.text-h3</code></td><td><code>--fs-card</code> 16px + <code>--fw-semibold</code> 600</td></tr>
+      <tr><td><code>.text-body</code></td><td><code>--fs-body</code> 14px + <code>--fw-regular</code> 400</td></tr>
+      <tr><td><code>.text-body-sm</code></td><td><code>--fs-search</code> 13px + <code>--fw-regular</code> 400</td></tr>
+      <tr><td><code>.text-meta</code></td><td><code>--fs-meta</code> 11px + <code>--fw-medium</code> 500</td></tr>
+      <tr><td><code>.text-label</code></td><td><code>--fs-label</code> 10px + <code>--fw-bold</code> 700</td></tr>
+    </table>
+
+    <h4>Modifier</h4>
     <ul>
-      <li><code>.text-numeric</code> — add for tabular-nums on any stat that animates or aligns in a column</li>
-      <li><code>.text-meta</code> + <code>.text-numeric</code> — timestamps, durations</li>
+      <li><code>.text-numeric</code> — adds <code>font-variant-numeric: tabular-nums</code>. Use on any stat that animates or aligns in a column.</li>
     </ul>
 
     <div class="callout callout--warn"><strong>Don't</strong> use literal <code>font-size: 14px</code> in markup. Apply the role class on the closest container. If the role you need doesn't exist, propose adding it to this file first.</div>
@@ -503,33 +443,37 @@
     <h2>Space + radius</h2>
 
     <h3>Spacing scale</h3>
-    <p class="quiet">Half-step rhythm to avoid visual drift. Most components use 8-16px (space-2 through space-4); cards use 16-24px (space-4 through space-6) internal padding.</p>
+    <p class="quiet">Half-step rhythm. Most components use 6–14px (space-1-5 through space-3-5); cards use 12–16px (space-3 through space-4) internal padding.</p>
     <table class="tokens">
       <tr><th>Token</th><th>Value</th><th>Use for</th></tr>
       <tr><td><code>--space-1</code></td><td>4px</td><td>Icon gap, tight chip gaps</td></tr>
-      <tr><td><code>--space-2</code></td><td>8px</td><td>Default inline gap</td></tr>
-      <tr><td><code>--space-3</code></td><td>12px</td><td>Comfortable inline / vertical gap</td></tr>
-      <tr><td><code>--space-4</code></td><td>16px</td><td>Standard card padding, section gap</td></tr>
-      <tr><td><code>--space-5</code></td><td>20px</td><td>Card padding (hero), modal padding</td></tr>
+      <tr><td><code>--space-1-5</code></td><td>6px</td><td>Button vertical padding</td></tr>
+      <tr><td><code>--space-2</code></td><td>8px</td><td>Default inline gap, input padding</td></tr>
+      <tr><td><code>--space-2-5</code></td><td>10px</td><td>Input horizontal padding</td></tr>
+      <tr><td><code>--space-3</code></td><td>12px</td><td>Comfortable inline / vertical gap, button horizontal</td></tr>
+      <tr><td><code>--space-3-5</code></td><td>14px</td><td>List row padding</td></tr>
+      <tr><td><code>--space-4</code></td><td>16px</td><td>Card padding, section gap</td></tr>
+      <tr><td><code>--space-5</code></td><td>20px</td><td>Modal padding</td></tr>
       <tr><td><code>--space-6</code></td><td>24px</td><td>Section vertical rhythm</td></tr>
       <tr><td><code>--space-8</code></td><td>40px</td><td>Major section breaks</td></tr>
     </table>
 
     <h3>Radius</h3>
-    <p class="quiet">Three discrete steps plus pill. Pick by component role.</p>
+    <p class="quiet">Three discrete steps. <code>--r-md</code> is the workhorse — buttons, inputs, cards, modals all use it. <code>--r-sm</code> for chips and tiny indicators. <code>--r-lg</code> reserved for modal cards and large feature surfaces.</p>
     <table class="tokens">
       <tr><th>Token</th><th>Value</th><th>Use for</th></tr>
-      <tr><td><code>--r-sm</code></td><td>3px</td><td>Tiny chips, code blocks, focus rings inset</td></tr>
-      <tr><td><code>--r-md</code></td><td>4px</td><td>Inputs, small cards, list rows</td></tr>
-      <tr><td><code>--r-lg</code></td><td>10px</td><td>Cards, modals, overlay-card</td></tr>
-      <tr><td><code>--r-pill</code></td><td>999px</td><td>Buttons, chips, badges</td></tr>
+      <tr><td><code>--r-sm</code></td><td>3px</td><td>Chips, code blocks, focus-ring inset</td></tr>
+      <tr><td><code>--r-md</code></td><td>4px</td><td>Buttons, inputs, cards, list rows — the default</td></tr>
+      <tr><td><code>--r-lg</code></td><td>10px</td><td>Modal cards, overlay-card, hero feature panels</td></tr>
+      <tr><td><em>(circle)</em></td><td>50%</td><td>Avatars, badge dots, FAB</td></tr>
+      <tr><td><em>(pill 999px)</em></td><td>999px</td><td>Badge counts only — not buttons or chips</td></tr>
     </table>
   </section>
 
   <!-- BRAND:section:elevation -->
   <section id="elevation">
     <h2>Elevation</h2>
-    <p>Four levels of shadow + a focus ring. Cards lift on hover; modals/FAB use stronger shadows; buttons get a tinted shadow tied to the guava palette.</p>
+    <p>Shadows are reserved for actual elevation: cards lift slightly, modals/popovers more, the FAB sits highest. <strong>Buttons and chips do not have shadows</strong> — they're flat surfaces.</p>
     <table class="tokens">
       <tr><th>Token</th><th>Use for</th></tr>
       <tr><td><code>--shadow-card</code></td><td>All resting cards</td></tr>
@@ -540,8 +484,8 @@
     </table>
     <div class="example">
       <div class="row" style="gap:16px;flex-wrap:wrap;align-items:flex-end">
-        <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:14px 18px;box-shadow:var(--shadow-card);font-size:12px;color:var(--ink-3)">card</div>
-        <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:14px 18px;box-shadow:var(--shadow-card-hover);font-size:12px;color:var(--ink-3)">card-hover</div>
+        <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-md);padding:14px 18px;box-shadow:var(--shadow-card);font-size:12px;color:var(--ink-3)">card</div>
+        <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-md);padding:14px 18px;box-shadow:var(--shadow-card-hover);font-size:12px;color:var(--ink-3)">card-hover</div>
         <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:14px 18px;box-shadow:var(--shadow-raised);font-size:12px;color:var(--ink-3)">raised</div>
         <div style="background:var(--guava-700);color:#fff;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-fab);font-size:22px;font-weight:700">+</div>
       </div>
@@ -551,22 +495,22 @@
   <!-- BRAND:section:motion -->
   <section id="motion">
     <h2>Motion</h2>
-    <p>Four durations + one ease. Use the shortest duration that still reads as a transition (not a snap).</p>
+    <p>Use the shortest duration that still reads as a transition. Buttons + hovers = <code>--dur-fast</code>; cards + state = <code>--dur</code>; modals = <code>--dur-mid</code>. One ease for everything.</p>
     <table class="tokens">
       <tr><th>Token</th><th>Value</th><th>Use for</th></tr>
-      <tr><td><code>--dur-fast</code></td><td>120ms</td><td>Hover/press state changes, color shifts</td></tr>
+      <tr><td><code>--dur-fast</code></td><td>120ms</td><td>Hover/press state changes, color shifts on buttons</td></tr>
       <tr><td><code>--dur</code></td><td>180ms</td><td>Default for property transitions</td></tr>
       <tr><td><code>--dur-mid</code></td><td>220ms</td><td>Modal open, card expand</td></tr>
       <tr><td><code>--dur-slow</code></td><td>280ms</td><td>Page-level transitions</td></tr>
       <tr><td><code>--ease</code></td><td>cubic-bezier(0.2,0.8,0.2,1)</td><td>Everything (don't introduce new eases)</td></tr>
     </table>
-    <div class="callout callout--info"><strong>Active feedback:</strong> all <code>.btn</code> elements scale to <code>0.97</code> on <code>:active</code>. Don't add bounce or rotation — the scale-press is the canonical tactile feedback.</div>
+    <div class="callout callout--info"><strong>No press-scale on buttons.</strong> The app uses flat hover-color transitions only. Don't add <code>transform: scale</code> on <code>:active</code> — that's a lifestyle-app pattern that doesn't match the dense, utilitarian feel.</div>
   </section>
 
   <!-- BRAND:section:buttons -->
   <section id="buttons">
     <h2>Buttons</h2>
-    <p>Single <code>.btn</code> base + role modifiers + size modifiers. Pill-shaped, generous padding, lifestyle-app feel. Always uses <code>:active</code> press-scale and <code>:focus-visible</code> guava focus ring.</p>
+    <p>Single <code>.btn</code> base + role modifiers + size modifiers. <strong>r-md corners, no shadows, flat surfaces.</strong> Direction = Refined Brand (Variation A). Subsumes the legacy <code>.btn-sm-accent</code> / <code>.btn-sm</code> / <code>.btn-add</code> / <code>.pill</code> / <code>.expand-action</code> classes — those stay defined in <code>app.css</code> for un-swept call sites but new code uses <code>.btn--*</code>.</p>
 
     <h3>Roles</h3>
     <div class="example">
@@ -581,7 +525,7 @@
         <button class="btn btn--secondary">Cancel</button>
         <button class="btn btn--secondary">Manage plans</button>
       </div>
-      <h4>Destructive — guava-soft</h4>
+      <h4>Destructive — guava-bordered</h4>
       <div class="row">
         <button class="btn btn--destructive">Disconnect</button>
         <button class="btn btn--destructive">Delete account</button>
@@ -600,6 +544,10 @@
         <button class="btn btn--primary">Default</button>
         <button class="btn btn--primary btn--lg">Large</button>
       </div>
+      <p class="quiet" style="margin-top:10px;font-size:12px">
+        <code>.btn--sm</code> matches the footprint of inline action buttons (5/10 padding, 12px font).
+        <code>.btn--lg</code> matches the legacy <code>.btn-add</code> footprint (36px height, 0/24 padding, 14px font).
+      </p>
     </div>
 
     <h3>Icon-only</h3>
@@ -620,62 +568,60 @@
       <tr><td><code>.btn--destructive</code></td><td>Delete/disconnect/revoke</td></tr>
       <tr><td><code>.btn--ghost</code></td><td>Text-only action</td></tr>
       <tr><td><code>.btn--sm</code></td><td>Compact (inline, list rows)</td></tr>
-      <tr><td><code>.btn--lg</code></td><td>Hero CTAs only</td></tr>
-      <tr><td><code>.btn--icon</code></td><td>Circular 36px, square contents</td></tr>
+      <tr><td><code>.btn--lg</code></td><td>Full-primary footprint (legacy <code>.btn-add</code>)</td></tr>
+      <tr><td><code>.btn--icon</code></td><td>Square 32px, r-md</td></tr>
     </table>
 
-    <div class="callout callout--warn"><strong>Don't</strong> use <code>.pill</code>, <code>.btn-add</code>, <code>.btn-sm</code>, <code>.btn-sm-accent</code>, <code>.expand-action</code>, or admin's <code>.btn-primary/secondary/warning/danger</code>. These are legacy and will be swept to <code>.btn--*</code> in a follow-up commit.</div>
+    <div class="callout callout--warn"><strong>Legacy classes still in app.css:</strong> <code>.pill</code>, <code>.btn-add</code>, <code>.btn-sm</code>, <code>.btn-sm-accent</code>, <code>.expand-action</code>. They share the same r-md / no-shadow direction as the canonical <code>.btn--*</code> classes — sweeping a call site doesn't visually shift the button. New code should use <code>.btn--*</code>.</div>
   </section>
 
   <!-- BRAND:section:cards -->
   <section id="cards">
     <h2>Cards</h2>
-    <p>Single <code>.card</code> base + density modifiers. Use cards for grouping related controls, not as decorative containers.</p>
+    <p>The existing <code>.card</code> class is the canonical card surface: <code>--r-md</code> corners, <code>--shadow-card</code>, edge border, 13px/14px padding (with 22px left to align a centered check column). The framework here documents that contract — don't introduce parallel card variants.</p>
 
     <div class="example">
-      <h4>Default</h4>
-      <div class="card" style="margin-bottom:10px">
+      <h4>Default card</h4>
+      <div class="card-demo" style="margin-bottom:10px">
         <div class="text-h3" style="margin-bottom:6px">Sleep score</div>
         <div class="text-display">84</div>
         <div class="text-meta">↑ 4 vs last week</div>
       </div>
-      <h4>Dense</h4>
-      <div class="card card--dense" style="margin-bottom:10px">
-        <div class="text-body">A compact list row inside a smaller card.</div>
-      </div>
-      <h4>Hero</h4>
-      <div class="card card--hero">
+      <h4>Hero card (slightly more padding)</h4>
+      <div class="card-demo card-demo--hero">
         <div class="text-label" style="margin-bottom:4px">TUESDAY BRIEF</div>
         <div class="text-h1" style="margin-bottom:6px">Recover, then rebuild</div>
         <div class="text-body">Your sleep efficiency dropped 12% — protect tonight's bedtime and we'll be back on track Wednesday.</div>
       </div>
     </div>
+
+    <div class="callout callout--info">The 22px left padding on <code>.card</code> exists so a centered checkbox/check icon aligns with the title row. Don't override it unless your card has no check column.</div>
   </section>
 
   <!-- BRAND:section:chips -->
   <section id="chips">
     <h2>Chips + badges</h2>
-    <p>Pill-shaped, low-emphasis labels. Pick palette by meaning, not visual preference.</p>
+    <p>Chips are <strong>r-sm (3px), 20px fixed height, 11px / 500 weight</strong> — compact and dense. They map to the earth palette by meaning. The existing <code>.chip</code> + <code>.chip--*</code> classes are canonical.</p>
 
     <div class="example">
       <h4>Earth chips (semantic)</h4>
       <div class="row" style="gap:6px">
-        <span class="chip chip--sage">sage</span>
-        <span class="chip chip--sky">sky</span>
-        <span class="chip chip--clay">clay</span>
-        <span class="chip chip--moss">moss</span>
-        <span class="chip chip--slate">slate</span>
-        <span class="chip chip--ochre">ochre</span>
-        <span class="chip chip--plum">plum</span>
-        <span class="chip chip--guava">guava</span>
-        <span class="chip chip--ghost">ghost</span>
+        <span class="chip-demo chip-demo--sage">sage</span>
+        <span class="chip-demo chip-demo--sky">sky</span>
+        <span class="chip-demo chip-demo--clay">clay</span>
+        <span class="chip-demo chip-demo--moss">moss</span>
+        <span class="chip-demo chip-demo--slate">slate</span>
+        <span class="chip-demo chip-demo--ochre">ochre</span>
+        <span class="chip-demo chip-demo--plum">plum</span>
+        <span class="chip-demo chip-demo--guava">guava</span>
+        <span class="chip-demo chip-demo--ghost">ghost</span>
       </div>
-      <h4>Status badges</h4>
+      <h4>Status badges (pre-bound)</h4>
       <div class="row" style="gap:6px">
-        <span class="chip" style="background:var(--status-overdue-bg);color:var(--status-overdue-fg)">Overdue</span>
-        <span class="chip" style="background:var(--status-today-bg);color:var(--status-today-fg)">Today</span>
-        <span class="chip" style="background:var(--status-later-bg);color:var(--status-later-fg)">Later</span>
-        <span class="chip" style="background:var(--status-done-bg);color:var(--status-done-fg)">Done</span>
+        <span class="chip-demo" style="background:var(--guava-100);color:var(--guava-700)">Overdue</span>
+        <span class="chip-demo chip-demo--clay">Today</span>
+        <span class="chip-demo chip-demo--slate">Later</span>
+        <span class="chip-demo chip-demo--moss">Done</span>
       </div>
       <h4>Notification</h4>
       <div class="row" style="gap:16px;align-items:center">
@@ -684,25 +630,23 @@
         <span class="badge-count">12</span>
       </div>
     </div>
+
+    <div class="callout callout--info"><strong>Badge dot and badge count are the one exception to "no pills."</strong> A 6px circle and an 18px-tall pill counter are semantically badges, not buttons — the pill shape is doing real work there.</div>
   </section>
 
   <!-- BRAND:section:inputs -->
   <section id="inputs">
     <h2>Inputs</h2>
-    <p>One <code>.input</code> / <code>.textarea</code> / <code>.select</code> system. Always paired with a <code>.text-label</code> above.</p>
+    <p>One <code>.input</code> / <code>.textarea</code> / <code>.select</code> system. Background is <code>--surface-2</code> (warm beige) by default, flips to <code>--surface</code> (white) on focus alongside the <code>--guava-500</code> border. Always paired with a <code>.text-label</code> above.</p>
 
     <div class="example" style="max-width:420px">
       <div style="margin-bottom:14px">
         <div class="text-label" style="margin-bottom:6px">CITY</div>
-        <input class="input" type="text" value="Boulder, CO" />
+        <input class="input-demo" type="text" value="Boulder, CO" />
       </div>
       <div style="margin-bottom:14px">
         <div class="text-label" style="margin-bottom:6px">REFLECTION</div>
-        <textarea class="textarea" placeholder="What went well today?"></textarea>
-      </div>
-      <div>
-        <div class="text-label" style="margin-bottom:6px">PROVIDER</div>
-        <select class="select"><option>Oura</option><option>Whoop</option></select>
+        <textarea class="textarea-demo" placeholder="What went well today?"></textarea>
       </div>
     </div>
   </section>
@@ -710,12 +654,12 @@
   <!-- BRAND:section:overlays -->
   <section id="overlays">
     <h2>Overlays + modals</h2>
-    <p>One overlay backdrop + one overlay-card. Same backdrop for every modal — don't pick a new tint per feature.</p>
+    <p>One overlay backdrop, one overlay-card. The existing <code>.modal-overlay</code> tint (<code>rgba(20,30,80,0.45)</code>) + 6px backdrop blur is canonical — don't pick a new tint per feature.</p>
 
     <div class="example">
-      <div style="position:relative;background:var(--ink);border-radius:var(--r-lg);padding:80px 20px;overflow:hidden">
-        <div style="position:absolute;inset:0;background:rgba(20,15,10,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px">
-          <div class="overlay-card">
+      <div style="position:relative;background:var(--ink);border-radius:var(--r-md);padding:80px 20px;overflow:hidden">
+        <div style="position:absolute;inset:0;background:rgba(20,30,80,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px">
+          <div class="overlay-card-demo">
             <div class="text-h2" style="margin-bottom:8px">Disconnect Oura?</div>
             <div class="text-body-sm" style="margin-bottom:16px">GSD will no longer sync your Oura Ring data. Historical data already synced will remain in your account.</div>
             <div class="row" style="justify-content:flex-end">
@@ -729,8 +673,8 @@
 
     <h4>Class API</h4>
     <ul>
-      <li><code>.overlay</code> — fixed full-viewport backdrop. Add <code>.is-open</code> to show.</li>
-      <li><code>.overlay-card</code> — the centered card inside the overlay.</li>
+      <li><code>.overlay</code> — fixed full-viewport backdrop. Add <code>.is-open</code> to show. Subsumes the legacy <code>.modal-overlay</code>.</li>
+      <li><code>.overlay-card</code> — the centered card. Uses <code>--r-lg</code> for the card itself (overlays are the one place the larger radius reads right).</li>
     </ul>
   </section>
 
@@ -740,26 +684,26 @@
     <p>List rows live inside cards. Each row has a main column + optional meta column on the right.</p>
 
     <div class="example" style="padding:0">
-      <div class="list-row">
+      <div class="list-row-demo">
         <div class="list-row-main">
           <div class="text-body" style="font-weight:600">Recovery score</div>
           <div class="list-row-meta">Updated 6:42 AM</div>
         </div>
-        <span class="chip chip--moss">84</span>
+        <span class="chip-demo chip-demo--moss">84</span>
       </div>
-      <div class="list-row">
+      <div class="list-row-demo">
         <div class="list-row-main">
           <div class="text-body" style="font-weight:600">Sleep score</div>
           <div class="list-row-meta">Updated 6:42 AM</div>
         </div>
-        <span class="chip chip--clay">72</span>
+        <span class="chip-demo chip-demo--clay">72</span>
       </div>
-      <div class="list-row">
+      <div class="list-row-demo">
         <div class="list-row-main">
           <div class="text-body" style="font-weight:600">Strain</div>
           <div class="list-row-meta">Yesterday</div>
         </div>
-        <span class="chip chip--sky">14.2</span>
+        <span class="chip-demo chip-demo--sky">14.2</span>
       </div>
     </div>
   </section>
@@ -792,18 +736,16 @@
     <div class="dont-grid">
       <div class="dont-card is-bad">
         <div class="head">Don't</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Introduce a new button class for one screen.</div>
-        <code style="display:block;font-size:11px;color:var(--guava-800)">.fancy-cta { ... }</code>
+        <div class="text-body-sm" style="margin-bottom:10px">Make buttons fully pill-shaped (<code>border-radius: 999px</code>) or add decorative shadows.</div>
       </div>
       <div class="dont-card is-good">
         <div class="head">Do</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Use the documented role; add a modifier here if there's truly a new role.</div>
-        <code style="display:block;font-size:11px;color:var(--moss-fg)">&lt;button class="btn btn--primary"&gt;</code>
+        <div class="text-body-sm" style="margin-bottom:10px">Keep <code>--r-md</code> on buttons. Flat surfaces, no shadow on resting state.</div>
       </div>
 
       <div class="dont-card is-bad">
         <div class="head">Don't</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Inline <code>font-size: 14px</code> on a span.</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Inline <code>font-size: 14px; font-weight: 600</code> on a span.</div>
         <code style="display:block;font-size:11px;color:var(--guava-800)">&lt;span style="font-size:14px;font-weight:600"&gt;</code>
       </div>
       <div class="dont-card is-good">
@@ -823,11 +765,11 @@
 
       <div class="dont-card is-bad">
         <div class="head">Don't</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Use a different overlay backdrop tint per feature (slate, warm-brown, etc.).</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Use a different overlay backdrop tint per feature.</div>
       </div>
       <div class="dont-card is-good">
         <div class="head">Do</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Use <code>.overlay</code> — one backdrop for every modal.</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Use <code>.overlay</code> — one backdrop for every modal (<code>rgba(20,30,80,0.45)</code>).</div>
       </div>
 
       <div class="dont-card is-bad">
@@ -841,11 +783,11 @@
 
       <div class="dont-card is-bad">
         <div class="head">Don't</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Sharp corners on buttons or chips (<code>border-radius: 4px</code>).</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Pill-shape chips (<code>border-radius: 999px</code>).</div>
       </div>
       <div class="dont-card is-good">
         <div class="head">Do</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Pill for actions and chips. Sharp only for inputs and code blocks.</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Use <code>--r-sm</code> chips at 20px fixed height. Dense and consistent across the app.</div>
       </div>
     </div>
   </section>
