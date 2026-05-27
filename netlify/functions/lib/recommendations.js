@@ -41,6 +41,9 @@ function detectSickness({ tags, activity } = {}) {
 // Rules (any single trigger → push to that tier; tiers are ordered
 // most-aggressive first):
 //
+//   9:00 PM ← last night's total_sleep_min < 300 (under 5 hours).
+//             Sleep-emergency override — beats sickness + recovery.
+//
 //   9:30 PM ← severe sickness (temp dev > +0.5°C, OR ≥2 sick tags, OR a
 //             sick tag + mild temp elevation)
 //          ← readiness ≤ 60
@@ -73,7 +76,13 @@ function recommendSleepTarget(arg1, arg2, arg3) {
   const hrv       = recovery?.hrv_ms;
   const hrvBase   = baselines7d?.hrv_ms_median;
   const hrvLow    = (hrv != null && hrvBase != null && Number(hrv) < 0.7 * Number(hrvBase));
-  const sick      = detectSickness({ tags, activity });
+  const totalSleepMin = recovery?.total_sleep_min;
+  const shortSleep    = totalSleepMin != null && Number(totalSleepMin) < 300;   // < 5 hours
+  const sick          = detectSickness({ tags, activity });
+
+  // Critical tier — last night was a sleep emergency (<5 hr). Override
+  // everything else and push to 9 PM.
+  if (shortSleep) return '9:00 PM';
 
   // Severe tier
   if (sick.severe) return '9:30 PM';
