@@ -26,7 +26,9 @@
 //      patterns_discovered_ids + tool_calls_log + telemetry
 //   f. Mark status='ready' or 'failed' with reason
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const KNOWLEDGE_MODEL = process.env.KNOWLEDGE_MODEL || 'claude-opus-4-7';
 const SYNTHESIS_MAX_TOKENS = 4096;
 const SYNTHESIS_MAX_ITER   = 12;
@@ -476,17 +478,3 @@ async function fetchJson(url, hdrObj) {
   return await r.json();
 }
 
-// ── HTTP ───────────────────────────────────────────────────────────
-function json(statusCode, payload) { return { statusCode, body: JSON.stringify(payload) }; }
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Content-Type':                 'application/json',
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

@@ -17,7 +17,9 @@
 // call fails for any reason, we return a tiny deterministic fallback so the
 // client can still show *something* without blocking the submit flow.
 
-const SUPABASE_URL  = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const DEFAULT_MODEL      = 'claude-opus-4-7';
@@ -601,19 +603,3 @@ function buildFallback(session, sets, priorSessions, priorSetsMap, reason) {
   return { status: 'fallback', insight, observations: [], fallback_reason: reason };
 }
 
-// ── HTTP helpers ────────────────────────────────────────────────────────
-function json(statusCode, payload) {
-  return { statusCode, body: JSON.stringify(payload) };
-}
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Content-Type':                 'application/json',
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

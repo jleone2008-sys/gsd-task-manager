@@ -6,17 +6,14 @@
 // Auth: Supabase user JWT in Authorization header.
 // Body: { account_email: "..." }
 
-const { createDecipheriv } = require('crypto');
-
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { decryptToken }          = require('./lib/encryption');
+const { validateBearer }        = require('./lib/auth');
+const { SUPABASE_URL, serviceHeaders } = require('./lib/supabase');
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
+  if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return cors(json(405, { error: 'method_not_allowed' }));
-
-  const authHeader = event.headers.authorization || event.headers.Authorization || '';
-  const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!bearerToken) return cors(json(401, { error: 'missing_token' }));
 
   let accountEmail = null;
   try {
@@ -34,26 +31,16 @@ exports.handler = async (event) => {
     return cors(json(500, { error: 'server_misconfigured' }));
   }
 
-  // Verify user.
-  let userId;
-  try {
-    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${bearerToken}`, apikey: serviceKey },
-    });
-    if (!userRes.ok) return cors(json(401, { error: 'invalid_token' }));
-    const userData = await userRes.json();
-    userId = userData.id;
-  } catch (err) {
-    return cors(json(401, { error: 'token_validation_failed' }));
-  }
-  if (!userId) return cors(json(401, { error: 'no_user' }));
+  const auth = await validateBearer(event, serviceKey);
+  if (auth.error) return cors(json(auth.status, { error: auth.error }));
+  const userId = auth.userId;
 
   // Look up the row so we can revoke the refresh token at Google.
   let encrypted;
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/linked_google_accounts?user_id=eq.${encodeURIComponent(userId)}&google_email=eq.${encodeURIComponent(accountEmail)}&select=refresh_token_enc`,
-      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+      { headers: serviceHeaders(serviceKey) }
     );
     const rows = await res.json();
     encrypted = rows?.[0]?.refresh_token_enc;
@@ -80,7 +67,7 @@ exports.handler = async (event) => {
   try {
     await fetch(
       `${SUPABASE_URL}/rest/v1/google_calendars_synced?user_id=eq.${encodeURIComponent(userId)}&google_account_email=eq.${encodeURIComponent(accountEmail)}`,
-      { method: 'DELETE', headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+      { method: 'DELETE', headers: serviceHeaders(serviceKey) }
     );
   } catch (err) {
     console.warn('toggle cleanup failed', err);
@@ -90,7 +77,7 @@ exports.handler = async (event) => {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/linked_google_accounts?user_id=eq.${encodeURIComponent(userId)}&google_email=eq.${encodeURIComponent(accountEmail)}`,
-      { method: 'DELETE', headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+      { method: 'DELETE', headers: serviceHeaders(serviceKey) }
     );
     if (!res.ok) {
       const text = await res.text();
@@ -103,30 +90,3 @@ exports.handler = async (event) => {
 
   return cors(json(200, { unlinked: accountEmail }));
 };
-
-function decryptToken(b64, hexKey) {
-  const buf = Buffer.from(b64, 'base64');
-  const iv  = buf.subarray(0, 12);
-  const tag = buf.subarray(12, 28);
-  const ct  = buf.subarray(28);
-  const key = Buffer.from(hexKey, 'hex');
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
-}
-
-function json(statusCode, body) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-}
-
-function cors(response) {
-  return {
-    ...response,
-    headers: {
-      ...(response.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  };
-}

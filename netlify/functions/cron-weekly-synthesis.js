@@ -10,7 +10,7 @@
 // Failure handling: per-user failure is logged but the loop continues.
 // One user with a flaky baseline shouldn't block others.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { SUPABASE_URL } = require('./lib/supabase');
 
 exports.handler = async (event) => {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -80,4 +80,4 @@ function mondayOfThisWeek() {
   return d.toISOString().slice(0, 10);
 }
 
-function json(statusCode, payload) { return { statusCode, body: JSON.stringify(payload) }; }
+const { json } = require('./lib/http');

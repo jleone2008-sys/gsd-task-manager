@@ -3,7 +3,8 @@
 // Flow: browser → Google → here → /app#id_token=...&access_token=...
 // Also captures the Google refresh_token (encrypted) into user_profiles for admin use.
 
-const { createCipheriv, randomBytes } = require('crypto');
+const { encryptToken } = require('./lib/encryption');
+const { SUPABASE_URL } = require('./lib/supabase');
 
 exports.handler = async (event) => {
   const { code, state, error } = event.queryStringParameters || {};
@@ -74,17 +75,6 @@ function redirect(location) {
   return { statusCode: 302, headers: { Location: location }, body: '' };
 }
 
-// Decrypt counterpart lives in admin-api.js — must use same key + format.
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  // Layout: 12-byte IV | 16-byte GCM tag | ciphertext — all base64
-  return Buffer.concat([iv, tag, ct]).toString('base64');
-}
-
 function decodeJwtPayload(jwt) {
   try {
     const payload = jwt.split('.')[1];
@@ -97,7 +87,6 @@ function decodeJwtPayload(jwt) {
 async function storeRefreshToken(idToken, refreshToken) {
   const encKey      = process.env.ADMIN_ENCRYPTION_KEY;
   const serviceKey  = process.env.SUPABASE_SERVICE_KEY;
-  const supabaseUrl = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 
   if (!encKey || !serviceKey) {
     console.warn('ADMIN_ENCRYPTION_KEY or SUPABASE_SERVICE_KEY not set — skipping refresh token storage');
@@ -112,7 +101,7 @@ async function storeRefreshToken(idToken, refreshToken) {
 
   const encrypted = encryptToken(refreshToken, encKey);
 
-  const res = await fetch(`${supabaseUrl}/rest/v1/user_profiles`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles`, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',

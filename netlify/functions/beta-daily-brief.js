@@ -24,7 +24,9 @@
 //   - Banned-phrase scan across all prose fields → fallback on hit
 //   - Validate hero_metric.key against allowed enum; substitute hint on miss
 
-const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL }          = require('./lib/supabase');
+
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 // OPEN_METEO_URL moved to lib/weather.js along with fetchWeather.
 
@@ -1800,18 +1802,4 @@ function localDayStartUtcMs(dateStr, tz) {
     }
   }
   return guessMs;
-}
-function json(statusCode, body) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-}
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Internal-Auth',
-    },
-  };
 }

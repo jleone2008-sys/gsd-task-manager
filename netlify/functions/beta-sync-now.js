@@ -7,7 +7,8 @@
 //
 // Query params: ?provider=oura|whoop|all (default all), ?days=N (default 30, max 90)
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
@@ -56,17 +57,3 @@ exports.handler = async (event) => {
   return cors(json(200, { ok: true, days, results }));
 };
 
-function json(statusCode, obj) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) };
-}
-function cors(resp) {
-  return {
-    ...resp,
-    headers: {
-      ...(resp.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    },
-  };
-}

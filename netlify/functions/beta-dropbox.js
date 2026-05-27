@@ -5,10 +5,11 @@
 //   status     → { connected, dropbox_account_email }
 //   disconnect → revoke access token at Dropbox + null the encrypted refresh token
 
-const { createDecipheriv } = require('crypto');
+const { json, cors, preflight } = require('./lib/http');
+const { decryptToken }          = require('./lib/encryption');
+const { SUPABASE_URL }          = require('./lib/supabase');
 
 const DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
-const SUPABASE_URL      = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
@@ -123,17 +124,6 @@ async function exchangeDropboxRefreshToken(encryptedToken) {
   return data.access_token;
 }
 
-function decryptToken(b64, hexKey) {
-  const buf  = Buffer.from(b64, 'base64');
-  const iv   = buf.subarray(0, 12);
-  const tag  = buf.subarray(12, 28);
-  const ct   = buf.subarray(28);
-  const key  = Buffer.from(hexKey, 'hex');
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
-}
-
 async function supabaseFetch(path, method, body, userToken, serviceKey) {
   const headers = {
     'Content-Type':  'application/json',
@@ -149,22 +139,3 @@ async function supabaseFetch(path, method, body, userToken, serviceKey) {
   });
 }
 
-function json(status, body) {
-  return {
-    statusCode: status,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-}
-
-function cors(response) {
-  return {
-    ...response,
-    headers: {
-      ...(response.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  };
-}

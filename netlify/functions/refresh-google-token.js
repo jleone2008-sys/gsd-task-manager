@@ -4,18 +4,16 @@
 // secondary Google account (stored in linked_google_accounts).
 // Auth: Supabase user JWT in Authorization header.
 
-const { createDecipheriv } = require('crypto');
+const { json, cors, preflight } = require('./lib/http');
+const { decryptToken }          = require('./lib/encryption');
+const { validateBearer }        = require('./lib/auth');
+const { SUPABASE_URL, serviceHeaders } = require('./lib/supabase');
 
 const GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
-const SUPABASE_URL     = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
+  if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return cors(json(405, { error: 'method_not_allowed' }));
-
-  const authHeader = event.headers.authorization || event.headers.Authorization || '';
-  const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!bearerToken) return cors(json(401, { error: 'missing_token' }));
 
   // Optional body { account_email: "..." } — when present, refresh the
   // token for that linked account instead of the primary signed-in one.
@@ -37,21 +35,10 @@ exports.handler = async (event) => {
     return cors(json(500, { error: 'server_misconfigured' }));
   }
 
-  // Verify the user's Supabase JWT via the auth endpoint
-  let userEmail, userId;
-  try {
-    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${bearerToken}`, apikey: serviceKey },
-    });
-    if (!userRes.ok) return cors(json(401, { error: 'invalid_token' }));
-    const userData = await userRes.json();
-    userEmail = userData.email;
-    userId    = userData.id;
-  } catch (err) {
-    console.error('Token validation error:', err.message);
-    return cors(json(401, { error: 'token_validation_failed' }));
-  }
-  if (!userEmail) return cors(json(401, { error: 'no_email_on_token' }));
+  const auth = await validateBearer(event, serviceKey);
+  if (auth.error) return cors(json(auth.status, { error: auth.error }));
+  if (!auth.email) return cors(json(401, { error: 'no_email_on_token' }));
+  const { userId, email: userEmail } = auth;
 
   // Look up the encrypted refresh_token — primary lives on user_profiles;
   // linked accounts live on linked_google_accounts.
@@ -60,14 +47,14 @@ exports.handler = async (event) => {
     if (linkedEmail) {
       const res = await fetch(
         `${SUPABASE_URL}/rest/v1/linked_google_accounts?user_id=eq.${encodeURIComponent(userId)}&google_email=eq.${encodeURIComponent(linkedEmail)}&select=refresh_token_enc`,
-        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+        { headers: serviceHeaders(serviceKey) }
       );
       const rows = await res.json();
       encrypted = rows?.[0]?.refresh_token_enc;
     } else {
       const res = await fetch(
         `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(userEmail)}&select=google_refresh_token_enc`,
-        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+        { headers: serviceHeaders(serviceKey) }
       );
       const rows = await res.json();
       encrypted = rows?.[0]?.google_refresh_token_enc;
@@ -128,30 +115,3 @@ exports.handler = async (event) => {
     return cors(json(502, { error: 'refresh_exchange_failed' }));
   }
 };
-
-function decryptToken(b64, hexKey) {
-  const buf  = Buffer.from(b64, 'base64');
-  const iv   = buf.subarray(0, 12);
-  const tag  = buf.subarray(12, 28);
-  const ct   = buf.subarray(28);
-  const key  = Buffer.from(hexKey, 'hex');
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
-}
-
-function json(statusCode, body) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-}
-
-function cors(response) {
-  return {
-    ...response,
-    headers: {
-      ...(response.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  };
-}

@@ -5,9 +5,10 @@
 //   status     → { connected, whoop_account_email }
 //   disconnect → revoke at Whoop + null the encrypted refresh token
 
-const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
+const { json, cors, preflight }       = require('./lib/http');
+const { encryptToken, decryptToken }  = require('./lib/encryption');
+const { SUPABASE_URL }                = require('./lib/supabase');
 
-const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 const WHOOP_REVOKE    = 'https://api.prod.whoop.com/oauth/oauth2/revoke';
 
@@ -130,29 +131,3 @@ async function disconnect(email, serviceKey) {
   return json(200, { ok: true });
 }
 
-function decryptToken(b64, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const buf = Buffer.from(b64, 'base64');
-  const iv  = buf.slice(0, 12);
-  const tag = buf.slice(12, 28);
-  const ct  = buf.slice(28);
-  const dec = createDecipheriv('aes-256-gcm', key, iv);
-  dec.setAuthTag(tag);
-  return Buffer.concat([dec.update(ct), dec.final()]).toString('utf8');
-}
-
-function json(statusCode, obj) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) };
-}
-
-function cors(resp) {
-  return {
-    ...resp,
-    headers: {
-      ...(resp.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    },
-  };
-}

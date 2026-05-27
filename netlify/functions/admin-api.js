@@ -7,9 +7,12 @@
 //   SUPABASE_JWT_SECRET   — from Supabase Settings > API > JWT Settings
 //   BETA_GOOGLE_CLIENT_ID / BETA_GOOGLE_CLIENT_SECRET — for refresh token exchange
 
-const { createCipheriv, createDecipheriv, randomBytes, createHmac } = require('crypto');
+const { createHmac } = require('crypto');
 
-const SUPABASE_URL     = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight }       = require('./lib/http');
+const { encryptToken, decryptToken }  = require('./lib/encryption');
+const { SUPABASE_URL }                = require('./lib/supabase');
+
 const GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
 const DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
 
@@ -590,17 +593,6 @@ async function exchangeDropboxRefreshToken(encryptedToken) {
   return data.access_token;
 }
 
-function decryptToken(b64, hexKey) {
-  const buf  = Buffer.from(b64, 'base64');
-  const iv   = buf.subarray(0, 12);
-  const tag  = buf.subarray(12, 28);
-  const ct   = buf.subarray(28);
-  const key  = Buffer.from(hexKey, 'hex');
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
-}
-
 function signSupabaseJwt(userId, email) {
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
   if (!jwtSecret) throw new Error('SUPABASE_JWT_SECRET not set');
@@ -644,22 +636,3 @@ async function supabaseFetch(path, method, body, userToken, serviceKey) {
   });
 }
 
-function json(status, body) {
-  return {
-    statusCode: status,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-}
-
-function cors(response) {
-  return {
-    ...response,
-    headers: {
-      ...(response.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  };
-}

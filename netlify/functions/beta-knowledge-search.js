@@ -24,7 +24,9 @@
 // documents or when nothing scores above the floor — caller handles
 // the empty-state UI.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const DEFAULT_TOP_K   = 5;
@@ -119,19 +121,3 @@ function pgvectorLiteral(vec) {
   return '[' + vec.map(v => v.toFixed(6)).join(',') + ']';
 }
 
-// ── HTTP helpers ──────────────────────────────────────────────────────
-function json(statusCode, payload) {
-  return { statusCode, body: JSON.stringify(payload) };
-}
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Content-Type':                 'application/json',
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

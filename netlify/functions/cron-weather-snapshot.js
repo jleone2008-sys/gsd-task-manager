@@ -17,7 +17,7 @@
 // part of the wind-down framing; writing both at 05:00 means the
 // evening brief gets a cache hit instead of paying a live fetch.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { SUPABASE_URL } = require('./lib/supabase');
 const { fetchOpenMeteo, writeWeatherSnapshot } = require('./lib/weather');
 
 // Snapshot fires once per user per day, at this local hour.

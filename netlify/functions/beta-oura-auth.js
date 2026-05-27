@@ -5,9 +5,9 @@
 // On success: kicks off a 30-day backfill into oura_daily, then redirects to
 // /app#oura=connected.
 
-const { createCipheriv, randomBytes } = require('crypto');
+const { encryptToken } = require('./lib/encryption');
+const { SUPABASE_URL } = require('./lib/supabase');
 
-const SUPABASE_URL   = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const OURA_TOKEN_URL = 'https://api.ouraring.com/oauth/token';
 const OURA_API       = 'https://api.ouraring.com/v2/usercollection';
 
@@ -99,15 +99,6 @@ exports.handler = async (event) => {
 
 function redirect(location) {
   return { statusCode: 302, headers: { Location: location }, body: '' };
-}
-
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString('base64');
 }
 
 async function storeOuraRefreshToken(email, refreshToken, ouraEmail, encKey, serviceKey) {

@@ -17,7 +17,7 @@
 // enforcement on every query. The agentic loop has already validated
 // the calling user; tools trust the userId param.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { SUPABASE_URL } = require('./supabase');
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 

@@ -31,7 +31,7 @@
 // Cost: ~6 Supabase reads per user per fire + 1 view refresh per day.
 // Effectively free at single-tenant scale.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { SUPABASE_URL } = require('./lib/supabase');
 const { computeAdherence, signaturePrefix } = require('./lib/adherence-rules');
 
 // Only do work at this local hour. Late enough that today's sleep data

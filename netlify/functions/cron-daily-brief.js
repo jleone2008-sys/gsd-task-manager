@@ -26,7 +26,7 @@
 // access_status='active'. Until then, all users with a populated timezone
 // (set by the frontend on app load) are considered active.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { SUPABASE_URL } = require('./lib/supabase');
 
 // Only generate when user's local hour is in this window. After 6 we have a
 // good shot at Oura having finalized yesterday's data; cap at 22 so the

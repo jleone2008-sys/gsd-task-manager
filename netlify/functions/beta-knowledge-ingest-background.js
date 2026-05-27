@@ -33,7 +33,9 @@
 // — RLS-bypass for performance, but every row carries user_id set from
 // the validated JWT.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 
@@ -548,18 +550,3 @@ function sanitizeFilename(name) {
   return String(name).replace(/[/\\:*?"<>|]/g, '_').slice(0, 120) || 'document';
 }
 
-function json(statusCode, payload) {
-  return { statusCode, body: JSON.stringify(payload) };
-}
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Content-Type':                 'application/json',
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

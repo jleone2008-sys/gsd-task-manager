@@ -22,14 +22,16 @@
 // typically ~4-6k vision tokens; the structured-extract output is
 // small (~400 tokens).
 
-const SUPABASE_URL  = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const DEFAULT_MODEL      = 'claude-opus-4-7';
 const DEFAULT_MAX_TOKENS = 800;
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
+  if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST')    return cors(json(405, { error: 'method_not_allowed' }));
 
   const serviceKey   = process.env.SUPABASE_SERVICE_KEY;
@@ -370,19 +372,3 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
   };
 }
 
-// ── HTTP helpers ───────────────────────────────────────────────────────
-function json(statusCode, payload) {
-  return { statusCode, body: JSON.stringify(payload) };
-}
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Content-Type':                 'application/json',
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

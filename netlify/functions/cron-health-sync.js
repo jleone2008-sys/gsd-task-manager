@@ -13,9 +13,9 @@
 // successful exchange re-encrypts and re-stores. Oura's refresh token is
 // stable but we re-store anyway in case that changes.
 
-const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
+const { encryptToken, decryptToken } = require('./lib/encryption');
+const { SUPABASE_URL }               = require('./lib/supabase');
 
-const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 // Whoop's V1 endpoints (under /developer/v1/) were deprecated in 2025; V2
 // lives at the root with /v2/* paths. Response shapes are largely the same
@@ -680,27 +680,6 @@ async function logRun(email, provider, success, error, rowsUpserted, start, end,
       window_end:    dateKey(end),
     }),
   });
-}
-
-// ── Crypto helpers (match Dropbox pattern) ────────────────────────────────
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString('base64');
-}
-
-function decryptToken(b64, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const buf = Buffer.from(b64, 'base64');
-  const iv  = buf.slice(0, 12);
-  const tag = buf.slice(12, 28);
-  const ct  = buf.slice(28);
-  const dec = createDecipheriv('aes-256-gcm', key, iv);
-  dec.setAuthTag(tag);
-  return Buffer.concat([dec.update(ct), dec.final()]).toString('utf8');
 }
 
 // ── Misc ──────────────────────────────────────────────────────────────────

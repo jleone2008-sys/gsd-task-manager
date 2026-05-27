@@ -14,7 +14,9 @@
 // Auth:      Supabase JWT (Bearer)
 // Returns:   { ok: true, city, weather_lat, weather_lng, weather_label }
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const GEOCODE_URL  = 'https://geocoding-api.open-meteo.com/v1/search';
 
 // US state code → full name. Open-Meteo returns admin1 as the full state name
@@ -156,18 +158,3 @@ exports.handler = async (event) => {
   }));
 };
 
-function json(statusCode, body) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-}
-
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

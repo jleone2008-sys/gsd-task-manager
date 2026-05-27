@@ -7,9 +7,9 @@
 // On success: kicks off a 30-day backfill into whoop_daily, then redirects to
 // /app#whoop=connected.
 
-const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
+const { encryptToken, decryptToken } = require('./lib/encryption');
+const { SUPABASE_URL }               = require('./lib/supabase');
 
-const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 // V2: Whoop dropped the /developer prefix; profile endpoint moved from
 // /developer/v1/user/profile/basic to /v2/user/profile/basic. Response
@@ -126,25 +126,6 @@ function redirect(location) {
   return { statusCode: 302, headers: { Location: location }, body: '' };
 }
 
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString('base64');
-}
-
-function decryptToken(b64, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const buf = Buffer.from(b64, 'base64');
-  const iv  = buf.slice(0, 12);
-  const tag = buf.slice(12, 28);
-  const ct  = buf.slice(28);
-  const dec = createDecipheriv('aes-256-gcm', key, iv);
-  dec.setAuthTag(tag);
-  return Buffer.concat([dec.update(ct), dec.final()]).toString('utf8');
-}
 
 async function storeWhoopRefreshToken(email, refreshToken, whoopEmail, whoopUserId, encKey, serviceKey) {
   const encrypted = encryptToken(refreshToken, encKey);

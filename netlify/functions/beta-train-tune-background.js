@@ -23,7 +23,9 @@
 //
 // Acceptance / decline / revert happens later via beta-plan-tune-action.js.
 
-const SUPABASE_URL  = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const DEFAULT_MODEL      = 'claude-opus-4-7';
@@ -644,18 +646,3 @@ function median(arr) {
   return sorted.length % 2 === 0 ? (Number(sorted[mid - 1]) + Number(sorted[mid])) / 2 : Number(sorted[mid]);
 }
 
-function json(statusCode, obj) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) };
-}
-
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Auth',
-    },
-  };
-}

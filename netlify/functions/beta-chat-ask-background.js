@@ -35,7 +35,9 @@
 //        tool_calls_log
 //   g. Return 202 to caller — client polls the assistant_msg_id row.
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { SUPABASE_URL } = require('./lib/supabase');
+
 const KNOWLEDGE_MODEL = process.env.KNOWLEDGE_MODEL || 'claude-opus-4-7';
 const CHAT_MAX_TOKENS = 2048;
 const CHAT_MAX_ITER   = 10;
@@ -260,17 +262,3 @@ async function fetchJson(url, hdrObj) {
   return await r.json();
 }
 
-// ── HTTP ──────────────────────────────────────────────────────────
-function json(statusCode, payload) { return { statusCode, body: JSON.stringify(payload) }; }
-function cors(res) {
-  return {
-    ...res,
-    headers: {
-      ...(res.headers || {}),
-      'Content-Type':                 'application/json',
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    },
-  };
-}

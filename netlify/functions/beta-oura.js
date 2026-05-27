@@ -4,9 +4,10 @@
 //   status     → { connected, oura_account_email }
 //   disconnect → revoke at Oura (best-effort) + null the encrypted refresh token
 
-const { createDecipheriv } = require('crypto');
+const { json, cors, preflight } = require('./lib/http');
+const { decryptToken }          = require('./lib/encryption');
+const { SUPABASE_URL }          = require('./lib/supabase');
 
-const SUPABASE_URL   = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const OURA_TOKEN_URL = 'https://api.ouraring.com/oauth/token';
 const OURA_REVOKE    = 'https://api.ouraring.com/oauth/revoke';
 
@@ -119,29 +120,3 @@ async function disconnect(email, serviceKey) {
   return json(200, { ok: true });
 }
 
-function decryptToken(b64, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const buf = Buffer.from(b64, 'base64');
-  const iv  = buf.slice(0, 12);
-  const tag = buf.slice(12, 28);
-  const ct  = buf.slice(28);
-  const dec = createDecipheriv('aes-256-gcm', key, iv);
-  dec.setAuthTag(tag);
-  return Buffer.concat([dec.update(ct), dec.final()]).toString('utf8');
-}
-
-function json(statusCode, obj) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) };
-}
-
-function cors(resp) {
-  return {
-    ...resp,
-    headers: {
-      ...(resp.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    },
-  };
-}

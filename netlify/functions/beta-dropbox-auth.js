@@ -5,10 +5,10 @@
 // Identifies the GSD user by validating the Supabase access_token passed back
 // in the OAuth `state` param via Supabase's /auth/v1/user endpoint.
 
-const { createCipheriv, randomBytes } = require('crypto');
+const { encryptToken } = require('./lib/encryption');
+const { SUPABASE_URL } = require('./lib/supabase');
 
 const DROPBOX_CLIENT_ID = '7rf801fqot1xx8n';
-const SUPABASE_URL      = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 
 exports.handler = async (event) => {
   const { code, state, error } = event.queryStringParameters || {};
@@ -113,15 +113,6 @@ exports.handler = async (event) => {
 
 function redirect(location) {
   return { statusCode: 302, headers: { Location: location }, body: '' };
-}
-
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString('base64');
 }
 
 async function storeDropboxRefreshToken(email, refreshToken, dropboxAccountEmail) {

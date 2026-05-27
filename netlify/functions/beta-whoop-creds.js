@@ -9,9 +9,9 @@
 //   set    → body { client_id, client_secret } → save both
 //   clear  → wipe creds AND any stored refresh token
 
-const { createCipheriv } = require('crypto');
-
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
+const { json, cors, preflight } = require('./lib/http');
+const { encryptToken }          = require('./lib/encryption');
+const { SUPABASE_URL }          = require('./lib/supabase');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
@@ -143,27 +143,3 @@ async function clearCreds(email, serviceKey) {
   return json(200, { ok: true });
 }
 
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = require('crypto').randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString('base64');
-}
-
-function json(statusCode, obj) {
-  return { statusCode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) };
-}
-
-function cors(resp) {
-  return {
-    ...resp,
-    headers: {
-      ...(resp.headers || {}),
-      'Access-Control-Allow-Origin':  '*',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    },
-  };
-}

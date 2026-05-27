@@ -5,9 +5,9 @@
 // primary account. The state param carries the user's existing Supabase
 // JWT so we know which user_id to attach the linked account to.
 
-const { createCipheriv, randomBytes } = require('crypto');
+const { encryptToken } = require('./lib/encryption');
+const { SUPABASE_URL, upsertHeaders } = require('./lib/supabase');
 
-const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const GOOGLE_CLIENT_ID = '508677465416-ptiaqbjlqq8cmf8f1gertead6493u7ei.apps.googleusercontent.com';
 
 exports.handler = async (event) => {
@@ -102,12 +102,7 @@ exports.handler = async (event) => {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/linked_google_accounts`, {
       method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'apikey':        serviceKey,
-        'Authorization': `Bearer ${serviceKey}`,
-        'Prefer':        'resolution=merge-duplicates',
-      },
+      headers: upsertHeaders(serviceKey),
       body: JSON.stringify({
         user_id:           userId,
         google_email:      linkedEmail,
@@ -131,15 +126,6 @@ exports.handler = async (event) => {
 
 function redirect(location) {
   return { statusCode: 302, headers: { Location: location }, body: '' };
-}
-
-function encryptToken(plaintext, hexKey) {
-  const key = Buffer.from(hexKey, 'hex');
-  const iv  = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const ct  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString('base64');
 }
 
 function decodeJwtPayload(jwt) {
