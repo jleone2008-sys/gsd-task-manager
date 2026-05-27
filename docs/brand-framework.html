@@ -26,6 +26,7 @@
     --surface-2:   #ede8dc;
     --edge:        #ddd6c7;
     --edge-strong: #c9c1ad;
+    --row-hover-bg: #fcfaf5;
     --ink:   #1a1714;
     --ink-2: #3d362d;
     --ink-3: #6e6559;
@@ -264,6 +265,7 @@
       <li><a href="#space">Space + radius</a></li>
       <li><a href="#elevation">Elevation</a></li>
       <li><a href="#motion">Motion</a></li>
+      <li><a href="#hover-focus">Hover + focus</a></li>
       <li><a href="#buttons">Buttons</a></li>
       <li><a href="#cards">Cards</a></li>
       <li><a href="#chips">Chips + badges</a></li>
@@ -505,6 +507,34 @@
       <tr><td><code>--ease</code></td><td>cubic-bezier(0.2,0.8,0.2,1)</td><td>Everything (don't introduce new eases)</td></tr>
     </table>
     <div class="callout callout--info"><strong>No press-scale on buttons.</strong> The app uses flat hover-color transitions only. Don't add <code>transform: scale</code> on <code>:active</code> — that's a lifestyle-app pattern that doesn't match the dense, utilitarian feel.</div>
+  </section>
+
+  <!-- BRAND:section:hover-focus -->
+  <section id="hover-focus">
+    <h2>Hover + focus</h2>
+    <p>Two canonical patterns — one for hover, one for focus. Both reuse a single token each so the convention is enforceable across the codebase.</p>
+
+    <h3>Hover</h3>
+    <table class="tokens">
+      <tr><th>Token</th><th>Value</th><th>Use for</th></tr>
+      <tr><td><code>--row-hover-bg</code></td><td>#fcfaf5</td><td>Background fill on every hover state across the app</td></tr>
+    </table>
+    <p>Faint warm white (between <code>--bg</code> and <code>--surface</code>). Reads as a gentle lift, not a darkening. <strong>Never use <code>--surface-2</code> for hover</strong> — that's the beige seating-surface color, used as a resting background for things like sidebar/footer; on hover it competes with the page bg and reads heavy.</p>
+
+    <h4>Two flavors</h4>
+    <ul>
+      <li><strong>Plain bg-fill hover</strong> — buttons, dropdown items, sidebar nav, modal close, etc. Just <code>:hover { background: var(--row-hover-bg); }</code>.</li>
+      <li><strong>Option 4 (left-accent + bg)</strong> — line-style rows on Home and elsewhere. 2px guava-700 border slides in from the left + warm bg + a 2px <code>padding-left</code> compensation so the content doesn't shift. Strongest "this is clickable" signal. Applied via <code>.home-row.is-clickable</code>, <code>.home-event-row.is-editable</code>, <code>.home-note-card</code>.</li>
+    </ul>
+
+    <div class="callout callout--warn"><strong>Don't</strong> add hover to elements that aren't actually clickable. Hover = click affordance. If an element has no click handler, it has no hover.</div>
+
+    <h3>Focus</h3>
+    <table class="tokens">
+      <tr><th>Token</th><th>Value</th><th>Use for</th></tr>
+      <tr><td><code>--shadow-focus</code></td><td>0 0 0 3px rgba(184,45,59,0.22)</td><td>3px guava-700 ring on every focusable input + button</td></tr>
+    </table>
+    <p>One ring, everywhere. Inputs change <code>border-color</code> to <code>--guava-500</code> on focus + add the ring shadow. Buttons use <code>:focus-visible</code> with the same shadow (no outline). Don't introduce alternate focus styles.</p>
   </section>
 
   <!-- BRAND:section:buttons -->
