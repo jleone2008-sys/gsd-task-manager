@@ -206,19 +206,19 @@
   .badge-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--guava-700); vertical-align: middle; }
   .badge-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--guava-700); color: #fff; font-size: 10px; font-weight: 700; }
 
-  /* Inputs — match the existing .modal input footprint (surface-2 bg). */
+  /* Inputs — white surface, edge-strong border, guava focus ring. */
   .input-demo, .textarea-demo {
-    width: 100%; background: var(--surface-2);
+    width: 100%; background: var(--surface);
     border: 1px solid var(--edge-strong);
     border-radius: var(--r-md);
     padding: 8px 10px;
     font-family: inherit; font-size: 13.5px; color: var(--ink);
     outline: none;
-    transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+    transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   }
   .input-demo:focus, .textarea-demo:focus {
     border-color: var(--guava-500);
-    background: var(--surface);
+    box-shadow: var(--shadow-focus);
   }
   .textarea-demo { resize: vertical; min-height: 60px; line-height: 1.5; }
 
@@ -637,7 +637,7 @@
   <!-- BRAND:section:inputs -->
   <section id="inputs">
     <h2>Inputs</h2>
-    <p>One <code>.input</code> / <code>.textarea</code> / <code>.select</code> system. Background is <code>--surface-2</code> (warm beige) by default, flips to <code>--surface</code> (white) on focus alongside the <code>--guava-500</code> border. Always paired with a <code>.text-label</code> above.</p>
+    <p>One <code>.input</code> / <code>.textarea</code> / <code>.select</code> system. <strong>White surface (<code>--surface</code>) by default</strong> across the whole app — no beige resting state. Focus brightens the border to <code>--guava-500</code> and adds the canonical focus ring (<code>--shadow-focus</code>). Always paired with a <code>.text-label</code> above.</p>
 
     <div class="example" style="max-width:420px">
       <div style="margin-bottom:14px">

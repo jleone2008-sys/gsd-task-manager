@@ -1422,7 +1422,7 @@
   .day-btn { width: 34px; height: 34px; border-radius: 50%; font-size: 10px; font-weight: 600; padding: 0; }
   .day-btn.sel { background: var(--sky-fg); color: #fff; border-color: var(--sky-fg); }
   .end-btn { font-size: 11px; font-weight: 500; padding: 4px 9px; border-radius: var(--r-sm); }
-  .repeat-end-input { font-family: inherit; font-size: 11px; padding: 3px 7px; border: 1px solid var(--edge-strong); border-radius: var(--r-sm); background: var(--surface-2); color: var(--ink); width: 120px; }
+  .repeat-end-input { font-family: inherit; font-size: 11px; padding: 3px 7px; border: 1px solid var(--edge-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); width: 120px; }
 
   /* MODAL */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,30,80,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4); }
@@ -1442,11 +1442,11 @@
   .modal h3 { font-size: var(--fs-body); font-weight: var(--fw-bold); letter-spacing: 0.5px; margin-bottom: var(--space-3-5); }
   .modal label { font-size: var(--fs-label); font-weight: var(--fw-semibold); letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: var(--space-1); }
   .modal input, .modal textarea {
-    width: 100%; background: var(--surface-2); border: 1px solid var(--edge-strong); border-radius: var(--r-md);
+    width: 100%; background: var(--surface); border: 1px solid var(--edge-strong); border-radius: var(--r-md);
     padding: var(--space-2) var(--space-2-5); color: var(--ink); font-family: inherit; font-size: var(--fs-task); outline: none;
-    margin-bottom: var(--space-2-5); transition: border-color var(--dur-fast);
+    margin-bottom: var(--space-2-5); transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
-  .modal input:focus, .modal textarea:focus { border-color: var(--guava-500); background: #fff; }
+  .modal input:focus, .modal textarea:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .modal textarea { resize: vertical; min-height: 60px; }
   .modal-tags { display: flex; gap: var(--space-1); flex-wrap: nowrap; align-items: center; overflow: hidden; }
   .modal-footer-row {
@@ -3696,19 +3696,21 @@
     box-shadow: var(--shadow-raised);
   }
 
-  /* ── Inputs (matches .modal input / .add-row input footprint) ── */
+  /* ── Inputs — white surface, edge-strong border, guava focus ring ──
+     White by default (not the legacy beige). Focus brightens the border
+     to guava-500 and adds the canonical focus ring. */
   .input, .textarea, .select {
-    width: 100%; background: var(--surface-2);
+    width: 100%; background: var(--surface);
     border: 1px solid var(--edge-strong);
     border-radius: var(--r-md);
     padding: var(--space-2) var(--space-2-5);
     font-family: inherit; font-size: var(--fs-task); color: var(--ink);
-    transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+    transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
     outline: none;
   }
   .input:focus, .textarea:focus, .select:focus {
     border-color: var(--guava-500);
-    background: var(--surface);
+    box-shadow: var(--shadow-focus);
   }
   .textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
 
