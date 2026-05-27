@@ -62,24 +62,11 @@
   };
 
   const PILL_BARS = [
-    // Tasks + Habits pill bars carry only their "current tab" pill now.
-    // The Statistics view moved out of the pill bar to a floating-stats
-    // icon button to the left of the FAB (see #floatingStats in app.html
+    // Tasks + Habits pill bars are gone entirely — they only ever carried
+    // their own "current tab" pill (count duplicates the mobile-nav badge).
+    // The Statistics view opens in a modal via the floating-stats icon to
+    // the left of the FAB (see #floatingStats + #statsOverlay in app.html
     // and the click handler in beta/src/01-core.js).
-    {
-      selector: '.pill-bar[data-tool-view="tasks"]',
-      dataKey:  'data-filter',
-      pills: [
-        { key: 'all', label: 'Tasks', default: true, count: 'pc-all', icon: ICONS.tasks },
-      ],
-    },
-    {
-      selector: '.pill-bar.habit-sub-pills',
-      dataKey:  'data-habit-view',
-      pills: [
-        { key: 'today', label: 'Habits', default: true, count: 'pc-habit-today', extraClass: 'habit-pill', icon: ICONS.habits },
-      ],
-    },
     {
       selector: '.pill-bar.insights-sub-pills',
       dataKey:  'data-insights-view',

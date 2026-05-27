@@ -569,12 +569,10 @@
      [data-tool-view] visibility toggle finds them; the inner pills
      are populated by JS at DOMContentLoaded. To add / remove / rename
      a pill, edit PILL_BARS in beta/src/01-pillbars.js — not this file. -->
-<div class="pill-bar" data-tool-view="tasks" style="display:none">
-  <div class="pill-bar-inner"></div>
-</div>
-<div class="pill-bar habit-sub-pills" data-tool-view="habits" style="display:none">
-  <div class="pill-bar-inner"></div>
-</div>
+<!-- Tasks + Habits pill bars removed — each only held one pill (the
+     tab's own label + count) and the count is already visible on the
+     mobile nav badge. Statistics moved into a modal (#statsOverlay
+     below) toggled by the floating-stats icon next to the FAB. -->
 <div class="pill-bar train-sub-pills" data-tool-view="train" style="display:none">
   <div class="pill-bar-inner"></div>
 </div>
@@ -599,7 +597,9 @@
   <div class="habits-content">
     <div class="habit-sub-content active" id="habit-today"></div>
     <div class="habit-sub-content" id="habit-all"></div>
-    <div class="habit-sub-content" id="habit-stats"></div>
+    <!-- #habit-stats moved into #statsOverlay below so the existing
+         renderHabitStats() (which writes to #habit-stats by id) populates
+         the modal body instead of a hidden sub-tab pane. -->
   </div>
 </div>
 
@@ -760,6 +760,27 @@
 <button class="floating-stats hidden" id="floatingStats" title="Statistics" aria-label="Statistics">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
 </button>
+
+<!-- STATISTICS MODAL — opened by the floating-stats button. Body content
+     swaps by activeTool: Tasks shows renderTaskStats() output; Habits
+     embeds the moved-here #habit-stats div which renderHabitStats()
+     populates by id. Close via X button, backdrop click, or Escape. -->
+<div class="overlay stats-overlay" id="statsOverlay">
+  <div class="overlay-card stats-overlay-card">
+    <div class="stats-overlay-head">
+      <span class="text-h2" id="statsModalTitle">Statistics</span>
+      <button class="btn btn--icon" id="statsModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="stats-overlay-body" id="statsModalBody">
+      <!-- Tasks: renderTaskStats() output injected at click time.
+           Habits: #habit-stats lives below and the existing renderer
+           writes into it. -->
+      <div id="habit-stats" style="display:none"></div>
+    </div>
+  </div>
+</div>
 
 <!-- FLOATING CHAT BUTTON — Phase 8 Insights redesign. Same chrome as
      .floating-search and .floating-scratch (white surface, edge

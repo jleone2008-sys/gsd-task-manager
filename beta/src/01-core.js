@@ -704,18 +704,18 @@ function switchTool(tool) {
   if (tool !== 'notes') {
     document.getElementById('chatPopup')?.classList.remove('is-open');
   }
-  // Stats toggle — Tasks + Habits tabs only. Active state reflects the
-  // tab's current sub-view (filter==='stats' for Tasks, activeHabitView
-  // ==='stats' for Habits). Pushes the search button one slot left on
-  // Tasks via the .has-stats-neighbor modifier so both fit.
+  // Stats button — visible on Tasks + Habits only. Click opens the stats
+  // modal (no view change), so .is-active is driven by modal state, not
+  // a filter. Always reset to inactive on tab switch; closing the modal
+  // on tab change covers the edge case where the user navigates away
+  // with the modal still open.
   const statsBtn = document.getElementById('floatingStats');
   if (statsBtn) {
     const show = (tool === 'tasks' || tool === 'habits');
     statsBtn.classList.toggle('hidden', !show);
-    const isStats = (tool === 'tasks' && typeof filter === 'string' && filter === 'stats')
-                 || (tool === 'habits' && typeof activeHabitView === 'string' && activeHabitView === 'stats');
-    statsBtn.classList.toggle('is-active', !!isStats);
+    statsBtn.classList.remove('is-active');
     document.getElementById('floatingSearch')?.classList.toggle('has-stats-neighbor', show);
+    if (!show && typeof closeStatsModal === 'function') closeStatsModal();
   }
   if (tool === 'home') { if (typeof renderHome === 'function') renderHome(); }
   else if (tool === 'habits') { renderHabits(); }
@@ -734,27 +734,68 @@ document.addEventListener('click', e => {
     e.preventDefault();
     if (typeof switchTool === 'function') switchTool('home');
   }
-  // Floating stats toggle (replaces the Statistics pill on Tasks/Habits).
-  // Click cycles between the tab's default view and the stats view.
+  // Floating stats toggle — opens a modal with the stats view for the
+  // current tab. Page itself doesn't change; FAB stays underneath but
+  // the modal's higher z-index covers it.
   const statsBtn = e.target.closest('#floatingStats');
-  if (statsBtn) {
-    if (activeTool === 'tasks' && typeof setCatFilter === 'function') {
-      const goingToStats = (typeof filter !== 'string' || filter !== 'stats');
-      setCatFilter(goingToStats ? 'stats' : 'all');
-      statsBtn.classList.toggle('is-active', goingToStats);
-    } else if (activeTool === 'habits') {
-      const goingToStats = !(typeof activeHabitView === 'string' && activeHabitView === 'stats');
-      activeHabitView = goingToStats ? 'stats' : 'today';
-      // Mirror the existing .habit-sub-pills click flow so content + URL
-      // both stay in sync with the new view.
-      document.querySelectorAll('.habit-sub-pills .pill').forEach(p => p.classList.remove('active'));
-      document.querySelector(`.habit-sub-pills .pill[data-habit-view="${activeHabitView}"]`)?.classList.add('active');
-      document.querySelectorAll('.habit-sub-content').forEach(c => c.classList.remove('active'));
-      document.getElementById('habit-' + activeHabitView)?.classList.add('active');
-      if (typeof routerSyncUrl === 'function') routerSyncUrl({ tool: 'habits', view: activeHabitView });
-      statsBtn.classList.toggle('is-active', goingToStats);
-      if (typeof renderHabits === 'function') renderHabits();
+  if (statsBtn) openStatsModal();
+  // Close handlers (X button, backdrop click outside the card)
+  if (e.target.closest('#statsModalClose')) closeStatsModal();
+  const overlayEl = e.target.closest('#statsOverlay');
+  if (overlayEl && e.target === overlayEl) closeStatsModal();
+});
+
+function openStatsModal() {
+  const overlay = document.getElementById('statsOverlay');
+  const body    = document.getElementById('statsModalBody');
+  const title   = document.getElementById('statsModalTitle');
+  if (!overlay || !body) return;
+
+  if (activeTool === 'tasks') {
+    if (title) title.textContent = 'Task statistics';
+    // renderTaskStats lives in src/04-tasks-ui.js and returns an HTML
+    // string. The period pills inside the rendered HTML re-render via
+    // the existing data-stats-period click handler (delegated at
+    // document level), so they keep working from inside the modal.
+    const habitStatsEl = document.getElementById('habit-stats');
+    if (habitStatsEl) habitStatsEl.style.display = 'none';
+    if (typeof renderTaskStats === 'function') {
+      // Inject the task stats HTML, but skip the #habit-stats placeholder
+      // by writing into a wrapper before it.
+      let wrap = document.getElementById('taskStatsModalSlot');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'taskStatsModalSlot';
+        body.insertBefore(wrap, habitStatsEl || null);
+      }
+      wrap.innerHTML = renderTaskStats();
     }
+  } else if (activeTool === 'habits') {
+    if (title) title.textContent = 'Habit statistics';
+    const slot = document.getElementById('taskStatsModalSlot');
+    if (slot) slot.innerHTML = '';
+    const habitStatsEl = document.getElementById('habit-stats');
+    if (habitStatsEl) habitStatsEl.style.display = 'block';
+    // Trigger a habits re-render so the stats pane gets populated with
+    // current data. renderHabits() is the legacy entrypoint that calls
+    // renderHabitStats internally.
+    if (typeof renderHabits === 'function') renderHabits();
+  } else {
+    return;   // button shouldn't be visible on other tabs; bail
+  }
+  overlay.classList.add('is-open');
+  document.getElementById('floatingStats')?.classList.add('is-active');
+}
+
+function closeStatsModal() {
+  document.getElementById('statsOverlay')?.classList.remove('is-open');
+  document.getElementById('floatingStats')?.classList.remove('is-active');
+}
+
+// Escape closes the stats modal (in addition to backdrop + X button).
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('statsOverlay')?.classList.contains('is-open')) {
+    closeStatsModal();
   }
 });
 document.addEventListener('keydown', e => {

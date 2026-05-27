@@ -1714,6 +1714,32 @@
     }
   }
 
+  /* ── Stats modal — overrides .overlay-card defaults for the wider
+     content the task/habit stats charts need. Z-index raised above
+     z-fab-mobile (250) so the FAB doesn't poke through. */
+  .stats-overlay { z-index: 350; }
+  .stats-overlay-card {
+    max-width: 720px;
+    max-height: calc(100vh - 32px);
+    display: flex; flex-direction: column;
+    padding: 18px 22px 22px;
+  }
+  .stats-overlay-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .stats-overlay-body {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;   /* avoid scrollbar clipping content */
+  }
+  /* When habit-stats is inside the modal body, override the legacy
+     .habit-sub-content { display: none } default since we use the
+     modal's .is-open to toggle visibility, not the .active modifier. */
+  .stats-overlay-body #habit-stats { display: block !important; }
+
   /* Phase 8 Insights redesign — floating chat button.
      Same chrome as .floating-search / .floating-scratch.
      Sits where the FAB would normally be (Insights tab has no
