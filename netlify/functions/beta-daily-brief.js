@@ -687,7 +687,11 @@ async function buildContext(user, brief_date, mode, serviceKey) {
           // Cap to keep tokens sane on power-user habit lists.
           .slice(0, 12);
         if (!counts && !doneNames.length) return null;
-        return { ...(counts || {}), done_names: doneNames };
+        // Key the names with their explicit time-window so Claude can't
+        // conflate them with "today's habits" in evening mode (where the
+        // recap's "Today" column actually carries yesterday's data as a
+        // placeholder until midnight).
+        return { ...(counts || {}), done_names_yesterday: doneNames };
       })(),
       // Train session logged for yesterday (if any). Summary only — full
       // set list is in train_recent for token-budget reasons.
@@ -761,7 +765,15 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     // rolls over, and live computation requires habit-cadence logic the
     // function doesn't have.
     today_recap: (mode === 'evening') ? {
-      mood_label:     moodLabel(journalToday?.[0]?.mood ?? null),
+      // Prefer the most-recent intra-day mood check-in (which the user
+      // may have tapped this afternoon/evening) over the journal entry
+      // mood (which was likely set this morning and is now stale).
+      // mood_checkins is ASC-ordered; the last entry is most recent.
+      mood_label: (() => {
+        const lastCheckin = moodCheckinsToday[moodCheckinsToday.length - 1];
+        if (lastCheckin?.mood_label) return lastCheckin.mood_label;
+        return moodLabel(journalToday?.[0]?.mood ?? null);
+      })(),
       // Today's individual mood check-ins with optional reflection
       // notes — same shape as yesterday.mood_checkins, scoped to today.
       // Lets the evening brief reference qualitative shifts across
@@ -973,7 +985,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     '- yesterday.mood_checkins / today_recap.mood_checkins = individual mood entries with optional user reflection notes (e.g. "rough morning, slept badly"). When a note carries a clear theme that connects to other data (low HRV + "anxious meeting day"), reference it in subhead/pills using neutral paraphrase — NEVER quote the user\'s words verbatim back at them in the headline. Mood notes alone aren\'t enough to override the wearable signal but they sharpen the "why" framing.',
-    '- yesterday.habits.done_names = specific habits the user completed YESTERDAY (e.g. "Reading / Podcast", "10k steps"). Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise.',
+    '- yesterday.habits.done_names_yesterday = specific habits the user completed YESTERDAY (e.g. "Reading / Podcast", "10k steps"). The field name carries the time window explicitly — these are NOT today\'s habits. Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise.',
     // Strict guards — these explicitly forbid the "habits sealed a clean
     // day" / "full habits" / "all habits done" hallucinations we kept
     // hitting. The recap's deterministic count is the source of truth;
