@@ -75,6 +75,16 @@
 [functions."cron-daily-brief"]
   schedule = "0 * * * *"
 
+# Phase 9 — per-user weather snapshot. Hourly tick; the function filters
+# each user by local hour and only writes when it's 05:00 in their tz, so
+# one cron covers every timezone the same way cron-daily-brief does. Writes
+# today + tomorrow into weather_daily so the evening brief gets a cache
+# hit on tomorrow's forecast without paying a live Open-Meteo call.
+#
+# No env vars beyond SUPABASE_SERVICE_KEY (Open-Meteo has no API key).
+[functions."cron-weather-snapshot"]
+  schedule = "0 * * * *"
+
 # Phase 7 — weekly synthesis. Sundays at 22:00 UTC = early-evening US Eastern /
 # afternoon US Pacific. Close enough to "Sunday evening user-local" for v1.
 # Per-user-local firing would need a more elaborate scheduler.

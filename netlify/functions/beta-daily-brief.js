@@ -26,10 +26,11 @@
 
 const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
-const OPEN_METEO_URL  = 'https://api.open-meteo.com/v1/forecast';
+// OPEN_METEO_URL moved to lib/weather.js along with fetchWeather.
 
 const { recommendSleepTarget } = require('./lib/recommendations');
 const { MOOD_LABELS, MOOD_SCALE_NOTE, moodLabel } = require('./lib/mood-scale');
+const { getWeather } = require('./lib/weather');
 
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
@@ -408,14 +409,25 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   ]);
 
   // Morning brief shows today's weather; evening brief shows tomorrow's
+  // Phase 9: read-through via lib/weather.getWeather — checks weather_daily
+  // first, falls back to live Open-Meteo + opportunistic write-through.
   // forecast (the chip in evening mode is prefixed "Tmrw" so it can't be
   // mistaken for current weather).
   const hasLocation = (user.weather_lat != null && user.weather_lng != null);
+  const weatherCtx = {
+    supabaseUrl: SUPABASE_URL,
+    serviceKey:  process.env.SUPABASE_SERVICE_KEY,
+    userId:      user.user_id,
+    lat:         user.weather_lat,
+    lng:         user.weather_lng,
+    tz:          user.timezone,
+    label:       user.weather_label,
+  };
   const weather = (mode === 'morning' && hasLocation)
-    ? await fetchWeather(user.weather_lat, user.weather_lng, today, user.timezone, user.weather_label)
+    ? await getWeather({ ...weatherCtx, date: today })
     : null;
   const weatherTomorrow = (mode === 'evening' && hasLocation)
-    ? await fetchWeather(user.weather_lat, user.weather_lng, tomorrow, user.timezone, user.weather_label)
+    ? await getWeather({ ...weatherCtx, date: tomorrow })
     : null;
 
   // Filter completed tasks to yesterday in user-local TZ
@@ -691,70 +703,11 @@ function stripPercentiles(b) {
 }
 
 // ── Open-Meteo weather ─────────────────────────────────────────────────────
-async function fetchWeather(lat, lng, dateLocal, tz, label) {
-  try {
-    const params = new URLSearchParams({
-      latitude:        String(lat),
-      longitude:       String(lng),
-      daily:           'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
-      temperature_unit: 'fahrenheit',
-      timezone:        tz || 'auto',
-      start_date:      dateLocal,
-      end_date:        dateLocal,
-    });
-    const r = await fetch(`${OPEN_METEO_URL}?${params}`);
-    if (!r.ok) { console.warn(`weather fetch HTTP ${r.status}`); return null; }
-    const j = await r.json();
-    const d = j?.daily;
-    if (!d || !d.time || !d.time.length) return null;
-    const code = d.weather_code?.[0];
-    return {
-      location:      label || null,
-      temp_high_f:   d.temperature_2m_max?.[0] ?? null,
-      temp_low_f:    d.temperature_2m_min?.[0] ?? null,
-      condition:     weatherCodeToText(code),
-      weather_emoji: weatherCodeToEmoji(code),
-      sunrise:       d.sunrise?.[0] ?? null,
-      sunset:        d.sunset?.[0] ?? null,
-    };
-  } catch (err) {
-    console.warn('weather fetch failed:', err.message);
-    return null;
-  }
-}
-function weatherCodeToText(code) {
-  if (code == null) return null;
-  const c = Number(code);
-  if (c === 0) return 'clear';
-  if (c <= 3) return 'partly cloudy';
-  if (c <= 48) return 'foggy';
-  if (c <= 57) return 'drizzle';
-  if (c <= 67) return 'rain';
-  if (c <= 77) return 'snow';
-  if (c <= 82) return 'rain showers';
-  if (c <= 86) return 'snow showers';
-  if (c <= 99) return 'thunderstorm';
-  return null;
-}
-
-// WMO weather codes → condition emoji. Same banding as weatherCodeToText so
-// the two stay in lockstep. Returns null for unknown codes so the chip
-// renders without an emoji rather than a wrong one.
-function weatherCodeToEmoji(code) {
-  if (code == null) return null;
-  const c = Number(code);
-  if (c === 0) return '☀️';     // clear sky
-  if (c <= 2) return '⛅';       // partly cloudy
-  if (c === 3) return '☁️';     // overcast
-  if (c <= 48) return '🌫️';    // fog
-  if (c <= 57) return '🌦️';    // drizzle
-  if (c <= 67) return '🌧️';    // rain
-  if (c <= 77) return '❄️';     // snow
-  if (c <= 82) return '🌧️';    // rain showers
-  if (c <= 86) return '🌨️';    // snow showers
-  if (c <= 99) return '⛈️';     // thunderstorm
-  return null;
-}
+// Phase 9: the local fetchWeather + weatherCodeToText + weatherCodeToEmoji
+// moved to lib/weather.js so the new cron-weather-snapshot writer + this
+// brief reader share one source. Brief calls getWeather() above, which
+// reads from weather_daily first and falls back to live Open-Meteo with
+// opportunistic write-through.
 function weekdayInTz(dateStr, tz) {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
