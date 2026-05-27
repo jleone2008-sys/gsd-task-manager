@@ -864,8 +864,6 @@
   .chip--guava                      { background: var(--guava-100); color: var(--guava-700); }
   .chip--ghost, .tag.has-note, .tag.has-subtasks { background: transparent; color: var(--ink-3); border: 1px solid var(--edge); }
   .tag.has-note svg, .tag.has-subtasks svg       { flex-shrink: 0; }
-  /* Legacy .tag.top3 — no longer rendered; priority is the strip */
-  .tag.top3                         { display: none; }
 
   /* ──────────────────────────────────────────────────────────────
      DUE DATE BADGE — clay (today), guava (overdue), slate (later)
@@ -1090,10 +1088,7 @@
     padding: 22px 2px 10px;
   }
 
-  /* Legacy task-content / task-note kept for compat (not rendered post-port) */
   .task-content { flex: 1; min-width: 0; cursor: pointer; }
-  .task-note    { display: none; }
-  .note-read-more { display: none; }
 
   .task-actions-col {
     display: flex;
@@ -1124,7 +1119,6 @@
     padding: var(--space-2-5) var(--space-3-5); font-size: var(--fs-task); color: var(--ink);
     max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .task-actions { display: none; }
   .act { display: flex; align-items: center; justify-content: center; }
 
   /* DONE TOGGLE */
@@ -2317,8 +2311,6 @@
   }
   .stat-block.is-guava .v { color: var(--guava-700); }
 
-  /* Hide legacy progress ring elements (replaced by stats strip) */
-  .progress-ring-wrap, .progress-stats { display: none; }
 
   /* Habit card — same shell as task card.
      Left padding is slightly smaller than the right (12 vs 14) so the
