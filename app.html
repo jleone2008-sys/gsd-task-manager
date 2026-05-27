@@ -751,6 +751,16 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
 </button>
 
+<!-- FLOATING STATISTICS BUTTON — visible on Tasks + Habits tabs.
+     Replaces the Statistics pill that lived in the topbar pill bars.
+     Same chrome as .floating-scratch (white surface, edge border,
+     --r-lg, --shadow-card). Tap toggles between the tab's default
+     view (tasks/today) and the stats view. Active state (.is-active)
+     fills with guava-700 + white icon to mirror the FAB's accent. -->
+<button class="floating-stats hidden" id="floatingStats" title="Statistics" aria-label="Statistics">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+</button>
+
 <!-- FLOATING CHAT BUTTON — Phase 8 Insights redesign. Same chrome as
      .floating-search and .floating-scratch (white surface, edge
      border, --r-lg, --shadow-card). Only visible on the Insights

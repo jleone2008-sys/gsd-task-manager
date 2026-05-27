@@ -704,6 +704,19 @@ function switchTool(tool) {
   if (tool !== 'notes') {
     document.getElementById('chatPopup')?.classList.remove('is-open');
   }
+  // Stats toggle — Tasks + Habits tabs only. Active state reflects the
+  // tab's current sub-view (filter==='stats' for Tasks, activeHabitView
+  // ==='stats' for Habits). Pushes the search button one slot left on
+  // Tasks via the .has-stats-neighbor modifier so both fit.
+  const statsBtn = document.getElementById('floatingStats');
+  if (statsBtn) {
+    const show = (tool === 'tasks' || tool === 'habits');
+    statsBtn.classList.toggle('hidden', !show);
+    const isStats = (tool === 'tasks' && typeof filter === 'string' && filter === 'stats')
+                 || (tool === 'habits' && typeof activeHabitView === 'string' && activeHabitView === 'stats');
+    statsBtn.classList.toggle('is-active', !!isStats);
+    document.getElementById('floatingSearch')?.classList.toggle('has-stats-neighbor', show);
+  }
   if (tool === 'home') { if (typeof renderHome === 'function') renderHome(); }
   else if (tool === 'habits') { renderHabits(); }
   else if (tool === 'tasks') { render(); }
@@ -720,6 +733,28 @@ document.addEventListener('click', e => {
   if (logo) {
     e.preventDefault();
     if (typeof switchTool === 'function') switchTool('home');
+  }
+  // Floating stats toggle (replaces the Statistics pill on Tasks/Habits).
+  // Click cycles between the tab's default view and the stats view.
+  const statsBtn = e.target.closest('#floatingStats');
+  if (statsBtn) {
+    if (activeTool === 'tasks' && typeof setCatFilter === 'function') {
+      const goingToStats = (typeof filter !== 'string' || filter !== 'stats');
+      setCatFilter(goingToStats ? 'stats' : 'all');
+      statsBtn.classList.toggle('is-active', goingToStats);
+    } else if (activeTool === 'habits') {
+      const goingToStats = !(typeof activeHabitView === 'string' && activeHabitView === 'stats');
+      activeHabitView = goingToStats ? 'stats' : 'today';
+      // Mirror the existing .habit-sub-pills click flow so content + URL
+      // both stay in sync with the new view.
+      document.querySelectorAll('.habit-sub-pills .pill').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.habit-sub-pills .pill[data-habit-view="${activeHabitView}"]`)?.classList.add('active');
+      document.querySelectorAll('.habit-sub-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('habit-' + activeHabitView)?.classList.add('active');
+      if (typeof routerSyncUrl === 'function') routerSyncUrl({ tool: 'habits', view: activeHabitView });
+      statsBtn.classList.toggle('is-active', goingToStats);
+      if (typeof renderHabits === 'function') renderHabits();
+    }
   }
 });
 document.addEventListener('keydown', e => {

@@ -1661,11 +1661,57 @@
   .floating-scratch:hover svg { color: var(--ink); }
   .floating-scratch.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
 
-  /* When the scratch button is present, push the search button one slot
-     further from the right edge so it doesn't overlap. */
-  .floating-search.has-scratch-neighbor {
+  /* When the scratch or stats button is present, push the search button
+     one slot further from the right edge so it doesn't overlap. */
+  .floating-search.has-scratch-neighbor,
+  .floating-search.has-stats-neighbor {
     right: calc(var(--fab-right-mobile) + var(--fab-size) + var(--fab-search-gap)
               + var(--search-size) + var(--fab-search-gap));
+  }
+
+  /* Statistics toggle — replaces the legacy Statistics pill in the
+     Tasks/Habits pill bars. Sits to the LEFT of the FAB, same slot the
+     scratch button occupies on Insights (only one is shown per tab so
+     they don't collide). When .is-active, fills with guava-700 to mirror
+     the FAB and signal "stats view is currently selected." */
+  .floating-stats {
+    position: fixed;
+    bottom: calc(var(--fab-bottom-mobile) + (var(--fab-size) - var(--search-size)) / 2);
+    right: calc(var(--fab-right-mobile) + var(--fab-size) + var(--fab-search-gap));
+    height: var(--search-size);
+    width: var(--search-size);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    box-shadow: var(--shadow-card);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    z-index: var(--z-fab-mobile);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease),
+                box-shadow var(--dur) var(--ease),
+                border-color var(--dur) var(--ease),
+                color var(--dur) var(--ease),
+                transform var(--dur) var(--ease);
+    color: var(--ink-3);
+  }
+  .floating-stats:hover { box-shadow: var(--shadow-card-hover); color: var(--ink); }
+  .floating-stats:active { transform: translateY(1px); }
+  .floating-stats svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+  .floating-stats.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
+  .floating-stats.is-active {
+    background: var(--guava-700);
+    border-color: var(--guava-700);
+    color: #fff;
+  }
+  .floating-stats.is-active:hover { background: var(--guava-800); border-color: var(--guava-800); }
+  .floating-stats:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+  @media (min-width: 900px) {
+    .floating-stats {
+      bottom: calc(var(--fab-bottom-desktop) + (var(--fab-size) - var(--search-size)) / 2);
+      right: calc(var(--fab-right-desktop) + var(--fab-size) + var(--fab-search-gap));
+      z-index: var(--z-fab-desktop);
+    }
   }
 
   /* Phase 8 Insights redesign — floating chat button.
