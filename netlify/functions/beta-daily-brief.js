@@ -26,6 +26,34 @@
 
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL }          = require('./lib/supabase');
+const {
+  fetchJson,
+  stripUpdatedAt,
+  localDate,
+  yesterdayLocal,
+  formatLocalClockTime,
+  shiftDate,
+  localDayStartUtcMs,
+  hourInTz,
+} = require('./lib/brief-utils');
+const {
+  HERO_METRIC_KEYS,
+  HERO_METRIC_LABELS,
+  weekdayInTz,
+  countTasksInLocalDay,
+  computeTaskCounts,
+  formatMinutes,
+  formatEventTime,
+  inferEventIcon,
+  buildWeatherChip,
+  sanitizeScores,
+  buildHeroMetric,
+  buildStats,
+  computeBedtime,
+  buildRecap,
+  buildPlayRows,
+  buildTaskCountsRow,
+} = require('./lib/brief-builders');
 
 const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 // OPEN_METEO_URL moved to lib/weather.js along with fetchWeather.
@@ -73,13 +101,6 @@ const OURA_STALE_HOURS = 24;
 
 // Hero ring options. Server picks a hint by largest |today - 7d median|;
 // Claude can override but only within this enum.
-const HERO_METRIC_KEYS = ['sleep_score', 'readiness_score', 'activity_score'];
-const HERO_METRIC_LABELS = {
-  sleep_score:     'SLEEP',
-  readiness_score: 'READINESS',
-  activity_score:  'ACTIVITY',
-};
-
 // Allowed play icons (also the enum for the tool schema)
 const PLAY_ICONS = ['walk', 'tasks', 'habits', 'sleep', 'work', 'meal', 'other'];
 
@@ -224,12 +245,6 @@ function computeMode(tz) {
   const h = hourInTz(new Date(), tz || DEFAULT_TIMEZONE);
   return (h >= 4 && h < 16) ? 'morning' : 'evening';
 }
-function hourInTz(date, tz) {
-  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false });
-  const h = parseInt(fmt.format(date), 10);
-  return Number.isFinite(h) ? (h === 24 ? 0 : h) : 0;
-}
-
 // Largest absolute deviation from 7-day median tells us which ring to feature.
 // Returns the metric key (sleep_score | readiness_score | activity_score) or
 // null if not enough data to decide.
@@ -850,477 +865,6 @@ function stripPercentiles(b) {
 // brief reader share one source. Brief calls getWeather() above, which
 // reads from weather_daily first and falls back to live Open-Meteo with
 // opportunistic write-through.
-function weekdayInTz(dateStr, tz) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(dt);
-}
-
-// ── Deterministic builders (Phase 1.7 fix-pass) ────────────────────────────
-// Everything factual lives here, not in Claude. Claude contributes ONLY
-// headline, subhead, evidence_pills, and an optional hero_metric_key
-// override. Everything else (numbers, names, counts, task titles, event
-// titles, bedtime) is computed/copied verbatim from data via
-// deterministic helpers — most recently the bedtime rule, which used
-// to be Claude-overridable and is now fully formulaic.
-
-// Count completed tasks whose completed_at epoch ms falls within the given
-// user-local day. Reuses the existing localDayStartUtcMs helper.
-function countTasksInLocalDay(tasksAll, dateStr, tz) {
-  if (!Array.isArray(tasksAll) || !tasksAll.length) return 0;
-  const start = localDayStartUtcMs(dateStr, tz);
-  const end   = start + 86400_000;
-  return tasksAll.filter(t => t.completed_at && t.completed_at >= start && t.completed_at < end).length;
-}
-
-// Tally open tasks into priority/due_today/overdue buckets relative to a
-// date string (YYYY-MM-DD). Uses the user-local date the caller supplies so
-// "due today" is honest regardless of UTC vs local boundaries.
-function computeTaskCounts(openTasks, refDate) {
-  const arr = Array.isArray(openTasks) ? openTasks : [];
-  let priority = 0, due_today = 0, overdue = 0;
-  for (const t of arr) {
-    const isOver = !!(t.due && t.due < refDate);
-    const isToday = !!(t.due && t.due === refDate);
-    if (isOver) overdue++;
-    else if (isToday) due_today++;
-    if (t.top3) priority++;
-  }
-  return { priority, due_today, overdue, total_open: arr.length };
-}
-
-function formatMinutes(m) {
-  if (m == null) return null;
-  const n = Math.round(Number(m));
-  if (!Number.isFinite(n) || n < 0) return null;
-  const h = Math.floor(n / 60);
-  const r = n % 60;
-  if (h === 0) return `${r}m`;
-  if (r === 0) return `${h}h`;
-  return `${h}h ${r}m`;
-}
-
-function formatEventTime(iso, allDay, tz) {
-  if (allDay) return 'All day';
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
-  }).format(d).replace(/\s*AM/, 'a').replace(/\s*PM/, 'p');
-}
-
-function inferEventIcon(summary) {
-  const s = String(summary || '').toLowerCase();
-  if (/(walk|run|gym|workout|lift|yoga|hike|bike|swim|exercise|cardio|stretch)/i.test(s)) return 'walk';
-  if (/(lunch|dinner|breakfast|coffee|meal|brunch|drinks?)/i.test(s)) return 'meal';
-  if (/(meeting|sync|call|review|standup|interview|client|1\:1|check[\s-]?in|catchup|catch-up)/i.test(s)) return 'work';
-  return 'other';
-}
-
-// Examples:
-//   morning: "☀️ 53°/51° · Pelham"
-//   evening: "☀️ Tmrw 53°/51° · Pelham"
-// Showing both high and low removes the "is that the high or low?" ambiguity
-// users hit when only one number is shown. The condition emoji (☀️/⛅/🌧️/❄️
-// etc.) is prefixed to make the chip scannable at a glance.
-function buildWeatherChip(weather, mode) {
-  if (!weather || weather.temp_high_f == null) return null;
-  const high  = `${Math.round(weather.temp_high_f)}°`;
-  const low   = weather.temp_low_f != null ? `${Math.round(weather.temp_low_f)}°` : null;
-  const temps = low ? `${high}/${low}` : high;
-  const place = (weather.location || '').split(',')[0].trim();
-  const core  = place ? `${temps} · ${place}` : temps;
-  const tempsBlock = mode === 'evening' ? `Tmrw ${core}` : core;
-  const emoji = weather.weather_emoji;
-  return emoji ? `${emoji} ${tempsBlock}` : tempsBlock;
-}
-
-// Pick the hero metric: respect Claude's override if valid, else use the
-// largest-deviation server hint. Always fill value/label/delta from raw data.
-// Oura scores (sleep/readiness/activity) are 1-100 in practice. A literal 0
-// means Oura hasn't finalized the day yet (common in the early-morning sync
-// window — the user's Oura app shows real numbers because it pulls live from
-// the ring; our DB has whatever the last cron sync grabbed). Treat 0 as
-// "not yet finalized" so we render "—" instead of misleading "0".
-function sanitizeScores(row) {
-  if (!row) return row;
-  const out = { ...row };
-  for (const k of ['sleep_score', 'readiness_score', 'activity_score']) {
-    if (out[k] === 0) out[k] = null;
-  }
-  return out;
-}
-
-function buildHeroMetric(claudeKey, ctx) {
-  const allowed = HERO_METRIC_KEYS.includes(claudeKey) ? claudeKey : (ctx.hero_hint || 'readiness_score');
-  const r  = sanitizeScores(ctx.yesterday?.recovery || {});
-  const a  = sanitizeScores(ctx.yesterday?.activity || {});
-  const b7 = ctx.baselines_7d || {};
-  let value = null, baseline = null;
-  if (allowed === 'sleep_score')     { value = r.sleep_score;     baseline = b7.sleep_score_median; }
-  if (allowed === 'readiness_score') { value = r.readiness_score; baseline = b7.readiness_score_median; }
-  if (allowed === 'activity_score')  { value = a.activity_score;  baseline = b7.activity_score_median; }
-  const delta = (value != null && baseline != null) ? Math.round(Number(value) - Number(baseline)) : 0;
-  return {
-    key: allowed,
-    value: value == null ? null : Math.round(Number(value)),     // null lets UI render "—"
-    label: HERO_METRIC_LABELS[allowed] || allowed.toUpperCase(),
-    delta_vs_7d: delta,
-  };
-}
-
-// Build the stats list (Sleep, Activity, Resting HR, HRV) — exclude the hero
-// metric. All numbers are pulled from the raw recovery/activity rows. Deltas
-// are computed against the 7-day baseline. Notes are computed for special
-// cases (sleep score, HRV banding, RHR elevation).
-// Metrics where a LOWER value is better. The stat-row builder uses this set
-// to label the delta direction so the client renders RHR ↓4 (good) green and
-// RHR ↑4 (bad) red — the inverse of the default mapping.
-const LOWER_IS_BETTER_METRICS = new Set(['Resting HR', 'Stress', 'Sleep latency']);
-
-function buildStats(heroKey, ctx) {
-  const r  = sanitizeScores(ctx.yesterday?.recovery || {});
-  const a  = sanitizeScores(ctx.yesterday?.activity || {});
-  const b7 = ctx.baselines_7d || {};
-  // fmtDelta returns both the display string and the signed integer so the
-  // direction tagger downstream can apply per-metric "lower is better" rules.
-  const fmtDelta = (today, base) => {
-    if (today == null || base == null) return { text: null, signed: 0 };
-    const d = Math.round(Number(today) - Number(base));
-    if (d === 0) return { text: null, signed: 0 };
-    return {
-      text:   d > 0 ? `↑${d}` : `↓${Math.abs(d)}`,
-      signed: d,
-    };
-  };
-  const tagDir = (label, signed) => {
-    if (!signed) return null;
-    const lowerBetter = LOWER_IS_BETTER_METRICS.has(label);
-    // good = direction the user wants. Higher-is-better metric + positive
-    // delta → good. Lower-is-better metric + negative delta → good.
-    if (lowerBetter) return signed < 0 ? 'good' : 'bad';
-    return signed > 0 ? 'good' : 'bad';
-  };
-  const rows = [];
-
-  // Sleep row: duration as value, score as note (if available)
-  if (heroKey !== 'sleep_score' && (r.total_sleep_min != null || r.sleep_score != null)) {
-    const dur = formatMinutes(r.total_sleep_min);
-    const dd  = fmtDelta(r.total_sleep_min, b7.total_sleep_min_median);
-    rows.push({
-      label:     'Sleep',
-      value:     dur || (r.sleep_score != null ? String(r.sleep_score) : '—'),
-      delta:     dd.text,
-      delta_dir: tagDir('Sleep', dd.signed),
-      note:      (dur && r.sleep_score != null) ? `score ${r.sleep_score}` : null,
-    });
-  }
-
-  // Activity row: score as value, steps as note — UNLESS score and steps
-  // disagree (high score on low-step day = Oura's "rest day credit"), in
-  // which case show a qualifier instead so the row doesn't look broken.
-  if (heroKey !== 'activity_score' && (a.activity_score != null || a.steps != null)) {
-    let note = null;
-    if (a.activity_score != null && a.steps != null && a.activity_score >= 80 && a.steps < 4000) {
-      note = 'low-movement day';
-    } else if (a.steps != null) {
-      note = `${a.steps.toLocaleString()} steps · yesterday`;
-    }
-    const dd = fmtDelta(a.activity_score, b7.activity_score_median);
-    rows.push({
-      label:     'Activity',
-      value:     a.activity_score != null ? String(a.activity_score) : '—',
-      delta:     dd.text,
-      delta_dir: tagDir('Activity', dd.signed),
-      note,
-    });
-  }
-
-  // Readiness row (only if not the hero)
-  if (heroKey !== 'readiness_score' && r.readiness_score != null) {
-    const dd = fmtDelta(r.readiness_score, b7.readiness_score_median);
-    rows.push({
-      label:     'Readiness',
-      value:     String(r.readiness_score),
-      delta:     dd.text,
-      delta_dir: tagDir('Readiness', dd.signed),
-      note:      null,
-    });
-  }
-
-  // Resting HR row: number as value, "elevated" / "low" as note. Lower is
-  // better — a negative delta should render GREEN (good), positive RED.
-  if (r.resting_hr != null) {
-    const diff = b7.resting_hr_median != null ? Math.round(r.resting_hr - Number(b7.resting_hr_median)) : null;
-    let note = null;
-    if (diff != null && diff > 5) note = 'elevated';
-    else if (diff != null && diff < -5) note = 'low';
-    const dd = fmtDelta(r.resting_hr, b7.resting_hr_median);
-    rows.push({
-      label:     'Resting HR',
-      value:     String(Math.round(r.resting_hr)),
-      delta:     dd.text,
-      delta_dir: tagDir('Resting HR', dd.signed),
-      note,
-    });
-  }
-
-  // HRV row: number as value (no "ms" per voice rules), banding note
-  if (r.hrv_ms != null) {
-    let note = null;
-    if (b7.hrv_ms_median != null) {
-      const pct = Number(r.hrv_ms) / Number(b7.hrv_ms_median);
-      if (pct < 0.7) note = 'well below norm';
-      else if (pct < 0.9) note = 'below norm';
-      else if (pct > 1.2) note = 'above norm';
-    }
-    const dd = fmtDelta(r.hrv_ms, b7.hrv_ms_median);
-    rows.push({
-      label:     'HRV',
-      value:     String(Math.round(r.hrv_ms)),
-      delta:     dd.text,
-      delta_dir: tagDir('HRV', dd.signed),
-      note,
-    });
-  }
-
-  return rows.slice(0, 4);
-}
-
-// Compute the time the user got into bed from Oura's sleep midpoint and total
-// sleep duration. Returns "10:45 PM" / "11:20 PM" / null. Oura's
-// sleep_midpoint_offset_min is signed minutes from midnight of the date col
-// (the day the sleep ENDED): negative = before midnight, positive = after.
-// Bed-time offset = midpoint − duration/2. Normalize to 0-1439 then format.
-function computeBedtime(recovery) {
-  if (!recovery) return null;
-  const mid = recovery.sleep_midpoint_offset_min;
-  const dur = recovery.total_sleep_min;
-  if (mid == null || dur == null) return null;
-  let minOfDay = Math.round(Number(mid) - Number(dur) / 2);
-  while (minOfDay < 0)     minOfDay += 1440;
-  while (minOfDay >= 1440) minOfDay -= 1440;
-  const h   = Math.floor(minOfDay / 60);
-  const m   = minOfDay % 60;
-  const pm  = h >= 12;
-  const h12 = ((h + 11) % 12) + 1;        // 0→12, 13→1, …
-  return `${h12}:${String(m).padStart(2, '0')} ${pm ? 'PM' : 'AM'}`;
-}
-
-// Build the Yesterday/Today recap pair the client renders as a two-column
-// grid. Everything here is deterministic: habits %, task counts, bedtime
-// time, mood label, sleep target. Claude touches none of it. The left block
-// shows what just finished (habits closed, tasks done, bedtime, mood); the
-// right block shows what's coming (events, task counts, habits in-flight,
-// sleep target). For evening mode, "left" is today's recap (now finalized)
-// and "right" is tomorrow's setup; the client picks the labels off
-// `left.label`/`right.label`.
-function buildRecap(mode, ctx, sleepTargetTime) {
-  // Habits percentage from {done, due} shape. Returns null when no data, 0%
-  // when due > 0 but done = 0 (we still want to render the 0/N row).
-  const habitsPct = (h) => {
-    if (!h || !h.due) return null;
-    const done = Number(h.done) || 0;
-    const due  = Number(h.due);
-    return { pct: Math.round((done / due) * 100), done, due };
-  };
-
-  // Compact Train summary for a recap column. Returns { label, detail? }
-  // — the client renders 'label' (or 'label · detail' when detail exists).
-  // Detail is intentionally minimal: cardio/bonus get one stat (the
-  // minute count), lifts get the workout name only. The full stat grid
-  // for a logged lift lives on the History tab + the Workout subtab's
-  // submitted feedback card; trying to squeeze 'N sets · X lbs' into
-  // the recap column overflowed even the wider day name. Returns null
-  // when nothing relevant happened (client skips the row).
-  const trainSummary = (session) => {
-    if (!session) return null;
-    const t = session.day_type;
-    const name = session.day_name || (t === 'cardio' ? 'Cardio' : t === 'bonus' ? 'Bonus' : 'Lift');
-    if (t === 'cardio' || t === 'bonus') {
-      const ex = (session.exercises && session.exercises[0]) || null;
-      const mins = ex?.top_reps || 0;          // cardio parks minutes in reps
-      return { label: name, detail: mins ? `${mins} min` : null };
-    }
-    // Lift — name only, no detail. See History / Workout tabs for the breakdown.
-    return { label: name, detail: null };
-  };
-  // Planned-for-today / tomorrow Train row (when nothing logged yet).
-  // Just the workout name — the recap column is space-constrained and
-  // "5 exercises" / "cardio session" was overflowing into the next
-  // column. The exercise list lives on the Workout tab itself.
-  // (trainSummary keeps detail for LOGGED workouts — that's useful
-  // retrospective info like "15 min · 1 mile".)
-  const plannedSummary = (planned) => {
-    if (!planned) return null;
-    const t = planned.type;
-    if (t === 'rest') return { label: 'Rest day', detail: null };
-    if (t === 'cardio') return { label: planned.name || 'Cardio', detail: null };
-    return { label: planned.name || 'Lift', detail: null };
-  };
-
-  // Morning: left = yesterday (yday data), right = today (today plan).
-  // Evening: left = today (today recap from ctx.today_recap, plus yday data
-  //          for habits/bedtime which finalize only after the day rolls
-  //          over), right = tomorrow (tomorrow plan).
-  if (mode === 'morning') {
-    const left = {
-      label:       'Yesterday',
-      habits:      habitsPct(ctx.yesterday?.habits),
-      tasks_done:  ctx.yesterday?.tasks_completed_count ?? null,
-      bedtime:     computeBedtime(ctx.yesterday?.recovery),
-      mood_label:  ctx.yesterday?.mood?.value_label ?? null,
-      train:       trainSummary(ctx.yesterday?.workout),
-    };
-    const right = {
-      label:        'Today',
-      events:       (ctx.today_plan?.calendar_events || []).length,
-      task_counts:  ctx.today_plan?.task_counts || null,
-      habits_today: null,        // client recomputes from live habitsArr (Tier 1)
-      sleep_target: sleepTargetTime,
-      // Prefer logged-for-today when present; fall back to planned otherwise.
-      train:        trainSummary(ctx.today_plan?.workout?.logged_today)
-                 || plannedSummary(ctx.today_plan?.workout?.planned),
-    };
-    return { left, right };
-  }
-  // Evening
-  const left = {
-    label:       'Today',
-    // Today's habits don't fully finalize until midnight; fall back to
-    // yesterday's snapshot when journal_habit_summary hasn't been written yet.
-    habits:      habitsPct(ctx.yesterday?.habits),
-    tasks_done:  ctx.today_recap?.tasks_completed_today ?? null,
-    bedtime:     null,           // yesterday's bedtime is stale by evening
-    mood_label:  ctx.today_recap?.mood_label ?? null,
-    train:       trainSummary(ctx.today_recap?.train_session_today),
-    // Sleep target lives under TODAY (it's tonight's bedtime, not
-    // tomorrow's). Was previously on the right/Tomorrow column which
-    // read as "Tomorrow 10:30 PM" — semantically wrong.
-    sleep_target: sleepTargetTime,
-  };
-  const right = {
-    label:        'Tomorrow',
-    events:       (ctx.tomorrow_plan?.calendar_events || []).length,
-    task_counts:  ctx.tomorrow_plan?.task_counts || null,
-    habits_today: null,
-    train:        plannedSummary(ctx.tomorrow_plan?.workout),
-  };
-  return { left, right };
-}
-
-// Build the play list deterministically from facts. Morning shows today's plan
-// (events + persistent priority tasks + yesterday's habit-snapshot + sleep
-// target). Evening shows TOMORROW's plan (events + tasks + sleep target) —
-// dropping the today-recap entirely because the cards below already show that.
-function buildPlayRows(mode, ctx, sleepTargetTime) {
-  const rows = [];
-  const tz   = ctx.user?.timezone || DEFAULT_TIMEZONE;
-
-  if (mode === 'morning') {
-    // Today's calendar events (first 2)
-    const events = (ctx.today_plan?.calendar_events || []).slice(0, 2);
-    for (const e of events) {
-      const title = String(e.summary || '').trim();
-      if (!title) continue;
-      rows.push({
-        icon:    inferEventIcon(title),
-        scope:   formatEventTime(e.start, e.allDay, tz) || 'Today',
-        content: title,
-      });
-    }
-    // Tasks row: count summary, not titles. Phase 1.8 — drops individual
-    // task names in favor of "3 priority · 2 due today · 1 overdue" so the
-    // brief and the Tasks card stop duplicating each other.
-    const tcRow = buildTaskCountsRow(ctx.today_plan?.task_counts);
-    if (tcRow) rows.push(tcRow);
-    // Yesterday's habit snapshot (clear timeframe: "Y'day 3/4")
-    const habits = ctx.yesterday?.habits;
-    if (habits && habits.due > 0) {
-      const done = habits.done ?? 0;
-      const due  = habits.due;
-      rows.push({
-        icon:    'habits',
-        scope:   `Y'day ${done}/${due}`,
-        content: done >= due ? 'All habits closed yesterday' : 'Set up today\'s habits',
-      });
-    }
-    // Sleep target
-    rows.push({
-      icon:    'sleep',
-      scope:   'Sleep',
-      content: sleepTargetTime ? `In bed by ${sleepTargetTime}` : 'Protect tonight\'s sleep',
-    });
-  } else {
-    // EVENING: leads with a one-line TODAY recap, then forward to tonight +
-    // tomorrow. The recap exists so the evening brief feels like a hand-off,
-    // not just a doom-loop of bad numbers.
-    const recap = ctx.today_recap;
-    if (recap) {
-      const parts = [];
-      if (recap.mood_label) parts.push(`Mood: ${recap.mood_label}`);
-      if (recap.workouts_today?.length) {
-        const w = recap.workouts_today[0];
-        const verb = (w.activity || 'workout').toLowerCase();
-        parts.push(`${verb} done`);
-      }
-      if (recap.tasks_completed_today > 0) {
-        parts.push(`${recap.tasks_completed_today} task${recap.tasks_completed_today === 1 ? '' : 's'} done`);
-      }
-      if (recap.open_priority_tasks > 0) {
-        parts.push(`${recap.open_priority_tasks} priority left`);
-      }
-      if (parts.length > 0) {
-        rows.push({
-          icon:    'other',
-          scope:   'Today',
-          content: parts.join(' · '),
-        });
-      }
-    }
-    // Tonight's sleep next (most immediate action).
-    rows.push({
-      icon:    'sleep',
-      scope:   'Tonight',
-      content: sleepTargetTime ? `In bed by ${sleepTargetTime}` : 'Wind down for the night',
-    });
-    // Tomorrow's calendar events (first 2)
-    const tEvents = (ctx.tomorrow_plan?.calendar_events || []).slice(0, 2);
-    for (const e of tEvents) {
-      const title = String(e.summary || '').trim();
-      if (!title) continue;
-      rows.push({
-        icon:    inferEventIcon(title),
-        scope:   formatEventTime(e.start, e.allDay, tz) || 'Tomorrow',
-        content: title,
-      });
-    }
-    // Tasks row: count summary based on tomorrow's frame (overdue and
-    // due-today both reckoned against tomorrow's date).
-    const tcRow2 = buildTaskCountsRow(ctx.tomorrow_plan?.task_counts);
-    if (tcRow2) rows.push(tcRow2);
-  }
-
-  return rows.slice(0, 5);
-}
-
-// Build a tasks play-row from a task_counts block. Returns null when there
-// are no open tasks worth surfacing. Format example: "3 priority · 2 due
-// today · 1 overdue" — zero-count buckets are omitted.
-function buildTaskCountsRow(counts) {
-  if (!counts || !counts.total_open) return null;
-  const parts = [];
-  if (counts.priority   > 0) parts.push(`${counts.priority} priority`);
-  if (counts.due_today  > 0) parts.push(`${counts.due_today} due today`);
-  if (counts.overdue    > 0) parts.push(`${counts.overdue} overdue`);
-  if (parts.length === 0)    parts.push(`${counts.total_open} open`);
-  return {
-    icon:    'tasks',
-    scope:   `${counts.total_open} open`,
-    content: parts.join(' · '),
-  };
-}
 
 // ── Claude call ───────────────────────────────────────────────────────────
 async function callClaude(ctx, mode, anthropicKey) {
@@ -1748,58 +1292,3 @@ async function recordActionStubs(briefId, user, briefDate, briefMode, stubs, ser
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-async function fetchJson(url, hdr) {
-  try {
-    const r = await fetch(url, { headers: hdr });
-    if (!r.ok) { console.warn(`brief: fetch ${url} HTTP ${r.status}`); return []; }
-    return await r.json();
-  } catch (err) {
-    console.warn(`brief: fetch ${url} failed: ${err.message}`);
-    return [];
-  }
-}
-function stripUpdatedAt(row) {
-  const { updated_at, ...rest } = row;
-  return rest;
-}
-function yesterdayLocal(tz) {
-  const today = localDate(new Date(), tz);
-  return shiftDate(today, -1);
-}
-function localDate(date, tz) {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
-  });
-  return fmt.format(date);
-}
-// "10:23 PM" style clock time in the user's timezone for an ISO timestamp.
-// Returns null on bad input so callers can guard. Used to render sleep_intent
-// times in the brief context payload.
-function formatLocalClockTime(iso, tz) {
-  if (!iso) return null;
-  const dt = new Date(iso);
-  if (isNaN(dt.getTime())) return null;
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
-  }).format(dt);
-}
-function shiftDate(dateStr, days) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
-}
-function localDayStartUtcMs(dateStr, tz) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const guessMs   = Date.UTC(y, m - 1, d);
-  for (let h = -12; h <= 14; h++) {
-    const ms = guessMs + h * 3600_000;
-    if (localDate(new Date(ms), tz) === dateStr && new Date(ms).getUTCHours() % 24 !== undefined) {
-      let lo = ms - 3600_000;
-      while (lo >= guessMs - 24 * 3600_000 && localDate(new Date(lo), tz) === dateStr) lo -= 60_000;
-      return lo + 60_000;
-    }
-  }
-  return guessMs;
-}
