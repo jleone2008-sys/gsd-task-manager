@@ -268,27 +268,40 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     return { pct: Math.round((done / due) * 100), done, due };
   };
 
-  // Compact Train summary for a recap column. Cardio/bonus get one stat;
-  // lifts get name only — the full breakdown lives on History.
+  // Compact Train summary for a recap column. Label is derived
+  // deterministically from day_type — we DO NOT echo session.day_name
+  // because plan templates can contain composite names like
+  // "Cardio / Rest" that, when surfaced as the brief's column, read as
+  // garbage. Prior bandaid fixes special-cased specific names; the
+  // root cause is that the recap column needs a canonical type label,
+  // not a user-entered plan-day name. The full plan name still lives
+  // on the Train tab and in the brief's train_recent comparison block.
+  const typeLabel = (type) => {
+    switch (type) {
+      case 'cardio': return 'Cardio';
+      case 'bonus':  return 'Bonus';
+      case 'rest':   return 'Rest day';
+      default:       return 'Lift';
+    }
+  };
+
   const trainSummary = (session) => {
     if (!session) return null;
     const t = session.day_type;
-    const name = session.day_name || (t === 'cardio' ? 'Cardio' : t === 'bonus' ? 'Bonus' : 'Lift');
+    const label = typeLabel(t);
     if (t === 'cardio' || t === 'bonus') {
       const ex = (session.exercises && session.exercises[0]) || null;
       const mins = ex?.top_reps || 0;          // cardio parks minutes in reps
-      return { label: name, detail: mins ? `${mins} min` : null };
+      return { label, detail: mins ? `${mins} min` : null };
     }
-    return { label: name, detail: null };
+    return { label, detail: null };
   };
 
-  // Planned (not-yet-logged) Train row.
+  // Planned (not-yet-logged) Train row. Same deterministic-type rule
+  // as trainSummary — no echoing of planned.name.
   const plannedSummary = (planned) => {
     if (!planned) return null;
-    const t = planned.type;
-    if (t === 'rest') return { label: 'Rest day', detail: null };
-    if (t === 'cardio') return { label: planned.name || 'Cardio', detail: null };
-    return { label: planned.name || 'Lift', detail: null };
+    return { label: typeLabel(planned.type), detail: null };
   };
 
   // Morning: left = yesterday, right = today.

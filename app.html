@@ -145,17 +145,39 @@
   .home-mood-summary-emoji { font-size: 16px; line-height: 1; }
   .home-mood-summary-count { font-variant-numeric: tabular-nums; }
 
-  /* Line-style rows (Events/Habits/Notes): no box, hairline divider between. */
+  /* Line-style rows (Events/Habits/Notes/Tasks): no box, hairline divider
+     between. Hover = Option 4 from the brand framework: 2px guava
+     left-accent + faint warm-white bg. Subtle layout shift (2px left
+     padding compensation) — readable, not jumpy. Applied to any
+     .home-row that is also marked clickable (.is-clickable, or an
+     element-specific class like .home-note-card / .home-event-row). */
   .home-item-list, #homeHabits, #homeTasks { display: flex; flex-direction: column; }
   .home-row {
     display: flex; align-items: center; gap: 12px;
     padding: 11px 2px; min-width: 0; border-bottom: 1px solid var(--edge);
+    border-left: 2px solid transparent;
+    transition: background var(--dur-fast) var(--ease), border-left-color var(--dur-fast) var(--ease), padding-left var(--dur-fast) var(--ease);
   }
   .home-item-list .home-row:last-child, #homeHabits .home-row:last-child { border-bottom: 0; }
   .home-item-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .home-row.is-done .home-item-title { color: var(--ink-4); }
-  .home-note-card { cursor: pointer; }
-  .home-note-card:hover .home-item-title { opacity: .7; }
+  /* Option 4 hover for any clickable home row. .home-row.is-clickable can
+     be set explicitly; .home-note-card / .home-event-row.is-editable /
+     .home-task-row / .home-habit-row pick it up automatically. */
+  .home-row.is-clickable,
+  .home-note-card,
+  .home-event-row.is-editable,
+  .home-task-row,
+  .home-habit-row { cursor: pointer; }
+  .home-row.is-clickable:hover,
+  .home-note-card:hover,
+  .home-event-row.is-editable:hover,
+  .home-task-row:hover,
+  .home-habit-row:hover {
+    background: var(--row-hover-bg);
+    border-left-color: var(--guava-700);
+    padding-left: 8px;
+  }
   .home-note-title-link { color: var(--sky-fg); font-weight: 500; }
   .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
   .home-habit-streak { flex-shrink: 0; font-size: var(--t-xs); font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
@@ -203,8 +225,8 @@
   /* Phase 5 — calendar event metadata editor affordance, mirroring
      the journal's .j-event-row pattern. Tap-to-edit opens the same
      modal (relationship_tag, energy_after, notes). */
-  .home-event-row.is-editable { cursor: pointer; }
-  .home-event-row.is-editable:hover { background: var(--surface-2); }
+  /* .home-event-row hover handled by the unified .home-row.is-clickable
+     rule above (Option 4: warm bg + guava left-accent). */
   .home-event-energy { font-size: var(--t-sm); flex-shrink: 0; margin-left: 4px; }
   .home-event-tag {
     font-size: 10px; font-weight: 600; letter-spacing: .03em;

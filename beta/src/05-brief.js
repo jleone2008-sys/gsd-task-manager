@@ -833,11 +833,19 @@ function tzOffsetMs(dateStr, tz) {
   return localMs - utcNoon.getTime();
 }
 
-const _BRIEF_MOOD_LABELS = { 1: 'Great', 2: 'Good', 3: 'Okay', 4: 'Low', 5: 'Bad' };
+// Mood labels come from the canonical MOOD_LABEL array in 03-journal.js
+// (1-indexed: 1=Bad, 2=Low, 3=Okay, 4=Good, 5=Great). The earlier
+// _BRIEF_MOOD_LABELS table here was the PRE-invert_mood_scale.sql
+// orientation and produced contradictions like a happy emoji rendered
+// next to "Bad" — same value, opposite reading. Fixed by sharing the
+// single source of truth.
 function briefMoodLabel(v) {
   if (v == null) return null;
   const k = Math.round(Number(v));
-  return _BRIEF_MOOD_LABELS[k] || null;
+  if (typeof MOOD_LABEL !== 'undefined' && Array.isArray(MOOD_LABEL)) {
+    return MOOD_LABEL[k - 1] || null;
+  }
+  return null;
 }
 
 // Replace the task play row in-place. If no row currently exists and there are

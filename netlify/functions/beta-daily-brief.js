@@ -973,7 +973,13 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     '- yesterday.mood_checkins / today_recap.mood_checkins = individual mood entries with optional user reflection notes (e.g. "rough morning, slept badly"). When a note carries a clear theme that connects to other data (low HRV + "anxious meeting day"), reference it in subhead/pills using neutral paraphrase — NEVER quote the user\'s words verbatim back at them in the headline. Mood notes alone aren\'t enough to override the wearable signal but they sharpen the "why" framing.',
-    '- yesterday.habits.done_names = specific habits the user completed yesterday (e.g. "Reading / Podcast", "10k steps"). Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise. Skip on days where every habit was hit (the counts already say "100%").',
+    '- yesterday.habits.done_names = specific habits the user completed YESTERDAY (e.g. "Reading / Podcast", "10k steps"). Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise.',
+    // Strict guards — these explicitly forbid the "habits sealed a clean
+    // day" / "full habits" / "all habits done" hallucinations we kept
+    // hitting. The recap's deterministic count is the source of truth;
+    // Claude must not contradict it.
+    '- NEVER claim "full habits", "all habits sealed", "closed all habits", "every habit done", or equivalent unless yesterday.habits.done >= yesterday.habits.due. If you can\'t verify that from the data, omit any habit-completion claim entirely.',
+    '- EVENING MODE specifically: the recap\'s LEFT column ("Today") shows yesterday\'s habit count as a placeholder — today\'s count is not finalized until after midnight. Do NOT write headline/subhead/pills claiming today\'s habits sealed, closed, or completed. You do not know today\'s habit outcome at evening-brief time.',
     '- yesterday.sleep_intent = the user\'s self-reported bedtime + Oura\'s detected sleep onset + the gap in minutes between them (settle_minutes). Present only on morning briefs and only when both the tap and Oura\'s data exist. Use settle_minutes as the framing signal: <10 = fast, 10-25 = normal (no callout), 25+ = long settle. Surface in subhead/pills ONLY when settle_minutes >= 25 AND the night also had poor sleep_score or low recovery — combined signal that the user was trying to wind down but the body wasn\'t cooperating. Phrase as "took ~30 min to fall asleep" or "long settle time" — never quote the exact intent_local_time back at the user; they tapped it, they don\'t need to read it again. Skip entirely when sleep_intent is null or settle_minutes is small.',
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
@@ -1057,6 +1063,22 @@ function normalizeStructured(raw, mode, ctx) {
   if (BANNED_PROSE_REGEX.test(claudeText)) {
     console.warn('daily-brief: banned phrase in Claude output, rejecting:', claudeText.slice(0, 200));
     return null;
+  }
+
+  // Habit-claim contradiction guard. If Claude's prose claims "all/full
+  // habits sealed/done/closed" but the deterministic count says fewer
+  // than all were completed, that's a hallucination — reject and fall
+  // back. The prompt forbids this phrasing but Claude still hits it
+  // occasionally; this is the validator layer.
+  const HABIT_FULL_CLAIM = /\b(all|full|every)\s+habits?\b|\bhabits?\s+(sealed|closed|completed)\b|\bsealed\s+(a|the)\s+(clean|full)\s+day\b/i;
+  if (HABIT_FULL_CLAIM.test(claudeText)) {
+    const habits = ctx.yesterday?.habits;
+    const allDone = habits && habits.due > 0 && Number(habits.done) >= Number(habits.due);
+    if (!allDone) {
+      console.warn('daily-brief: habit-completion claim contradicts data, rejecting:',
+        { claudeText: claudeText.slice(0, 200), habits });
+      return null;
+    }
   }
 
   // ── Server-built factual blocks ────────────────────────────────────────
