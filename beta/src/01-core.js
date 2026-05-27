@@ -910,7 +910,7 @@ function consumeDropboxCallbackHash() {
       return;
     }
     if (ok === 'connected') {
-      if (typeof loadDropboxStatus === 'function') await loadDropboxStatus();
+      if (typeof loadIntegrationStatus === 'function') await loadIntegrationStatus('dropbox');
       if (typeof activeTool !== 'undefined' && activeTool === 'settings' && typeof renderSettingsPage === 'function') {
         renderSettingsPage();
       }
@@ -923,8 +923,8 @@ function consumeDropboxCallbackHash() {
 function consumeIntegrationCallbackHash() {
   const hash = location.hash || '';
   const providers = [
-    { key: 'whoop', label: 'Whoop', loader: 'loadWhoopStatus' },
-    { key: 'oura',  label: 'Oura',  loader: 'loadOuraStatus'  },
+    { key: 'whoop', label: 'Whoop' },
+    { key: 'oura',  label: 'Oura'  },
   ];
   const hit = providers.find(p => hash.includes(`${p.key}=`) || hash.includes(`${p.key}_error=`));
   if (!hit) return;
@@ -940,8 +940,7 @@ function consumeIntegrationCallbackHash() {
       return;
     }
     if (ok === 'connected') {
-      const loader = window[hit.loader];
-      if (typeof loader === 'function') await loader();
+      if (typeof loadIntegrationStatus === 'function') await loadIntegrationStatus(hit.key);
       if (typeof activeTool !== 'undefined' && activeTool === 'settings' && typeof renderSettingsPage === 'function') {
         renderSettingsPage();
       }

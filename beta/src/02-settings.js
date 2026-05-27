@@ -86,9 +86,9 @@ async function loadUserSettings() {
   // "disconnected" states for each integration; values fill in when
   // each loader returns (each loader notifies the Settings UI via
   // settingsRefreshIntegrations if it's open).
-  loadDropboxStatus().then(settingsRefreshIntegrationsIfOpen);
-  loadWhoopStatus().then(settingsRefreshIntegrationsIfOpen);
-  loadOuraStatus().then(settingsRefreshIntegrationsIfOpen);
+  for (const id of Object.keys(INTEGRATIONS)) {
+    loadIntegrationStatus(id).then(settingsRefreshIntegrationsIfOpen);
+  }
   loadLocationStatus().then(settingsRefreshIntegrationsIfOpen);
   loadConnectedCalendars().then(settingsRefreshIntegrationsIfOpen);
 }
@@ -193,69 +193,64 @@ async function loadConnectedCalendars() {
   }
 }
 
-async function loadDropboxStatus() {
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return;
-    const res = await fetch('/.netlify/functions/beta-dropbox?action=status', {
-      headers: { 'Authorization': `Bearer ${session.access_token}` },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
-    if (!userSettings.integrations) userSettings.integrations = {};
-    userSettings.integrations.dropbox = {
-      connected: !!data.connected,
-      email:     data.dropbox_account_email || null,
-    };
-  } catch (e) {
-    console.warn('[settings] dropbox status load failed', e);
-  }
-}
+// Per-integration config consumed by loadIntegrationStatus +
+// disconnectIntegration. Each loader hits its `status` endpoint, runs
+// the response through `mapStatus`, and stores the result on
+// userSettings.integrations[id]. Disconnect POSTs { action:'disconnect' }
+// to `endpoint` and applies `onDisconnect` to clean up local state.
+//
+// Whoop's mapStatus uniquely preserves `configured` + `client_id` from
+// the credentials endpoint (BYO model — disconnect revokes the OAuth
+// token but keeps saved credentials). The other two are plain.
+const INTEGRATIONS = {
+  dropbox: {
+    label:        'Dropbox',
+    endpoint:     '/.netlify/functions/beta-dropbox',
+    statusUrl:    '/.netlify/functions/beta-dropbox?action=status',
+    mapStatus:    d => ({ connected: !!d.connected, email: d.dropbox_account_email || null }),
+    confirmText:  'Disconnect Dropbox? GSD will no longer be able to access your Dropbox files. Any folders previously shared with GSD will remain shared until you remove them from your Dropbox account.',
+    onDisconnect: () => ({ connected: false, email: null }),
+  },
+  whoop: {
+    label:        'Whoop',
+    endpoint:     '/.netlify/functions/beta-whoop',
+    statusUrl:    '/.netlify/functions/beta-whoop-creds?action=status',
+    mapStatus:    d => ({
+      configured: !!d.configured,
+      client_id:  d.client_id || null,
+      connected:  !!d.connected,
+      email:      d.whoop_account_email || null,
+      last_sync:  d.last_sync || null,    // {ran_at, success, error, rows_upserted}
+    }),
+    confirmText:  'Disconnect Whoop? GSD will no longer sync your Whoop data. Historical data already synced will remain in your account.',
+    onDisconnect: prev => ({ ...prev, connected: false, email: null }),  // preserve client_id + configured
+  },
+  oura: {
+    label:        'Oura',
+    endpoint:     '/.netlify/functions/beta-oura',
+    statusUrl:    '/.netlify/functions/beta-oura?action=status',
+    mapStatus:    d => ({ connected: !!d.connected, email: d.oura_account_email || null }),
+    confirmText:  'Disconnect Oura? GSD will no longer sync your Oura Ring data. Historical data already synced will remain in your account.',
+    onDisconnect: () => ({ connected: false, email: null }),
+  },
+};
 
-async function loadWhoopStatus() {
+async function loadIntegrationStatus(id) {
+  const cfg = INTEGRATIONS[id];
+  if (!cfg) return;
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
-    // Whoop uses a per-user "BYO credentials" model — fetch from the creds
-    // endpoint which returns both whether credentials are saved AND whether
-    // an OAuth refresh token exists.
-    const res = await fetch('/.netlify/functions/beta-whoop-creds?action=status', {
-      headers: { 'Authorization': `Bearer ${session.access_token}` },
+    const res = await fetch(cfg.statusUrl, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (!res.ok) return;
     const data = await res.json();
     if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
     if (!userSettings.integrations) userSettings.integrations = {};
-    userSettings.integrations.whoop = {
-      configured: !!data.configured,
-      client_id:  data.client_id || null,
-      connected:  !!data.connected,
-      email:      data.whoop_account_email || null,
-      last_sync:  data.last_sync || null,    // {ran_at, success, error, rows_upserted}
-    };
+    userSettings.integrations[id] = cfg.mapStatus(data);
   } catch (e) {
-    console.warn('[settings] whoop status load failed', e);
-  }
-}
-
-async function loadOuraStatus() {
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return;
-    const res = await fetch('/.netlify/functions/beta-oura?action=status', {
-      headers: { 'Authorization': `Bearer ${session.access_token}` },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
-    if (!userSettings.integrations) userSettings.integrations = {};
-    userSettings.integrations.oura = {
-      connected: !!data.connected,
-      email:     data.oura_account_email || null,
-    };
-  } catch (e) {
-    console.warn('[settings] oura status load failed', e);
+    console.warn(`[settings] ${id} status load failed`, e);
   }
 }
 
@@ -681,7 +676,7 @@ async function runSyncNow(btn) {
     const msg = total > 0 ? `Synced — ${total} day${total === 1 ? '' : 's'} of data` : 'Sync ran — no new data found';
     flashSyncStatus(msg);
     if (typeof showToast === 'function') showToast(msg);
-    if (typeof loadOuraStatus === 'function') loadOuraStatus();
+    loadIntegrationStatus('oura');
   } catch (err) {
     if (err.message === 'still-running') {
       const msg = 'Sync is running — reload Home in a minute';
@@ -763,9 +758,7 @@ document.addEventListener('click', e => {
       else if (id === 'whoop') startWhoopConnect();
       else if (id === 'oura') startOuraConnect();
     } else if (op === 'disconnect') {
-      if (id === 'dropbox') disconnectDropbox();
-      else if (id === 'whoop') disconnectWhoop();
-      else if (id === 'oura') disconnectOura();
+      disconnectIntegration(id);
     }
     return;
   }
@@ -904,7 +897,7 @@ async function saveWhoopCreds(clientId, clientSecret) {
       const err = await res.json().catch(() => ({ error: 'save_failed' }));
       throw new Error(err.error || 'save_failed');
     }
-    await loadWhoopStatus();
+    await loadIntegrationStatus('whoop');
     return true;
   } catch (e) {
     console.error('[settings] save whoop creds failed', e);
@@ -938,12 +931,14 @@ async function clearWhoopCreds() {
   }
 }
 
-async function disconnectWhoop() {
-  if (!confirm('Disconnect Whoop? GSD will no longer sync your Whoop data. Historical data already synced will remain in your account.')) return;
+async function disconnectIntegration(id) {
+  const cfg = INTEGRATIONS[id];
+  if (!cfg) return;
+  if (!confirm(cfg.confirmText)) return;
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
-    const res = await fetch('/.netlify/functions/beta-whoop', {
+    const res = await fetch(cfg.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -952,20 +947,14 @@ async function disconnectWhoop() {
       body: JSON.stringify({ action: 'disconnect' }),
     });
     if (!res.ok) throw new Error('disconnect failed');
-    if (userSettings?.integrations?.whoop) {
-      // Disconnect revokes the OAuth token but preserves saved credentials
-      // (configured + client_id). Use "Clear credentials" to wipe those too.
-      userSettings.integrations.whoop = {
-        ...userSettings.integrations.whoop,
-        connected: false,
-        email:     null,
-      };
+    if (userSettings?.integrations?.[id]) {
+      userSettings.integrations[id] = cfg.onDisconnect(userSettings.integrations[id]);
     }
     if (activeTool === 'settings') renderSettingsPage();
-    if (typeof showToast === 'function') showToast('Whoop disconnected', 'ok');
+    if (typeof showToast === 'function') showToast(`${cfg.label} disconnected`, 'ok');
   } catch (e) {
-    console.error('[settings] whoop disconnect failed', e);
-    if (typeof showToast === 'function') showToast('Could not disconnect Whoop', 'offline');
+    console.error(`[settings] ${id} disconnect failed`, e);
+    if (typeof showToast === 'function') showToast(`Could not disconnect ${cfg.label}`, 'offline');
   }
 }
 
@@ -989,55 +978,6 @@ async function startOuraConnect() {
   window.location.href = 'https://cloud.ouraring.com/oauth/authorize?' + params;
 }
 
-async function disconnectOura() {
-  if (!confirm('Disconnect Oura? GSD will no longer sync your Oura Ring data. Historical data already synced will remain in your account.')) return;
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return;
-    const res = await fetch('/.netlify/functions/beta-oura', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ action: 'disconnect' }),
-    });
-    if (!res.ok) throw new Error('disconnect failed');
-    if (userSettings?.integrations?.oura) {
-      userSettings.integrations.oura = { connected: false, email: null };
-    }
-    if (activeTool === 'settings') renderSettingsPage();
-    if (typeof showToast === 'function') showToast('Oura disconnected', 'ok');
-  } catch (e) {
-    console.error('[settings] oura disconnect failed', e);
-    if (typeof showToast === 'function') showToast('Could not disconnect Oura', 'offline');
-  }
-}
-
-async function disconnectDropbox() {
-  if (!confirm('Disconnect Dropbox? GSD will no longer be able to access your Dropbox files. Any folders previously shared with GSD will remain shared until you remove them from your Dropbox account.')) return;
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) return;
-    const res = await fetch('/.netlify/functions/beta-dropbox', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ action: 'disconnect' }),
-    });
-    if (!res.ok) throw new Error('disconnect failed');
-    if (userSettings?.integrations?.dropbox) {
-      userSettings.integrations.dropbox = { connected: false, email: null };
-    }
-    if (activeTool === 'settings') renderSettingsPage();
-    if (typeof showToast === 'function') showToast('Dropbox disconnected', 'ok');
-  } catch (e) {
-    console.error('[settings] dropbox disconnect failed', e);
-    if (typeof showToast === 'function') showToast('Could not disconnect Dropbox', 'offline');
-  }
-}
 
 /* ── Phase 5 — Connected calendars panel ─────────────────────────── */
 
