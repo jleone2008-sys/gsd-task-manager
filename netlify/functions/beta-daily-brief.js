@@ -332,7 +332,8 @@ async function buildContext(user, brief_date, mode, serviceKey) {
 
   const [
     ouraToday, ouraYesterday, whoopY, oTagsY, oWorkoutsY, journalY, tasksAll,
-    calY, calT, habitsY, baselines30, baselines7, tasksTopOpen, tasksOpen,
+    calY, calT, habitsY, habitCompletionsY, habitsCatalog,
+    baselines30, baselines7, tasksTopOpen, tasksOpen,
     activePlanRows, recentSessions, recentLabs, pendingAnomalies,
   ] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${today}&select=${ouraRecoveryCols}`, hdr),
@@ -345,6 +346,13 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_calendar_cache?user_id=eq.${user.user_id}&entry_date=eq.${yday}&select=events`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_calendar_cache?user_id=eq.${user.user_id}&entry_date=eq.${today}&select=events`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_habit_summary?user_id=eq.${user.user_id}&entry_date=eq.${yday}&select=due_count,done_count`, hdr),
+    // Yesterday's habit completion rows + the user's habits catalog,
+    // joined client-side below to surface the *names* of habits
+    // completed (e.g. 'Reading / Podcast') so the brief AI can
+    // reference specific behaviors in framing without the visible
+    // recap getting cluttered.
+    fetchJson(`${SUPABASE_URL}/rest/v1/habit_completions?user_id=eq.${user.user_id}&completed_date=eq.${yday}&select=habit_id`, hdr),
+    fetchJson(`${SUPABASE_URL}/rest/v1/habits?user_id=eq.${user.user_id}&archived=eq.false&select=id,name,emoji`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_30d?user_id=eq.${user.user_id}&select=*`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/v_user_baselines_7d?user_id=eq.${user.user_id}&select=*`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/tasks?user_id=eq.${user.user_id}&done=eq.false&top3=eq.true&select=text&limit=5`, hdr),
@@ -552,7 +560,24 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       calendar_events: ((calY?.[0]?.events) || []).slice(0, 8).map(e => ({
         summary: e.summary, start: e.start, allDay: !!e.isAllDay,
       })),
-      habits: habitsY?.[0] ? { due: habitsY[0].due_count, done: habitsY[0].done_count } : null,
+      habits: (() => {
+        // Counts come from journal_habit_summary; names come from the
+        // catalog ⨯ completions join below. Both can be null on a day
+        // with no logged activity — return null only when there's
+        // literally nothing to say (no count, no completion).
+        const counts = habitsY?.[0] ? { due: habitsY[0].due_count, done: habitsY[0].done_count } : null;
+        const byId = {};
+        for (const h of (habitsCatalog || [])) byId[h.id] = h;
+        const doneNames = (habitCompletionsY || [])
+          .map(c => byId[c.habit_id]?.name)
+          .filter(Boolean)
+          // Stable order so prompt-cache reuse stays high across regens.
+          .sort()
+          // Cap to keep tokens sane on power-user habit lists.
+          .slice(0, 12);
+        if (!counts && !doneNames.length) return null;
+        return { ...(counts || {}), done_names: doneNames };
+      })(),
       // Train session logged for yesterday (if any). Summary only — full
       // set list is in train_recent for token-budget reasons.
       workout: summarizeSession(workoutYesterday),
@@ -1284,6 +1309,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     '- yesterday.mood_checkins / today_recap.mood_checkins = individual mood entries with optional user reflection notes (e.g. "rough morning, slept badly"). When a note carries a clear theme that connects to other data (low HRV + "anxious meeting day"), reference it in subhead/pills using neutral paraphrase — NEVER quote the user\'s words verbatim back at them in the headline. Mood notes alone aren\'t enough to override the wearable signal but they sharpen the "why" framing.',
+    '- yesterday.habits.done_names = specific habits the user completed yesterday (e.g. "Reading / Podcast", "10k steps"). Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise. Skip on days where every habit was hit (the counts already say "100%").',
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
       : '',
