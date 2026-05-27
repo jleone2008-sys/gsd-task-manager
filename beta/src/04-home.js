@@ -25,7 +25,7 @@ let _homeOura = null;
 let _homeOuraInflight = null;
 let _homeWired = false;
 
-// Phase 5 — intra-day mood check-ins. Today's check-ins (newest first
+// Intra-day mood check-ins. Today's check-ins (newest first
 // inside the array; we sort on render). Single fetch on Home mount;
 // patched in-place by the tap + delete handlers.
 let _homeMoodCheckins = [];
@@ -162,12 +162,11 @@ function renderHome() {
   const el = document.getElementById('homeContainer');
   if (!el) return;
   console.time('[perf] home.render');
-  // Phase 2 audit: do NOT null _homeOura here. Oura data only changes
-  // when a cron sync fires (overnight + a few times during the day);
-  // wiping the cache on every Home mount made a fresh DB roundtrip
-  // happen every time the user tabbed back. The cache stays warm
-  // across renders; the brief regen flow refreshes underlying data
-  // when it needs to.
+  // Do NOT null _homeOura here. Oura data only changes when a cron
+  // sync fires (overnight + a few times during the day); wiping the
+  // cache on every Home mount made a fresh DB roundtrip happen every
+  // time the user tabbed back. The cache stays warm across renders;
+  // the brief regen flow refreshes underlying data when it needs to.
   homeSyncChrome();
   homeEnsureSubStyles();
 
@@ -542,9 +541,9 @@ function homeCalendarInnerHTML(events, expired) {
   if (!events || !events.length) return `<div class="home-empty">Nothing on the calendar today.</div>`;
   // Mirror the journal's event-row affordance — tap to open the same
   // event metadata editor (relationship_tag, energy_after, notes).
-  // Events synced before Phase 5 may lack `id`; those render
-  // non-clickable. Tag + energy badges show when meta is on file
-  // (loaded by hydrateHomeCalendar via loadCalendarEventMetaForEvents).
+  // Older synced events may lack `id`; those render non-clickable.
+  // Tag + energy badges show when meta is on file (loaded by
+  // hydrateHomeCalendar via loadCalendarEventMetaForEvents).
   const MOOD = ['😢','😔','😐','😊','🤩'];
   return `<div class="home-item-list">${events.map(ev => {
     const meta = (ev.id && typeof journalState !== 'undefined')
@@ -827,11 +826,11 @@ async function hydrateHomeToday() {
         <button class="home-cta" data-home-cta="settings">Connect Whoop →</button>`;
     }
   } else {
-    // Phase 2 audit follow-up: don't gate on homeOuraConnected() — that
-    // reads the fire-and-forget integration status which races with
-    // Home render on cold boot. Try the data fetch directly; if days
-    // come back, render rings; if not, show the Connect CTA. Either
-    // way the decision is based on actual data, not a stale flag.
+    // Don't gate on homeOuraConnected() — that reads the fire-and-forget
+    // integration status which races with Home render on cold boot.
+    // Try the data fetch directly; if days come back, render rings; if
+    // not, show the Connect CTA. Decision based on actual data, not a
+    // stale flag.
     const oura = await loadOuraScores();
     const hasData = oura && Array.isArray(oura.days) && oura.days.length > 0;
     if (hasData) {
@@ -841,9 +840,9 @@ async function hydrateHomeToday() {
         <button class="home-cta" data-home-cta="settings">Connect Oura →</button>`;
     }
   }
-  // Phase 5 — intra-day mood check-ins. Single fetch on mount.
-  // Patched in-place by insert/delete handlers; daily journal mood is
-  // kept in sync via syncDailyMoodFromCheckins().
+  // Intra-day mood check-ins. Single fetch on mount; patched in-place
+  // by insert/delete handlers; daily journal mood is kept in sync via
+  // syncDailyMoodFromCheckins().
   await loadHomeMoodCheckins();
 
   // Journal reflection + mood (today's journal entry).
@@ -927,13 +926,11 @@ async function hydrateHomeWeek() {
   const today = homeToday();
   const start = (typeof jShiftDays === 'function') ? jShiftDays(today, -6) : today;
   if (typeof loadJournalRange === 'function') { try { await loadJournalRange(start, today); } catch (_) {} }
-  // Phase 2 audit follow-up: removed the homeOuraConnected() gate.
-  // Integration-status loaders went fire-and-forget in the boot-unblock
-  // commit, which meant Home rendered before integrations.oura.connected
-  // was populated → gate returned false → Oura skipped → all dashes
-  // (the regression Joe hit 2026-05-26). loadOuraScores is bounded
-  // (limit 14) and safe to call always; if the user truly has no Oura
-  // data the days array comes back empty (still dashes, but accurate).
+  // No homeOuraConnected() gate here — integration-status loaders are
+  // fire-and-forget, so the gate races with Home render and produced
+  // false negatives on cold boot. loadOuraScores is bounded (limit 14)
+  // and safe to call always; if the user truly has no Oura data the
+  // days array comes back empty (dashes, but accurate).
   const oura = homeHealthSource() === 'oura' ? await loadOuraScores() : null;
   const entriesByDate = (typeof journalState !== 'undefined') ? journalState.entries : new Map();
   const el = document.getElementById('homeWeek');
@@ -947,10 +944,9 @@ function refreshHomeSection(id, html) {
   if (el) el.innerHTML = html;
 }
 
-// Phase 2 audit: split the original blanket refreshHomeData() — which
-// blasted innerHTML of tasks + habits + notes on every change anywhere
-// — into per-section refreshers. Callers know which surface they
-// touched, so a habit tap no longer repaints tasks + notes too.
+// Per-section refreshers (not a blanket refreshHomeData). Callers know
+// which surface they touched, so a habit tap doesn't repaint tasks +
+// notes too.
 function _homeMountedOnHome() {
   return (typeof activeTool !== 'undefined')
     && activeTool === 'home'
@@ -1147,7 +1143,7 @@ function homeWireOnce() {
     if (e.target.closest('[data-home-newnote]')) { homeCreateNote(); return; }
     if (e.target.closest('[data-home-quicknotes]')) { openQuickNotesModal(); return; }
 
-    // Phase 5 — intra-day mood check-in. Tapping an emoji opens the
+    // Intra-day mood check-in. Tapping an emoji opens the
     // reflection modal; the check-in is persisted when the user hits
     // Skip (note=null) or Submit (note=textarea value).
     const moodEl = e.target.closest('[data-home-mood]');

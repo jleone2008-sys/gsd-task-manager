@@ -201,12 +201,9 @@ async function saveJournalEntry(dateStr, patch) {
       entry_date: dateStr,
       reflections: merged.reflections || null,
       mood: merged.mood ?? null,
-      // Phase 2 audit cleanup: photos[] column is the deprecated
-      // legacy data-URL store. Save flow stops touching it now that
-      // the backfill is complete and the cleanup migration emptied
-      // it for all backfilled rows. New rows pick up the column's
-      // default ('[]') automatically. photo_paths is the only source
-      // of truth for journal photos going forward.
+      // photo_paths is the source of truth for journal photos. The
+      // deprecated photos[] data-URL column is left at its default ('[]')
+      // — save flow never writes to it.
       photo_paths: merged.photo_paths || [],
       learning: merged.learning || null,
       updated_at: new Date().toISOString()

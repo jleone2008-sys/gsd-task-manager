@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   DAILY BRIEF — top card on Home (beta-only). Phase 1.7 layout:
+   DAILY BRIEF — top card on Home (beta-only). Layout:
 
      Header strip: "[WEEKDAY] BRIEF" (small all-caps) + weather chip
      Headline (verb-first) + subhead (the play)
@@ -25,8 +25,8 @@
      - Settings → Save Location auto-triggers homeBriefRefresh(true)
        (live update without manual cache bust).
 
-   Back-compat: if a row has only `narrative` (Phase 1.6) and no
-   `structured`, render the legacy paragraph layout as a fallback.
+   Back-compat: if a row has only `narrative` and no `structured`,
+   render the legacy paragraph layout as a fallback.
 ═══════════════════════════════════════════════════════════════ */
 
 let _briefState = { status: 'loading', brief: null, error: null };

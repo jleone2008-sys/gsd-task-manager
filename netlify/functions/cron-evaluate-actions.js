@@ -1,4 +1,4 @@
-// Phase 10 — per-user nightly evaluator for brief recommendations.
+// Per-user nightly evaluator for brief recommendations.
 //
 // Hourly cron with local-hour filter (same pattern as cron-daily-brief /
 // cron-weather-snapshot). Each user fires once at 23:00 local. Per user

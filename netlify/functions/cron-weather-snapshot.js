@@ -1,4 +1,4 @@
-// Phase 9.2 — per-user nightly weather snapshot writer.
+// Per-user nightly weather snapshot writer.
 //
 // Walks all users with location set on user_preferences (weather_lat/lng).
 // For each, when their local clock is in the snapshot window (default
