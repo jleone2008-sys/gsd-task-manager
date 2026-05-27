@@ -763,9 +763,11 @@ function weekdayInTz(dateStr, tz) {
 
 // ── Deterministic builders (Phase 1.7 fix-pass) ────────────────────────────
 // Everything factual lives here, not in Claude. Claude contributes ONLY
-// headline, subhead, evidence_pills, optional hero_metric_key override, and
-// optional sleep_target_time. Everything else (numbers, names, counts,
-// task titles, event titles) is computed/copied verbatim from data.
+// headline, subhead, evidence_pills, and an optional hero_metric_key
+// override. Everything else (numbers, names, counts, task titles, event
+// titles, bedtime) is computed/copied verbatim from data via
+// deterministic helpers — most recently the bedtime rule, which used
+// to be Claude-overridable and is now fully formulaic.
 
 // Count completed tasks whose completed_at epoch ms falls within the given
 // user-local day. Reuses the existing localDayStartUtcMs helper.
@@ -1310,9 +1312,9 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     'subhead — ONE sentence ≤80 chars stating the play. Examples: "Pull back on intensity. Protect tonight\'s sleep.", "Front-load the hardest task; lift later if recovered."',
     'evidence_pills — 0-3 short context tags ≤4 words each. Pills must ADD context the stats row CAN\'T show. The stats list already shows things like "elevated", "well below norm", "X steps" — pills that just paraphrase those notes are USELESS and will be cut. Good pills surface: CAUSES ("Late night Friday", "Workout yesterday"), STREAKS ("2nd low HRV", "3rd recovery dip"), COUNTERFACTUALS ("Light load worked", "Caffeine helped"), or PATTERNS ("Recovers slow Mondays"). DO NOT name specific events, tasks, or counts. Skip entirely if you have nothing the stats list isn\'t already saying.',
     'hero_metric_key — OPTIONAL override of the server\'s pick for the hero ring. Server hint: ' + (hint || 'none') + '. Set null to accept the server pick; or pick one of "sleep_score", "readiness_score", "activity_score" if a different metric is the story.',
-    mode === 'evening'
-      ? 'sleep_target_time — OPTIONAL specific time recommendation, e.g. "10:30 PM". The server uses this for the sleep row\'s content. Null if no specific target.'
-      : 'sleep_target_time — OPTIONAL specific time recommendation, e.g. "10:30 PM". Used for the sleep row in today\'s play. Null if no specific target.',
+    // Bedtime is fully formulaic now (server decides between 9:30 / 10:00 /
+    // 10:30 PM based on recovery + body temp + sickness tags). Do NOT
+    // produce sleep_target_time — the field is gone from the tool schema.
     'confidence — "high" if baselines have n>=30 AND last night\'s data is complete; "medium" if n=14-29 or one signal missing; "low" if n<14 or last night missing.',
     '',
     'BANNED — using any of these triggers a fallback: "worth noting", "fun evening", "the week\'s been rich", "actually land", "no weather to report", "your body\'s still", any percentile/median/IQR/p25/p50/p75 reference, any "ms"/"milliseconds" reference. Also: never invent numbers or names — the data you can see (recovery, activity, baselines, weeks-rolling) is for your reasoning only; you must not echo specific numbers/titles in headline/subhead/pills.',
@@ -1357,10 +1359,9 @@ function briefToolSchema(mode) {
       enum: [...HERO_METRIC_KEYS, null],
       description: 'OPTIONAL override of server\'s hero pick. Null = accept server pick.',
     },
-    sleep_target_time: {
-      type: ['string', 'null'],
-      description: 'OPTIONAL specific time recommendation for sleep (e.g. "10:30 PM"). Null = generic protect-sleep messaging.',
-    },
+    // sleep_target_time was previously a Claude-produced field. Now the
+    // bedtime is fully formulaic (lib/recommendations.recommendSleepTarget)
+    // so the model no longer produces it — keeping the tool schema lean.
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
   };
   return {
@@ -1411,10 +1412,15 @@ function normalizeStructured(raw, mode, ctx) {
   const stats        = buildStats(hero_metric.key, ctx);
   const weatherSrc   = mode === 'evening' ? ctx.tomorrow_plan?.weather : ctx.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
-  // Server-side deterministic sleep target wins over Claude's varying output.
-  // Falls back to Claude's value only if the server rules return null.
-  const serverSleepTarget = recommendSleepTarget(ctx.yesterday?.recovery, mode, ctx.baselines_7d);
-  const sleepTarget = serverSleepTarget || (raw.sleep_target_time ? String(raw.sleep_target_time).trim().slice(0, 24) : null);
+  // Fully deterministic sleep target — Claude's output is no longer
+  // considered. recommendSleepTarget picks between 9:30 / 10:00 / 10:30 PM
+  // based on recovery + body-temp deviation + logged sickness tags.
+  const sleepTarget = recommendSleepTarget({
+    recovery:    ctx.yesterday?.recovery,
+    activity:    ctx.yesterday?.activity,
+    tags:        ctx.yesterday?.tags,
+    baselines7d: ctx.baselines_7d,
+  });
   const recap        = buildRecap(mode, ctx, sleepTarget);
 
   const confidence = ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low';
@@ -1476,7 +1482,12 @@ function buildFallback({ reason, context, mode }) {
   const stats        = buildStats(hero_metric.key, ctxSafe);
   const weatherSrc   = mode === 'evening' ? ctxSafe.tomorrow_plan?.weather : ctxSafe.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
-  const serverSleepTarget = recommendSleepTarget(ctxSafe.yesterday?.recovery, mode, ctxSafe.baselines_7d);
+  const serverSleepTarget = recommendSleepTarget({
+    recovery:    ctxSafe.yesterday?.recovery,
+    activity:    ctxSafe.yesterday?.activity,
+    tags:        ctxSafe.yesterday?.tags,
+    baselines7d: ctxSafe.baselines_7d,
+  });
   const recap        = buildRecap(mode, ctxSafe, serverSleepTarget);
 
   const structured = {

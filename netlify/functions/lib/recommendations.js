@@ -5,25 +5,87 @@
 // Future entries (e.g. recommendIntensity, recommendHydrationFlag) follow
 // the same pattern: take context, return deterministic value.
 
-// Sleep target — when to be in bed. Returns a target for BOTH modes now:
-// the morning brief surfaces it in the Today recap ("Tonight 10:30 PM"),
-// the evening brief surfaces it in the wind-down row ("In bed by 10:30 PM").
-// Rules pivot on the most recent recovery read:
-//   readiness <= 60 OR HRV well below 7d median (< 70%) → 9:30 PM (push earlier)
-//   readiness <= 75                                      → 10:00 PM
-//   else                                                 → 10:30 PM (default)
-// mode is kept in the signature for back-compat with existing callers and so
-// future variants (e.g. weekend defaults) can branch on it without an API
-// change.
-function recommendSleepTarget(recovery, mode, baselines7d) {
-  if (!recovery) return '10:30 PM';
-  const readiness = recovery.readiness_score;
-  const hrv       = recovery.hrv_ms;
+// ── Sickness detection ───────────────────────────────────────────────
+// Returns { severe, mild, count } based on logged Oura tags + body
+// temperature deviation. The brief calls this from recommendSleepTarget;
+// future flows (intensity recommendation, daily energy framing) can
+// reuse the same primitive.
+//
+//   severe = wearable + tag agree on illness, or body temp clearly elevated
+//   mild   = single isolated signal
+//   count  = total signals fired (for downstream scoring / pills)
+const SICK_TAG_RE = /sick|ill|fever|cold|flu|headache|nausea|sore|migraine|congest/i;
+function detectSickness({ tags, activity } = {}) {
+  const sickTags = (tags || []).filter(t =>
+    SICK_TAG_RE.test(`${t.kind || ''} ${t.name || ''}`)
+  );
+  const tempDev = activity?.body_temp_deviation_c;
+  const tempMild   = tempDev != null && Number(tempDev) > 0.3;
+  const tempSevere = tempDev != null && Number(tempDev) > 0.5;
+  const signals = [
+    sickTags.length >= 1,
+    tempMild,
+  ].filter(Boolean).length;
+  return {
+    severe: tempSevere || sickTags.length >= 2 || (sickTags.length >= 1 && tempMild),
+    mild:   signals === 1,
+    count:  signals,
+  };
+}
+
+// Sleep target — when to be in bed. Fully formulaic; no AI input is
+// honored. Returns the same target string in both morning + evening
+// modes (the brief surfaces it differently per mode — Today recap row
+// in morning, wind-down row in evening).
+//
+// Rules (any single trigger → push to that tier; tiers are ordered
+// most-aggressive first):
+//
+//   9:30 PM ← severe sickness (temp dev > +0.5°C, OR ≥2 sick tags, OR a
+//             sick tag + mild temp elevation)
+//          ← readiness ≤ 60
+//          ← HRV < 70% of 7-day median
+//
+//   10:00 PM ← mild sickness (one sick tag OR temp dev > +0.3°C)
+//            ← readiness ≤ 75
+//
+//   10:30 PM ← default
+//
+// 'mode' is kept in the signature for back-compat with existing callers.
+// Old positional form (recovery, mode, baselines7d) is still accepted —
+// new callers can pass an object: ({ recovery, activity, tags, baselines7d }).
+function recommendSleepTarget(arg1, arg2, arg3) {
+  // Two call shapes: object-form (preferred) or legacy positional.
+  let recovery, activity, baselines7d, tags;
+  if (arg1 && typeof arg1 === 'object' && ('recovery' in arg1 || 'activity' in arg1 || 'tags' in arg1)) {
+    recovery    = arg1.recovery;
+    activity    = arg1.activity;
+    baselines7d = arg1.baselines7d;
+    tags        = arg1.tags;
+  } else {
+    recovery    = arg1;
+    baselines7d = arg3;
+    activity    = undefined;
+    tags        = undefined;
+  }
+
+  const readiness = recovery?.readiness_score;
+  const hrv       = recovery?.hrv_ms;
   const hrvBase   = baselines7d?.hrv_ms_median;
   const hrvLow    = (hrv != null && hrvBase != null && Number(hrv) < 0.7 * Number(hrvBase));
-  if ((readiness != null && Number(readiness) <= 60) || hrvLow) return '9:30 PM';
+  const sick      = detectSickness({ tags, activity });
+
+  // Severe tier
+  if (sick.severe) return '9:30 PM';
+  if (readiness != null && Number(readiness) <= 60) return '9:30 PM';
+  if (hrvLow) return '9:30 PM';
+
+  // Mild tier
+  if (sick.mild) return '10:00 PM';
   if (readiness != null && Number(readiness) <= 75) return '10:00 PM';
+
+  // Default
   return '10:30 PM';
 }
 
-module.exports = { recommendSleepTarget };
+module.exports = { recommendSleepTarget, detectSickness };
