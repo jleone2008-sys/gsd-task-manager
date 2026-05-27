@@ -110,10 +110,24 @@ exports.handler = async (event) => {
       result = buildFallback(session, sets, priorSessions, priorSetsMap, `claude_error: ${err.message}`);
     }
     // Persist the AI feedback to workout_sessions.ai_feedback so the
-    // History tab can read it back without re-spending tokens. Best-effort
-    // — log + continue on failure, the client still gets the result.
-    persistAiFeedback(sessionId, userId, result, serviceKey)
-      .catch(err => console.warn('[train-feedback] persist failed:', err.message));
+    // History tab can read it back without re-spending tokens.
+    //
+    // AWAITED (not fire-and-forget) because Lambda may tear down the
+    // execution context after the response ships, leaving any detached
+    // promise unresolved. Concrete case: user submits a session, sees
+    // the loading spinner, closes the tab mid-Claude-call. Function
+    // keeps running server-side, Claude returns, persist starts but
+    // never lands — UI shows "No AI analysis on file" forever.
+    //
+    // The persist is a single PATCH (~100ms vs the 10-30s Claude call),
+    // so awaiting adds trivial latency. Wrapped in try/catch so persist
+    // failures don't kill the response — the client still gets `result`
+    // and renders it locally even if the DB write didn't take.
+    try {
+      await persistAiFeedback(sessionId, userId, result, serviceKey);
+    } catch (err) {
+      console.warn('[train-feedback] persist failed:', err.message);
+    }
     return cors(json(200, result));
   } catch (err) {
     console.error('[train-feedback] handler error:', err.message);

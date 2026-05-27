@@ -102,3 +102,18 @@
 #                            triggers from the Insights "Generate" button).
 [functions."cron-weekly-synthesis"]
   schedule = "0 22 * * 0"
+
+# Phase 10 — per-user nightly evaluator for brief recommendations.
+# Hourly tick; the function filters per user by local hour and only does
+# work when it's 23:00 in their tz. Three jobs per user per fire:
+#   (1) score adherence for yesterday's recommendations from downstream
+#       data (today's oura sleep, today's workout logs, today's habit
+#       completions, today's journal)
+#   (2) fill T+1 outcome for yesterday's brief
+#   (3) fill T+3 outcome for 3-days-ago brief; mark computed_at
+# After each fire that did work, refreshes v_user_action_efficacy via
+# the refresh_efficacy_view RPC (security-definer wrapper).
+#
+# No env vars beyond SUPABASE_SERVICE_KEY.
+[functions."cron-evaluate-actions"]
+  schedule = "0 * * * *"

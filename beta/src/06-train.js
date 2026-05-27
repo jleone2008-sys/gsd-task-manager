@@ -174,6 +174,45 @@ function trainWireOnce() {
       renderTrain();
       return;
     }
+    // Phase 11 — plan-tune proposal lifecycle.
+    if (action === 'tune-accept') {
+      trainTuneAction(actionEl.dataset.tuneId, 'accept');
+      return;
+    }
+    if (action === 'tune-decline-prompt') {
+      const id = actionEl.dataset.tuneId;
+      const row = document.getElementById(`tuneDeclineRow-${id}`);
+      if (row) row.style.display = 'block';
+      // Hide the action buttons above to keep focus on the reason input.
+      actionEl.closest('.tune-proposal-actions')?.style?.setProperty('display', 'none');
+      const input = document.getElementById(`tuneDeclineInput-${id}`);
+      if (input) input.focus();
+      return;
+    }
+    if (action === 'tune-decline-cancel') {
+      const id = actionEl.dataset.tuneId;
+      const row = document.getElementById(`tuneDeclineRow-${id}`);
+      if (row) row.style.display = 'none';
+      // Re-show the original actions block.
+      const card = actionEl.closest('.tune-proposal-card');
+      const primaryActions = card?.querySelector('.tune-proposal-actions');
+      if (primaryActions) primaryActions.style.display = '';
+      return;
+    }
+    if (action === 'tune-decline-confirm') {
+      const id = actionEl.dataset.tuneId;
+      const input = document.getElementById(`tuneDeclineInput-${id}`);
+      const reason = input ? input.value.trim() : '';
+      trainTuneAction(id, 'decline', reason);
+      return;
+    }
+    if (action === 'tune-revert') {
+      const id = actionEl.dataset.tuneId;
+      const ok = window.confirm('Revert this plan to the version before the last AI tune?');
+      if (!ok) return;
+      trainTuneAction(id, 'revert');
+      return;
+    }
     if (action === 'history-recap') {
       openHistoryRecap(actionEl.dataset.sessionId);
       return;
@@ -447,10 +486,11 @@ function trainWireOnce() {
   });
 }
 
-/* ── Day detail modal (read-only for now) ────────────────────────────
+/* ── Day detail modal (read-only) ────────────────────────────────────
    Tapping a day in the active-plan week grid opens a small sheet with
-   that day's prescribed exercises (or "Rest" copy). Edit-in-place
-   ships in a follow-up commit alongside the plan editor. */
+   that day's prescribed exercises (or "Rest" copy). Read-only by
+   design — full editing lives in trainOpenManagePlanSheet, which renders
+   the entire plan with editable name/exercises/sets/reps + save flow. */
 function trainOpenDayDetail(dow) {
   const active = _trainState.activePlan;
   if (!active) return;
@@ -588,7 +628,24 @@ function managePlanRender(overlay) {
 
   const dayRows = d.day_template.map((day, i) => renderManageDay(day, i)).join('');
 
+  // Phase 11 — Revert banner. Shown when the modal is editing the active
+  // plan AND its last AI tune was accepted (so there's a prior_day_template
+  // to roll back to). Reverting POSTs through the action endpoint and
+  // reloads the plan; the modal auto-closes so the user sees the restored
+  // template on next open.
+  const lastTune = _trainState.lastTune;
+  const isActiveModal = _trainState.activePlan && d.id === _trainState.activePlan.id;
+  const revertBanner = (isActiveModal && lastTune && lastTune.status === 'accepted')
+    ? `<div class="manage-plan-revert-banner">
+        <div class="manage-plan-revert-msg">
+          AI tune applied${lastTune.status_changed_at ? ` ${trainEsc(formatRelDate(lastTune.status_changed_at))}` : ''}${(lastTune.focus_areas_addressed || []).length ? ` · focus: ${trainEsc((lastTune.focus_areas_addressed || []).join(', '))}` : ''}.
+        </div>
+        <button class="train-btn-link" data-train-action="tune-revert" data-tune-id="${trainEsc(lastTune.id)}">Revert last AI tune</button>
+      </div>`
+    : '';
+
   body.innerHTML = `
+    ${revertBanner}
     <div class="train-form-section">
       <div class="train-form-label">Name</div>
       <input class="form-input" type="text" maxlength="80" value="${trainEsc(d.name)}" data-manage-field="name">
@@ -836,13 +893,27 @@ function trainEsc(s) {
   ));
 }
 
+// Compact "today" / "yesterday" / "3 days ago" / "May 14" formatter for
+// banner-style timestamps. Returns a short string for any valid input;
+// empty string for falsy / unparseable input.
+function formatRelDate(iso) {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '';
+  const days = Math.floor((Date.now() - t) / 86400_000);
+  if (days <= 0)   return 'today';
+  if (days === 1)  return 'yesterday';
+  if (days < 14)   return `${days} days ago`;
+  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 async function loadTrainPlans() {
   _trainState.loading = true; _trainState.error = null;
   try {
     // Templates: is_template=true, user_id is null. RLS lets us read them.
     const { data: templates, error: tErr } = await db
       .from('workout_plans')
-      .select('id,name,description,days_per_week,day_template,is_template,is_active,forked_from,created_at')
+      .select('id,name,description,days_per_week,day_template,is_template,is_active,forked_from,created_at,last_plan_tune_at,last_plan_tune_id')
       .eq('is_template', true)
       .order('days_per_week', { ascending: false });
     if (tErr) throw tErr;
@@ -850,7 +921,7 @@ async function loadTrainPlans() {
     // User's own plans (forked + custom).
     const { data: userPlans, error: uErr } = await db
       .from('workout_plans')
-      .select('id,name,description,days_per_week,day_template,is_template,is_active,forked_from,created_at')
+      .select('id,name,description,days_per_week,day_template,is_template,is_active,forked_from,created_at,last_plan_tune_at,last_plan_tune_id')
       .eq('is_template', false)
       .order('created_at', { ascending: false });
     if (uErr) throw uErr;
@@ -859,6 +930,43 @@ async function loadTrainPlans() {
     _trainState.userPlans  = userPlans || [];
     _trainState.activePlan = (userPlans || []).find(p => p.is_active) || null;
     _trainState.loaded     = true;
+
+    // Phase 11 — pending tune proposal for the active plan, if any.
+    // Loaded alongside plans so the proposal card can render on the very
+    // first Train mount instead of after a separate roundtrip.
+    if (_trainState.activePlan) {
+      try {
+        const { data: pendingRows } = await db.from('workout_plan_tunes')
+          .select('id,plan_id,proposed_at,prior_day_template,proposed_day_template,changes,rationale,focus_areas_addressed,confidence,status')
+          .eq('plan_id', _trainState.activePlan.id)
+          .eq('status', 'pending')
+          .order('proposed_at', { ascending: false })
+          .limit(1);
+        _trainState.pendingTune = (pendingRows || [])[0] || null;
+        // Also fetch the last-accepted tune so the Manage Plans modal can
+        // show its Revert affordance. last_plan_tune_id on the plan points
+        // to the latest tune of ANY status; we only show Revert when its
+        // status is 'accepted' (still in effect).
+        const lastTuneId = _trainState.activePlan.last_plan_tune_id;
+        if (lastTuneId) {
+          const { data: lastRows } = await db.from('workout_plan_tunes')
+            .select('id,status,status_changed_at,focus_areas_addressed,changes')
+            .eq('id', lastTuneId)
+            .limit(1);
+          _trainState.lastTune = (lastRows || [])[0] || null;
+        } else {
+          _trainState.lastTune = null;
+        }
+      } catch (err) {
+        // Non-fatal — Train UI still works without the proposal card.
+        console.warn('[train] pendingTune load failed', err);
+        _trainState.pendingTune = null;
+        _trainState.lastTune    = null;
+      }
+    } else {
+      _trainState.pendingTune = null;
+      _trainState.lastTune    = null;
+    }
   } catch (e) {
     console.warn('[train] loadTrainPlans failed', e);
     _trainState.error = e?.message || 'Failed to load plans.';
@@ -1521,11 +1629,101 @@ function renderTrainToday(root) {
   const footer = isLoggable ? renderTodayFooter(st) : '';
 
   root.innerHTML = `<div class="train-shell">
+    ${renderTunePendingCard(_trainState.pendingTune)}
     ${dayPickerHtml}
     ${loggedBanner}
     ${body}
     ${footer}
   </div>`;
+}
+
+// Phase 11 — pending plan-tune proposal card. Sits at the top of the
+// Workout view. Renders a tight before/after diff per change + Accept /
+// Decline buttons + an optional decline-reason textarea (collapsed by
+// default; tapping Decline expands it). Returns '' when no proposal.
+function renderTunePendingCard(tune) {
+  if (!tune) return '';
+  const focus = (Array.isArray(tune.focus_areas_addressed) && tune.focus_areas_addressed.length)
+    ? tune.focus_areas_addressed.join(', ')
+    : 'this month\'s body feedback';
+  const rationale = tune.rationale || 'Small accessory tweaks to better target what your latest progress pic flagged.';
+  const changes = Array.isArray(tune.changes) ? tune.changes : [];
+  const changeRows = changes.map(c => {
+    // Render each change as before → after. We don't know the exact "before"
+    // for op=add (there is no before), so phrase those as additions; swap
+    // and remove show the replaced exercise via replaces_exercise_name.
+    const day = trainEsc(c.day_name || '');
+    const newName = trainEsc(c.exercise?.name || '');
+    const newSets = c.exercise?.sets ?? '';
+    const newReps = trainEsc(c.exercise?.reps || '');
+    const oldName = trainEsc(c.replaces_exercise_name || '');
+    const reason  = trainEsc(c.reason || '');
+    let line;
+    if (c.op === 'add') {
+      line = `<div class="tune-change-line"><span class="tune-change-op tune-change-op--add">ADD</span> <strong>${newName}</strong> ${newSets ? newSets + '×' + newReps : ''} <span class="tune-change-day">to ${day}</span></div>`;
+    } else if (c.op === 'swap') {
+      line = `<div class="tune-change-line"><span class="tune-change-op tune-change-op--swap">SWAP</span> <s>${oldName}</s> → <strong>${newName}</strong> ${newSets ? newSets + '×' + newReps : ''} <span class="tune-change-day">on ${day}</span></div>`;
+    } else if (c.op === 'remove') {
+      line = `<div class="tune-change-line"><span class="tune-change-op tune-change-op--remove">REMOVE</span> <s>${oldName}</s> <span class="tune-change-day">from ${day}</span></div>`;
+    } else {
+      line = `<div class="tune-change-line">${trainEsc(c.op || '?')} on ${day}</div>`;
+    }
+    return `${line}${reason ? `<div class="tune-change-reason">${reason}</div>` : ''}`;
+  }).join('');
+
+  // Decline reason textarea is hidden by default; the Decline button reveals
+  // it for one more click (also-Decline confirm). Optional — submitting
+  // empty is fine.
+  return `<div class="tune-proposal-card" data-tune-id="${trainEsc(tune.id)}">
+    <div class="tune-proposal-head">
+      <span class="tune-proposal-eyebrow">MONTHLY PLAN TUNE</span>
+      <span class="tune-proposal-focus">Focus: ${trainEsc(focus)}</span>
+    </div>
+    <div class="tune-proposal-rationale">${trainEsc(rationale)}</div>
+    <div class="tune-proposal-changes">${changeRows}</div>
+    <div class="tune-proposal-actions">
+      <button class="train-btn-primary" data-train-action="tune-accept" data-tune-id="${trainEsc(tune.id)}">Accept</button>
+      <button class="train-btn-secondary" data-train-action="tune-decline-prompt" data-tune-id="${trainEsc(tune.id)}">Decline</button>
+    </div>
+    <div class="tune-proposal-decline-row" id="tuneDeclineRow-${trainEsc(tune.id)}" style="display:none">
+      <textarea class="tune-proposal-decline-input" id="tuneDeclineInput-${trainEsc(tune.id)}" placeholder="Optional — why this didn't fit (helps tune future suggestions)" rows="2"></textarea>
+      <div class="tune-proposal-actions">
+        <button class="train-btn-primary" data-train-action="tune-decline-confirm" data-tune-id="${trainEsc(tune.id)}">Submit decline</button>
+        <button class="train-btn-link" data-train-action="tune-decline-cancel" data-tune-id="${trainEsc(tune.id)}">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Phase 11 — call the action endpoint then refresh local state.
+async function trainTuneAction(tuneId, action, reason) {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { showTrainToast('Sign in required.'); return; }
+    const res = await fetch('/.netlify/functions/beta-plan-tune-action', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ tune_id: tuneId, action, reason: reason || null }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.error) {
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    // Reload plans (will pick up the mutated day_template + clear
+    // pendingTune since status is no longer 'pending').
+    _trainState.loaded = false;
+    await loadTrainPlans();
+    const msg = action === 'accept'  ? 'Plan updated.'
+              : action === 'decline' ? 'Proposal dismissed.'
+              :                          'Plan reverted.';
+    showTrainToast(msg);
+  } catch (e) {
+    console.warn(`[train] tune ${action} failed`, e);
+    showTrainToast(`${action} failed — ${e.message || 'try again'}`);
+  }
 }
 
 // Read-only summary cards for sessions already logged on the viewed date.
@@ -3997,6 +4195,66 @@ function ensureTrainStyles() {
        look. Only the icon-size rule remains here as the canonical
        size for icons inside any pill that uses one. */
     .train-pill-icon { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ── Phase 11: plan-tune proposal card ─────────────────────────── */
+    .tune-proposal-card {
+      background: linear-gradient(180deg, rgba(122, 90, 144, 0.08), rgba(122, 90, 144, 0.02));
+      border: 1px solid rgba(122, 90, 144, 0.3);
+      border-radius: var(--r-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-card);
+    }
+    .tune-proposal-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
+    }
+    .tune-proposal-eyebrow {
+      font-size: 10px; font-weight: 700;
+      color: #7a5a90; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .tune-proposal-focus { font-size: 11.5px; color: var(--ink-3); }
+    .tune-proposal-rationale {
+      font-size: 13px; color: var(--ink); line-height: 1.5; margin: 4px 0 12px;
+    }
+    .tune-proposal-changes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .tune-change-line {
+      font-size: 13px; color: var(--ink); line-height: 1.4;
+    }
+    .tune-change-line s { color: var(--ink-4); }
+    .tune-change-line strong { color: var(--ink); }
+    .tune-change-op {
+      display: inline-block; font-size: 9.5px; font-weight: 700;
+      letter-spacing: 0.06em; padding: 1px 6px; border-radius: 4px;
+      margin-right: 4px; vertical-align: middle;
+    }
+    .tune-change-op--add    { background: #d8e6cf; color: #406030; }
+    .tune-change-op--swap   { background: #e6d8cf; color: #7a5a40; }
+    .tune-change-op--remove { background: #e6cfcf; color: #804040; }
+    .tune-change-day { color: var(--ink-3); font-size: 11.5px; }
+    .tune-change-reason {
+      font-size: 11.5px; color: var(--ink-3); margin-left: 4px;
+      line-height: 1.4; margin-top: 2px;
+    }
+    .tune-proposal-actions { display: flex; gap: 10px; align-items: center; }
+    .tune-proposal-decline-row { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .tune-proposal-decline-input {
+      width: 100%; box-sizing: border-box;
+      font-family: inherit; font-size: 12.5px;
+      padding: 8px 10px; border: 1px solid var(--edge-strong);
+      border-radius: var(--r-sm); background: var(--surface); color: var(--ink);
+      resize: vertical;
+    }
+    .tune-proposal-decline-input:focus { outline: none; border-color: var(--guava-700); }
+
+    /* ── Phase 11: Revert affordance inside Manage Plans ───────────── */
+    .manage-plan-revert-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--edge);
+      border-radius: var(--r-sm);
+      padding: 8px 12px; margin-bottom: 12px;
+    }
+    .manage-plan-revert-msg { font-size: 12px; color: var(--ink-3); flex: 1 1 auto; }
 
     /* ── Shared train tab chrome ──────────────────────────────────── */
     .train-loading, .train-error {

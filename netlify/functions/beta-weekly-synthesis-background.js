@@ -229,6 +229,21 @@ function buildSystemPrompt(weekStart, weekEnd) {
     '- No medical claims. No prescriptions. No supplement advice.',
     '- No emojis.',
     '- The narrative is read directly by the user — write it for them, in second person.',
+    '',
+    'PHASE 10 — INTERVENTION EFFICACY (NEW):',
+    'You have two tools — get_action_efficacy and get_raw_outcomes — that read the user\'s tracked response to past daily-brief recommendations. Each recommendation the brief emits (e.g. "in bed by 9:30 PM") becomes a brief_action_outcomes row, scored for adherence (did they follow it) and outcome (did source_metric move at T+1 and T+3). Aggregated in v_user_action_efficacy by signature + variant.',
+    'Use these tools on every weekly run, after baseline grounding: call get_action_efficacy() with no filter to scan all signatures with samples. For any signature where (a) n_followed >= 10 AND (b) mean_delta_t1_when_followed differs from mean_delta_t1_when_ignored by more than the stddev (i.e. the effect is larger than the noise), surface it as a patterns_discovered row. Two flavors worth surfacing:',
+    '  • "Recommendation working" — followed-delta is meaningfully positive and ignored-delta is near zero or negative. "Your bedtime_target:21:30 suggestions correlate with +6.2 sleep_score lift when you follow them, vs −0.4 when you don\'t." Label these so the daily brief learns to lean in.',
+    '  • "A/B winner" — same signature_prefix, multiple variant_ids, one variant clearly out-performs another under similar conditions_snapshot. "For ambiguous-readiness evenings, the 9:30 PM bedtime variant has produced +7 sleep_score vs +2 for the 10:00 PM variant over the last 6 weeks." These compound — once an A/B has a winner the deterministic rule can graduate.',
+    'Pattern label format: keep it descriptive of the FINDING, not the mechanism (the description carries the mechanism). Confidence: "high" when n_followed >= 20 AND stddev_delta_t1_when_followed < 7; "medium" for n_followed >= 10; "low" otherwise (and probably not worth surfacing yet).',
+    '',
+    'PHASE 11 — WORKOUT TUNER EFFICACY (NEW):',
+    'A monthly background pass proposes small accessory tweaks to the user\'s active workout plan after each progress pic (see workout_plan_tunes). Each proposal carries a recommendation_signature like "plan_tune:add_for_hamstrings_glutes" and a status (pending/accepted/declined/reverted/expired). The tool get_plan_tune_efficacy() returns per-signature: accept_rate, revert_rate, and focus_resolution_rate (did the targeted needs_work group drop off the next progress pic).',
+    'Call get_plan_tune_efficacy() once per week, AFTER get_action_efficacy. Surface a patterns_discovered row when n_proposed >= 3 AND one of these clearly holds:',
+    '  • "Working tune kind" — accept_rate >= 0.66 AND focus_resolution_rate >= 0.5 across ≥2 follow-up pics. "Hamstring-focused plan tunes have been accepted 4 of 5 times and the focus area dropped off the next pic in 3 of those." Reinforces the kind so future cycles lean into it.',
+    '  • "Wrong-angle tune" — accept_rate >= 0.66 BUT focus_resolution_rate <= 0.25 with ≥2 follow-up pics. User accepts the proposal but the body doesn\'t respond. Signal to vary the exercise selection or push more volume.',
+    '  • "Bad fit" — revert_rate >= 0.5. User accepted but rolled back — strong negative signal the tuner should avoid this signature kind on this user.',
+    'Skip the workout-tune efficacy block entirely when n_proposed < 3 across all signatures (cold start — no signal yet). Plan-tune patterns are slower-moving than brief patterns (monthly cycle vs daily); do not over-interpret 1-2 datapoints.',
   ].join('\n');
 }
 
@@ -243,7 +258,7 @@ function buildInitialMessage(ctxSnapshot) {
       ? `Last week's headline: ${JSON.stringify(ctxSnapshot.last_weeks_brief)}`
       : 'No prior weekly brief on file.',
     '',
-    'Start by calling query_baselines to ground the "what is normal" baseline, then query_daily_rows for the week\'s oura_daily + journal_entries + workout_sessions. Investigate any anomalies via compute_correlation or search_knowledge as warranted. Once you have enough evidence to write a synthesis, respond with the JSON output described in the system prompt.',
+    'Start by calling query_baselines to ground the "what is normal" baseline, then query_daily_rows for the week\'s oura_daily + journal_entries + workout_sessions. After baselines, call get_action_efficacy() (no filter) for brief-recommendation efficacy, then get_plan_tune_efficacy() for the workout tuner\'s acceptance + outcome record — see PHASE 10 + PHASE 11 in the system prompt for what to surface from each. Investigate any anomalies via compute_correlation or search_knowledge as warranted. Once you have enough evidence to write a synthesis, respond with the JSON output described in the system prompt.',
   ].join('\n');
 }
 

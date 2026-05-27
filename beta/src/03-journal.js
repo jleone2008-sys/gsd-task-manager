@@ -372,44 +372,56 @@ async function writeCalendarCache(rows) {
   } catch (e) { console.warn('[journal] cache write failed', e); }
 }
 
-// In-memory cache of a refreshed Google access_token (Supabase doesn't auto-refresh provider_token)
-let _googleAccessTokenCache = { token: null, expiresAt: 0 };
+// In-memory cache of refreshed Google access_tokens, keyed by account
+// email. '' = the user's primary signed-in account (whose
+// refresh_token lives on user_profiles); any other key is a linked
+// secondary account (refresh_token in linked_google_accounts).
+const _googleAccessTokenCache = new Map(); // key -> { token, expiresAt }
 
-async function getGoogleAccessToken(forceRefresh) {
+async function getGoogleAccessToken(forceRefresh, accountEmail) {
+  const key = accountEmail ? String(accountEmail).toLowerCase() : '';
   const now = Date.now();
-  if (!forceRefresh && _googleAccessTokenCache.token && now < _googleAccessTokenCache.expiresAt - 60000) {
-    return _googleAccessTokenCache.token;
+  const cached = _googleAccessTokenCache.get(key);
+  if (!forceRefresh && cached?.token && now < cached.expiresAt - 60000) {
+    return cached.token;
   }
-  // Try Supabase session first if cache is empty
-  if (!forceRefresh && !_googleAccessTokenCache.token) {
+  // Primary account only: Supabase's session.provider_token is a fresh
+  // Google access token from the most recent sign-in. Reuse it if cache
+  // is empty.
+  if (!key && !forceRefresh && !cached?.token) {
     try {
       const { data: { session } } = await db.auth.getSession();
       if (session?.provider_token) {
-        _googleAccessTokenCache = { token: session.provider_token, expiresAt: now + 30 * 60 * 1000 };
+        _googleAccessTokenCache.set('', { token: session.provider_token, expiresAt: now + 30 * 60 * 1000 });
         return session.provider_token;
       }
     } catch (_) {}
   }
-  // Refresh via Netlify function
+  // Refresh via Netlify function. Linked accounts pass account_email so
+  // the server-side function looks up the right refresh_token.
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return null;
     const res = await fetch('/.netlify/functions/refresh-google-token', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: key ? JSON.stringify({ account_email: key }) : undefined,
     });
     if (!res.ok) {
       const detail = await res.json().catch(() => ({}));
-      console.warn('[journal] google token refresh failed', res.status, detail);
+      console.warn('[journal] google token refresh failed', key || 'primary', res.status, detail);
       return null;
     }
     const data = await res.json();
     if (!data.access_token) return null;
     const expiresMs = (data.expires_in || 3600) * 1000;
-    _googleAccessTokenCache = { token: data.access_token, expiresAt: now + expiresMs };
+    _googleAccessTokenCache.set(key, { token: data.access_token, expiresAt: now + expiresMs });
     return data.access_token;
   } catch (err) {
-    console.warn('[journal] refresh request failed', err);
+    console.warn('[journal] refresh request failed', key || 'primary', err);
     return null;
   }
 }
@@ -501,86 +513,115 @@ function collectLoadedEventIds() {
   return ids;
 }
 
-// Phase 5 — multi-Google-calendar sync. Loads enabled calendar IDs
-// once per session (cached in journalState.enabledCalendarIds). Returns
-// ['primary'] as a back-compat fallback when no rows exist yet.
+// Phase 5 — multi-Google-calendar sync, now multi-account. Loads
+// enabled calendar (id, account_email) pairs once per session (cached
+// in journalState.enabledCalendarIds — kept the same field name for
+// existing callers, but values are now {id, account_email} objects).
+// Falls back to [{id:'primary', account_email:''}] when no rows exist.
 async function getEnabledCalendarIds() {
   if (journalState.enabledCalendarIds) return journalState.enabledCalendarIds;
   try {
     const { data: { session } } = await db.auth.getSession();
-    if (!session) return ['primary'];
+    if (!session) return [{ id: 'primary', account_email: '' }];
     const { data, error } = await db.from('google_calendars_synced')
-      .select('google_calendar_id,enabled')
+      .select('google_calendar_id,google_account_email,enabled')
       .eq('user_id', session.user.id)
       .eq('enabled', true);
     if (error) throw error;
-    // No rows yet → user hasn't configured anything → fall back to
-    // 'primary' so existing behavior continues unchanged.
-    const ids = (data || []).map(r => r.google_calendar_id);
-    journalState.enabledCalendarIds = ids.length ? ids : ['primary'];
+    const pairs = (data || []).map(r => ({
+      id:            r.google_calendar_id,
+      account_email: r.google_account_email || '',
+    }));
+    journalState.enabledCalendarIds = pairs.length
+      ? pairs
+      : [{ id: 'primary', account_email: '' }];
     return journalState.enabledCalendarIds;
   } catch (e) {
     console.warn('[journal] enabled-calendars load failed; falling back to primary', e);
-    journalState.enabledCalendarIds = ['primary'];
+    journalState.enabledCalendarIds = [{ id: 'primary', account_email: '' }];
     return journalState.enabledCalendarIds;
   }
 }
 
 async function fetchLiveCalendarEvents(dateStr) {
-  let token = await getGoogleAccessToken(false);
-  if (!token) {
-    journalState.eventsError.set(dateStr, 'expired');
-    return null;
+  const pairs = await getEnabledCalendarIds();
+  // Group by account_email so we fetch one access_token per account.
+  const byAccount = new Map();
+  for (const p of pairs) {
+    const k = p.account_email || '';
+    if (!byAccount.has(k)) byAccount.set(k, []);
+    byAccount.get(k).push(p.id);
   }
+
   const startISO = new Date(dateStr + 'T00:00:00').toISOString();
   const endISO   = new Date(dateStr + 'T23:59:59').toISOString();
-  const calIds = await getEnabledCalendarIds();
 
-  // Fetch each enabled calendar in parallel; merge events.
-  const fetchOne = async (calId) => {
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`
-      + `?timeMin=${encodeURIComponent(startISO)}&timeMax=${encodeURIComponent(endISO)}`
-      + `&singleEvents=true&orderBy=startTime`;
-    let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.status === 401 || res.status === 403) {
-      token = await getGoogleAccessToken(true);
-      if (!token) throw new Error('expired');
-      res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    }
-    if (res.status === 401 || res.status === 403) throw new Error('expired');
-    if (!res.ok) throw new Error(`api_${res.status}`);
-    const data = await res.json();
-    return (data.items || []).map(e => ({
-      id:         e.id,
-      summary:    e.summary || '(no title)',
-      start:      e.start?.dateTime || e.start?.date || '',
-      isAllDay:   !!e.start?.date && !e.start?.dateTime,
-      calendarId: calId,
-    }));
+  const fetchOneAccount = async (accountEmail, calIds) => {
+    let token = await getGoogleAccessToken(false, accountEmail || undefined);
+    if (!token) return { events: [], expired: true };
+    const fetchOne = async (calId) => {
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`
+        + `?timeMin=${encodeURIComponent(startISO)}&timeMax=${encodeURIComponent(endISO)}`
+        + `&singleEvents=true&orderBy=startTime`;
+      let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) {
+        token = await getGoogleAccessToken(true, accountEmail || undefined);
+        if (!token) throw new Error('expired');
+        res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      }
+      if (res.status === 401 || res.status === 403) throw new Error('expired');
+      if (!res.ok) throw new Error(`api_${res.status}`);
+      const data = await res.json();
+      return (data.items || []).map(e => ({
+        id:           e.id,
+        summary:      e.summary || '(no title)',
+        start:        e.start?.dateTime || e.start?.date || '',
+        isAllDay:     !!e.start?.date && !e.start?.dateTime,
+        calendarId:   calId,
+        accountEmail: accountEmail || '',
+      }));
+    };
+    const lists = await Promise.all(calIds.map(id => fetchOne(id).catch(err => {
+      console.warn(`[journal] calendar ${accountEmail || 'primary'}/${id} fetch failed`, err.message);
+      if (err.message === 'expired') return { _expired: true };
+      return [];
+    })));
+    const expired = lists.some(l => l && l._expired);
+    const events = lists.flatMap(l => Array.isArray(l) ? l : []);
+    return { events, expired };
   };
 
   try {
-    const lists = await Promise.all(calIds.map(id => fetchOne(id).catch(err => {
-      // One calendar failing shouldn't kill the whole fetch; just log and skip.
-      console.warn(`[journal] calendar ${id} fetch failed`, err.message);
-      return [];
-    })));
-    const events = lists.flat();
-    // Sort merged events chronologically (timed first by time, all-day after).
+    const results = await Promise.all([...byAccount.entries()].map(([email, ids]) =>
+      fetchOneAccount(email, ids).catch(err => {
+        console.warn(`[journal] account ${email || 'primary'} fetch failed`, err);
+        return { events: [], expired: err?.message === 'expired' };
+      })
+    ));
+    const allExpired = results.length > 0 && results.every(r => r.expired);
+    const anyExpired = results.some(r => r.expired);
+    const events = results.flatMap(r => r.events);
+
+    if (allExpired && events.length === 0) {
+      journalState.eventsError.set(dateStr, 'expired');
+      return null;
+    }
     events.sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return 1;
       if (!a.isAllDay && b.isAllDay) return -1;
       return String(a.start).localeCompare(String(b.start));
     });
-    journalState.eventsError.delete(dateStr);
+    if (anyExpired) {
+      // Partial — surface a softer error so the UI can hint at it but
+      // still show what we got from the working accounts.
+      journalState.eventsError.set(dateStr, 'partial');
+    } else {
+      journalState.eventsError.delete(dateStr);
+    }
     return events;
   } catch (e) {
-    if (e.message === 'expired') {
-      journalState.eventsError.set(dateStr, 'expired');
-    } else {
-      console.warn('[journal] live fetch failed', e);
-      journalState.eventsError.set(dateStr, 'api');
-    }
+    console.warn('[journal] live fetch failed', e);
+    journalState.eventsError.set(dateStr, 'api');
     return null;
   }
 }
@@ -620,8 +661,6 @@ async function syncCalendarHistory() {
   if (journalState.historySynced) return;
   journalState.historySynced = true;
   try {
-    let token = await getGoogleAccessToken(false);
-    if (!token) return;
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
     const oneYearAgo = new Date();
@@ -630,13 +669,20 @@ async function syncCalendarHistory() {
     const start = signupAt > oneYearAgo ? signupAt : oneYearAgo;
     const end = new Date();
     end.setDate(end.getDate() + 30);
-    const calIds = await getEnabledCalendarIds();
+    const pairs = await getEnabledCalendarIds();
 
-    // Iterate enabled calendars; merge events from each into a single
-    // by-date map. One calendar failing is logged + skipped so the
-    // others still land.
+    // Iterate enabled (calendar, account) pairs; merge events from each
+    // into a single by-date map. One failure is logged and skipped so
+    // the others still land.
     const allEvents = [];
-    for (const calId of calIds) {
+    for (const pair of pairs) {
+      const calId        = pair.id;
+      const accountEmail = pair.account_email || '';
+      let token = await getGoogleAccessToken(false, accountEmail || undefined);
+      if (!token) {
+        console.warn(`[journal] history sync skipped ${accountEmail || 'primary'}/${calId} — no token`);
+        continue;
+      }
       let pageToken = '';
       let pages = 0;
       try {
@@ -650,21 +696,21 @@ async function syncCalendarHistory() {
           if (pageToken) url.searchParams.set('pageToken', pageToken);
           let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
           if (res.status === 401 || res.status === 403) {
-            token = await getGoogleAccessToken(true);
-            if (!token) return;
+            token = await getGoogleAccessToken(true, accountEmail || undefined);
+            if (!token) break;
             res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
           }
           if (!res.ok) {
-            console.warn(`[journal] history sync ${calId} failed: ${res.status}`);
+            console.warn(`[journal] history sync ${accountEmail || 'primary'}/${calId} failed: ${res.status}`);
             break;
           }
           const data = await res.json();
-          for (const ev of (data.items || [])) allEvents.push({ ...ev, _calId: calId });
+          for (const ev of (data.items || [])) allEvents.push({ ...ev, _calId: calId, _accountEmail: accountEmail });
           pageToken = data.nextPageToken || '';
           pages++;
         } while (pageToken && pages < 12);
       } catch (err) {
-        console.warn(`[journal] history sync ${calId} threw`, err);
+        console.warn(`[journal] history sync ${accountEmail || 'primary'}/${calId} threw`, err);
       }
     }
 
@@ -675,11 +721,12 @@ async function syncCalendarHistory() {
       if (!dateKey) continue;
       if (!byDate[dateKey]) byDate[dateKey] = [];
       byDate[dateKey].push({
-        id:         ev.id,
-        summary:    ev.summary || '(no title)',
-        start:      startStr,
-        isAllDay:   !!ev.start?.date && !ev.start?.dateTime,
-        calendarId: ev._calId,
+        id:           ev.id,
+        summary:      ev.summary || '(no title)',
+        start:        startStr,
+        isAllDay:     !!ev.start?.date && !ev.start?.dateTime,
+        calendarId:   ev._calId,
+        accountEmail: ev._accountEmail || '',
       });
     }
     // Stable chronological sort within each date (timed first, all-day after).

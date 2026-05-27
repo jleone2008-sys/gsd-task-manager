@@ -92,9 +92,10 @@ exports.handler = async (event) => {
       profile,
     }, anthropicKey);
 
-    // Decide whether to overwrite body_fat_pct: only when the Navy
-    // formula didn't already fire (avoids stomping a deterministic
-    // number with an AI estimate).
+    // Overwrite body_fat_pct only when no prior value exists. AI
+    // estimate is now the canonical source (the Navy formula was
+    // retired); the null check is the guard for any historical rows
+    // that already carry a deterministic number.
     const patch = { ai_analysis: result.analysis, updated_at: new Date().toISOString() };
     if (row.body_fat_pct == null && Number.isFinite(result.body_fat_estimate)) {
       patch.body_fat_pct         = result.body_fat_estimate;
@@ -104,6 +105,27 @@ exports.handler = async (event) => {
     if (prior?.id) patch.ai_compared_to = prior.id;
 
     const updated = await updateProgressPic(picId, userId, patch, serviceKey);
+
+    // Phase 11 (Workout Tuner) — fire the monthly tuner. Fire-and-forget;
+    // the tuner does its own eligibility check (28-day gate, focus_area
+    // presence, declined-twice back-off) so this trigger is dumb. Failure
+    // here never affects the analysis response — wrapped + swallowed.
+    try {
+      const proto = event.headers['x-forwarded-proto'] || 'https';
+      const host  = event.headers.host;
+      if (host && process.env.INTERNAL_FN_SECRET) {
+        fetch(`${proto}://${host}/.netlify/functions/beta-train-tune-background`, {
+          method: 'POST',
+          headers: {
+            'Content-Type':    'application/json',
+            'X-Internal-Auth': process.env.INTERNAL_FN_SECRET,
+          },
+          body: JSON.stringify({ user_id: userId, progress_pic_id: picId }),
+        }).catch(err => console.warn('[progress-pic] tuner trigger failed:', err.message));
+      }
+    } catch (err) {
+      console.warn('[progress-pic] tuner trigger setup failed:', err.message);
+    }
 
     return cors(json(200, {
       status:               'ok',

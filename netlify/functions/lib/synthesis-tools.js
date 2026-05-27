@@ -226,6 +226,189 @@ function shiftDate(ymd, deltaDays) {
   return d.toISOString().slice(0, 10);
 }
 
+// ── get_action_efficacy ──────────────────────────────────────────────
+// Phase 10. Pulls the user's per-signature, per-variant efficacy stats
+// from v_user_action_efficacy. Filter by signature (or signature prefix)
+// to zoom in; omit to get the full profile.
+//
+// Returns rows shaped:
+//   { signature, variant_id, source_metric, n_observations, mean_adherence,
+//     n_followed, n_ignored,
+//     mean_delta_t1_when_followed, mean_delta_t1_when_ignored,
+//     mean_delta_t3_when_followed, mean_delta_t3_when_ignored,
+//     stddev_delta_t1_when_followed, last_seen_at }
+//
+// Use to determine whether a recommendation type is actually helping
+// the user. n_followed >= 10 AND signed difference between followed
+// and ignored is the "real signal" threshold. Variants of the same
+// signature compete head-to-head (e.g. bedtime_target:21:30/early vs
+// bedtime_target:22:00/standard).
+
+async function get_action_efficacy({ signature, signature_prefix, min_n }, ctx) {
+  let filter = `user_id=eq.${ctx.userId}`;
+  if (signature)        filter += `&recommendation_signature=eq.${encodeURIComponent(signature)}`;
+  else if (signature_prefix) filter += `&recommendation_signature=like.${encodeURIComponent(signature_prefix + '%')}`;
+  if (min_n != null)    filter += `&n_observations=gte.${parseInt(min_n, 10) || 1}`;
+  const url = `${SUPABASE_URL}/rest/v1/v_user_action_efficacy?${filter}&select=*&order=n_observations.desc&limit=50`;
+  const r = await fetch(url, { headers: ctx.hdr() });
+  if (!r.ok) throw new Error(`efficacy_fetch_${r.status}`);
+  return await r.json();
+}
+
+// ── get_raw_outcomes ─────────────────────────────────────────────────
+// Phase 10. Pulls raw brief_action_outcomes rows for deeper inspection
+// when the aggregate in v_user_action_efficacy looks anomalous. Use to
+// answer questions like "why is the followed-vs-ignored delta zero —
+// is it because adherence varies by day-of-week, or because outcome
+// variance swamps the signal?"
+//
+// Args: { signature, last_n_days? }
+// Returns: array of outcome rows (cap 100), ordered brief_date DESC.
+
+async function get_raw_outcomes({ signature, last_n_days }, ctx) {
+  if (!signature) throw new Error('signature_required');
+  const days = parseInt(last_n_days, 10) || 60;
+  const start = (() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString().slice(0, 10);
+  })();
+  const url = `${SUPABASE_URL}/rest/v1/brief_action_outcomes`
+    + `?user_id=eq.${ctx.userId}`
+    + `&recommendation_signature=eq.${encodeURIComponent(signature)}`
+    + `&brief_date=gte.${start}`
+    + `&select=brief_date,brief_mode,variant_id,baseline_value,value_at_t_plus_1,value_at_t_plus_3,adherence_score,adherence_evidence,conditions_snapshot,computed_at`
+    + `&order=brief_date.desc&limit=100`;
+  const r = await fetch(url, { headers: ctx.hdr() });
+  if (!r.ok) throw new Error(`raw_outcomes_${r.status}`);
+  return await r.json();
+}
+
+// ── get_plan_tune_efficacy ───────────────────────────────────────────
+// Phase 11. Aggregates workout_plan_tunes by signature → accept rate,
+// revert rate, and (when a NEXT progress pic exists ≥14 days later)
+// whether the focus area was resolved on that next pic. Because plan-
+// tune outcomes have a different shape than brief outcomes (no T+1/T+3
+// metric delta — the outcome is ordinal: was the focus_area still
+// flagged?), they don't fit v_user_action_efficacy and need this
+// dedicated tool.
+//
+// Inputs: { signature_prefix? }  — defaults to 'plan_tune:' (all tunes
+//   except rejected ones, which use 'plan_tune:rejected:').
+//
+// Output rows shape:
+//   { signature, n_proposed, n_accepted, n_declined, n_reverted,
+//     n_expired, accept_rate, revert_rate, focus_areas_addressed[],
+//     n_resolved_on_next_pic, n_with_next_pic, focus_resolution_rate,
+//     last_proposed_at }
+//
+// Use to answer:
+//   - Which tune kinds is the user actually accepting?
+//   - Which ones did they accept and immediately revert (signal that
+//     the tune was wrong, not just unwanted)?
+//   - For accepted tunes that had a follow-up pic, did the targeted
+//     focus area drop off the needs_work list? (= the proposal worked)
+async function get_plan_tune_efficacy({ signature_prefix }, ctx) {
+  const prefix = signature_prefix || 'plan_tune:';
+  // 1. Pull all tunes matching prefix.
+  const tunesUrl = `${SUPABASE_URL}/rest/v1/workout_plan_tunes`
+    + `?user_id=eq.${ctx.userId}`
+    + `&recommendation_signature=like.${encodeURIComponent(prefix + '%')}`
+    + `&select=id,recommendation_signature,status,proposed_at,focus_areas_addressed,progress_pic_id`
+    + `&order=proposed_at.asc`
+    + `&limit=200`;
+  const tunesRes = await fetch(tunesUrl, { headers: ctx.hdr() });
+  if (!tunesRes.ok) throw new Error(`tunes_fetch_${tunesRes.status}`);
+  const tunes = await tunesRes.json();
+  if (!Array.isArray(tunes) || tunes.length === 0) return [];
+
+  // 2. For each accepted tune, look up the NEXT progress_pics row
+  //    captured >= 14 days after the tune's proposed_at — that's the
+  //    earliest follow-up that can plausibly show body response. Pull
+  //    its ai_analysis.needs_work to check whether the addressed focus
+  //    areas are still flagged.
+  //    Done in one batch fetch: collect all (proposed_at, focus_areas)
+  //    pairs that need lookup, then one query for the user's pics in
+  //    that window. Match in memory.
+  const accepted = tunes.filter(t => t.status === 'accepted');
+  let resolvedMap = new Map();   // tune_id → true/false (or undefined if no follow-up)
+  if (accepted.length > 0) {
+    const earliestProposed = accepted.reduce((acc, t) =>
+      (!acc || t.proposed_at < acc) ? t.proposed_at : acc, null);
+    const startDate = new Date(new Date(earliestProposed).getTime() + 14 * 86400_000).toISOString().slice(0, 10);
+    const picsUrl = `${SUPABASE_URL}/rest/v1/progress_pics`
+      + `?user_id=eq.${ctx.userId}`
+      + `&captured_date=gte.${startDate}`
+      + `&ai_analysis=not.is.null`
+      + `&select=id,captured_date,ai_analysis`
+      + `&order=captured_date.asc&limit=50`;
+    const picsRes = await fetch(picsUrl, { headers: ctx.hdr() });
+    if (picsRes.ok) {
+      const pics = await picsRes.json();
+      for (const tune of accepted) {
+        const cutoff = new Date(new Date(tune.proposed_at).getTime() + 14 * 86400_000).toISOString().slice(0, 10);
+        const nextPic = (pics || []).find(p => p.captured_date >= cutoff);
+        if (!nextPic) continue;
+        const needsWork = Array.isArray(nextPic.ai_analysis?.needs_work) ? nextPic.ai_analysis.needs_work.map(s => String(s).toLowerCase()) : [];
+        const focus = (tune.focus_areas_addressed || []).map(s => String(s).toLowerCase());
+        // Resolved when NONE of the addressed focus areas appear in the
+        // next pic's needs_work. Partial-overlap counts as not-resolved.
+        const resolved = focus.length > 0 && !focus.some(f => needsWork.some(n => n.includes(f) || f.includes(n)));
+        resolvedMap.set(tune.id, resolved);
+      }
+    }
+  }
+
+  // 3. Aggregate by signature.
+  const bySig = {};
+  for (const t of tunes) {
+    const sig = t.recommendation_signature;
+    if (!bySig[sig]) {
+      bySig[sig] = {
+        signature:                sig,
+        n_proposed:               0,
+        n_accepted:               0,
+        n_declined:               0,
+        n_reverted:               0,
+        n_expired:                0,
+        focus_areas_addressed:    new Set(),
+        n_resolved_on_next_pic:   0,
+        n_with_next_pic:          0,
+        last_proposed_at:         t.proposed_at,
+      };
+    }
+    const b = bySig[sig];
+    b.n_proposed++;
+    if (t.status === 'accepted') b.n_accepted++;
+    if (t.status === 'declined') b.n_declined++;
+    if (t.status === 'reverted') b.n_reverted++;
+    if (t.status === 'expired')  b.n_expired++;
+    if (t.proposed_at > b.last_proposed_at) b.last_proposed_at = t.proposed_at;
+    for (const fa of (t.focus_areas_addressed || [])) b.focus_areas_addressed.add(fa);
+    if (resolvedMap.has(t.id)) {
+      b.n_with_next_pic++;
+      if (resolvedMap.get(t.id)) b.n_resolved_on_next_pic++;
+    }
+  }
+
+  // 4. Compute rates + flatten.
+  return Object.values(bySig).map(b => ({
+    signature:               b.signature,
+    n_proposed:              b.n_proposed,
+    n_accepted:              b.n_accepted,
+    n_declined:              b.n_declined,
+    n_reverted:              b.n_reverted,
+    n_expired:               b.n_expired,
+    accept_rate:             b.n_proposed > 0 ? Number((b.n_accepted / b.n_proposed).toFixed(2)) : 0,
+    revert_rate:             b.n_accepted > 0 ? Number((b.n_reverted / b.n_accepted).toFixed(2)) : 0,
+    focus_areas_addressed:   Array.from(b.focus_areas_addressed),
+    n_with_next_pic:         b.n_with_next_pic,
+    n_resolved_on_next_pic:  b.n_resolved_on_next_pic,
+    focus_resolution_rate:   b.n_with_next_pic > 0 ? Number((b.n_resolved_on_next_pic / b.n_with_next_pic).toFixed(2)) : null,
+    last_proposed_at:        b.last_proposed_at,
+  })).sort((a, b) => b.n_proposed - a.n_proposed);
+}
+
 // ── Tool registry exposed to the agentic loop ────────────────────────
 // Each entry: { def: Anthropic tool definition, handler: async fn }
 
@@ -308,6 +491,49 @@ const TOOLS = {
       },
     },
     handler: compute_correlation,
+  },
+  get_action_efficacy: {
+    def: {
+      name: 'get_action_efficacy',
+      description: 'Phase 10 — read the user\'s response profile to past brief recommendations. Each row gives n_observations + mean_adherence + mean source_metric delta when the user followed (adherence >= 0.7) vs ignored (<= 0.3) the suggestion. Use to judge which recommendation TYPES are actually helping this user, to identify A/B variant winners, and to surface findings to patterns_discovered when one variant clearly beats another (n_followed >= 10 per arm).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          signature:        { type: 'string', description: 'Exact match on recommendation_signature (e.g. "bedtime_target:21:30").' },
+          signature_prefix: { type: 'string', description: 'Prefix match on recommendation_signature (e.g. "bedtime_target" to get all bedtime variants).' },
+          min_n:            { type: 'integer', description: 'Filter to signatures with at least this many observations. Defaults to no filter.' },
+        },
+      },
+    },
+    handler: get_action_efficacy,
+  },
+  get_raw_outcomes: {
+    def: {
+      name: 'get_raw_outcomes',
+      description: 'Phase 10 — pull raw brief_action_outcomes rows for one signature so you can inspect specific days when the aggregate looks anomalous. Returns conditions_snapshot per row so you can check whether efficacy varies by readiness band, day of week, etc.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          signature:    { type: 'string', description: 'Exact recommendation_signature.' },
+          last_n_days:  { type: 'integer', description: 'Default 60.' },
+        },
+        required: ['signature'],
+      },
+    },
+    handler: get_raw_outcomes,
+  },
+  get_plan_tune_efficacy: {
+    def: {
+      name: 'get_plan_tune_efficacy',
+      description: 'Phase 11 — read the user\'s acceptance + outcome track record on AI-proposed monthly workout-plan tweaks (workout_plan_tunes). Each signature is "plan_tune:add_for_hamstrings" / "plan_tune:swap_for_chest" style. Returns per-signature: n_proposed, accept_rate, revert_rate, focus_resolution_rate (did the targeted needs_work area drop off the next progress pic). Use to identify which tune kinds actually help — high accept + high resolution = working; high accept + low resolution = wrong angle; high accept + high revert = user felt it was bad in practice.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          signature_prefix: { type: 'string', description: 'Prefix match on recommendation_signature. Default "plan_tune:" pulls every tune (except rejected ones, which use the "plan_tune:rejected:" namespace). Pass e.g. "plan_tune:add" to narrow to addition-only tunes.' },
+        },
+      },
+    },
+    handler: get_plan_tune_efficacy,
   },
 };
 

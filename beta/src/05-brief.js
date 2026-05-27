@@ -33,6 +33,14 @@ let _briefState = { status: 'loading', brief: null, error: null };
 let _briefInflight = null;
 let _briefWired = false;
 
+// Latest sleep_intent for the current "sleep day" (the window from
+// ~8 PM tonight through ~4 AM tomorrow). Populated by briefLoadSleepIntent
+// on brief mount and patched in-place after insert/delete so the button
+// state survives brief regens without a re-fetch. null = no intent
+// logged yet; { id, intent_at } = logged.
+let _briefSleepIntent = null;
+let _briefSleepIntentLoaded = false;
+
 // "Yesterday" in the user's local timezone, as YYYY-MM-DD.
 function briefYesterdayLocal() {
   const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
@@ -130,6 +138,27 @@ function briefInjectStyles() {
       font-size: var(--t-xs); color: var(--ink-2); white-space: nowrap;
     }
     .brief-weather-temp { font-weight: 700; color: var(--ink); }
+    /* Sleep self-report chip — slots into the head-right cluster between
+       the weather chip (morning) or empty slot (evening) and the
+       confidence badge. Same pill height + radius as the weather chip
+       so the strip reads as a single row of related affordances. */
+    .brief-sleep-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border: 1px solid var(--edge); border-radius: 999px;
+      background: var(--surface); color: var(--ink-2);
+      font-family: inherit; font-size: var(--t-xs); cursor: pointer;
+      white-space: nowrap; line-height: 1; -webkit-tap-highlight-color: transparent;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+    .brief-sleep-chip:hover   { background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong); }
+    .brief-sleep-chip:active  { transform: scale(0.97); }
+    .brief-sleep-chip.is-logged {
+      background: var(--guava-50); color: var(--guava-700); border-color: transparent; font-weight: 600;
+    }
+    .brief-sleep-icon { font-size: 12px; line-height: 1; }
+    .brief-sleep-label { font-weight: 600; color: var(--ink); }
+    .brief-sleep-chip.is-logged .brief-sleep-label { color: inherit; }
+    .brief-sleep-time { font-variant-numeric: tabular-nums; }
     .brief-conf {
       display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
       font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
@@ -313,13 +342,133 @@ function homeBriefMount() {
   briefWireOnce();
   const el = document.getElementById('homeBrief');
   if (el) el.innerHTML = briefSkeletonHTML();
+  // Kick the sleep-intent fetch in parallel with the brief load. The
+  // button is hidden outside the 20:00-04:00 window so the fetch is
+  // wasted then, but it's a single cheap RLS read and avoids a "button
+  // pops in" beat once the user reopens the app after 8 PM.
+  briefLoadSleepIntent();
 }
 
 function briefHeadHTML(weatherChipHtml, badgeHtml) {
+  // Sleep button slots into the right side of the head strip, before the
+  // weather chip / confidence badge. Visible only in the 20:00-04:00
+  // local window — outside that, returns '' and contributes nothing to
+  // the layout. The button + already-logged pill share the same slot so
+  // the strip's width is stable across the tap event.
+  const sleepHtml = briefSleepButtonHTML();
   return `<div class="brief-head">
     <span class="brief-eyebrow">${briefEsc(briefWeekdayUpper())} BRIEF</span>
-    <span class="brief-head-right">${weatherChipHtml || ''}${badgeHtml || ''}</span>
+    <span class="brief-head-right">${sleepHtml}${weatherChipHtml || ''}${badgeHtml || ''}</span>
   </div>`;
+}
+
+/* ── Sleep Intent (bedtime self-report) ─────────────────────── */
+
+// Sleep button visibility window: from 20:00 local through 04:00 local
+// next morning. Spans both the evening brief and the early-morning hours
+// before the morning brief regenerates at 04:00. Outside this window the
+// button is hidden — there's no reason to log bedtime mid-afternoon.
+function briefSleepButtonVisible() {
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
+  const h = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).format(new Date()), 10);
+  const hour = (h === 24) ? 0 : h;
+  return hour >= 20 || hour < 4;
+}
+
+// Format an ISO timestamp as "10:23 PM" in the user's local timezone.
+function briefSleepFormatTime(iso) {
+  if (!iso) return '';
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return '';
+  return dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function briefSleepButtonHTML() {
+  if (!briefSleepButtonVisible()) return '';
+  if (_briefSleepIntent && _briefSleepIntent.intent_at) {
+    const t = briefSleepFormatTime(_briefSleepIntent.intent_at);
+    // Tap to clear (with confirmation in the handler).
+    return `<button class="brief-sleep-chip is-logged" data-brief-action="sleep-clear" title="Clear bedtime log">
+      <span class="brief-sleep-icon">🛏</span>
+      <span class="brief-sleep-time">${briefEsc(t)}</span>
+    </button>`;
+  }
+  return `<button class="brief-sleep-chip" data-brief-action="sleep-log" title="Log bedtime — compares to Oura's detected onset">
+    <span class="brief-sleep-icon">🛏</span>
+    <span class="brief-sleep-label">Bed</span>
+  </button>`;
+}
+
+// Pull the most recent sleep_intent within the last 12 hours. The button
+// only shows in a 20:00–04:00 window — anything within 12 hours of "now
+// during that window" is necessarily the current night's intent. No
+// timezone math needed.
+async function briefLoadSleepIntent() {
+  if (_briefSleepIntentLoaded) return;
+  _briefSleepIntentLoaded = true;
+  try {
+    const cutoffIso = new Date(Date.now() - 12 * 3600_000).toISOString();
+    const { data, error } = await db.from('sleep_intents')
+      .select('id, intent_at')
+      .gte('intent_at', cutoffIso)
+      .order('intent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    _briefSleepIntent = data || null;
+    // Re-render to swap the button into its logged state if we found one.
+    if (_briefState.status === 'ok') briefRender();
+  } catch (e) {
+    console.warn('[brief] sleep_intent load failed', e);
+  }
+}
+
+// Insert a new sleep_intent row (intent_at defaults to now). Optimistic
+// local update so the button flips immediately; rolls back if the insert
+// fails. db is the global Supabase client; auth.uid() enforces user_id
+// via the sleep_intents_insert_own RLS policy, so no user_id needed in
+// the payload.
+async function briefLogSleepIntent() {
+  const prior = _briefSleepIntent;
+  const optimistic = { id: 'pending-' + Date.now(), intent_at: new Date().toISOString() };
+  _briefSleepIntent = optimistic;
+  briefRender();
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) throw new Error('not_authenticated');
+    const { data, error } = await db.from('sleep_intents')
+      .insert({ user_id: user.id, source: 'manual' })
+      .select('id, intent_at')
+      .single();
+    if (error) throw error;
+    _briefSleepIntent = data;
+    briefRender();
+  } catch (e) {
+    console.warn('[brief] sleep_intent insert failed', e);
+    _briefSleepIntent = prior;
+    briefRender();
+    if (typeof showToast === 'function') showToast('Could not log bedtime', 'offline');
+  }
+}
+
+// Clear today's sleep_intent. Confirmation prompt prevents accidental
+// taps. On success, button flips back to "Bed" so the user can re-log
+// at a corrected time.
+async function briefClearSleepIntent() {
+  if (!_briefSleepIntent || !_briefSleepIntent.id) return;
+  if (!window.confirm('Clear bedtime log? You can tap Bed again at the right time.')) return;
+  const prior = _briefSleepIntent;
+  _briefSleepIntent = null;
+  briefRender();
+  try {
+    const { error } = await db.from('sleep_intents').delete().eq('id', prior.id);
+    if (error) throw error;
+  } catch (e) {
+    console.warn('[brief] sleep_intent delete failed', e);
+    _briefSleepIntent = prior;
+    briefRender();
+    if (typeof showToast === 'function') showToast('Could not clear bedtime', 'offline');
+  }
 }
 
 function briefSkeletonHTML() {
@@ -467,6 +616,24 @@ function briefRecapHTML(recap, structured) {
 
 function briefStaleNoteHTML(brief) {
   if (brief.status !== 'preliminary') return '';
+  // Two flavors of preliminary, distinguished by fallback_reason set by
+  // beta-daily-brief.js's freshness check:
+  //
+  //   oura_sleep_data_missing — activity present, sleep null. Oura cloud
+  //     has today's row but hasn't received last night's sleep session yet.
+  //     The actionable fix is on the phone, not in this app — opening the
+  //     Oura app forces it to push the ring's overnight buffer. Refresh
+  //     only helps AFTER that push.
+  //
+  //   oura_data_stale_at_generation (and other / unset) — generic case;
+  //     nothing recent in oura_daily at all. Refresh re-pulls and regens.
+  const reason = brief.fallback_reason || '';
+  if (reason === 'oura_sleep_data_missing') {
+    return `<div class="brief-stale-note">
+      <span>Sleep data still syncing — open the Oura app to push last night, then tap Refresh.</span>
+      <button class="home-pill-btn" data-brief-action="refresh">Refresh</button>
+    </div>`;
+  }
   return `<div class="brief-stale-note">
     <span>Wearable data was still syncing when this was generated.</span>
     <button class="home-pill-btn" data-brief-action="refresh">Refresh</button>
@@ -954,6 +1121,10 @@ function briefWireOnce() {
       // The "Refresh" affordance on a preliminary brief means the user wants
       // fresh data, not just a fresh narrative. Trigger Oura resync first.
       homeBriefRefresh(true, true);
+    } else if (action === 'sleep-log') {
+      briefLogSleepIntent();
+    } else if (action === 'sleep-clear') {
+      briefClearSleepIntent();
     }
   });
 }

@@ -102,64 +102,94 @@ function settingsRefreshIntegrationsIfOpen() {
   if (typeof renderSettingsPage === 'function') renderSettingsPage();
 }
 
-// Phase 5 — multi-calendar selection. Loads BOTH the user's stored
-// toggles (google_calendars_synced) AND the live Google calendarList,
-// merges them, and stashes on userSettings so renderSettingsPage can
-// paint the panel. Live list is the source of truth for which
-// calendars exist; the DB row tracks the user's enabled/disabled
-// preference (default true = enabled when first discovered).
+// Phase 5 — multi-calendar selection, plus linked-Google-account
+// support. Loads the user's stored toggles (google_calendars_synced)
+// AND the live Google calendarList — for the primary signed-in account
+// PLUS every row in linked_google_accounts. Each calendar item is
+// tagged with `account_email` ('' for primary, real email for linked)
+// so toggles can be scoped per-account.
 async function loadConnectedCalendars() {
   if (!userSettings) userSettings = { ...SETTINGS_DEFAULTS };
-  userSettings.calendars = { items: [], loading: true, error: null };
+  userSettings.calendars = { items: [], accounts: [], loading: true, error: null };
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
-    // Live list from Google. Requires calendar.readonly scope (already
-    // granted via the existing OAuth flow).
-    const token = typeof getGoogleAccessToken === 'function'
-      ? await getGoogleAccessToken(false)
-      : null;
-    if (!token) {
-      userSettings.calendars = { items: [], loading: false, error: 'no_token' };
+
+    // Linked accounts (RLS = select own).
+    const { data: linkedRows } = await db.from('linked_google_accounts')
+      .select('google_email,display_name')
+      .eq('user_id', session.user.id);
+    const linked = linkedRows || [];
+
+    // Sources to fetch: primary first (empty account_email), then each linked.
+    const sources = [{ email: '', display: null }]
+      .concat(linked.map(l => ({ email: l.google_email, display: l.display_name })));
+
+    const fetchOne = async (src) => {
+      try {
+        const token = typeof getGoogleAccessToken === 'function'
+          ? await getGoogleAccessToken(false, src.email || undefined)
+          : null;
+        if (!token) return { src, items: [], error: 'no_token' };
+        const res = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return { src, items: [], error: `api_${res.status}` };
+        const json = await res.json();
+        const items = (json.items || []).map(c => ({
+          id:            c.id,
+          summary:       c.summaryOverride || c.summary || c.id,
+          color_hex:     c.backgroundColor || null,
+          primary:       !!c.primary,
+          account_email: src.email,    // '' for primary, real email for linked
+        }));
+        return { src, items, error: null };
+      } catch (err) {
+        console.warn('[settings] calendar list fetch failed for', src.email || 'primary', err);
+        return { src, items: [], error: 'fetch_failed' };
+      }
+    };
+
+    const results = await Promise.all(sources.map(fetchOne));
+    const live = results.flatMap(r => r.items);
+
+    // If the ONLY source (primary, no linked accounts) failed with
+    // no_token, surface that to the UI so we can prompt to sign in.
+    if (!linked.length && live.length === 0 && results[0]?.error === 'no_token') {
+      userSettings.calendars = {
+        items: [], accounts: sources, loading: false, error: 'no_token',
+      };
       return;
     }
-    const listRes = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!listRes.ok) {
-      userSettings.calendars = { items: [], loading: false, error: `api_${listRes.status}` };
-      return;
-    }
-    const listJson = await listRes.json();
-    const live = (listJson.items || []).map(c => ({
-      id:        c.id,
-      summary:   c.summaryOverride || c.summary || c.id,
-      color_hex: c.backgroundColor || null,
-      primary:   !!c.primary,
-    }));
-    // Existing toggles.
+
+    // Existing toggles — now scoped by (calendar_id, account_email).
     const { data: synced } = await db.from('google_calendars_synced')
-      .select('google_calendar_id,enabled')
+      .select('google_calendar_id,google_account_email,enabled')
       .eq('user_id', session.user.id);
     const enabledMap = {};
-    for (const row of (synced || [])) enabledMap[row.google_calendar_id] = !!row.enabled;
-    // Merge: each live calendar gets an enabled flag (default true if
-    // no row exists yet → matches the historical 'primary only' behavior
-    // only when zero rows exist OR the row says enabled).
+    for (const row of (synced || [])) {
+      const k = `${row.google_account_email || ''}${row.google_calendar_id}`;
+      enabledMap[k] = !!row.enabled;
+    }
     const hasAnyRow = (synced || []).length > 0;
-    const items = live.map(c => ({
-      ...c,
-      // If user has never configured: default primary to true, others to false.
-      // If user has configured at least one row: respect stored value, default
-      // newly-discovered calendars to false (opt-in for new ones).
-      enabled: enabledMap[c.id] != null
-        ? enabledMap[c.id]
-        : (hasAnyRow ? false : !!c.primary),
-    }));
-    userSettings.calendars = { items, loading: false, error: null };
+
+    const items = live.map(c => {
+      const k = `${c.account_email}${c.id}`;
+      const enabled = enabledMap[k] != null
+        ? enabledMap[k]
+        // First-time defaults: primary's primary calendar = true; everything
+        // else for a fresh user = true too (we want linked accounts to feed
+        // in by default once linked — user can opt out of specific ones).
+        // If the user has already touched ANY toggle, new calendars are
+        // opt-in (false) to preserve the configure-once feel.
+        : (!hasAnyRow ? !!c.primary || c.account_email !== '' : false);
+      return { ...c, enabled };
+    });
+
+    userSettings.calendars = { items, accounts: sources, loading: false, error: null };
   } catch (e) {
     console.warn('[settings] calendars load failed', e);
-    userSettings.calendars = { items: [], loading: false, error: 'fetch_failed' };
+    userSettings.calendars = { items: [], accounts: [], loading: false, error: 'fetch_failed' };
   }
 }
 
@@ -202,6 +232,7 @@ async function loadWhoopStatus() {
       client_id:  data.client_id || null,
       connected:  !!data.connected,
       email:      data.whoop_account_email || null,
+      last_sync:  data.last_sync || null,    // {ran_at, success, error, rows_upserted}
     };
   } catch (e) {
     console.warn('[settings] whoop status load failed', e);
@@ -349,6 +380,9 @@ function ensureSettingsStyles() {
     .settings-saved { display: inline-block; margin-left: 10px; font-size: 11px; color: var(--moss-fg); opacity: 0; transition: opacity 0.2s; }
     .settings-saved.visible { opacity: 1; }
     .settings-int-card--whoop { grid-column: 1 / -1; }
+    .settings-whoop-sync-error { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--guava-700); background: rgba(199, 75, 75, 0.08); border: 1px solid rgba(199, 75, 75, 0.25); border-radius: var(--r-sm); padding: 6px 10px; margin: 6px 0 10px; font-weight: 500; }
+    .settings-whoop-sync-error-dot { color: var(--guava-700); font-size: 10px; line-height: 1; }
+    .settings-whoop-sync-ok { font-size: 11px; color: var(--ink-3); margin: 6px 0 10px; }
     .settings-whoop-creds-summary { font-size: 11.5px; color: var(--ink-3); margin: 6px 0 10px; }
     .settings-whoop-creds-summary code { background: var(--surface); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
     .settings-whoop-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -451,7 +485,7 @@ function renderSettingsPage() {
           <span class="settings-health-source-label">Health rings on Home</span>
           <div class="settings-health-source-opts">
             <label><input type="radio" name="healthSource" data-settings-health-source="oura" ${healthSource === 'oura' ? 'checked' : ''} /> Oura</label>
-            <label><input type="radio" name="healthSource" data-settings-health-source="whoop" ${healthSource === 'whoop' ? 'checked' : ''} /> Whoop <span class="settings-soon">coming soon</span></label>
+            <label><input type="radio" name="healthSource" data-settings-health-source="whoop" ${healthSource === 'whoop' ? 'checked' : ''} /> Whoop</label>
           </div>
           <button class="settings-btn-secondary" data-settings-sync-now>Sync now</button>
           <span class="settings-saved" id="settingsSyncStatus"></span>
@@ -508,6 +542,25 @@ function renderWhoopCard(intData) {
   const configured = !!intData.configured;
   const connected  = !!intData.connected;
   const clientId   = intData.client_id || '';
+  const lastSync   = intData.last_sync || null;
+
+  // Sync-error badge: shows when the most recent nightly sync (or backfill)
+  // for this user failed. Whoop's V1→V2 deprecation made silent failure a
+  // real problem — surface it explicitly so the user can act (re-authorize,
+  // recheck creds) instead of wondering why no fresh data appears on Home.
+  let syncBadge = '';
+  if (connected && lastSync && !lastSync.success && lastSync.error) {
+    const when = formatRelativeTime(lastSync.ran_at);
+    const errSummary = String(lastSync.error).slice(0, 160);
+    syncBadge = `
+      <div class="settings-whoop-sync-error" title="${escapeHtml(errSummary)}">
+        <span class="settings-whoop-sync-error-dot">●</span>
+        Last sync failed${when ? ` · ${escapeHtml(when)}` : ''}
+      </div>`;
+  } else if (connected && lastSync && lastSync.success) {
+    const when = formatRelativeTime(lastSync.ran_at);
+    if (when) syncBadge = `<div class="settings-whoop-sync-ok">Last synced ${escapeHtml(when)} · ${lastSync.rows_upserted ?? 0} days</div>`;
+  }
 
   let statusLabel, body;
   if (connected) {
@@ -564,8 +617,25 @@ function renderWhoopCard(intData) {
         <span class="settings-int-status${connected ? ' connected' : ''}">${statusLabel}</span>
       </div>
       <div class="settings-int-desc">Recovery, strain, and sleep from your Whoop. Uses your own Whoop developer app for OAuth.</div>
+      ${syncBadge}
       ${body}
     </div>`;
+}
+
+// Compact "5 min ago" / "2 hr ago" / "3 days ago" for sync-log timestamps.
+// Returns null for missing input so callers can guard cheaply.
+function formatRelativeTime(iso) {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const secs = Math.floor((Date.now() - t) / 1000);
+  if (secs < 60)      return `${secs}s ago`;
+  if (secs < 3600)    return `${Math.floor(secs / 60)} min ago`;
+  if (secs < 86400)   return `${Math.floor(secs / 3600)} hr ago`;
+  const days = Math.floor(secs / 86400);
+  if (days < 30)      return `${days} day${days === 1 ? '' : 's'} ago`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months === 1 ? '' : 's'} ago`;
 }
 
 function flashSettingsSaved(elementId) {
@@ -636,7 +706,7 @@ document.addEventListener('change', e => {
   }
   const calCb = e.target.closest('[data-settings-action="toggle-calendar"]');
   if (calCb) {
-    toggleConnectedCalendar(calCb.dataset.calId, calCb.checked);
+    toggleConnectedCalendar(calCb.dataset.calId, calCb.dataset.accountEmail || '', calCb.checked);
     return;
   }
   const healthRadio = e.target.closest('input[data-settings-health-source]');
@@ -710,6 +780,12 @@ document.addEventListener('click', e => {
   if (action === 'backup' && typeof openBackupModal === 'function') openBackupModal();
   else if (action === 'delete-account' && typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
   else if (action === 'save-location') saveLocationFromInput(e.target.closest('[data-settings-action]'));
+  else if (action === 'link-google') {
+    if (typeof linkGoogleAccount === 'function') linkGoogleAccount();
+  } else if (action === 'unlink-google') {
+    const email = e.target.closest('[data-settings-action="unlink-google"]')?.dataset.accountEmail;
+    if (email) unlinkGoogleAccount(email);
+  }
 });
 
 // Phase 1.6: save the user's city for the morning brief's weather line.
@@ -971,20 +1047,56 @@ function renderConnectedCalendarsList() {
   if (state.loading)        return `<div class="settings-sub">Loading your calendars…</div>`;
   if (state.error === 'no_token') return `<div class="settings-sub">Sign in with Google to manage connected calendars.</div>`;
   if (state.error)          return `<div class="settings-sub">Couldn't load calendars (${escapeHtml(state.error)}). Refresh to retry.</div>`;
-  if (!state.items.length)  return `<div class="settings-sub">No calendars found on this Google account.</div>`;
-  return state.items.map(c => `
-    <label class="settings-tab-row" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
-      <input type="checkbox" data-settings-action="toggle-calendar" data-cal-id="${escapeHtml(c.id)}" ${c.enabled ? 'checked' : ''}>
-      ${c.color_hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(c.color_hex)};flex-shrink:0;"></span>` : ''}
-      <span class="settings-tab-label" style="flex:1;min-width:0;">${escapeHtml(c.summary)}${c.primary ? ' <span class="settings-sub" style="display:inline">(primary)</span>' : ''}</span>
-    </label>
-  `).join('');
+  if (!state.items.length)  return `<div class="settings-sub">No calendars found.</div>`;
+
+  // Group items by account_email. Primary ('') goes first.
+  const groups = new Map();
+  for (const c of state.items) {
+    const key = c.account_email || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+  const orderedKeys = ['', ...[...groups.keys()].filter(k => k !== '').sort()];
+
+  const groupHtml = orderedKeys.map(key => {
+    const items = groups.get(key) || [];
+    if (!items.length) return '';
+    const isPrimary = key === '';
+    const headerLabel = isPrimary ? 'Primary account' : escapeHtml(key);
+    const disconnectBtn = isPrimary ? '' : `
+      <button class="settings-btn-secondary" data-settings-action="unlink-google" data-account-email="${escapeHtml(key)}" style="font-size:11px;padding:4px 8px;">Disconnect</button>
+    `;
+    const rows = items.map(c => `
+      <label class="settings-tab-row" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+        <input type="checkbox" data-settings-action="toggle-calendar" data-cal-id="${escapeHtml(c.id)}" data-account-email="${escapeHtml(c.account_email || '')}" ${c.enabled ? 'checked' : ''}>
+        ${c.color_hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(c.color_hex)};flex-shrink:0;"></span>` : ''}
+        <span class="settings-tab-label" style="flex:1;min-width:0;">${escapeHtml(c.summary)}${c.primary ? ' <span class="settings-sub" style="display:inline">(primary)</span>' : ''}</span>
+      </label>
+    `).join('');
+    return `
+      <div class="settings-cal-group" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--edge);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+          <div class="settings-sub" style="margin:0;font-weight:600;color:var(--ink-2);">${headerLabel}</div>
+          ${disconnectBtn}
+        </div>
+        ${rows}
+      </div>
+    `;
+  }).join('');
+
+  const addBtn = `
+    <div style="margin-top:14px;">
+      <button class="settings-btn-secondary" data-settings-action="link-google">Add Google account</button>
+    </div>
+  `;
+
+  return groupHtml + addBtn;
 }
 
-// Persist a single calendar toggle. Upsert keeps things tidy whether
-// or not a row already exists for this (user, calendar) pair.
-async function toggleConnectedCalendar(calId, enabled) {
-  const item = userSettings?.calendars?.items?.find(c => c.id === calId);
+// Persist a single calendar toggle, scoped to its source account email.
+async function toggleConnectedCalendar(calId, accountEmail, enabled) {
+  const acct = accountEmail || '';
+  const item = userSettings?.calendars?.items?.find(c => c.id === calId && (c.account_email || '') === acct);
   if (!item) return;
   // Optimistic local update + saved-flash.
   item.enabled = enabled;
@@ -994,12 +1106,13 @@ async function toggleConnectedCalendar(calId, enabled) {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('No session');
     const { error } = await db.from('google_calendars_synced').upsert({
-      user_id:            session.user.id,
-      google_calendar_id: calId,
-      label:              item.summary,
-      color_hex:          item.color_hex,
+      user_id:              session.user.id,
+      google_calendar_id:   calId,
+      google_account_email: acct,
+      label:                item.summary,
+      color_hex:            item.color_hex,
       enabled,
-    }, { onConflict: 'user_id,google_calendar_id' });
+    }, { onConflict: 'user_id,google_account_email,google_calendar_id' });
     if (error) throw error;
     if (savedEl) {
       savedEl.textContent = 'Saved';
@@ -1009,14 +1122,48 @@ async function toggleConnectedCalendar(calId, enabled) {
     // caches so the new set of enabled calendars is reflected.
     if (typeof journalState !== 'undefined' && journalState?.calendarEvents) {
       journalState.calendarEvents.clear();
+      journalState.enabledCalendarIds = null;
     }
   } catch (e) {
     console.warn('[settings] toggle calendar failed', e);
-    // Revert local state on failure.
     item.enabled = !enabled;
-    const cb = document.querySelector(`[data-settings-action="toggle-calendar"][data-cal-id="${calId.replace(/"/g, '\\"')}"]`);
+    const cb = document.querySelector(`[data-settings-action="toggle-calendar"][data-cal-id="${calId.replace(/"/g, '\\"')}"][data-account-email="${acct.replace(/"/g, '\\"')}"]`);
     if (cb) cb.checked = !enabled;
     if (savedEl) { savedEl.textContent = 'Failed'; savedEl.style.color = 'var(--guava-700)'; }
     if (typeof showToast === 'function') showToast('Could not save calendar toggle', 'offline');
+  }
+}
+
+// Disconnect a linked Google account: server revokes Google's refresh
+// token and deletes the linked_google_accounts row + scoped toggles.
+async function unlinkGoogleAccount(accountEmail) {
+  if (!accountEmail) return;
+  if (!confirm(`Disconnect ${accountEmail}? Calendars from this account will stop syncing.`)) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('No session');
+    const res = await fetch('/.netlify/functions/beta-unlink-google-account', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ account_email: accountEmail }),
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail?.error || `status_${res.status}`);
+    }
+    if (typeof showToast === 'function') showToast(`Disconnected ${accountEmail}`, 'ok');
+    // Reset caches and re-render.
+    if (typeof journalState !== 'undefined' && journalState?.calendarEvents) {
+      journalState.calendarEvents.clear();
+      journalState.enabledCalendarIds = null;
+    }
+    await loadConnectedCalendars();
+    if (typeof activeTool !== 'undefined' && activeTool === 'settings') renderSettingsPage();
+  } catch (e) {
+    console.warn('[settings] unlink google failed', e);
+    if (typeof showToast === 'function') showToast('Could not disconnect account', 'offline');
   }
 }

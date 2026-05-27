@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<!--
+  GSD App Knowledge Bank — source of truth for what currently exists.
+
+  Read at the start of every Claude Code session. Patched in-session when
+  features change, schemas migrate, backend systems land, or learnings are
+  discovered. Batch-updated at session close. See CLAUDE.md at repo root
+  for the full read-first + update protocol.
+
+  Each top-level section is bracketed by markers like
+    <!-- BANK:section:active-todo -->
+  so future edits can find-and-patch a single section without scanning
+  the whole file. Status badges: SHIPPED / IN PROGRESS / PLANNED / DEFERRED.
+
+  Renders as a static HTML file in any browser. Sticky sidebar TOC,
+  collapsible sections via <details>. No JS, no external deps.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSD — App Knowledge Bank</title>
+<style>
+  :root {
+    --ink:        #2b2b30;
+    --ink-2:      #4a4a52;
+    --ink-3:      #6b6b75;
+    --ink-4:      #9b9ba5;
+    --edge:       #e6e2dc;
+    --edge-strong:#cfcabf;
+    --surface:    #fdfbf7;
+    --surface-2:  #f5f1e9;
+    --guava-50:   #fbeae2;
+    --guava-700:  #b25c3d;
+    --guava-800:  #8d4530;
+    --moss-fg:    #5e8c4f;
+    --sky-fg:     #4f7b96;
+    --ochre:      #bf9c47;
+    --t-xs:       11.5px;
+    --t-sm:       13px;
+    --t-md:       15px;
+    --r-sm:       4px;
+    --r-md:       6px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--surface); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+  a { color: var(--guava-700); text-decoration: none; }
+  a:hover { color: var(--guava-800); text-decoration: underline; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace; font-size: 0.92em; background: var(--surface-2); padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+  pre { background: var(--surface-2); padding: 10px 14px; border-radius: var(--r-md); overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; max-width: 1180px; margin: 0 auto; }
+  @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } .toc { position: static !important; height: auto !important; border-right: 0 !important; border-bottom: 1px solid var(--edge); } }
+
+  .toc {
+    position: sticky; top: 0; align-self: start;
+    height: 100vh; overflow-y: auto;
+    border-right: 1px solid var(--edge);
+    padding: 24px 16px 24px 24px;
+    background: var(--surface-2);
+    font-size: var(--t-xs);
+  }
+  .toc h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); margin: 0 0 12px 0; }
+  .toc ol { list-style: none; padding: 0; margin: 0; }
+  .toc li { margin: 4px 0; }
+  .toc a { color: var(--ink-2); display: block; padding: 4px 8px; border-radius: var(--r-sm); }
+  .toc a:hover { background: var(--surface); color: var(--ink); text-decoration: none; }
+
+  main { padding: 32px 36px 80px 36px; max-width: 920px; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px 0; letter-spacing: -0.01em; }
+  h2 { font-size: 20px; font-weight: 700; margin: 36px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid var(--edge); }
+  h3 { font-size: 16px; font-weight: 700; margin: 22px 0 8px 0; color: var(--ink); }
+  h4 { font-size: 14px; font-weight: 700; margin: 14px 0 6px 0; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+  p { margin: 8px 0; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  .meta { color: var(--ink-3); font-size: var(--t-xs); margin: 4px 0 0 0; }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; padding: 1px 7px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; vertical-align: middle;
+    margin-left: 6px; line-height: 1.5;
+  }
+  .badge-shipped     { background: var(--moss-fg); color: #fff; }
+  .badge-progress    { background: var(--ochre);   color: #fff; }
+  .badge-planned     { background: var(--sky-fg);  color: #fff; }
+  .badge-deferred    { background: var(--ink-4);   color: #fff; }
+  .badge-deprecated  { background: var(--guava-700); color: #fff; }
+
+  /* Details (collapsible sections) */
+  details { margin: 6px 0; border: 1px solid var(--edge); border-radius: var(--r-md); background: var(--surface); }
+  details > summary { cursor: pointer; padding: 10px 14px; font-weight: 600; user-select: none; }
+  details > summary:hover { background: var(--surface-2); border-radius: var(--r-md); }
+  details[open] > summary { border-bottom: 1px solid var(--edge); border-radius: var(--r-md) var(--r-md) 0 0; }
+  details > .details-body { padding: 12px 16px 14px 16px; }
+
+  /* To-do list */
+  .todo { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .todo-item { padding: 10px 12px; border: 1px solid var(--edge); border-radius: var(--r-md); background: var(--surface); }
+  .todo-item .todo-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .todo-item .todo-title { font-weight: 600; color: var(--ink); }
+  .todo-item .todo-context { font-size: var(--t-xs); color: var(--ink-3); margin-top: 2px; }
+
+  /* Changelog list */
+  .changelog { font-size: var(--t-sm); }
+  .changelog-row { display: grid; grid-template-columns: 100px 1fr; gap: 12px; padding: 4px 0; border-bottom: 1px dotted var(--edge); }
+  .changelog-row:last-child { border-bottom: 0; }
+  .changelog-date { color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: var(--t-xs); }
+
+  /* Inline tables */
+  table.kv { width: 100%; border-collapse: collapse; font-size: var(--t-sm); margin: 8px 0; }
+  table.kv th, table.kv td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--edge); vertical-align: top; }
+  table.kv th { font-weight: 700; color: var(--ink-2); font-size: var(--t-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+  table.kv td code { white-space: nowrap; }
+
+  hr { border: 0; border-top: 1px solid var(--edge); margin: 22px 0; }
+  .note { background: var(--guava-50); border-left: 3px solid var(--guava-700); padding: 10px 14px; border-radius: var(--r-sm); font-size: var(--t-sm); margin: 12px 0; }
+  .quiet { color: var(--ink-3); font-size: var(--t-xs); }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ───────────────── Sidebar TOC ───────────────── -->
+<nav class="toc">
+  <h2>Knowledge Bank</h2>
+  <ol>
+    <li><a href="#active-todo">Active to-do</a></li>
+    <li><a href="#recent-changes">Recent changes</a></li>
+    <li><a href="#what-gsd-is">What GSD is</a></li>
+    <li><a href="#tabs">Tabs &amp; user features</a></li>
+    <li><a href="#backend">Backend systems</a></li>
+    <li><a href="#data-model">Data model</a></li>
+    <li><a href="#learnings">Learnings &amp; context</a></li>
+    <li><a href="#open-questions">Open questions</a></li>
+    <li><a href="#source-of-truth">Source-of-truth pointers</a></li>
+  </ol>
+</nav>
+
+<!-- ───────────────── Main ───────────────── -->
+<main>
+
+<!-- BANK:section:header -->
+<header>
+  <h1>GSD — App Knowledge Bank</h1>
+  <p class="meta">Last full review: <strong>2026-05-27</strong> · See <a href="../CLAUDE.md"><code>CLAUDE.md</code></a> at repo root for the read-first protocol.</p>
+</header>
+
+<!-- ───────────────── ACTIVE TO-DO ───────────────── -->
+<!-- BANK:section:active-todo -->
+<section id="active-todo">
+<h2>🎯 Active to-do</h2>
+<p class="quiet">Multi-session backlog. Carries across <code>/clear</code> and new sessions. <code>TaskCreate</code> / <code>TaskUpdate</code> handle within-session granular tracking; finished Tasks get swept into <em>Recent changes</em> at session close.</p>
+
+<div class="todo">
+
+  <div class="todo-item">
+    <div class="todo-head">
+      <span class="todo-title">Sleep-intent visualization</span>
+      <span class="badge badge-deferred">DEFERRED</span>
+    </div>
+    <div class="todo-context">Waiting on ~14 paired (intent_at, oura_detected_onset_at) observations before surfacing a personal "settle time" stat. Data is accumulating passively; once threshold hit, add a single-line summary to morning-brief context (or Insights tab).</div>
+  </div>
+
+  <div class="todo-item">
+    <div class="todo-head">
+      <span class="todo-title">Workout-tuner A/B variants</span>
+      <span class="badge badge-deferred">DEFERRED</span>
+    </div>
+    <div class="todo-context">Phase 11 tuner currently emits one proposal per cycle without variant competition. After 2-3 months of acceptance data, layer a <code>pickVariant</code> ("swap vs add", "single-isolation vs compound-alternative") matching the Phase-10 pattern. Hold for usage signal.</div>
+  </div>
+
+  <div class="todo-item">
+    <div class="todo-head">
+      <span class="todo-title">Goal-aware workout tuning (bulk/cut/recomp)</span>
+      <span class="badge badge-deferred">DEFERRED</span>
+    </div>
+    <div class="todo-context">Tuner currently reads <code>body_comp_goals</code> as context but treats all goals identically (accessory-only constraint is goal-agnostic). Once evidence accumulates that cut phases benefit from different tuning rules (e.g. lower volume cap), add goal-conditioned logic to the prompt.</div>
+  </div>
+
+  <div class="todo-item">
+    <div class="todo-head">
+      <span class="todo-title">Whoop V2 response-shape verification</span>
+      <span class="badge badge-progress">IN PROGRESS</span>
+    </div>
+    <div class="todo-context"><code>cron-health-sync.js</code> emits probe logs of the first row's keys per endpoint on each run. After one successful nightly sync, inspect Netlify logs and confirm field accessors land on the right keys; remove probes once verified.</div>
+  </div>
+
+  <div class="todo-item">
+    <div class="todo-head">
+      <span class="todo-title">First Phase-10 efficacy block in production brief</span>
+      <span class="badge badge-progress">IN PROGRESS</span>
+    </div>
+    <div class="todo-context">Cold-start: brief skips the efficacy paragraph until any signature has ≥5 outcomes. With <code>bedtime_target</code> recording one stub per brief, threshold hits in ~1 week. After threshold, spot-check the brief context to confirm <code>efficacy_profile</code> is populated and Claude's output references it sensibly.</div>
+  </div>
+
+</div>
+</section>
+
+<!-- ───────────────── RECENT CHANGES ───────────────── -->
+<!-- BANK:section:recent-changes -->
+<section id="recent-changes">
+<h2>📋 Recent changes</h2>
+<p class="quiet">Newest first. Cap ~15 entries; older entries roll into the collapsed archive.</p>
+
+<div class="changelog">
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Multi-account Google Calendar: users can link additional Google accounts from Settings → Connected calendars. New table <code>linked_google_accounts</code>, new column <code>google_calendars_synced.google_account_email</code>, two new Netlify functions (<code>beta-link-google-account</code>, <code>beta-unlink-google-account</code>), and <code>refresh-google-token</code> now accepts an <code>account_email</code> body param. Calendar list, journal event fetch, and history sync all loop over (primary + linked) accounts. The daily brief inherits multi-account events automatically since it reads from <code>journal_calendar_cache</code>.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Mobile bottom nav: icon-only (text labels hidden), removed the guava dot under active tab, 15/15 vertical padding for a slimmer bar with icons sitting lower.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Fixed <code>workout_sessions.ai_feedback</code> column type (text → jsonb). All History recap cards rendered "No AI analysis on file" despite the data being stored because PostgREST returned the column as a string. Migration cast existing rows losslessly. Also awaited the persist call in <code>beta-train-feedback.js</code> so closing the tab mid-Claude-call no longer drops the persist (was a fire-and-forget race that left some sessions ungenerated).</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Knowledge bank itself + repo-root <code>CLAUDE.md</code> + project-scoped <code>SessionStart</code> hook in <code>.claude/settings.json</code>.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Sleep intent in morning-brief context — <code>yesterday.sleep_intent</code> with intent + Oura onset + settle minutes; system prompt added to use settle &gt;= 25 min as a callout signal when night was also poor.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span><code>get_plan_tune_efficacy</code> tool added to weekly synthesis. Opus now scans both brief and plan-tune efficacy on Sundays.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Stale-comment audit: fixed misleading "Whoop coming soon" label, "edit ships in follow-up commit" comment, and "Navy formula" framing.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Sleep Intent feature shipped: schema (<code>sleep_intents</code>), brief-header bedtime button visible 20:00-04:00 local, nightly cron pass back-computes Oura's detected onset and stores delta.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Oura staleness fix: brief now flags <code>oura_sleep_data_missing</code> when activity is present but <code>sleep_score</code> is null; UI shows "open Oura app" hint.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Phase 11 — workout tuner shipped: schema, taxonomy lib, background fn, accept/decline/revert endpoint, Train UI proposal card, revert button in Manage Plans.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Whoop V2 migration: endpoint paths swapped, profile fetch updated, sync-error badge in Settings, three Whoop rings render on Home.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span>Phase 10 — passive intervention tracking shipped: <code>brief_action_outcomes</code>, <code>v_user_action_efficacy</code> view, <code>pickVariant</code> A/B in recommendations, adherence-rules lib, <code>cron-evaluate-actions</code>, efficacy tools in weekly synthesis.</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-26</span><span>Brief: feed specific habit names into AI context (commit 8dbb8df).</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-26</span><span>Phase 9.1-3: persist weather, daily cron, brief reads from cache (commit 7dfc6a4).</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-25</span><span>Brief bedtime: 9 PM sleep-emergency tier (&lt;5 hr last night); fully formulaic, sickness-aware (cf89237, 2d42d10).</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-25</span><span>Mood check-ins: optional reflection captured via modal + fed to AI (b3bc305).</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-24</span><span>Home Habits: OTHER HABITS dropdown for non-due-today habits (3411661).</span></div>
+  <div class="changelog-row"><span class="changelog-date">2026-05-24</span><span>Train: count added load on bodyweight exercises (BW + 10 etc.) (2d5f56e).</span></div>
+</div>
+
+<details>
+  <summary>Archive (older)</summary>
+  <div class="details-body">
+    <p class="quiet">Older entries archived. Use <code>git log -p docs/app-knowledge-bank.html</code> for the full history if needed.</p>
+    <ul>
+      <li>Earlier May 2026: workout autosave, pill-bar rationalization, Notes trash hardening, Insights subtab redesign (Knowledgebase / Weekly Insights), floating chat popup.</li>
+      <li>Phase 7-8 (Insights tab) shipped: weekly synthesis, agentic chat, patterns, anomaly alerts.</li>
+      <li>Phase 4-6: Train (Workout/History/Progress + AI feedback + progress-pic vision), Reflect refactor, Knowledge base RAG.</li>
+      <li>Phase 1-3: daily brief MVP through coach-brief structured redesign, beta→prod migration with allowlist, login redesign.</li>
+    </ul>
+  </div>
+</details>
+</section>
+
+<!-- ───────────────── WHAT GSD IS ───────────────── -->
+<!-- BANK:section:what-gsd-is -->
+<section id="what-gsd-is">
+<h2>🏗 What GSD is</h2>
+<p>
+  GSD is a personal lifestyle operating system. Originally a task/habit/notes app, it's evolved into a unified surface for daily synthesis, training, journaling, knowledge management, and AI-driven personalization. Single-tenant in practice (Joe + 1-2 close people), runs on Supabase + Netlify at <a href="https://gsdtasks.com">gsdtasks.com</a>. The promoted <code>/app</code> route is canonical; <code>/beta/*</code> URLs 301-redirect there.
+</p>
+<p>
+  The 10-phase blueprint at <code>~/.claude/plans/i-want-this-app-hidden-wall.md</code> is the source of truth for design intent. <code>~/.claude/projects/&lt;this project&gt;/memory/MEMORY.md</code> indexes point-in-time facts. This bank summarizes both as "what currently exists" — the daily reference.
+</p>
+</section>
+
+<!-- ───────────────── TABS & USER FEATURES ───────────────── -->
+<!-- BANK:section:tabs -->
+<section id="tabs">
+<h2>📱 Tabs &amp; user features</h2>
+<p class="quiet">Mobile bottom nav: Today · Tasks · Train · Reflect · Insights. Avatar dropdown: Settings, Account, Backup, Sign out. Desktop mirrors with a vertical sidebar.</p>
+
+<!-- BANK:section:tabs:home -->
+<details open>
+<summary>Home (Today) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Module: <code>beta/src/04-home.js</code> + <code>05-brief.js</code>. Cards in render order:</p>
+
+<h4>Daily brief (top card)</h4>
+<p>Phase 1.7 structured coach brief. Header strip (weekday eyebrow + weather chip + confidence badge + sleep button) → verb-first headline → subhead (the play) → hero ring with stats list → evidence pills → recap grid (Yesterday/Today morning, Today/Tomorrow evening). Renders from <code>daily_briefs.structured</code> jsonb; legacy <code>narrative</code> rendering is a fallback.</p>
+<ul>
+  <li><strong>Two modes per day</strong>: morning (04:00-16:00 local) shows weather + forward-looking play; evening (16:00-04:00) shows recap + tomorrow setup, no weather chip.</li>
+  <li><strong>Sleep button</strong> visible only 20:00-04:00 local. Tap logs an intent row; chip flips to time-logged. Tap again to clear (confirmation prompted). Function: <code>briefSleepButtonVisible()</code> in <code>05-brief.js</code>.</li>
+  <li><strong>Preliminary status</strong>: two flavors — generic "wearable data still syncing" and the more actionable "Sleep data still syncing — open the Oura app". Distinguished by <code>fallback_reason</code> = <code>oura_data_stale_at_generation</code> vs <code>oura_sleep_data_missing</code>.</li>
+  <li><strong>Tier-1 realtime patches</strong>: task toggle / habit check / mood log triggers client-side recompute of brief deterministic blocks without a Claude regen. Tier-2 cron warmer regenerates AI copy hourly.</li>
+</ul>
+
+<h4>Other cards</h4>
+<ul>
+  <li><strong>Events</strong> — today's Google Calendar entries (from <code>journal_calendar_cache</code>). Clickable: opens event-meta editor (relationship_tag, post-meeting energy).</li>
+  <li><strong>Tasks</strong> — three-section card: Overdue, Due Today, Priority (one task appears once; precedence overdue → due-today → priority). Inline + button.</li>
+  <li><strong>Habits</strong> — today's checklist + score ring + 7-day mini heatmap. Tap → full Habits sheet at <code>/app/habits</code>. "OTHER HABITS" dropdown for non-due-today.</li>
+  <li><strong>Journal</strong> — Daily Reflection textarea, Today I Learned textarea, mood picker with intra-day check-ins (with optional reflection notes).</li>
+  <li><strong>Recent Notes</strong> — last few notes + scratchpad shortcut.</li>
+  <li><strong>Last 7 Days</strong> — per-metric averages (sleep/readiness/activity) + week-over-week deltas + day-by-day table with mood emoji.</li>
+  <li><strong>Rings</strong> — three rings inside the brief card (the hero ring is one, stats list shows the other two). Source: Oura by default; Whoop when <code>health_source='whoop'</code> in Settings.</li>
+</ul>
+</div>
+</details>
+
+<!-- BANK:section:tabs:tasks -->
+<details>
+<summary>Tasks <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Full task UI. Pills collapsed to Tasks + Statistics, combined Sort/Filter dropdown. Standard CRUD: priority (top3) star, due dates, in-progress / done states, recurring task spawn logic.</p>
+<p>Schema: <code>tasks</code> with <code>spawned</code> and <code>status</code> columns (latter is binary done toggle as of late May — the multi-state in-progress UI was reverted).</p>
+</div>
+</details>
+
+<!-- BANK:section:tabs:train -->
+<details>
+<summary>Train <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Module: <code>beta/src/06-train.js</code>. Three subtabs (pills):</p>
+<ul>
+  <li><strong>Workout</strong> — day picker (Mon-Sun + Bonus pill). Picking a day surfaces the prescribed exercises (rest day shows rest copy, cardio shows duration/distance form, lift shows per-exercise sets with weight×reps inputs). Autosaves draft to localStorage. Footer shows live Sets/Volume totals. Submit triggers per-session AI feedback via <code>beta-train-feedback.js</code>. "Manage plans" link in the bottom-right opens the plan editor sub-view.</li>
+  <li><strong>History</strong> — past sessions list. Tap → recap modal with sets + AI feedback. Rerun AI affordance available.</li>
+  <li><strong>Progress</strong> — body comp dashboard (weight trend, body fat % trend), progress pic timeline with side-by-side comparison + Claude vision analysis (<code>ai_analysis</code> on <code>progress_pics</code>: needs_work, focus_areas, body_type, stage, etc.), goal setup wizard.</li>
+</ul>
+
+<h4>Monthly plan tuner — proposal card (Phase 11)</h4>
+<p>When <code>workout_plan_tunes</code> has a <code>pending</code> row for the active plan, a card renders at the top of the Workout subtab:</p>
+<ul>
+  <li>Header: "MONTHLY PLAN TUNE — Focus: hamstrings" (joined from <code>focus_areas_addressed</code>)</li>
+  <li>One-paragraph rationale (Claude's <code>rationale</code> field, ≤400 chars)</li>
+  <li>2-3 before/after change rows: ADD / SWAP / REMOVE with strike-through + arrow notation + per-change reason</li>
+  <li>Accept (primary) / Decline (secondary). Decline reveals an inline optional reason textarea.</li>
+  <li>Accept → mutates <code>workout_plans.day_template</code> via <code>beta-plan-tune-action.js</code>; flips status to <code>accepted</code></li>
+  <li>Decline → no plan mutation; two consecutive declines → tuner backs off on next pic upload</li>
+</ul>
+
+<h4>Revert affordance</h4>
+<p>In the Manage Plans modal: when <code>workout_plans.last_plan_tune_id</code> references an <code>accepted</code> tune, a "Revert last AI tune (applied [date])" banner appears at the top. Click → confirmation → restores <code>prior_day_template</code>, flips status to <code>reverted</code>.</p>
+</div>
+</details>
+
+<!-- BANK:section:tabs:reflect -->
+<details>
+<summary>Reflect (Journal + Notes) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Module: <code>beta/src/03-journal.js</code>. Per-day journal view with read/edit modes, calendar popover, personalized greeting, search, calendar caching, photo modal. Mood picker, reflection textarea, learning textarea, plus per-day calendar event metadata editor (relationship_tag, post-meeting energy).</p>
+<p>Notes shares this tab as a secondary surface (per Phase 5 consolidation). Notes trash auto-purges after a retention window with countdown exposed.</p>
+</div>
+</details>
+
+<!-- BANK:section:tabs:insights -->
+<details>
+<summary>Insights <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Module: <code>beta/src/06-insights.js</code> + <code>06-brain.js</code> (Knowledgebase). Three subtabs:</p>
+<ul>
+  <li><strong>Knowledgebase</strong> — RAG document timeline. Upload PDFs (bloodwork, articles) or images. Text extracted via pdf-parse + Claude vision OCR; chunked + embedded (OpenAI <code>text-embedding-3-small</code>, 1536 dims); stored in <code>knowledge_chunks</code> with pgvector index. Lab PDFs trigger structured extraction to <code>health_lab_results</code>. Search via <code>beta-knowledge-search.js</code>.</li>
+  <li><strong>Weekly Insights</strong> — Sunday Opus weekly synthesis output. Patterns list (from <code>patterns_discovered</code>, dismiss available with 60-day suppression). Weekly narrative + structured findings.</li>
+  <li><strong>Ask chat</strong> — floating popup, texting-style replies. Single-thread per day. Agentic Claude Sonnet with tool access (same toolset as weekly synthesis). Prompt caching for system prompt + last 14 daily briefs. Soft cap warning at 20 messages/day, hard at 25. Backend: <code>beta-chat-ask-background.js</code>.</li>
+</ul>
+</div>
+</details>
+
+<!-- BANK:section:tabs:settings -->
+<details>
+<summary>Settings (avatar dropdown) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Module: <code>beta/src/02-settings.js</code>. Sections:</p>
+<ul>
+  <li><strong>Tabs</strong> — choose which tabs appear in sidebar (Tasks always enabled). Reorderable.</li>
+  <li><strong>Integrations</strong> — Oura (shared GSD OAuth app), Whoop (BYO credentials — user creates own developer app), Dropbox, Google Calendar (multi-cal selection). Health source toggle (Oura / Whoop) decides which rings render on Home. Sync-now button. Whoop card shows last-sync timestamp or red error badge when nightly sync failed.</li>
+  <li><strong>Location</strong> — city for weather line. Geocoded via Open-Meteo to <code>user_preferences.weather_lat/lng</code>. Triggers <code>homeBriefRefresh(true)</code> on save.</li>
+  <li><strong>Backup</strong> — manual export (per <code>project_dropbox_integration</code> memory).</li>
+  <li><strong>Manage Habits</strong> — add/edit/remove/reorder (separated from Habits tab UI per the lifestyle-OS plan).</li>
+</ul>
+</div>
+</details>
+</section>
+
+<!-- ───────────────── BACKEND SYSTEMS ───────────────── -->
+<!-- BANK:section:backend -->
+<section id="backend">
+<h2>⚙️ Backend systems (the invisible layer)</h2>
+<p class="quiet">All backend code lives in <code>netlify/functions/</code>. Shared utilities live in <code>netlify/functions/lib/</code>. Service-key writes bypass RLS; client reads go through RLS-policied tables.</p>
+
+<h3>Cron schedule</h3>
+<table class="kv">
+  <tr><th>Function</th><th>Schedule (UTC)</th><th>What it does</th></tr>
+  <tr><td><code>cron-health-sync</code></td><td><code>0 4 * * *</code></td><td>Daily Oura + Whoop pull (3-day rolling window per user). Backfill mode supports 7-90 day windows.</td></tr>
+  <tr><td><code>cron-daily-brief</code></td><td><code>0 * * * *</code></td><td>Hourly per-user-local 06:00-22:00. Tier-2 cache warmer keeps brief AI copy current as the day unfolds. Each tick upserts the same (user_id, brief_date, mode) row.</td></tr>
+  <tr><td><code>cron-weather-snapshot</code></td><td><code>0 * * * *</code></td><td>Hourly. Filters per-user local 05:00; writes today + tomorrow to <code>weather_daily</code> for cache-hit reads from brief.</td></tr>
+  <tr><td><code>cron-weekly-synthesis</code></td><td><code>0 22 * * 0</code></td><td>Sundays 22:00 UTC. Triggers <code>beta-weekly-synthesis-background</code> per user (fire-and-forget; each background fn runs up to 15 min).</td></tr>
+  <tr><td><code>cron-evaluate-actions</code></td><td><code>0 * * * *</code></td><td>Hourly. Two passes: (a) sleep-intent matching against Oura (every tick), (b) brief outcome scoring + adherence + T+1/T+3 fills + view refresh (only at 23:00 local per user).</td></tr>
+</table>
+
+<details>
+<summary>Daily brief generation <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Files: <code>beta-daily-brief.js</code> (handler + context builder + Claude call + storage), <code>lib/recommendations.js</code> (deterministic rules), <code>lib/mood-scale.js</code>, <code>lib/weather.js</code>.</p>
+<p>Two modes: morning (04-16 local), evening (16-04 local). Mode derived from user's timezone in <code>normalizeMode</code>. Each mode generates its own row in <code>daily_briefs</code> with unique <code>(user_id, brief_date, mode)</code>.</p>
+<p><strong>Tool-use schema</strong> (Phase 1.7 + extensions): Claude only writes text-only synthesis (<code>headline</code> ≤30 chars verb-first, <code>subhead</code> ≤80 chars, <code>evidence_pills</code> 0-3 ≤4 words each, optional <code>hero_metric_key</code> override, <code>confidence</code>). Server builds all factual blocks (weather chip, hero ring, stats, recap, sleep target). Banned-phrase regex rejects responses with statistics jargon (p25/p50/median/percentile/IQR) or recap filler ("worth noting", "fun evening", etc.).</p>
+<p><strong>Deterministic sleep target</strong> via <code>recommendSleepTarget</code>: sleep-emergency (&lt;5 hr last night) → 9:00 PM; severe (readiness ≤60, HRV low, severe sickness) → 9:30 PM; A/B band (readiness 61-75) → randomized 9:30/10:00 PM via <code>pickVariant</code>; mild → 10:00 PM; default → 10:30 PM. Variant logged in <code>brief_action_outcomes.variant_id</code>.</p>
+<p><strong>Phase 10 efficacy injection</strong>: <code>buildContext</code> reads <code>v_user_action_efficacy</code> (rows with n_observations ≥5) and includes <code>efficacy_profile[]</code> in the Claude context. System prompt addendum tells Claude to lean into positive <code>delta_when_followed</code> signatures, deprioritize negative ones, and never surface the profile to the user.</p>
+<p><strong>Sleep-intent injection</strong>: morning briefs only. <code>yesterday.sleep_intent = {intent_local_time, onset_local_time, settle_minutes}</code>. System prompt: surface only when <code>settle_minutes ≥ 25</code> AND the night also had poor sleep_score or recovery.</p>
+</div>
+</details>
+
+<details>
+<summary>Weekly synthesis (Opus, Sunday) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Files: <code>cron-weekly-synthesis.js</code> (dispatcher), <code>beta-weekly-synthesis-background.js</code> (worker), <code>lib/synthesis-tools.js</code> (tool registry), <code>lib/agentic-loop.js</code> (driver).</p>
+<p>Opus 4.7 with agentic tool loop. Tools available: <code>query_baselines</code>, <code>query_daily_rows</code>, <code>search_patterns</code>, <code>search_knowledge</code>, <code>compute_correlation</code>, <code>get_action_efficacy</code> (Phase 10), <code>get_raw_outcomes</code> (Phase 10), <code>get_plan_tune_efficacy</code> (Phase 11).</p>
+<p>Writes <code>weekly_briefs</code> + <code>patterns_discovered</code> rows. Patterns dedupe defends against re-discovering the same finding worded slightly differently (3+ shared distinctive tokens = same pattern). Strength-bump on reconfirm.</p>
+</div>
+</details>
+
+<details>
+<summary>Health sync (Oura V2 + Whoop V2 BYO) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>File: <code>cron-health-sync.js</code>. Two providers, both stateful (refresh tokens encrypted on <code>user_profiles</code> via AES-256-GCM with <code>ADMIN_ENCRYPTION_KEY</code>).</p>
+<p><strong>Oura</strong> — shared GSD OAuth app (env: <code>BETA_OURA_CLIENT_ID/SECRET</code>). Pulls every V2 endpoint exposed by Oura's personal-tier (full inventory in <code>docs/health-integrations.md</code>). <code>oura_daily</code> + per-event tables (oura_workouts, oura_tags, etc.). Refresh token stable, re-stored on every exchange anyway.</p>
+<p><strong>Whoop</strong> — per-user "bring your own developer app" model. User creates their own Whoop dev app at developer.whoop.com, enters <code>client_id</code> + <code>client_secret</code> in Settings (secret encrypted). Whoop rotates refresh token on every exchange. V2 endpoints: <code>/v2/cycle</code>, <code>/v2/recovery</code>, <code>/v2/activity/sleep</code>, <code>/v2/user/profile/basic</code>. <code>whoop_daily</code> table; <code>raw</code> jsonb preserves full API response.</p>
+<p>Sync log: <code>health_sync_log</code> (per-run rows with success / error / rows_upserted). Surfaced in Settings via <code>beta-whoop-creds.js?action=status</code>.</p>
+</div>
+</details>
+
+<details>
+<summary>Weather snapshot <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>File: <code>cron-weather-snapshot.js</code>. Hourly cron, fires per-user at local 05:00. Open-Meteo (no API key). Writes today + tomorrow to <code>weather_daily</code> (per-user, per-date). Brief reads via <code>lib/weather.js</code> with cache-first then fallback.</p>
+</div>
+</details>
+
+<details>
+<summary>Knowledge base (RAG) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Files: <code>beta-knowledge-ingest-background.js</code> (upload + extract + chunk + embed), <code>beta-knowledge-search.js</code> (RPC wrapper for semantic search).</p>
+<p>Pipeline: PDF → pdf-parse text OR image → Claude vision OCR. Chunk ~500 tokens. Embed via OpenAI <code>text-embedding-3-small</code> (1536-dim). Store in <code>knowledge_chunks</code> with pgvector. Lab PDFs (<code>kind='lab_results'</code>) trigger secondary structured-extract Claude call → <code>health_lab_results</code>. Search via <code>search_knowledge_chunks</code> RPC (cosine distance, top-k).</p>
+<p>Daily brief reads recent lab results (90-day window, deduped to latest per test_name) as context. Brief system prompt frames carefully — never quotes specific lab values in headline/subhead (medical-claim guard).</p>
+</div>
+</details>
+
+<details>
+<summary>Phase 10 — passive intervention tracking + single-subject A/B <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Files: <code>lib/recommendations.js</code> (with <code>pickVariant</code>), <code>lib/adherence-rules.js</code>, <code>cron-evaluate-actions.js</code>, schema <code>brief_action_outcomes.sql</code> + <code>v_user_action_efficacy.sql</code> + <code>v_user_action_efficacy_refresh_fn.sql</code>.</p>
+<p>Every brief recommendation gets a fingerprint (<code>recommendation_signature</code>). On generation, an outcome stub is inserted with baseline metric value + conditions snapshot + optional <code>variant_id</code> (when in an A/B band). Nightly cron at 23:00 local per user:</p>
+<ol>
+  <li>Score adherence for yesterday's outcomes by reading downstream data (today's oura_daily, today's workout_sessions, today's habit_completions). Per-signature rules in <code>adherence-rules.js</code>.</li>
+  <li>Fill T+1 outcomes (read source_metric from today).</li>
+  <li>Fill T+3 outcomes + set <code>computed_at</code>.</li>
+  <li>Refresh <code>v_user_action_efficacy</code> materialized view via <code>refresh_efficacy_view</code> SECURITY DEFINER RPC.</li>
+</ol>
+<p>Efficacy view rolls up by (user, signature, variant). Daily brief reads it for the <code>efficacy_profile</code> block. Weekly Opus reads via <code>get_action_efficacy</code> tool. Cold-start: efficacy block hidden until any signature has ≥5 outcomes.</p>
+<p>Full design doc: <a href="phase-10-passive-personalization.md"><code>docs/phase-10-passive-personalization.md</code></a>.</p>
+</div>
+</details>
+
+<details>
+<summary>Phase 11 — monthly workout tuner <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Files: <code>beta-train-tune-background.js</code> (the tuner), <code>beta-plan-tune-action.js</code> (accept/decline/revert endpoint), <code>lib/exercise-taxonomy.js</code> (compound primaries + muscle-group lookup), schemas <code>workout_plan_tunes.sql</code> + <code>workout_plans_tune_columns.sql</code>.</p>
+<p>Event-driven: <code>beta-progress-pic-analysis.js</code> fires the tuner after <code>ai_analysis</code> lands. Eligibility gate: 28-day cadence, active plan exists, latest pic has actionable focus_areas, no pending proposal already, not in back-off after 2 consecutive declines.</p>
+<p>Opus 4.7 tool-use call. Hard constraints: max 3 changes, ±20% weekly volume cap, compound primaries locked (bench/squat/deadlift/OHP/row/pulls — see <code>COMPOUND_PRIMARIES</code> in <code>lib/exercise-taxonomy.js</code>), no day with &gt;8 exercises post-tune. Literature backing: Schoenfeld 2017 dose-response, RP MEV/MRV, Helms weak-link principle, Bondarchuk/Issurin mesocycle variation.</p>
+<p>Server-side validation rejects policy violations (writes <code>status='expired'</code> with <code>declined_reason='policy_violation:&lt;code&gt;'</code>). Valid proposals stored as <code>status='pending'</code>. UI lifecycle: Accept → mutate plan + flip status; Decline → log reason; Revert → restore prior template + flip to <code>reverted</code>.</p>
+<p>Efficacy tracking lives on <code>workout_plan_tunes</code> itself (no <code>brief_action_outcomes</code> coupling since plan tunes don't have a daily_briefs FK). Weekly Opus reads via <code>get_plan_tune_efficacy</code> tool (computes accept_rate, revert_rate, focus_resolution_rate by comparing next pic's <code>needs_work</code> to the tune's <code>focus_areas_addressed</code>).</p>
+</div>
+</details>
+
+<details>
+<summary>Sleep intent x Oura delta capture <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Schema: <code>sleep_intents.sql</code>. Client writes directly via Supabase (RLS scoped to user). Cron pass in <code>cron-evaluate-actions.js</code> runs every hourly tick (not gated to 23:00). For each pending row where <code>intent_at &lt; now - 10h</code> and <code>computed_at IS NULL</code>: looks up next-morning <code>oura_daily</code> (date = sleepEndsLocalDate), computes onset as <code>midpoint_offset_min - total_sleep_min/2</code>, converts to UTC, stores <code>oura_detected_onset_at</code> + signed <code>oura_intent_delta_min</code> + <code>computed_at</code>.</p>
+<p>Button visible only 20:00-04:00 user-local. Most recent computed intent (within last 18h) flows into morning brief context as <code>yesterday.sleep_intent</code>.</p>
+</div>
+</details>
+
+<details>
+<summary>Ask chat (agentic) <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>Files: <code>beta-chat-ask-background.js</code>, schema <code>chat_messages.sql</code>. Sonnet 4.7 with agentic tool loop, same toolset as weekly synthesis. Prompt caching for system prompt + last 14 daily briefs. Ephemeral messages with 30-day TTL. Daily soft cap 20 messages, hard cap 25.</p>
+<p>Client writes user message rows directly; the background function only patches the assistant reply (lets the user see their own message instantly without waiting on the cold-start round-trip).</p>
+</div>
+</details>
+
+<details>
+<summary>Admin allowlist <span class="badge badge-shipped">SHIPPED</span></summary>
+<div class="details-body">
+<p>File: <code>admin-api.js</code>. <code>user_profiles.access_status</code> enum (<code>pending|active|revoked</code>). New signups land in <code>pending</code> with waitlist screen; login refuses non-<code>active</code> accounts. Tiny <code>/admin</code> page (gated to user_id list in env var) lists pending users with approve/revoke buttons.</p>
+</div>
+</details>
+</section>
+
+<!-- ───────────────── DATA MODEL ───────────────── -->
+<!-- BANK:section:data-model -->
+<section id="data-model">
+<h2>🗄 Data model quick reference</h2>
+<p class="quiet">Pointer list grouped by domain. Each table's migration in <code>supabase-migrations/</code>. RLS pattern noted; default is "select-own via auth.uid() = user_id" unless stated otherwise.</p>
+
+<table class="kv">
+  <tr><th>Domain</th><th>Tables</th></tr>
+  <tr><td>Identity &amp; access</td><td><code>user_profiles</code> (identity, access_status, encrypted refresh tokens, Whoop BYO creds), <code>user_preferences</code> (timezone, weather lat/lng/city), <code>user_settings_beta_enabled</code>, <code>user_profiles_access_status</code></td></tr>
+  <tr><td>Health raw</td><td><code>oura_daily</code> (date X = sleep ending on X), <code>whoop_daily</code> (per cycle+date), <code>oura_*</code> per-event tables, <code>whoop_byo_credentials</code>, <code>health_sync_log</code>, <code>health_lab_results</code></td></tr>
+  <tr><td>Health derived</td><td><code>baselines_views</code> (v_user_baselines_7d, v_user_baselines_30d, v_user_event_rates_30d, refreshed nightly), <code>weather_daily</code></td></tr>
+  <tr><td>Journal &amp; mood</td><td><code>journal_entries</code> (mood, reflections, learning), <code>journal_calendar_cache</code> (Google events per date), <code>journal_habit_summary</code>, <code>journal_photos_storage</code>, <code>mood_checkins</code> (intra-day with note), <code>calendar_event_meta</code> (relationship_tag, post-meeting energy), <code>google_calendars_synced</code> (pk is now <code>user_id + google_account_email + google_calendar_id</code> — empty email '' = primary signed-in account), <code>linked_google_accounts</code> (per-user secondary Google accounts; refresh_token encrypted; insert/update via service-role only), <code>search_journal</code></td></tr>
+  <tr><td>Habits</td><td><code>habits</code> (catalog), <code>habit_completions</code> (per-date), <code>habit_library</code> (templates), <code>habits_library_kind</code></td></tr>
+  <tr><td>Tasks</td><td><code>tasks</code> (with <code>top3</code>, <code>due</code>, <code>spawned</code>, <code>status</code>, <code>done</code>, <code>completed_at</code>)</td></tr>
+  <tr><td>Brief &amp; synthesis</td><td><code>daily_briefs</code> (UNIQUE on user_id+brief_date+mode; <code>structured</code> jsonb + legacy <code>narrative</code>), <code>weekly_briefs</code>, <code>patterns_discovered</code>, <code>pending_anomaly_alerts</code> (consumed by next brief)</td></tr>
+  <tr><td>Knowledge base (RAG)</td><td><code>knowledge_documents</code>, <code>knowledge_chunks</code> (vector(1536), pgvector ivfflat index), <code>knowledge_storage</code> bucket (private), <code>knowledge_search_rpc</code></td></tr>
+  <tr><td>Train</td><td><code>workout_plans</code> (one active per user; <code>day_template</code> jsonb; <code>last_plan_tune_at</code>, <code>last_plan_tune_id</code>), <code>workout_sessions</code> (with <code>ai_feedback</code> jsonb), <code>workout_sets</code>, <code>workout_templates_seed</code> (3 starter plans: PPL 6-day, Upper/Lower 4-day, ...), <code>body_comp_goals</code>, <code>body_comp_profile</code>, <code>progress_pics</code> (with <code>ai_analysis</code> jsonb from Claude vision)</td></tr>
+  <tr><td>Phase 10 (passive personalization)</td><td><code>brief_action_outcomes</code> (one row per actionable brief recommendation; signature + variant_id + baseline + adherence + T+1/T+3 outcomes), <code>v_user_action_efficacy</code> materialized view + <code>refresh_efficacy_view</code> RPC</td></tr>
+  <tr><td>Phase 11 (workout tuner)</td><td><code>workout_plan_tunes</code> (one row per proposal; prior + proposed day_template, changes diff, rationale, status lifecycle)</td></tr>
+  <tr><td>Sleep intent</td><td><code>sleep_intents</code> (intent_at + Oura-derived onset + delta, computed_at)</td></tr>
+  <tr><td>Chat</td><td><code>chat_messages</code> (ephemeral 30-day TTL)</td></tr>
+</table>
+</section>
+
+<!-- ───────────────── LEARNINGS ───────────────── -->
+<!-- BANK:section:learnings -->
+<section id="learnings">
+<h2>🧠 Learnings &amp; non-visualized context</h2>
+<p class="quiet">Invisible-but-important conventions. The kind of thing that's easy to violate by accident if you don't know it.</p>
+
+<ul>
+  <li><strong>Mood scale: 1 = Bad, 5 = Great.</strong> Lower number is worse, higher is better. After the <code>invert_mood_scale</code> migration. See <code>netlify/functions/lib/mood-scale.js</code> for the canonical mapping. Functions sending mood to Claude should translate the integer to a label and include the scale note explicitly — otherwise Claude defaults to "higher is worse" and confidently reports backwards.</li>
+  <li><strong>Oura date convention: <code>oura_daily.date = X</code> represents the sleep that ENDED on date X.</strong> So today's row contains last night's sleep. The brief's "recovery" block reads today's row; the "activity" block reads yesterday's row (activity_score on date X = the day X ending). Phase 1.6 fixed a bug where the brief read yesterday's row for sleep and showed stale numbers.</li>
+  <li><strong>Whoop V2 + BYO model.</strong> Each user creates their own developer app at developer.whoop.com. Whoop rotates the refresh token on every exchange. V1 (<code>/developer/v1/*</code>) was deprecated late 2025; V2 lives at the root (<code>/v2/*</code>). Response shapes mostly unchanged but pagination key shifted from <code>next_token</code> to <code>nextToken</code> in some endpoints — <code>whoopPaginate</code> accepts either defensively.</li>
+  <li><strong>Phase 2b (ES modules) was abandoned.</strong> Attempted 2026-04-21, hit runtime cycle issues, reverted. Do NOT retry mechanically; the existing classic-script-with-global-scope shape is intentional even though it looks dated.</li>
+  <li><strong>Beta is canonical /app.</strong> What was at <code>/beta/app</code> now lives at <code>/app</code>. Old beta URLs 301-redirect. Legacy 2.5k-line SPA archived to <code>/legacy-app.html</code> for rollback. <strong>App features go in <code>app.html</code></strong>; <code>index.html</code> is the marketing page.</li>
+  <li><strong>localStorage is never primary store.</strong> Per <code>feedback_long_term_best_practice</code> memory. Always do it the proper long-term way; localStorage is for ephemeral UI state only (e.g. workout draft autosave).</li>
+  <li><strong>Compound primaries are locked in the workout tuner.</strong> See <code>COMPOUND_PRIMARIES</code> in <code>netlify/functions/lib/exercise-taxonomy.js</code>. Substring match is case-insensitive; "bench press", "deadlift", "back squat", "overhead press", "barbell row", "pull-up", "lat pulldown", "dips" and variants are off-limits to the tuner. Accessory-only refinement keeps strength curves intact (Helms weak-link principle).</li>
+  <li><strong>Repos always stay private.</strong> Per global instruction. Never propose making a repo public — for any reason. If a build tool needs access, use the proper auth path (Cloud Build GitHub App, deploy keys, PATs, GitHub App tokens).</li>
+  <li><strong>Production-first validation.</strong> Per global instruction. Deploy directly to prod (Vercel, Cloud Run, Supabase, Netlify) and validate there. No "let's run this locally first to confirm" hybrid phases. Vercel env vars + cloud Secret Manager hold credentials.</li>
+  <li><strong>AI build speed: same-day completion is the default assumption.</strong> Per global instruction. A worker module is an hour, a connector is 30 minutes, a feature is a couple of hours. Don't pad estimates with human-team scales. The only things that take real wall-clock time: vendor sales cycles, external account approvals, burn-in periods that require accumulating real-world data, and human review windows when Joe explicitly wants thinking time.</li>
+  <li><strong>Brief in two modes per local day.</strong> Morning brief = 04:00-16:00 local; evening = 16:00-04:00. Each gets its own row in <code>daily_briefs</code> via the (user_id, brief_date, mode) UNIQUE. <code>normalizeMode</code> derives the right mode from the user's timezone.</li>
+  <li><strong>Sleep button window: 20:00-04:00 local.</strong> Outside that, <code>briefSleepButtonVisible()</code> returns false and the head-strip slot collapses. The brief's right-side slot otherwise carries the weather chip (morning) or is empty (evening).</li>
+  <li><strong>Brief-recommendation signatures.</strong> <code>bedtime_target:HH:MM</code> for sleep targets; <code>plan_tune:&lt;ops&gt;_for_&lt;focus&gt;</code> for workout tunes; <code>plan_tune:rejected:&lt;code&gt;</code> for tuner policy violations; <code>plan_tune:abstain</code> for tuner abstain decisions. The efficacy view groups by (user, signature, variant) so deterministic and A/B outcomes don't mix.</li>
+  <li><strong>Netlify sync functions: await your persists.</strong> Fire-and-forget promises (<code>foo(...).catch(...)</code>) at the end of a handler can be torn down before they resolve when Lambda recycles the execution context. The <code>workout_sessions.ai_feedback</code> bug came from this pattern. Pattern to use: <code>await persist(...)</code> inside a try/catch so the response still ships even if the persist fails. For genuinely long writes, use a background function (<code>*-background.js</code>) instead.</li>
+  <li><strong>PostgREST silently down-casts objects to text for text columns.</strong> If you POST <code>{"foo": {"bar": 1}}</code> and column <code>foo</code> is text, it stores <code>'{"bar": 1}'</code> (a string). The reader gets a string back, not an object. Lesson: when a column holds structured data, make it <code>jsonb</code>. Cast loss-of-fidelity is silent on write but breaks the read path.</li>
+</ul>
+</section>
+
+<!-- ───────────────── OPEN QUESTIONS ───────────────── -->
+<!-- BANK:section:open-questions -->
+<section id="open-questions">
+<h2>🔮 Open questions &amp; known weirdness</h2>
+
+<ul>
+  <li><strong>Whoop V2 response-shape verification.</strong> After deploy, the first nightly Whoop sync will log field-key arrays to Netlify console. If field names differ from the V1 accessors (e.g. <code>recovery_score</code> nested under a different sub-object), the existing field extraction will produce nulls. Watch the first run's logs; patch <code>syncWhoopUser</code> accessors if needed. Remove the probe <code>console.log</code> lines after one clean run.</li>
+  <li><strong>Plan-tune efficacy needs n_proposed ≥ 3 per signature.</strong> Weekly synthesis prompt explicitly skips surfacing patterns when fewer (cold start protection). At monthly cadence + signature granularity, this means the first plan-tune patterns won't appear in weekly synthesis until ~3-4 months in. Not a bug — just a long warm-up.</li>
+  <li><strong>Sleep-intent visualization deferred.</strong> Data accumulates passively; surfacing waits on ~14 paired observations before a "settle time" stat is honest.</li>
+  <li><strong>Refresh button on preliminary brief re-pulls Oura.</strong> User-initiated refresh on a preliminary brief calls <code>beta-sync-now?provider=oura&amp;days=2</code> before the brief regen. If the user pulls the brief 5+ times in a row, that's 5 Oura re-pulls. Soft rate-limit on the Oura side may eventually throttle; not seen in practice but worth knowing.</li>
+  <li><strong>Goal-aware tuning not modeled.</strong> Tuner reads <code>body_comp_goals</code> as context but treats bulk/cut/recomp identically. Cut phases would ideally tighten the +20% volume cap; bulks might loosen it. Hold until evidence accumulates.</li>
+</ul>
+</section>
+
+<!-- ───────────────── SOURCE OF TRUTH ───────────────── -->
+<!-- BANK:section:source-of-truth -->
+<section id="source-of-truth">
+<h2>📚 Source-of-truth pointers</h2>
+
+<h3>Plan files (<code>~/.claude/plans/</code>)</h3>
+<ul>
+  <li><a href="../../../.claude/plans/i-want-this-app-hidden-wall.md"><code>i-want-this-app-hidden-wall.md</code></a> — Master 10-phase lifestyle OS blueprint. Locked decisions, architectural detail, every phase 0-10 spec. THE source of truth for design intent.</li>
+  <li><a href="../../../.claude/plans/let-s-plan-two-next-rosy-hoare.md"><code>let-s-plan-two-next-rosy-hoare.md</code></a> — Recent multi-part plan: Whoop V2 + workout tuner (shipped), plus Part 3 = this knowledge bank.</li>
+  <li>17 other plans archive prior work (home tab, lifestyle redesign, content mix, etc.).</li>
+</ul>
+
+<h3>Project memory (<code>~/.claude/projects/&lt;this project&gt;/memory/</code>)</h3>
+<ul>
+  <li><code>MEMORY.md</code> — index of 17+ entries. Always check this for project-specific facts before assuming.</li>
+  <li>Recent entries cover: lifestyle OS plan, beta environment, Whoop BYO, Whoop V1 deprecation, Oura V2 integration, Dropbox integration, Home tab, Phase 2b reverted.</li>
+</ul>
+
+<h3>Repo docs (<code>docs/</code>)</h3>
+<ul>
+  <li><a href="health-integrations.md"><code>health-integrations.md</code></a> — Canonical Oura V2 + Whoop V2 data inventory. Feature-scoped technical reference.</li>
+  <li><a href="audit-2026-05.md"><code>audit-2026-05.md</code></a> — Phase 2 tech-debt audit findings + fixes.</li>
+  <li><a href="phase-10-passive-personalization.md"><code>phase-10-passive-personalization.md</code></a> — Phase 10 design doc.</li>
+  <li><a href="app-knowledge-bank.html"><code>app-knowledge-bank.html</code></a> — This file.</li>
+</ul>
+
+<h3>Live deploy</h3>
+<ul>
+  <li>Production: <a href="https://gsdtasks.com">gsdtasks.com</a> (canonical <code>/app</code>).</li>
+  <li>Dev: Netlify preview from <code>dev</code> branch.</li>
+</ul>
+</section>
+
+<hr>
+<p class="quiet">If this file ever feels wrong or stale, patch it directly. The bank is meant to mutate.</p>
+
+</main>
+</div>
+</body>
+</html>

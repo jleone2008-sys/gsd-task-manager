@@ -11,7 +11,10 @@ const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
 
 const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
-const WHOOP_API       = 'https://api.prod.whoop.com/developer';
+// V2: Whoop dropped the /developer prefix; profile endpoint moved from
+// /developer/v1/user/profile/basic to /v2/user/profile/basic. Response
+// shape is unchanged ({user_id, email, first_name, last_name}).
+const WHOOP_API       = 'https://api.prod.whoop.com';
 
 exports.handler = async (event) => {
   const { code, state, error } = event.queryStringParameters || {};
@@ -91,7 +94,7 @@ exports.handler = async (event) => {
   // Fetch profile for display + user_id
   let whoopEmail = null, whoopUserId = null;
   try {
-    const profRes = await fetch(`${WHOOP_API}/v1/user/profile/basic`, {
+    const profRes = await fetch(`${WHOOP_API}/v2/user/profile/basic`, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     if (profRes.ok) {

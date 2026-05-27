@@ -17,7 +17,12 @@ const { createCipheriv, createDecipheriv, randomBytes } = require('crypto');
 
 const SUPABASE_URL    = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
-const WHOOP_API       = 'https://api.prod.whoop.com/developer';
+// Whoop's V1 endpoints (under /developer/v1/) were deprecated in 2025; V2
+// lives at the root with /v2/* paths. Response shapes are largely the same
+// (metrics still nested under `score`); pagination key may have shifted from
+// `next_token` to `nextToken` — whoopPaginate handles both defensively and
+// logs which form it sees so any further drift surfaces in Netlify logs.
+const WHOOP_API       = 'https://api.prod.whoop.com';
 const OURA_TOKEN_URL  = 'https://api.ouraring.com/oauth/token';
 const OURA_API        = 'https://api.ouraring.com/v2/usercollection';
 
@@ -151,10 +156,19 @@ async function syncWhoopUser(email, start, end, serviceKey, encKey) {
   const authHdr  = { Authorization: `Bearer ${accessToken}` };
 
   const [cycles, recoveries, sleeps] = await Promise.all([
-    whoopPaginate(`${WHOOP_API}/v1/cycle?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, authHdr),
-    whoopPaginate(`${WHOOP_API}/v1/recovery?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, authHdr),
-    whoopPaginate(`${WHOOP_API}/v1/activity/sleep?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, authHdr),
+    whoopPaginate(`${WHOOP_API}/v2/cycle?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, authHdr),
+    whoopPaginate(`${WHOOP_API}/v2/recovery?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, authHdr),
+    whoopPaginate(`${WHOOP_API}/v2/activity/sleep?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`, authHdr),
   ]);
+
+  // V2 shape probe — log the keys of the first row from each endpoint so any
+  // shape drift versus the field accessors below shows up immediately in
+  // Netlify logs after a deploy. Safe to leave in long-term — once per user
+  // per nightly run is trivial volume — but harmless to remove after the
+  // first confirmed-clean run.
+  if (cycles[0])     console.log('whoop-v2 cycle[0] keys:',     Object.keys(cycles[0]),     'score keys:', cycles[0].score     ? Object.keys(cycles[0].score)     : null);
+  if (recoveries[0]) console.log('whoop-v2 recovery[0] keys:',  Object.keys(recoveries[0]), 'score keys:', recoveries[0].score ? Object.keys(recoveries[0].score) : null);
+  if (sleeps[0])     console.log('whoop-v2 sleep[0] keys:',     Object.keys(sleeps[0]),     'score keys:', sleeps[0].score     ? Object.keys(sleeps[0].score)     : null);
 
   // Index by cycle_id for join
   const recByCycle = new Map();
@@ -211,14 +225,18 @@ async function syncWhoopUser(email, start, end, serviceKey, encKey) {
 async function whoopPaginate(baseUrl, authHdr) {
   const all = [];
   let url = baseUrl + '&limit=25';
-  // Cap pagination to prevent runaway loops (3 days of data is <<25 pages even for power users)
+  // Cap pagination to prevent runaway loops (3 days of data is <<25 pages
+  // even for power users). Pagination key varies between V1 (`next_token`)
+  // and V2 (sometimes `nextToken`); accept either to be defensive against
+  // further drift.
   for (let i = 0; i < 12; i++) {
     const r = await fetch(url, { headers: authHdr });
     if (!r.ok) throw new Error(`whoop ${baseUrl} HTTP ${r.status}`);
     const j = await r.json();
     if (Array.isArray(j?.records)) all.push(...j.records);
-    if (!j?.next_token) break;
-    url = baseUrl + `&limit=25&nextToken=${encodeURIComponent(j.next_token)}`;
+    const nextToken = j?.next_token || j?.nextToken;
+    if (!nextToken) break;
+    url = baseUrl + `&limit=25&nextToken=${encodeURIComponent(nextToken)}`;
   }
   return all;
 }

@@ -250,6 +250,71 @@ function signInWithGoogle() {
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
 }
 
+/* ── BETA: Link a SECONDARY Google account (without replacing the
+   primary signed-in session). state == the user's current Supabase
+   access_token so beta-link-google-account.js can identify the user
+   on callback. prompt=select_account forces Google to show the chooser
+   so the user picks a different account than the primary. ── */
+async function linkGoogleAccount() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.access_token) {
+      if (typeof showToast === 'function') showToast('Sign in first', 'offline');
+      return;
+    }
+    const params = new URLSearchParams({
+      client_id:     BETA_GOOGLE_CLIENT_ID,
+      redirect_uri:  window.location.origin + '/.netlify/functions/beta-link-google-account',
+      response_type: 'code',
+      scope: [
+        'openid', 'email', 'profile',
+        'https://www.googleapis.com/auth/calendar.readonly',
+      ].join(' '),
+      access_type:    'offline',
+      prompt:         'consent select_account',
+      include_granted_scopes: 'false',
+      state:          session.access_token,
+    });
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+  } catch (e) {
+    console.warn('[link-google] failed to initiate', e);
+    if (typeof showToast === 'function') showToast('Could not start link flow', 'offline');
+  }
+}
+
+/* ── BETA: Handle the post-link redirect (#linked=email or
+   #link_error=...). Shows a toast and re-renders the settings page
+   so the new account appears. ── */
+function handleLinkGoogleCallback() {
+  if (!location.hash) return false;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const linked = params.get('linked');
+  const err    = params.get('link_error');
+  if (!linked && !err) return false;
+  history.replaceState(null, '', location.pathname);
+  if (err) {
+    const friendly = err === 'same_as_primary'
+      ? 'That account is already signed in as your primary'
+      : `Could not link account (${err})`;
+    if (typeof showToast === 'function') showToast(friendly, 'offline');
+    return true;
+  }
+  if (typeof showToast === 'function') showToast(`Linked ${linked}`, 'ok');
+  // Refresh settings panel + journal calendar cache so toggles appear.
+  if (typeof loadConnectedCalendars === 'function') {
+    loadConnectedCalendars().then(() => {
+      if (typeof renderSettingsPage === 'function' && typeof activeTool !== 'undefined' && activeTool === 'settings') {
+        renderSettingsPage();
+      }
+    });
+  }
+  if (typeof journalState !== 'undefined' && journalState?.calendarEvents) {
+    journalState.calendarEvents.clear();
+    journalState.enabledCalendarIds = null;
+  }
+  return true;
+}
+
 /* ── BETA: Handle redirect back from Netlify function ── */
 async function handleBetaOAuthCallback() {
   if (!location.hash.includes('id_token=')) return false;
@@ -818,6 +883,7 @@ async function restoreSession() {
   // Pick up any pending integration-connect result so we can toast/refresh after auth resumes
   consumeDropboxCallbackHash();
   consumeIntegrationCallbackHash();
+  handleLinkGoogleCallback();
 
   const { data: { session } } = await db.auth.getSession();
   if (session?.user) {

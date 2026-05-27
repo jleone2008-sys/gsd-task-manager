@@ -157,10 +157,24 @@ exports.handler = async (event) => {
 
     if (ctx._oura_stale && result.status === 'ok') {
       result.status = 'preliminary';
-      result.fallback_reason = 'oura_data_stale_at_generation';
+      // Distinguish the partial-fill case from full-stale so the brief UI
+      // can render an actionable "open the Oura app" hint instead of the
+      // generic "tap refresh" message. Both still set status=preliminary
+      // so the existing affordance still appears.
+      result.fallback_reason = ctx._oura_partial_sleep
+        ? 'oura_sleep_data_missing'
+        : 'oura_data_stale_at_generation';
     }
 
     const stored = await storeBrief(user, date, mode, result, serviceKey);
+    // Phase 10 — record action outcome stubs for any recognized
+    // recommendations in this brief. Fire-and-forget so a stub-insert
+    // hiccup doesn't fail the brief response. cron-evaluate-actions.js
+    // fills in adherence + outcomes over the following 3 days.
+    if (Array.isArray(result.action_stubs) && result.action_stubs.length && stored?.id) {
+      recordActionStubs(stored.id, user, date, mode, result.action_stubs, serviceKey)
+        .catch(err => console.warn('[daily-brief] action stub insert failed:', err.message));
+    }
     // Phase 7 — mark pending anomaly alerts consumed by THIS brief.
     // Reads from the ctx we built earlier; alerts that influenced this
     // generation won't repeat in the next brief. Best-effort — a
@@ -443,12 +457,29 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   const yEnd   = yStart + 86400_000;
   const tasksYesterday = (tasksAll || []).filter(t => t.completed_at && t.completed_at >= yStart && t.completed_at < yEnd);
 
-  // Oura freshness
+  // Oura freshness. Two failure modes:
+  //
+  //   1. Row missing or stale by wall-clock (>24h since updated_at) — the
+  //      classic "Oura hasn't synced at all" case. Brief flagged
+  //      preliminary; UI shows generic refresh affordance.
+  //
+  //   2. Row exists and is recently updated BUT sleep_score is null — the
+  //      "partial-fill" case caught 2026-05-27: Oura streamed activity
+  //      data overnight but the user hadn't opened the Oura app, so
+  //      cloud-side scoring of last night's sleep hasn't happened yet.
+  //      Equally preliminary, but the actionable fix is different —
+  //      "open the Oura app to push last night" rather than just "tap
+  //      refresh." Tagged via _oura_partial_sleep so the UI can render
+  //      the more specific hint.
   const recoveryRow = ouraToday?.[0] || null;
   const activityRow = ouraYesterday?.[0] || null;
-  const ouraStale = !recoveryRow
+  const ouraWallClockStale = !recoveryRow
     || !recoveryRow.updated_at
     || (Date.now() - new Date(recoveryRow.updated_at).getTime()) > OURA_STALE_HOURS * 3600_000;
+  const ouraPartialSleep = !ouraWallClockStale
+    && recoveryRow
+    && recoveryRow.sleep_score == null;
+  const ouraStale = ouraWallClockStale || ouraPartialSleep;
 
   // Tag rollup
   const tagCounts = {};
@@ -529,8 +560,71 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   // Tomorrow's prescribed (evening mode).
   const workoutTomorrowPlanned = dayForDow(activePlan, tomorrowDow3);
 
+  // Sleep intent (morning mode only) — pull the most recent sleep_intent
+  // that's been matched against Oura. If the user tapped "Bed" last
+  // night and the cron has computed the delta to Oura's detected onset,
+  // surface it on the morning brief so Claude can reference settle time
+  // when framing recovery. Skipped on evening briefs (last night's intent
+  // already had its morning surfacing) and on briefs with no fresh
+  // computed intent. Only the most recent COMPUTED row matters here —
+  // unmatched intents (cron hasn't filled the delta yet) are hidden
+  // because Claude can't reason about an empty delta.
+  let sleepIntentForBrief = null;
+  if (mode === 'morning') {
+    const cutoffIso = new Date(Date.now() - 18 * 3600_000).toISOString();
+    const sleepIntentRows = await fetchJson(
+      `${SUPABASE_URL}/rest/v1/sleep_intents`
+        + `?user_id=eq.${user.user_id}`
+        + `&intent_at=gte.${encodeURIComponent(cutoffIso)}`
+        + `&computed_at=not.is.null`
+        + `&select=intent_at,oura_detected_onset_at,oura_intent_delta_min`
+        + `&order=intent_at.desc&limit=1`,
+      hdr,
+    );
+    const si = sleepIntentRows?.[0];
+    if (si && si.oura_intent_delta_min != null) {
+      const tz = user.timezone || DEFAULT_TIMEZONE;
+      sleepIntentForBrief = {
+        intent_local_time:   formatLocalClockTime(si.intent_at, tz),
+        onset_local_time:    formatLocalClockTime(si.oura_detected_onset_at, tz),
+        // Rounded to whole minutes — sub-minute precision is noise.
+        settle_minutes:      Math.round(Number(si.oura_intent_delta_min)),
+      };
+    }
+  }
+
+  // Phase 10 — read this user's efficacy profile from
+  // v_user_action_efficacy. Only signatures with >=5 observations are
+  // surfaced; the materialized view is refreshed nightly by
+  // cron-evaluate-actions.js. Returns [] when there's nothing yet
+  // (cold-start: brief runs as today's logic, no efficacy steering).
+  const efficacyRowsRaw = await fetchJson(
+    `${SUPABASE_URL}/rest/v1/v_user_action_efficacy?user_id=eq.${user.user_id}&n_observations=gte.5&select=recommendation_signature,variant_id,source_metric,n_observations,mean_adherence,mean_delta_t1_when_followed,mean_delta_t1_when_ignored,n_followed,n_ignored,stddev_delta_t1_when_followed`,
+    hdr,
+  );
+  const efficacy_profile = (efficacyRowsRaw || []).map(r => {
+    const n          = Number(r.n_observations || 0);
+    const stddev     = r.stddev_delta_t1_when_followed != null ? Number(r.stddev_delta_t1_when_followed) : null;
+    const confidence = (n >= 20 && stddev != null && stddev < 7) ? 'high'
+                     : (n >= 10) ? 'medium' : 'low';
+    const round1 = (v) => (v == null ? null : Number(Number(v).toFixed(1)));
+    const round2 = (v) => (v == null ? null : Number(Number(v).toFixed(2)));
+    return {
+      signature:           r.recommendation_signature,
+      variant_id:          r.variant_id || null,
+      metric:              r.source_metric,
+      n:                   n,
+      n_followed:          Number(r.n_followed || 0),
+      n_ignored:           Number(r.n_ignored || 0),
+      adherence:           round2(r.mean_adherence),
+      delta_when_followed: round1(r.mean_delta_t1_when_followed),
+      delta_when_ignored:  round1(r.mean_delta_t1_when_ignored),
+      confidence:          confidence,
+    };
+  });
+
   const ctx = {
-    user: { timezone: user.timezone },
+    user: { timezone: user.timezone, user_id: user.user_id },
     scales: { mood: MOOD_SCALE_NOTE },
     mode,
     brief_date: brief_date,
@@ -581,6 +675,15 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       // Train session logged for yesterday (if any). Summary only — full
       // set list is in train_recent for token-budget reasons.
       workout: summarizeSession(workoutYesterday),
+      // Sleep-intent comparison: user-tapped bedtime vs Oura's detected
+      // sleep onset for last night. Only populated on morning briefs when
+      // the cron has matched the intent against Oura data. Null when no
+      // intent was logged, when the cron hasn't computed yet, or when
+      // it's an evening brief. Claude uses settle_minutes as the framing
+      // signal: <10 = fast (no callout needed), 10-25 = normal,
+      // 25+ = long settle (worth surfacing when the night was also low-
+      // sleep or low-recovery).
+      sleep_intent: sleepIntentForBrief,
     },
     today_plan: {
       date: today,
@@ -680,6 +783,18 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     // z_score, direction. After the brief consumes them, they're
     // marked consumed_at so they don't repeat.
     pending_anomalies: (pendingAnomalies || []),
+    // Internal flag — distinguishes partial-fill staleness ("activity
+    // present, sleep null — open the Oura app") from wall-clock staleness
+    // ("nothing synced in 24h — tap refresh"). Stripped from the Claude
+    // payload in callClaude alongside _oura_stale.
+    _oura_partial_sleep: ouraPartialSleep,
+    // Phase 10 — internal calibration data. Claude leans into signatures
+    // with positive delta_when_followed and away from ones with negative
+    // or zero. Empty array during cold-start (≥5 outcomes per signature
+    // needed before a row appears). See lib/recommendations.js for how
+    // signatures are minted; cron-evaluate-actions.js for how outcomes
+    // are scored; v_user_action_efficacy.sql for the rollup.
+    efficacy_profile: efficacy_profile,
     _oura_stale: ouraStale,
   };
 
@@ -1218,8 +1333,8 @@ async function callClaude(ctx, mode, anthropicKey) {
 
   const systemPrompt = buildSystemPrompt(mode, ctx, { coldStart, baselineN });
 
-  // Strip internal flags
-  const { _oura_stale, ...payload } = ctx;
+  // Strip internal flags before sending to Claude
+  const { _oura_stale, _oura_partial_sleep, ...payload } = ctx;
 
   const body = {
     model:      model,
@@ -1250,26 +1365,29 @@ async function callClaude(ctx, mode, anthropicKey) {
   const toolUseBlock = (j.content || []).find(b => b.type === 'tool_use' && b.name === 'record_daily_brief');
   if (!toolUseBlock) throw new Error(`no_tool_use_in_response: stop_reason=${j.stop_reason}`);
 
-  // Server-side normalization
+  // Server-side normalization. Returns { structured, action_stubs } on
+  // success, null on rejection.
   const raw = toolUseBlock.input || {};
   const normalized = normalizeStructured(raw, mode, ctx);
   if (normalized === null) {
     console.warn('daily-brief: normalization rejected output (banned phrase or invalid shape), substituting fallback');
     return buildFallback({ reason: 'normalization_rejected', context: ctx, mode });
   }
+  const { structured, action_stubs } = normalized;
 
   // Build flat narrative fallback for legacy clients
-  const flatNarrative = buildFlatNarrative(normalized);
+  const flatNarrative = buildFlatNarrative(structured);
 
   return {
     status:            'ok',
-    structured:        normalized,
+    structured,
+    action_stubs,
     mode:              mode,
     narrative:         flatNarrative,
     tldr:              null,
     highlights:        [],
     actions:           [],
-    confidence:        normalized.confidence || 'low',
+    confidence:        structured.confidence || 'low',
     model:             j.model || model,
     prompt_tokens:     j.usage?.input_tokens || null,
     completion_tokens: j.usage?.output_tokens || null,
@@ -1310,8 +1428,18 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
     '- yesterday.mood_checkins / today_recap.mood_checkins = individual mood entries with optional user reflection notes (e.g. "rough morning, slept badly"). When a note carries a clear theme that connects to other data (low HRV + "anxious meeting day"), reference it in subhead/pills using neutral paraphrase — NEVER quote the user\'s words verbatim back at them in the headline. Mood notes alone aren\'t enough to override the wearable signal but they sharpen the "why" framing.',
     '- yesterday.habits.done_names = specific habits the user completed yesterday (e.g. "Reading / Podcast", "10k steps"). Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise. Skip on days where every habit was hit (the counts already say "100%").',
+    '- yesterday.sleep_intent = the user\'s self-reported bedtime + Oura\'s detected sleep onset + the gap in minutes between them (settle_minutes). Present only on morning briefs and only when both the tap and Oura\'s data exist. Use settle_minutes as the framing signal: <10 = fast, 10-25 = normal (no callout), 25+ = long settle. Surface in subhead/pills ONLY when settle_minutes >= 25 AND the night also had poor sleep_score or low recovery — combined signal that the user was trying to wind down but the body wasn\'t cooperating. Phrase as "took ~30 min to fall asleep" or "long settle time" — never quote the exact intent_local_time back at the user; they tapped it, they don\'t need to read it again. Skip entirely when sleep_intent is null or settle_minutes is small.',
     coldStart
       ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
+      : '',
+    // Phase 10 — efficacy profile addendum. Only added when there's at
+    // least one signature with the minimum sample size. Tells Claude
+    // which of the system's past recommendations have actually moved
+    // the target metric for THIS user — so the brief reinforces
+    // patterns the data shows are working and de-emphasizes ones that
+    // aren't. Never surfaced to the user in copy.
+    (Array.isArray(ctx.efficacy_profile) && ctx.efficacy_profile.length > 0)
+      ? 'RESPONSE PROFILE: efficacy_profile in your context lists the system\'s past recommendation signatures with measured outcomes for this user — adherence rate, mean delta of the source_metric when followed (≥0.7 score) vs when ignored (≤0.3). Treat positive delta_when_followed as evidence the recommendation TYPE is working for them; negative or zero deltas mean the recommendation isn\'t landing and should be deprioritized in headline/subhead framing. NEVER mention efficacy_profile or its numbers in your output — this is internal calibration only. Do not name signatures back to the user.'
       : '',
   ].filter(Boolean);
   return lines.join('\n');
@@ -1394,27 +1522,64 @@ function normalizeStructured(raw, mode, ctx) {
   // Fully deterministic sleep target — Claude's output is no longer
   // considered. recommendSleepTarget picks between 9:30 / 10:00 / 10:30 PM
   // based on recovery + body-temp deviation + logged sickness tags.
-  const sleepTarget = recommendSleepTarget({
+  // Phase 10 — returns {value, variant_id, signature, regime, conditions}.
+  // value is the legacy string; variant_id is non-null only when
+  // pickVariant fired (currently the readiness 61–75 ambiguous band).
+  const sleepRec = recommendSleepTarget({
     recovery:    ctx.yesterday?.recovery,
     activity:    ctx.yesterday?.activity,
     tags:        ctx.yesterday?.tags,
     baselines7d: ctx.baselines_7d,
+    seed:        `${ctx.user?.user_id || 'anon'}|${ctx.brief_date || ''}|${mode}`,
   });
-  const recap        = buildRecap(mode, ctx, sleepTarget);
+  const sleepTarget = sleepRec.value;
+  const recap       = buildRecap(mode, ctx, sleepTarget);
 
   const confidence = ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'low';
 
   return {
-    mode,
-    weather_chip,
-    headline,
-    subhead,
-    hero_metric,
-    stats,
-    evidence_pills: pills,
-    recap,
-    confidence,
+    structured: {
+      mode,
+      weather_chip,
+      headline,
+      subhead,
+      hero_metric,
+      stats,
+      evidence_pills: pills,
+      recap,
+      confidence,
+    },
+    action_stubs: buildActionStubs(sleepRec, mode, ctx),
   };
+}
+
+// Phase 10 — turn deterministic recommendation outputs into outcome
+// stubs the cron later fills in. Only known signatures get stubs;
+// the bedtime_target row is the one universally-present recommendation
+// today (every brief sets a sleep target). Future entries
+// (intensity_reduce, habit_focus, push_workout) wire in here once their
+// recommendation functions exist.
+function buildActionStubs(sleepRec, mode, ctx) {
+  const stubs = [];
+  if (sleepRec && sleepRec.signature) {
+    // Baseline: today's sleep_score (the night that just ended). T+1
+    // outcome read by cron-evaluate-actions will be tomorrow's
+    // sleep_score (the night after the bedtime is acted on) — that's
+    // the metric the recommendation is trying to move.
+    const baselineSleep = ctx.yesterday?.recovery?.sleep_score ?? null;
+    stubs.push({
+      action_index:             0,
+      recommendation_signature: sleepRec.signature,
+      variant_id:               sleepRec.variant_id || null,
+      source_metric:            'sleep_score',
+      baseline_value:           baselineSleep != null ? Number(baselineSleep) : null,
+      conditions_snapshot:      {
+        regime:    sleepRec.regime || null,
+        ...(sleepRec.conditions || {}),
+      },
+    });
+  }
+  return stubs;
 }
 
 // Flatten structured output into a plain-text narrative for legacy clients
@@ -1461,13 +1626,15 @@ function buildFallback({ reason, context, mode }) {
   const stats        = buildStats(hero_metric.key, ctxSafe);
   const weatherSrc   = mode === 'evening' ? ctxSafe.tomorrow_plan?.weather : ctxSafe.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
-  const serverSleepTarget = recommendSleepTarget({
+  const sleepRec = recommendSleepTarget({
     recovery:    ctxSafe.yesterday?.recovery,
     activity:    ctxSafe.yesterday?.activity,
     tags:        ctxSafe.yesterday?.tags,
     baselines7d: ctxSafe.baselines_7d,
+    seed:        `${ctxSafe.user?.user_id || 'anon'}|${ctxSafe.brief_date || ''}|${mode}|fallback`,
   });
-  const recap        = buildRecap(mode, ctxSafe, serverSleepTarget);
+  const serverSleepTarget = sleepRec.value;
+  const recap             = buildRecap(mode, ctxSafe, serverSleepTarget);
 
   const structured = {
     mode,
@@ -1484,6 +1651,7 @@ function buildFallback({ reason, context, mode }) {
   return {
     status:            'fallback',
     structured,
+    action_stubs:      buildActionStubs(sleepRec, mode, ctxSafe),
     mode,
     narrative:         buildFlatNarrative(structured),
     tldr:              null,
@@ -1493,7 +1661,7 @@ function buildFallback({ reason, context, mode }) {
     model:             null,
     prompt_tokens:     null,
     completion_tokens: null,
-    input_snapshot:    context ? (() => { const { _oura_stale, ...p } = context; return p; })() : null,
+    input_snapshot:    context ? (() => { const { _oura_stale, _oura_partial_sleep, ...p } = context; return p; })() : null,
     fallback_reason:   reason,
   };
 }
@@ -1538,6 +1706,46 @@ async function storeBrief(user, brief_date, mode, result, serviceKey) {
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
+// ── Phase 10: action stub recording ───────────────────────────────────────
+// Insert one brief_action_outcomes row per recognized recommendation in
+// the brief. Idempotent via the (brief_id, action_index) UNIQUE — a
+// force-regen of the same brief upserts the same stub rather than
+// duplicating. cron-evaluate-actions.js fills in adherence_score (next
+// morning) and value_at_t_plus_1 / value_at_t_plus_3 (over 3 days),
+// then sets computed_at. Once computed_at is set, v_user_action_efficacy
+// picks the row up on the nightly refresh.
+async function recordActionStubs(briefId, user, briefDate, briefMode, stubs, serviceKey) {
+  if (!Array.isArray(stubs) || stubs.length === 0) return;
+  const rows = stubs.map((s, i) => ({
+    user_id:                  user.user_id,
+    brief_id:                 briefId,
+    brief_date:               briefDate,
+    brief_mode:               briefMode,
+    action_index:             s.action_index ?? i,
+    recommendation_signature: s.recommendation_signature,
+    variant_id:               s.variant_id || null,
+    source_metric:            s.source_metric,
+    baseline_value:           s.baseline_value ?? null,
+    baseline_value_text:      s.baseline_value_text || null,
+    conditions_snapshot:      s.conditions_snapshot || null,
+  }));
+  const url = `${SUPABASE_URL}/rest/v1/brief_action_outcomes?on_conflict=brief_id,action_index`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      apikey:          serviceKey,
+      Authorization:   `Bearer ${serviceKey}`,
+      Prefer:          'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`brief_action_outcomes upsert failed: ${r.status} ${text.slice(0, 200)}`);
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 async function fetchJson(url, hdr) {
   try {
@@ -1562,6 +1770,17 @@ function localDate(date, tz) {
     timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
   });
   return fmt.format(date);
+}
+// "10:23 PM" style clock time in the user's timezone for an ISO timestamp.
+// Returns null on bad input so callers can guard. Used to render sleep_intent
+// times in the brief context payload.
+function formatLocalClockTime(iso, tz) {
+  if (!iso) return null;
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return null;
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
+  }).format(dt);
 }
 function shiftDate(dateStr, days) {
   const [y, m, d] = dateStr.split('-').map(Number);

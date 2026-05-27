@@ -73,6 +73,39 @@ async function loadOuraScores() {
   return _homeOuraInflight;
 }
 
+// Whoop equivalent of loadOuraScores. whoop_daily has a select-own RLS
+// policy (oura_daily_select_policy.sql) so the client can read directly.
+// The rings normalize Whoop's three signals into the same 0-100 shape the
+// Oura ring renderer expects: recovery_score (already 0-100), strain
+// (0-21, scaled to 0-100), sleep_performance (already 0-100). The raw
+// strain value is shown in the trend chip beneath the ring so the user
+// can still see the actual Whoop number.
+let _homeWhoop = null;
+let _homeWhoopInflight = null;
+async function loadWhoopScores() {
+  if (_homeWhoop) return _homeWhoop;
+  if (_homeWhoopInflight) return _homeWhoopInflight;
+  _homeWhoopInflight = (async () => {
+    console.time('[perf] home.whoop');
+    try {
+      const { data, error } = await db.from('whoop_daily')
+        .select('date,recovery_score,strain,sleep_performance')
+        .order('date', { ascending: false })
+        .limit(14);
+      if (error) throw error;
+      _homeWhoop = { days: data || [] };
+      return _homeWhoop;
+    } catch (e) {
+      console.warn('[home] whoop scores load failed', e);
+      return null;
+    } finally {
+      console.timeEnd('[perf] home.whoop');
+      _homeWhoopInflight = null;
+    }
+  })();
+  return _homeWhoopInflight;
+}
+
 /* ── Greeting (page title) ────────────────────────────────── */
 
 function homeGreetingText() {
@@ -255,6 +288,61 @@ function homeRingsRowHTML(oura) {
       ${ring('Readiness', 'readiness_score', HOME_RING_COLORS.readiness)}
       ${ring('Activity', 'activity_score', HOME_RING_COLORS.activity)}
     </div>`;
+}
+
+// Whoop rings — same visual layout as Oura, mapped to Whoop's three primary
+// signals. Strain is 0-21 in the raw data; we scale it for the arc but show
+// the raw value inside the ring (handled via a custom score override below).
+// Trend chips use deltas computed in the raw scale per metric.
+function homeWhoopRingsRowHTML(whoop) {
+  if (!(whoop?.days || []).length) return `<div class="home-empty">No Whoop data yet — it syncs overnight.</div>`;
+
+  // Recovery (0-100) — reuse the standard ringSvg.
+  const recoveryTrend = homePickTrend(whoop, 'recovery_score');
+  const recoveryRing = `<div class="home-ring">
+      ${ringSvg(recoveryTrend.cur, HOME_RING_COLORS.readiness)}
+      <span class="home-ring-label">Recovery</span>
+      ${homeRingTrendHTML(recoveryTrend.delta)}
+    </div>`;
+
+  // Strain (0-21) — scale to 0-100 for the arc, label inside ring shows raw.
+  const strainTrend = homePickTrend(whoop, 'strain');
+  const strainPct   = strainTrend.cur == null ? null : Math.round(Math.max(0, Math.min(21, Number(strainTrend.cur))) / 21 * 100);
+  const strainRaw   = strainTrend.cur == null ? '—' : Number(strainTrend.cur).toFixed(1);
+  const strainArc   = ringSvgWithLabel(strainPct, HOME_RING_COLORS.activity, strainRaw);
+  // Strain delta shown in the raw 0-21 scale.
+  const strainDelta = strainTrend.delta == null ? null : Number(strainTrend.delta.toFixed(1));
+  const strainRing  = `<div class="home-ring">
+      ${strainArc}
+      <span class="home-ring-label">Strain</span>
+      ${homeRingTrendHTML(strainDelta)}
+    </div>`;
+
+  // Sleep performance (0-100) — reuse the standard ringSvg.
+  const sleepTrend = homePickTrend(whoop, 'sleep_performance');
+  const sleepRing = `<div class="home-ring">
+      ${ringSvg(sleepTrend.cur, HOME_RING_COLORS.sleep)}
+      <span class="home-ring-label">Sleep</span>
+      ${homeRingTrendHTML(sleepTrend.delta)}
+    </div>`;
+
+  return `<div class="home-rings">${recoveryRing}${strainRing}${sleepRing}</div>`;
+}
+
+// Variant of ringSvg that displays a caller-provided label inside the ring
+// instead of the score. Used by Strain to show the raw 0-21 number while
+// the arc is scaled to 0-100. `pct` is the percentage that drives the arc;
+// `labelText` is what gets rendered in the center.
+function ringSvgWithLabel(pct, color, labelText) {
+  const r = 34, c = 2 * Math.PI * r;
+  const fill = pct == null ? 0 : Math.max(0, Math.min(100, pct)) / 100;
+  const off = c * (1 - fill);
+  return `<svg viewBox="0 0 80 80">
+    <circle class="home-ring-track" cx="40" cy="40" r="${r}" fill="none" stroke-width="7"/>
+    <circle cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
+            stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 40 40)"/>
+    <text class="home-ring-score" x="40" y="41" text-anchor="middle" dominant-baseline="central">${hEsc(String(labelText))}</text>
+  </svg>`;
 }
 function homeMoodRowHTML(entry) {
   // Picker stays as-is structurally — same 5 buttons. Each tap now
@@ -726,9 +814,18 @@ async function hydrateHomeToday() {
   const ringsEl = () => document.getElementById('homeRingsRow');
   const source = homeHealthSource();
   if (source === 'whoop') {
-    const msg = homeWhoopConnected() ? 'Whoop rings on Home are coming soon.' : 'Connect Whoop to track your health on Home.';
-    const cta = homeWhoopConnected() ? '' : '<button class="home-cta" data-home-cta="settings">Connect Whoop →</button>';
-    if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">${msg}</div>${cta}`;
+    // Same defense as the Oura path: don't gate on homeWhoopConnected(),
+    // which can race the data fetch on cold boot. Try the direct read;
+    // if rows come back, render rings; otherwise show the Connect CTA
+    // so the user has a clear next step.
+    const whoop = await loadWhoopScores();
+    const hasData = whoop && Array.isArray(whoop.days) && whoop.days.length > 0;
+    if (hasData) {
+      if (ringsEl()) ringsEl().innerHTML = homeWhoopRingsRowHTML(whoop);
+    } else {
+      if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">Connect your Whoop to see recovery, strain, and sleep.</div>
+        <button class="home-cta" data-home-cta="settings">Connect Whoop →</button>`;
+    }
   } else {
     // Phase 2 audit follow-up: don't gate on homeOuraConnected() — that
     // reads the fire-and-forget integration status which races with

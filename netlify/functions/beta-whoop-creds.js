@@ -53,18 +53,37 @@ exports.handler = async (event) => {
 };
 
 async function getStatus(email, serviceKey) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=whoop_client_id,whoop_client_secret_enc,whoop_refresh_token_enc,whoop_account_email`,
-    { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
-  );
-  const rows = await res.json();
+  // Two queries in parallel: credential + connection state from user_profiles,
+  // plus the most recent health_sync_log row for whoop so the Settings card
+  // can show a sync-error badge when the nightly job has been failing.
+  // health_sync_log has no RLS policy (service-key access only), so we
+  // proxy the read through this server-side endpoint.
+  const [profRes, logRes] = await Promise.all([
+    fetch(
+      `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${encodeURIComponent(email)}&select=whoop_client_id,whoop_client_secret_enc,whoop_refresh_token_enc,whoop_account_email`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/health_sync_log?user_email=eq.${encodeURIComponent(email)}&provider=eq.whoop&select=ran_at,success,error,rows_upserted&order=ran_at.desc&limit=1`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    ),
+  ]);
+  const rows = await profRes.json();
   const row  = Array.isArray(rows) ? rows[0] : null;
+  const logRows = await logRes.json().catch(() => []);
+  const lastSync = Array.isArray(logRows) ? logRows[0] : null;
   const clientId = row?.whoop_client_id || null;
   return json(200, {
     configured:          !!(clientId && row?.whoop_client_secret_enc),
     client_id:           clientId,                       // public — fine to return whole
     connected:           !!row?.whoop_refresh_token_enc,
     whoop_account_email: row?.whoop_account_email || null,
+    last_sync: lastSync ? {
+      ran_at:        lastSync.ran_at,
+      success:       !!lastSync.success,
+      error:         lastSync.error || null,
+      rows_upserted: lastSync.rows_upserted ?? 0,
+    } : null,
   });
 }
 

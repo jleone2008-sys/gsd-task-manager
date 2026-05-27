@@ -1,0 +1,16 @@
+{
+  "_comment": "Project-scoped Claude Code settings for GSD. settings.local.json is gitignored for per-machine overrides; this file is committed so the SessionStart hook (which enforces the knowledge-bank read-first rule) follows the repo.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'GSD knowledge bank reminder: read docs/app-knowledge-bank.html before planning any feature work. It is the source of truth for what is shipped, in progress, and deferred. See CLAUDE.md for the full read-first protocol.'"
+          }
+        ]
+      }
+    ]
+  }
+}
