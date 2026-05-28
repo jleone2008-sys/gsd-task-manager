@@ -148,7 +148,7 @@ function briefInjectStyles() {
       background: var(--surface); color: var(--ink-2);
       font-family: inherit; font-size: var(--t-xs); cursor: pointer;
       white-space: nowrap; line-height: 1; -webkit-tap-highlight-color: transparent;
-      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+      transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
     }
     .brief-sleep-chip:hover   { background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong); }
     .brief-sleep-chip.is-logged {
