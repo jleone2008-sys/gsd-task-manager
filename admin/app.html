@@ -544,8 +544,7 @@ async function renderGsdTab(body) {
     body.innerHTML = `
       <div class="data-stat"><span class="data-stat-label">📋 Tasks</span><span class="data-stat-val">${data.task_count ?? '—'}</span></div>
       <div class="data-stat"><span class="data-stat-label">✅ Habits</span><span class="data-stat-val">${data.habit_count ?? '—'}</span></div>
-      <div class="data-stat"><span class="data-stat-label">📝 Notes</span><span class="data-stat-val">${data.note_count ?? '—'}</span></div>
-      <div class="data-stat"><span class="data-stat-label">💾 Last Backup</span><span class="data-stat-val" style="font-size:.875rem">${data.last_backup || 'Never'}</span></div>`;
+      <div class="data-stat"><span class="data-stat-label">📝 Notes</span><span class="data-stat-val">${data.note_count ?? '—'}</span></div>`;
   } catch (err) {
     body.innerHTML = `<div class="error-msg">Could not load GSD data: ${err.message}</div>`;
   }

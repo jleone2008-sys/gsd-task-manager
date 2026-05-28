@@ -670,13 +670,11 @@ document.addEventListener('click', function(e) {
   }
 });
 
-/* ── PILL BAR, FLOATING SEARCH, FAB & CREATE PANEL SHELL ── */
-document.querySelector('.pill-bar[data-tool-view="tasks"] .pill-bar-inner')
-  .addEventListener('click', e => {
-    const pill = e.target.closest('.pill[data-filter]');
-    if (!pill) return;
-    setCatFilter(pill.dataset.filter, pill);
-  });
+/* ── FLOATING SEARCH, FAB & CREATE PANEL SHELL ──
+   Tasks + Habits pill bars were removed (single-pill bars added no info
+   and the count is already in the mobile-nav badge), so there's no
+   pill-bar click handler to attach here. Filter switching now happens
+   via the Sort/Filter dropdown only. */
 
 document.getElementById('floatingSearch').addEventListener('click', expandFloatingSearch);
 document.getElementById('floatingSearchInput').addEventListener('input', e => handleFloatingSearch(e.target.value));

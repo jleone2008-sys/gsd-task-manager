@@ -229,7 +229,6 @@ async function load() {
   if (typeof ensureRecurringSpawns === 'function') ensureRecurringSpawns();
 
   subscribeToChanges();
-  autoBackup();
 }
 
 /* ══════ SUBTASKS DATA LAYER ══════ */

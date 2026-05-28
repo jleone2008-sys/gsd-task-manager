@@ -272,18 +272,16 @@ async function getGsdData(body, serviceKey) {
   if (!uid) return json(404, { error: 'user_not_found' });
 
   // Fetch counts from each table in parallel
-  const [tasks, habits, notes, backups] = await Promise.all([
+  const [tasks, habits, notes] = await Promise.all([
     supabaseFetch(`/rest/v1/tasks?user_id=eq.${uid}&select=id`, 'GET', null, null, serviceKey)
       .then(r => r.json()).then(rows => rows?.length ?? 0).catch(() => 0),
     supabaseFetch(`/rest/v1/habits?user_id=eq.${uid}&select=id`, 'GET', null, null, serviceKey)
       .then(r => r.json()).then(rows => rows?.length ?? 0).catch(() => 0),
     supabaseFetch(`/rest/v1/notes?user_id=eq.${uid}&select=id`, 'GET', null, null, serviceKey)
       .then(r => r.json()).then(rows => rows?.length ?? 0).catch(() => 0),
-    supabaseFetch(`/rest/v1/backups?user_id=eq.${uid}&select=backup_date&order=backup_date.desc&limit=1`, 'GET', null, null, serviceKey)
-      .then(r => r.json()).then(rows => rows?.[0]?.backup_date ?? null).catch(() => null),
   ]);
 
-  return json(200, { task_count: tasks, habit_count: habits, note_count: notes, last_backup: backups });
+  return json(200, { task_count: tasks, habit_count: habits, note_count: notes });
 }
 
 async function getDriveDownloadInfo(body, serviceKey) {

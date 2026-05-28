@@ -71,23 +71,3 @@ document.addEventListener('keydown', function(e) {
 
 // Start by restoring session (or showing login screen)
 restoreSession();
-
-/* ── FAQ MODAL ── */
-function openFaqModal() { document.getElementById('faqModal').classList.add('open'); }
-function closeFaqModal() { document.getElementById('faqModal').classList.remove('open'); }
-function toggleFaq(btn) {
-  const item = btn.closest('.faq-item');
-  const isOpen = item.classList.contains('open');
-  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
-  if (!isOpen) item.classList.add('open');
-}
-
-/* ── FAQ MODAL HANDLERS ── */
-document.getElementById('faqModal').addEventListener('click', function(e) {
-  if (isCleanBackdropClick(e, this)) closeFaqModal();
-});
-document.getElementById('faqModalClose').addEventListener('click', closeFaqModal);
-document.getElementById('faqModal').querySelector('.modal-body').addEventListener('click', e => {
-  const q = e.target.closest('.faq-q');
-  if (q) toggleFaq(q);
-});

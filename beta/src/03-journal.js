@@ -343,10 +343,15 @@ function getHabitCompletionForDate(dateStr) {
 }
 
 function isJournalSectionEnabled(tool) {
+  // Per-user tab toggling was removed; admin tab_permissions still gates
+  // whole-tab visibility, but the journal's per-day section list mirrors
+  // the data that exists for that day. If a section's data is empty the
+  // renderer hides itself — no extra gating needed here.
   if (tool === 'tasks') return true;
-  if (typeof userSettings === 'undefined' || !userSettings) return true;
-  const enabled = userSettings.enabled_tools || [];
-  return enabled.includes(tool);
+  if (typeof currentUserProfile === 'undefined' || !currentUserProfile) return true;
+  const perms = currentUserProfile.tab_permissions;
+  if (!Array.isArray(perms)) return true;
+  return perms.includes(tool);
 }
 
 /* ── DATA: CALENDAR EVENTS ───────────────────────────────── */

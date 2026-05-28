@@ -563,7 +563,6 @@ async function _signInUser(user) {
   loadSubtasks();
   if (typeof loadUserSettings === 'function') {
     await loadUserSettings();
-    if (typeof applyEffectiveTabs === 'function') applyEffectiveTabs();
   }
   if (typeof routerInitFromUrl === 'function') routerInitFromUrl();
   // Home is the default tab and matches the default activeTool, so routerApplyRoute
@@ -949,14 +948,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ── BETA: Show version label in profile dropdown ── */
-  const dropdownEmail = document.getElementById('dropdownEmail');
-  if (dropdownEmail) {
-    const betaLabel = document.createElement('div');
-    betaLabel.textContent = 'Version: Beta Mode';
-    betaLabel.style.cssText = 'font-size:11px;color:#f59e0b;font-weight:600;margin-top:4px;';
-    dropdownEmail.after(betaLabel);
-  }
 });
 async function confirmDeleteAccount() {
   if (document.getElementById('deleteConfirmInput').value !== 'DELETE') return;
@@ -971,27 +962,6 @@ async function confirmDeleteAccount() {
   document.getElementById('userMenu').style.display = 'none';
   document.getElementById('taskContainer').innerHTML = '';
   document.getElementById('authScreen').classList.remove('hidden');
-}
-
-/* ── EXPORT CSV ── */
-function exportCSV() {
-  if (!tasks.length) { alert('No tasks to export.'); return; }
-  const stripHtml = h => { const d=document.createElement('div'); d.innerHTML=h; return d.textContent||''; };
-  const headers = ['Text','Note','Tags','Priority','Later','Done',];
-  const rows = tasks.map(t => [
-    `"${(t.text||'').replace(/"/g,'""')}"`,
-    `"${stripHtml(t.note||'').replace(/"/g,'""')}"`,
-    `"${(t.tags||[]).join(', ')}"`,
-    t.top3 ? 'Yes' : 'No',
-    t.someday ? 'Yes' : 'No',
-    t.done ? 'Yes' : 'No',
-  ]);
-  const csv = [headers, ...rows].map(r=>r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'gsd-tasks.csv'; a.click();
-  URL.revokeObjectURL(url);
 }
 
 /* ── RESTORE SESSION ON LOAD ── */
@@ -1257,7 +1227,6 @@ document.getElementById('userDropdown').addEventListener('click', e => {
     case 'settings':        switchTool('settings'); break;
     case 'legal-terms':     openLegalModal('terms'); break;
     case 'legal-privacy':   openLegalModal('privacy'); break;
-    case 'faq':             openFaqModal(); break;
     case 'signout':         signOut(); return;
     default: return;
   }

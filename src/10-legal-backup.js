@@ -1,8 +1,5 @@
 
 /* ═══════════════════════════════════════════════
-   BACKUP & RESTORE
-═══════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════
    LEGAL MODAL
 ═══════════════════════════════════════════════ */
 const LEGAL_EFFECTIVE = 'March 6, 2026';
@@ -41,7 +38,7 @@ const LEGAL_TERMS = `
 <p>We do not sell, rent, or share your User Content with third parties for advertising or marketing purposes. See our Privacy Policy for full details on how we handle your data.</p>
 
 <h2>6. Data Storage &amp; Security</h2>
-<p>In the current version of the Service, task data and local backups are stored in your browser's local storage on your device. This data is not transmitted to our servers unless you are signed in with a synced account. You are responsible for maintaining backups of your own data. We are not liable for data loss resulting from browser data clearing, device changes, or local storage limitations.</p>
+<p>Task data, habits, notes, and journal entries are stored securely in your account on our servers and synced in real time across any device where you are signed in. We use industry-standard transport encryption (TLS) and authenticated access controls to protect your data.</p>
 
 <h2>7. Intellectual Property</h2>
 <p>The Service, including its design, code, logo, and branding, is owned by <strong>${LEGAL_COMPANY}</strong> and protected by applicable intellectual property laws. You may not copy, modify, distribute, or create derivative works from any part of the Service without our prior written consent.</p>
@@ -85,7 +82,7 @@ const LEGAL_PRIVACY = `
 <p>We do not use your task content for advertising, machine learning training, or any purpose beyond providing the Service to you.</p>
 
 <h2>4. Local Data &amp; Browser Storage</h2>
-<p>GSD Task Manager stores your task data securely in your account on our servers, synced in real time across all your signed-in devices. You can download manual backups at any time from the Backup &amp; Restore menu. We strongly recommend keeping regular backups as an extra safety net.</p>
+<p>GSD Task Manager stores your task data securely in your account on our servers, synced in real time across all your signed-in devices.</p>
 
 <h2>5. Data Sharing</h2>
 <p>We do not sell, rent, or trade your personal information. We may share data only in the following limited circumstances:</p>
@@ -96,7 +93,7 @@ const LEGAL_PRIVACY = `
 </ul>
 
 <h2>6. Data Retention</h2>
-<p>We retain your account data for as long as your account is active. If you delete your account, we will delete your personal data within 30 days, except where we are required to retain it for legal or compliance purposes. Local backups stored in your browser are managed entirely by you and are not subject to our retention controls.</p>
+<p>We retain your account data for as long as your account is active. If you delete your account, we will delete your personal data within 30 days, except where we are required to retain it for legal or compliance purposes.</p>
 
 <h2>7. Security</h2>
 <p>We implement industry-standard security measures to protect your data, including encrypted data transmission (TLS) and secure authentication. However, no method of transmission over the internet or electronic storage is 100% secure. We cannot guarantee absolute security and encourage you to use a strong, unique password.</p>
@@ -140,187 +137,9 @@ function switchLegalTab(tab) {
   document.getElementById('legalBody').scrollTop = 0;
 }
 
-async function openBackupModal() {
-  document.getElementById('restoreFileName').textContent = 'No file selected';
-  document.getElementById('restoreFile').value = '';
-  document.getElementById('backupModal').classList.add('open');
-  await renderBackupDates();
-}
-function closeBackupModal() {
-  document.getElementById('backupModal').classList.remove('open');
-}
-document.getElementById('backupModal').addEventListener('click', function(e) {
-  if (isCleanBackdropClick(e, this)) closeBackupModal();
-});
-function exportJSON() {
-  if (!tasks.length && !habitsArr.length && !notesArr.length) { alert('No data to export.'); return; }
-  const data = {
-    version: 4,
-    exported: new Date().toISOString(),
-    tasks: tasks,
-    habits: habitsArr,
-    habitCompletions: habitCompletions,
-    notes: notesArr,
-    notebooks: notebooksArr
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `gsd-backup-${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-function restoreJSON(input) {
-  const file = input.files[0]; if (!file) return;
-  document.getElementById('restoreFileName').textContent = file.name;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = JSON.parse(e.target.result);
-      const restoredTasks = data.tasks || (Array.isArray(data) ? data : null);
-      const restoredHabits = data.habits || [];
-      const restoredCompletions = data.habitCompletions || [];
-      const restoredNotes = data.notes || [];
-      const restoredNotebooks = data.notebooks || [];
-      if (!restoredTasks && !restoredHabits.length && !restoredNotes.length) throw new Error('Invalid format');
-      const parts = [];
-      if (restoredTasks && restoredTasks.length) parts.push(`${restoredTasks.length} tasks`);
-      if (restoredHabits.length) parts.push(`${restoredHabits.length} habits`);
-      if (restoredNotes.length) parts.push(`${restoredNotes.length} notes`);
-      if (restoredNotebooks.length) parts.push(`${restoredNotebooks.length} notebooks`);
-      showConfirm({
-        icon: '⚠️',
-        title: 'Replace all data?',
-        desc: `This will load ${parts.join(' + ')} from "${file.name}" and replace your current data.`,
-        confirmLabel: 'Restore',
-        confirmClass: 'primary',
-        onConfirm: () => {
-          if (restoredTasks) { tasks = restoredTasks; save(); render(); }
-          if (restoredHabits.length) { habitsArr = restoredHabits; habitCompletions = restoredCompletions; renderHabits(); saveAllHabitsToDB(); }
-          if (restoredNotes.length) { notesArr = restoredNotes; renderNotes(); notesArr.forEach(n => saveNoteToDB(n)); }
-          if (restoredNotebooks.length) { notebooksArr = restoredNotebooks; renderNotes(); restoredNotebooks.forEach(nb => saveNotebookToDB(nb)); }
-          closeBackupModal();
-          showUndoToast(`Restored ${parts.join(' + ')} from backup`);
-        }
-      });
-    } catch(err) {
-      alert('Could not read backup file. Make sure it\'s a valid GSD JSON export.');
-    }
-  };
-  reader.readAsText(file);
-}
-
-/* ═══════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════
-   AUTO-BACKUP (Supabase, 30-day rolling)
-   table: backups(user_id, date TEXT, snapshot JSONB)
-═══════════════════════════════════════════════ */
-const BACKUP_DAYS = 30;
-
-async function autoBackup() {
-  if (!currentUser || (!tasks.length && !habitsArr.length)) return;
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-  // Only write once per day — check if today's backup already exists
-  const { data: existing } = await db.from('backups')
-    .select('backup_date')
-    .eq('user_id', currentUser.id)
-    .eq('backup_date', today)
-    .maybeSingle();
-  if (existing) return;
-
-  // Write today's snapshot — pass object directly, Supabase handles JSONB serialization
-  await db.from('backups').upsert({
-    user_id:     currentUser.id,
-    backup_date: today,
-    snapshot:    { tasks: tasks, habits: habitsArr, habitCompletions: habitCompletions, notes: notesArr, notebooks: notebooksArr, savedAt: new Date().toISOString() },
-    task_count:  tasks.length,
-  }, { onConflict: 'user_id,backup_date' });
-
-  // Prune entries older than 30 days
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - BACKUP_DAYS);
-  await db.from('backups')
-    .delete()
-    .eq('user_id', currentUser.id)
-    .lt('backup_date', cutoff.toISOString().slice(0, 10));
-}
-
-async function getBackupDates() {
-  if (!currentUser) return [];
-  const { data } = await db.from('backups')
-    .select('backup_date, task_count, snapshot')
-    .eq('user_id', currentUser.id)
-    .order('backup_date', { ascending: false });
-  return (data || []).map(r => {
-    const snap = typeof r.snapshot === 'string' ? JSON.parse(r.snapshot) : (r.snapshot || {});
-    return { backup_date: r.backup_date, task_count: r.task_count, habit_count: snap.habits?.length || 0 };
-  });
-}
-
-async function restoreFromDate(date) {
-  if (!currentUser) return;
-  const { data, error } = await db.from('backups')
-    .select('snapshot')
-    .eq('user_id', currentUser.id)
-    .eq('backup_date', date)
-    .maybeSingle();
-  if (error || !data?.snapshot) { alert('Backup not found for ' + date); return; }
-  const snap = typeof data.snapshot === 'string' ? JSON.parse(data.snapshot) : data.snapshot;
-  if (!snap.tasks && !snap.habits && !snap.notes) { alert('Backup not found for ' + date); return; }
-  const parts = [];
-  if (snap.tasks?.length) parts.push(`${snap.tasks.length} tasks`);
-  if (snap.habits?.length) parts.push(`${snap.habits.length} habits`);
-  if (snap.notes?.length) parts.push(`${snap.notes.length} notes`);
-  showConfirm({
-    icon: '⏪',
-    title: `Restore backup from ${date}?`,
-    desc: `This will load ${parts.join(' + ')} from ${date} and replace your current data.`,
-    confirmLabel: 'Restore',
-    confirmClass: 'primary',
-    onConfirm: async () => {
-      if (snap.tasks) { tasks = snap.tasks; await save(); render(); }
-      if (snap.habits) { habitsArr = snap.habits; habitCompletions = snap.habitCompletions || []; renderHabits(); saveAllHabitsToDB(); }
-      if (snap.notes) { notesArr = snap.notes; renderNotes(); snap.notes.forEach(n => saveNoteToDB(n)); }
-      if (snap.notebooks) { notebooksArr = snap.notebooks; renderNotes(); snap.notebooks.forEach(nb => saveNotebookToDB(nb)); }
-      closeBackupModal();
-      showUndoToast(`Restored ${parts.join(' + ')} from ${date}`);
-    }
-  });
-}
-
-async function renderBackupDates() {
-  const el = document.getElementById('backupDateList');
-  if (!el) return;
-  el.innerHTML = '<div style="font-size:12px;color:var(--ink-3);padding:6px 0;">Loading…</div>';
-  const dates = await getBackupDates();
-  if (!dates.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--ink-3);padding:6px 0;">No auto-backups yet — one will be created on your next session.</div>';
-    return;
-  }
-  const todayStr = new Date().toISOString().slice(0, 10);
-  el.innerHTML = dates.map(({ backup_date: d, task_count: tCount, habit_count: hCount }) => {
-    const label = d === todayStr ? `${d} <span style="color:var(--guava-800);font-size:10px;">today</span>` : d;
-    const parts = [];
-    if (tCount) parts.push(`${tCount} tasks`);
-    if (hCount) parts.push(`${hCount} habits`);
-    const summary = parts.length ? parts.join(', ') : 'no data';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--edge);">
-      <span style="font-size:12px;">${label} <span style="color:var(--ink-3);font-size:11px;">(${summary})</span></span>
-      <button class="btn-sm" data-restore-date="${d}" style="font-size:11px;padding:3px 9px;">Restore</button>
-    </div>`;
-  }).join('');
-}
-
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-
-
 
 /* ═══════════════════════════════════════════════
    CUSTOM CONFIRM DIALOG
@@ -359,21 +178,6 @@ document.querySelectorAll('.legal-tabs [data-legal-tab]').forEach(btn => {
   btn.addEventListener('click', () => switchLegalTab(btn.dataset.legalTab));
 });
 
-/* ── BACKUP MODAL HANDLERS ── */
-document.getElementById('backupModalClose').addEventListener('click', closeBackupModal);
-document.getElementById('btnExportJSON').addEventListener('click', exportJSON);
-document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
-document.getElementById('restoreFile').addEventListener('change', function() { restoreJSON(this); });
-document.getElementById('btnChooseRestoreFile').addEventListener('click', () => {
-  document.getElementById('restoreFile').click();
-});
-
 /* ── CONFIRM DIALOG BUTTONS ── */
 document.getElementById('confirmCancelBtn').addEventListener('click', () => resolveConfirm(false));
 document.getElementById('confirmOkBtn').addEventListener('click', () => resolveConfirm(true));
-
-/* ── BACKUP DATE LIST DELEGATION ── */
-document.getElementById('backupDateList').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-restore-date]');
-  if (btn) restoreFromDate(btn.dataset.restoreDate);
-});

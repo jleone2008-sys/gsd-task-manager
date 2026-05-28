@@ -1,8 +1,10 @@
 /* ══════════════════════════════════════════════════════════════
-   SETTINGS PAGE — beta-only
-   Sections: Tabs, Integrations, Backup & Restore, Danger zone.
-   Reads/writes user_settings table; intersects admin tab_permissions
-   with user-chosen enabled_tools so both layers control visibility.
+   SETTINGS PAGE
+   Sections: Integrations, Location, Connected calendars, Danger zone.
+   Reads/writes user_settings table. Admin tab_permissions still
+   controls which tabs each user can see (managed in /admin), but the
+   per-user "choose your tabs" toggle has been removed — every tab the
+   user is permissioned for is always visible.
 ═══════════════════════════════════════════════════════════════ */
 
 let userSettings = null;
@@ -16,18 +18,7 @@ const BETA_OURA_CLIENT_ID    = '718bad26-5171-4dc7-addc-ca20cd1a4f73';
 // no Whoop client_id constant here — it's read from userSettings at runtime.
 
 const SETTINGS_DEFAULTS = {
-  enabled_tools: ['tasks', 'habits', 'notes', 'scratch', 'journal', 'train'],
   integrations: {},
-  beta_enabled: false
-};
-
-// Scratch is intentionally omitted — it's no longer a standalone tab (folded
-// into the Home tab's quick-capture box), so it isn't user-toggleable here.
-const TAB_META = {
-  habits:  { label: 'Habits',  desc: 'Track recurring habits and streaks.' },
-  notes:   { label: 'Notes',   desc: 'Long-form notes organized by notebook.' },
-  journal: { label: 'Journal', desc: 'Daily reflections, photos, and mood.' },
-  train:   { label: 'Train',   desc: 'Workout plans, sessions, and body composition.' }
 };
 
 const INTEGRATIONS_META = [
@@ -49,43 +40,17 @@ async function loadUserSettings() {
     console.timeEnd('[perf] settings.userSettings');
     if (error) throw error;
     userSettings = data ? {
-      enabled_tools: data.enabled_tools || SETTINGS_DEFAULTS.enabled_tools,
       integrations: data.integrations || {},
-      beta_enabled: data.beta_enabled === true
     } : { ...SETTINGS_DEFAULTS };
   } catch (e) {
     console.warn('[settings] load failed', e);
     userSettings = { ...SETTINGS_DEFAULTS };
   }
-  // Auto-grant any new tabs that have shipped since the user's enabled_tools
-  // was last written. Without this, a brand-new tab (Train, etc.) renders in
-  // the HTML at first paint then hides itself once applyEffectiveTabs runs
-  // because the user's stored enabled_tools doesn't list it yet. Skips
-  // 'scratch' since it's not a user-toggleable tab anymore.
-  if (Array.isArray(userSettings.enabled_tools)) {
-    const toggleable = SETTINGS_DEFAULTS.enabled_tools.filter(t => t !== 'scratch');
-    const missing = toggleable.filter(t => !userSettings.enabled_tools.includes(t));
-    if (missing.length) {
-      userSettings.enabled_tools = [...userSettings.enabled_tools, ...missing];
-      // Persist asynchronously; the local var is already updated so the
-      // first render after this returns has the new tabs visible.
-      saveUserSettings({ enabled_tools: userSettings.enabled_tools })
-        .catch(err => console.warn('[settings] auto-grant tabs persist failed', err));
-    }
-  }
-  // Layer in live integration status from the server. Phase 2 audit:
-  // previously this awaited Promise.all of 5 loaders — three of which
-  // hit cold-startable Netlify functions (Dropbox/Whoop/Oura). That
-  // blocked the BOOT path because loadUserSettings is awaited before
-  // tabs apply and Home renders. None of the status data is needed
-  // for boot — tab visibility comes from enabled_tools + tab_permissions
-  // (already loaded above), the brief reads integrations.health_source
-  // directly from the user_settings jsonb (also loaded above).
-  //
-  // Fire-and-forget instead. The Settings page renders with default
-  // "disconnected" states for each integration; values fill in when
-  // each loader returns (each loader notifies the Settings UI via
-  // settingsRefreshIntegrations if it's open).
+  // Layer in live integration status from the server. Fire-and-forget so the
+  // synchronous boot path (which awaits loadUserSettings) isn't blocked on
+  // cold-startable Netlify functions (Dropbox/Whoop/Oura). The Settings page
+  // renders with default "disconnected" states; values fill in when each
+  // loader returns via settingsRefreshIntegrationsIfOpen.
   for (const id of Object.keys(INTEGRATIONS)) {
     loadIntegrationStatus(id).then(settingsRefreshIntegrationsIfOpen);
   }
@@ -285,52 +250,13 @@ async function saveUserSettings(patch) {
     if (!session) throw new Error('No session');
     const { error } = await db.from('user_settings').upsert({
       user_id: session.user.id,
-      enabled_tools: userSettings.enabled_tools,
       integrations: userSettings.integrations,
-      beta_enabled: userSettings.beta_enabled === true,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (error) throw error;
   } catch (e) {
     console.error('[settings] save failed', e);
     if (typeof showToast === 'function') showToast('Could not save settings', 'offline');
-  }
-}
-
-function getEffectiveTabs() {
-  const adminPerms = (typeof currentUserProfile !== 'undefined' && currentUserProfile?.tab_permissions) || VALID_TABS;
-  const userEnabled = userSettings?.enabled_tools || VALID_TABS;
-  return VALID_TABS.filter(t =>
-    (t === 'home') || (adminPerms.includes(t) && (t === 'tasks' || userEnabled.includes(t)))
-  );
-}
-
-function getOrderedEffectiveTabs() {
-  const effective = getEffectiveTabs();
-  const userOrder = userSettings?.enabled_tools || VALID_TABS;
-  // Home then Tasks first; then user's order; then any remaining effective tabs not in user's order
-  const result = ['home', 'tasks'].filter(t => effective.includes(t));
-  for (const t of userOrder) if (effective.includes(t) && !result.includes(t)) result.push(t);
-  for (const t of effective) if (!result.includes(t)) result.push(t);
-  return result;
-}
-
-function applyEffectiveTabs() {
-  const ordered = getOrderedEffectiveTabs();
-  VALID_TABS.forEach(tool => {
-    const allowed = ordered.includes(tool);
-    const idx = ordered.indexOf(tool);
-    document.querySelectorAll(`.mobile-nav-btn[data-tool="${tool}"]`).forEach(el => {
-      el.style.display = allowed ? '' : 'none';
-      el.style.order = idx >= 0 ? String(idx) : '';
-    });
-    document.querySelectorAll(`.sidebar-btn[data-tool="${tool}"]`).forEach(el => {
-      el.style.display = allowed ? '' : 'none';
-      el.style.order = idx >= 0 ? String(idx) : '';
-    });
-  });
-  if (typeof activeTool !== 'undefined' && activeTool !== 'settings' && !ordered.includes(activeTool)) {
-    if (typeof switchTool === 'function') switchTool('home');
   }
 }
 
@@ -403,34 +329,8 @@ function renderSettingsPage() {
   ensureSettingsStyles();
   const root = document.getElementById('settingsContainer');
   if (!root) return;
-  const enabled = userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools;
   const integrations = userSettings?.integrations || {};
   const healthSource = getHealthSource();
-
-  // Build the order: enabled tabs in user order, then disabled tabs at the end
-  const tabIds = Object.keys(TAB_META);
-  const enabledOrdered = (enabled || []).filter(t => tabIds.includes(t));
-  const disabledTabs = tabIds.filter(t => !enabledOrdered.includes(t));
-  const orderedForRender = [...enabledOrdered, ...disabledTabs];
-
-  const tabsHtml = orderedForRender.map((id, displayIdx) => {
-    const meta = TAB_META[id];
-    if (!meta) return '';
-    const isEnabled = enabledOrdered.includes(id);
-    const orderPos = enabledOrdered.indexOf(id);
-    const canMoveUp = isEnabled && orderPos > 0;
-    const canMoveDown = isEnabled && orderPos >= 0 && orderPos < enabledOrdered.length - 1;
-    return `
-    <div class="settings-tab-row">
-      <div class="settings-reorder">
-        <button data-settings-reorder="up" data-tab="${id}" ${canMoveUp ? '' : 'disabled'} title="Move up">▲</button>
-        <button data-settings-reorder="down" data-tab="${id}" ${canMoveDown ? '' : 'disabled'} title="Move down">▼</button>
-      </div>
-      <input type="checkbox" data-settings-tab="${id}" ${isEnabled ? 'checked' : ''} />
-      <span class="settings-tab-label">${meta.label}</span>
-      <span class="settings-tab-desc">${meta.desc}</span>
-    </div>`;
-  }).join('');
 
   const sharedClientIdByProvider = { dropbox: BETA_DROPBOX_CLIENT_ID, oura: BETA_OURA_CLIENT_ID };
   const integrationsHtml = INTEGRATIONS_META.map(i => {
@@ -463,17 +363,6 @@ function renderSettingsPage() {
   root.innerHTML = `
     <div class="settings-page">
       <div class="settings-section">
-        <div class="settings-h">Tabs <span class="settings-saved" id="settingsTabsSaved">Saved</span></div>
-        <div class="settings-sub">Choose which tabs appear in your sidebar. Tasks is always enabled.</div>
-        <label class="settings-tab-row settings-tab-row--locked">
-          <input type="checkbox" checked disabled />
-          <span class="settings-tab-label">Tasks</span>
-          <span class="settings-tab-desc">Always enabled.</span>
-        </label>
-        ${tabsHtml}
-      </div>
-
-      <div class="settings-section">
         <div class="settings-h">Integrations</div>
         <div class="settings-sub">Connect external services to enrich your journal entries with health data.</div>
         <div class="settings-health-source">
@@ -503,23 +392,6 @@ function renderSettingsPage() {
         <div class="settings-sub">Pick which Google calendars feed events into Journal + Brief. Toggling saves immediately.</div>
         <div id="settingsCalendarsList" style="margin-top:10px;">${renderConnectedCalendarsList()}</div>
       </div>
-
-      <div class="settings-section">
-        <div class="settings-h">Backup &amp; Restore</div>
-        <div class="settings-sub">Export a full backup of all your data, or restore from a previous backup file.</div>
-        <button class="settings-btn-secondary" data-settings-action="backup">Open Backup &amp; Restore</button>
-      </div>
-
-      ${(typeof currentUserProfile !== 'undefined' && currentUserProfile?.role === 'admin') ? `
-      <div class="settings-section">
-        <div class="settings-h">Beta access</div>
-        <div class="settings-sub">When enabled, signing in to gsdtasks.com/app auto-redirects you to the beta app. Visit <code>/app?prod=1</code> to bypass for one session.</div>
-        <label class="settings-tab-row">
-          <input type="checkbox" id="settingsBetaEnabled" ${userSettings?.beta_enabled ? 'checked' : ''} />
-          <span class="settings-tab-label">Use beta app</span>
-          <span class="settings-tab-desc">Auto-redirect on prod sign-in.</span>
-        </label>
-      </div>` : ''}
 
       <div class="settings-section settings-danger">
         <div class="settings-h">Danger zone</div>
@@ -634,7 +506,11 @@ function formatRelativeTime(iso) {
 }
 
 function flashSettingsSaved(elementId) {
-  const el = document.getElementById(elementId || 'settingsTabsSaved');
+  // No-op when no elementId given OR when the named element isn't mounted
+  // (some surfaces — e.g. the health-source radio — don't have a dedicated
+  // saved-flash slot and just rely on the silent persist).
+  if (!elementId) return;
+  const el = document.getElementById(elementId);
   if (!el) return;
   el.classList.add('visible');
   if (!flashSettingsSaved._timers) flashSettingsSaved._timers = {};
@@ -694,11 +570,6 @@ async function runSyncNow(btn) {
 }
 
 document.addEventListener('change', e => {
-  const betaCb = e.target.closest('#settingsBetaEnabled');
-  if (betaCb) {
-    saveUserSettings({ beta_enabled: betaCb.checked }).then(() => flashSettingsSaved());
-    return;
-  }
   const calCb = e.target.closest('[data-settings-action="toggle-calendar"]');
   if (calCb) {
     toggleConnectedCalendar(calCb.dataset.calId, calCb.dataset.accountEmail || '', calCb.checked);
@@ -711,42 +582,9 @@ document.addEventListener('change', e => {
     saveUserSettings({ integrations: merged }).then(() => flashSettingsSaved());
     return;
   }
-  const cb = e.target.closest('input[data-settings-tab]');
-  if (!cb) return;
-  const tab = cb.dataset.settingsTab;
-  const current = (userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools).slice();
-  if (cb.checked) {
-    if (!current.includes(tab)) current.push(tab);
-  } else {
-    const idx = current.indexOf(tab);
-    if (idx >= 0) current.splice(idx, 1);
-  }
-  if (!current.includes('tasks')) current.unshift('tasks');
-  saveUserSettings({ enabled_tools: current }).then(() => {
-    applyEffectiveTabs();
-    flashSettingsSaved();
-    if (activeTool === 'settings') renderSettingsPage();
-  });
 });
 
 document.addEventListener('click', e => {
-  const reorderBtn = e.target.closest('[data-settings-reorder]');
-  if (reorderBtn) {
-    const tab = reorderBtn.dataset.tab;
-    const direction = reorderBtn.dataset.settingsReorder;
-    const current = (userSettings?.enabled_tools || SETTINGS_DEFAULTS.enabled_tools).slice();
-    const idx = current.indexOf(tab);
-    if (idx < 0) return;
-    const swap = direction === 'up' ? idx - 1 : idx + 1;
-    if (swap < 0 || swap >= current.length) return;
-    [current[idx], current[swap]] = [current[swap], current[idx]];
-    saveUserSettings({ enabled_tools: current }).then(() => {
-      applyEffectiveTabs();
-      flashSettingsSaved();
-      if (activeTool === 'settings') renderSettingsPage();
-    });
-    return;
-  }
   const syncBtn = e.target.closest('[data-settings-sync-now]');
   if (syncBtn) { runSyncNow(syncBtn); return; }
   const intBtn = e.target.closest('[data-settings-int-action]');
@@ -770,8 +608,7 @@ document.addEventListener('click', e => {
   }
   const action = e.target.closest('[data-settings-action]')?.dataset.settingsAction;
   if (!action) return;
-  if (action === 'backup' && typeof openBackupModal === 'function') openBackupModal();
-  else if (action === 'delete-account' && typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
+  if (action === 'delete-account' && typeof openDeleteAccountModal === 'function') openDeleteAccountModal();
   else if (action === 'save-location') saveLocationFromInput(e.target.closest('[data-settings-action]'));
   else if (action === 'link-google') {
     if (typeof linkGoogleAccount === 'function') linkGoogleAccount();

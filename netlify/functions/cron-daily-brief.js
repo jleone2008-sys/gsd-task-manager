@@ -50,9 +50,9 @@ exports.handler = async () => {
     return { statusCode: 500, body: 'no_site_url' };
   }
 
-  // Pull every user profile that has a usable identity. We don't gate on
-  // beta_enabled yet — the brief function itself is the unit of correctness
-  // and is idempotent + cheap when nothing to do.
+  // Pull every user profile that has a usable identity. The brief function
+  // itself is the unit of correctness and is idempotent + cheap when there's
+  // nothing to do, so we don't pre-filter the user list here.
   // Identity lives on user_profiles; timezone now lives on
   // user_preferences. Two queries (no FK between the tables — both
   // reference auth.users separately, so PostgREST embedded-resource
