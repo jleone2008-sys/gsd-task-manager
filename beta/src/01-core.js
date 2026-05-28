@@ -184,6 +184,10 @@ const HOUR_MS   = 60 * MINUTE_MS;
 const DAY_MS    = 24 * HOUR_MS;
 const WEEK_MS   = 7 * DAY_MS;
 
+// Debounce delay for coalesced list re-renders (habits + notes), shared so the
+// two surfaces stay in step.
+const RENDER_DEBOUNCE_MS = 300;
+
 const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;

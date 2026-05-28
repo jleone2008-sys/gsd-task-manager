@@ -28,6 +28,7 @@ const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL }          = require('./lib/supabase');
 const { CLAUDE_MODEL }          = require('./lib/models');
 const { HOUR_MS, DAY_MS }       = require('./lib/time');
+const { RECOVERY_STALE_HOURS }  = require('./lib/health');
 const {
   fetchJson,
   stripUpdatedAt,
@@ -94,7 +95,9 @@ const DEFAULT_TIMEZONE    = 'America/New_York';
 // Freshness window for Oura: if today's recovery row is missing OR was last
 // fetched >24h ago, the brief is flagged 'preliminary' and the UI shows a
 // "still syncing — tap to retry" affordance.
-const OURA_STALE_HOURS = 24;
+// OURA_STALE_HOURS kept as a local alias of the shared constant for the
+// existing brief code paths that reference it by this name.
+const OURA_STALE_HOURS = RECOVERY_STALE_HOURS;
 
 // MOOD_LABELS / MOOD_SCALE_NOTE / moodLabel are imported from
 // ./lib/mood-scale.js so every Netlify function that surfaces mood to

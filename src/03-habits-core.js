@@ -197,7 +197,7 @@ function getCompletionCountForDate(habitClientId, dateStr) {
 let _habitRenderTimer = null;
 function debouncedRenderHabits() {
   if (_habitRenderTimer) clearTimeout(_habitRenderTimer);
-  _habitRenderTimer = setTimeout(() => { _habitRenderTimer = null; renderHabits(); }, 300);
+  _habitRenderTimer = setTimeout(() => { _habitRenderTimer = null; renderHabits(); }, RENDER_DEBOUNCE_MS);
 }
 
 function subscribeToHabitChanges() {

@@ -125,7 +125,7 @@ function debouncedRenderNotes() {
     } else {
       renderNotes();
     }
-  }, 300);
+  }, RENDER_DEBOUNCE_MS);
 }
 
 function subscribeToNoteChanges() {
