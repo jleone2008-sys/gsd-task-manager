@@ -45,6 +45,10 @@
     --slate-fg: #5a6673;  --slate-bg: #dee2e7;
     --ochre-fg: #a37826;  --ochre-bg: #f0e4c9;
     --plum-fg:  #6b4862;  --plum-bg:  #e5dae2;
+    /* Legacy interactive-blue accent (active/drag/info highlights). Stored as
+       an RGB triplet so call sites set their own opacity:
+       rgba(var(--accent-blue-rgb), 0.12). One hue, no per-feature drift. */
+    --accent-blue-rgb: 45, 95, 166;
 
     /* ── Status semantic ────────────────────────────────────── */
     --status-overdue-fg: var(--guava-700);  --status-overdue-bg: var(--guava-100);
@@ -2651,7 +2655,7 @@
   .st-dow-pct { font-size: var(--fs-nano); color: var(--ink-2); font-weight: var(--fw-semibold); }
 
   /* Insight */
-  .st-insight { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3) var(--space-3-5); background: rgba(45,95,166,0.05); border-radius: var(--r-md); border-left: 3px solid var(--guava-700); }
+  .st-insight { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3) var(--space-3-5); background: rgba(var(--accent-blue-rgb),0.05); border-radius: var(--r-md); border-left: 3px solid var(--guava-700); }
   .st-insight svg { flex-shrink: 0; color: var(--guava-700); }
   .st-insight-text { font-size: var(--fs-pill); color: var(--ink-2); line-height: 1.5; }
   .st-insight-text strong { color: var(--ink); }
@@ -2781,7 +2785,7 @@
   .habit-cal-cell:hover { background: var(--row-hover-bg); }
   .habit-cal-cell.completed { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
   .habit-cal-cell.completed:hover { background: var(--guava-700); }
-  .habit-cal-cell.today { border-color: var(--guava-700); box-shadow: 0 0 0 2px rgba(45,95,166,0.15); }
+  .habit-cal-cell.today { border-color: var(--guava-700); box-shadow: 0 0 0 2px rgba(var(--accent-blue-rgb),0.15); }
   .habit-cal-cell.today.completed { border-color: var(--guava-700); box-shadow: none; }
   .habit-cal-cell.empty { cursor: default; color: transparent; }
   .habit-cal-cell.empty:hover { background: none; }
@@ -2889,7 +2893,7 @@
   .nb-edit-btn { display: none; border: none; background: none; cursor: pointer; padding: var(--space-0-5); border-radius: var(--r-sm); color: var(--ink-3); flex-shrink: 0; }
   .nb-edit-btn:hover { background: var(--row-hover-bg); color: var(--ink); }
   .ns-item:hover .nb-edit-btn { display: flex; }
-  .ns-item.active .cnt { background: rgba(45,95,166,0.12); color: var(--guava-700); }
+  .ns-item.active .cnt { background: rgba(var(--accent-blue-rgb),0.12); color: var(--guava-700); }
   .ns-divider { height: 1px; background: var(--edge); margin: var(--space-1) var(--space-3); }
   .nb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
@@ -3533,7 +3537,7 @@
     margin: 0 0 16px;
   }
   .nl-item.dragging { opacity: 0.4; }
-  .nl-item.drag-target { border-color: var(--guava-700); background: rgba(45,95,166,0.06); }
+  .nl-item.drag-target { border-color: var(--guava-700); background: rgba(var(--accent-blue-rgb),0.06); }
   .note-action-btn { background: none; border: none; cursor: pointer; padding: var(--space-1-5); border-radius: var(--r-md); color: var(--ink-3); transition: color var(--dur-instant); }
   .note-action-btn:hover { color: var(--ink); background: var(--row-hover-bg); }
   .note-action-btn.starred { color: var(--guava-700); }
@@ -3568,7 +3572,7 @@
   .note-ctx-menu .ctx-submenu:hover .ctx-sub-items { display: block; }
 
   /* Sidebar drop targets */
-  .ns-item.drop-target { background: rgba(45,95,166,0.12); border: 1px dashed var(--guava-700); }
+  .ns-item.drop-target { background: rgba(var(--accent-blue-rgb),0.12); border: 1px dashed var(--guava-700); }
 
   /* ──── MOBILE NOTES ──── */
   @media (max-width: 899.98px) {
