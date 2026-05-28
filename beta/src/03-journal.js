@@ -1019,7 +1019,7 @@ async function signedUrlsForPaths(paths) {
       .from('journal-photos')
       .createSignedUrls(need, 3600);   // 1 hour
     if (error) throw error;
-    const expiresAt = now + 3600_000;
+    const expiresAt = now + HOUR_MS;
     for (const item of (data || [])) {
       if (item.signedUrl && item.path) {
         _photoUrlCache.set(item.path, { url: item.signedUrl, expiresAt });
@@ -1684,7 +1684,7 @@ async function ensureTimelineCovers(dateStr) {
   // Update window
   const todayDate = jParseDate(today);
   const targetDate = jParseDate(target);
-  const days = Math.round((todayDate - targetDate) / 86400000) + 1;
+  const days = Math.round((todayDate - targetDate) / DAY_MS) + 1;
   journalState.timelineDays = days;
   journalState.timelineLoadedThrough = target;
   rerenderTimeline();

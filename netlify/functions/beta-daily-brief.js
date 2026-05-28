@@ -27,6 +27,7 @@
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL }          = require('./lib/supabase');
 const { CLAUDE_MODEL }          = require('./lib/models');
+const { HOUR_MS, DAY_MS }       = require('./lib/time');
 const {
   fetchJson,
   stripUpdatedAt,
@@ -472,7 +473,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
 
   // Filter completed tasks to yesterday in user-local TZ
   const yStart = localDayStartUtcMs(yday, user.timezone);
-  const yEnd   = yStart + 86400_000;
+  const yEnd   = yStart + DAY_MS;
   const tasksYesterday = (tasksAll || []).filter(t => t.completed_at && t.completed_at >= yStart && t.completed_at < yEnd);
 
   // Oura freshness. Two failure modes:
@@ -493,7 +494,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   const activityRow = ouraYesterday?.[0] || null;
   const ouraWallClockStale = !recoveryRow
     || !recoveryRow.updated_at
-    || (Date.now() - new Date(recoveryRow.updated_at).getTime()) > OURA_STALE_HOURS * 3600_000;
+    || (Date.now() - new Date(recoveryRow.updated_at).getTime()) > OURA_STALE_HOURS * HOUR_MS;
   const ouraPartialSleep = !ouraWallClockStale
     && recoveryRow
     && recoveryRow.sleep_score == null;
@@ -589,7 +590,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   // because Claude can't reason about an empty delta.
   let sleepIntentForBrief = null;
   if (mode === 'morning') {
-    const cutoffIso = new Date(Date.now() - 18 * 3600_000).toISOString();
+    const cutoffIso = new Date(Date.now() - 18 * HOUR_MS).toISOString();
     const sleepIntentRows = await fetchJson(
       `${SUPABASE_URL}/rest/v1/sleep_intents`
         + `?user_id=eq.${user.user_id}`
@@ -853,7 +854,7 @@ function buildHealthLabsSnapshot(labs, today) {
   }));
   // age_days based on the most recent test_date in the snapshot.
   const newestDate = results.reduce((acc, r) => (r.test_date > acc ? r.test_date : acc), '0000-01-01');
-  const ageDays = Math.max(0, Math.floor((Date.parse(today + 'T00:00:00Z') - Date.parse(newestDate + 'T00:00:00Z')) / 86_400_000));
+  const ageDays = Math.max(0, Math.floor((Date.parse(today + 'T00:00:00Z') - Date.parse(newestDate + 'T00:00:00Z')) / DAY_MS));
   return {
     as_of_date: newestDate,
     age_days:   ageDays,

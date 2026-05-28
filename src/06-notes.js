@@ -213,7 +213,7 @@ async function loadNotes() {
   // splice from notesArr after it succeeds — otherwise a failed delete
   // leaves the row in the DB but missing locally, so the next reload
   // brings it back and the cycle repeats.
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = Date.now() - 30 * DAY_MS;
   const expired = notesArr.filter(n => n.trashed && n.trashedAt && new Date(n.trashedAt).getTime() < thirtyDaysAgo);
   for (const n of expired) {
     // Sequential await keeps the status toast from flapping across many
@@ -603,7 +603,7 @@ function renderNoteList() {
       // Show how long until the 30-day auto-purge fires so the user can
       // see this isn't a manual-cleanup queue.
       const ms = n.trashedAt ? Date.now() - new Date(n.trashedAt).getTime() : 0;
-      const daysIn = Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000)));
+      const daysIn = Math.max(0, Math.floor(ms / DAY_MS));
       const daysLeft = Math.max(0, 30 - daysIn);
       const retentionHint = n.trashedAt
         ? `Auto-deletes in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`

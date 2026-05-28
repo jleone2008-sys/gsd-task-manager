@@ -20,6 +20,7 @@
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL } = require('./lib/supabase');
 const { CLAUDE_MODEL } = require('./lib/models');
+const { HOUR_MS } = require('./lib/time');
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -214,7 +215,7 @@ async function fetchRecoveryForDate(userEmail, source, dateStr, serviceKey) {
     const row = (await r.json())?.[0];
     if (!row) return null;
     const stale = !row.updated_at
-      || (Date.now() - new Date(row.updated_at).getTime()) > RECOVERY_STALE_HOURS * 3600_000;
+      || (Date.now() - new Date(row.updated_at).getTime()) > RECOVERY_STALE_HOURS * HOUR_MS;
     return {
       source:       'whoop',
       score:        row.recovery_score ?? null,
@@ -234,7 +235,7 @@ async function fetchRecoveryForDate(userEmail, source, dateStr, serviceKey) {
   const row = (await r.json())?.[0];
   if (!row) return null;
   const stale = !row.updated_at
-    || (Date.now() - new Date(row.updated_at).getTime()) > RECOVERY_STALE_HOURS * 3600_000;
+    || (Date.now() - new Date(row.updated_at).getTime()) > RECOVERY_STALE_HOURS * HOUR_MS;
   return {
     source:      'oura',
     score:       row.readiness_score ?? null,

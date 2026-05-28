@@ -192,7 +192,7 @@
 
   function bucketItems(items) {
     const now = Date.now();
-    const day = 86_400_000;
+    const day = DAY_MS;
     const startOfToday = (() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
     const startOfWeek  = startOfToday - (new Date().getDay()) * day;     // Sun-start week
     const startOfLastWeek = startOfWeek - 7 * day;

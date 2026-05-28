@@ -25,6 +25,7 @@
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL } = require('./lib/supabase');
 const { CLAUDE_MODEL } = require('./lib/models');
+const { DAY_MS } = require('./lib/time');
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -292,7 +293,7 @@ async function callClaude({ todayImages, priorImages, row, prior, profile }, ant
   }
   const meta = {
     sex: profile?.sex || 'unknown',
-    age: profile?.dob ? Math.floor((Date.now() - new Date(profile.dob)) / (365.25 * 86400_000)) : 'unknown',
+    age: profile?.dob ? Math.floor((Date.now() - new Date(profile.dob)) / (365.25 * DAY_MS)) : 'unknown',
     height_in: profile?.height_in || 'unknown',
     activity_level: profile?.activity_level || 'unknown',
   };

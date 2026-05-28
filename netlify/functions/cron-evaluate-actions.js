@@ -32,6 +32,7 @@
 // Effectively free at single-tenant scale.
 
 const { SUPABASE_URL } = require('./lib/supabase');
+const { HOUR_MS } = require('./lib/time');
 const { computeAdherence, signaturePrefix } = require('./lib/adherence-rules');
 
 // Only do work at this local hour. Late enough that today's sleep data
@@ -155,7 +156,7 @@ exports.handler = async () => {
 // health-sync has had a tick to pull it.
 async function evaluateSleepIntentsForUser(user, serviceKey) {
   const hdr = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
-  const cutoffIso = new Date(Date.now() - 10 * 3600_000).toISOString();
+  const cutoffIso = new Date(Date.now() - 10 * HOUR_MS).toISOString();
   const pending = await fetchJson(
     `${SUPABASE_URL}/rest/v1/sleep_intents?user_id=eq.${user.user_id}&computed_at=is.null&intent_at=lt.${encodeURIComponent(cutoffIso)}&select=id,intent_at&order=intent_at.asc&limit=10`,
     hdr,
@@ -169,7 +170,7 @@ async function evaluateSleepIntentsForUser(user, serviceKey) {
     // The date the sleep "ends on" — Oura's date convention. Add 12h to
     // intent_at and take the local date; handles both pre-midnight taps
     // (10pm → next day) and post-midnight taps (1am → same day).
-    const sleepEndsLocalDate = localDate(new Date(new Date(row.intent_at).getTime() + 12 * 3600_000), tz);
+    const sleepEndsLocalDate = localDate(new Date(new Date(row.intent_at).getTime() + 12 * HOUR_MS), tz);
     const ouraRows = await fetchJson(
       `${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${sleepEndsLocalDate}&select=date,sleep_midpoint_offset_min,total_sleep_min,sleep_score`,
       hdr,
@@ -211,11 +212,11 @@ function localDayStartUtcMs(dateStr, tz) {
   const [y, m, d] = dateStr.split('-').map(Number);
   const guessMs   = Date.UTC(y, m - 1, d);
   for (let h = -12; h <= 14; h++) {
-    const ms = guessMs + h * 3600_000;
+    const ms = guessMs + h * HOUR_MS;
     if (localDate(new Date(ms), tz) === dateStr) {
       // Walk back one minute at a time to find the boundary.
-      let lo = ms - 3600_000;
-      while (lo >= guessMs - 24 * 3600_000 && localDate(new Date(lo), tz) === dateStr) lo -= 60_000;
+      let lo = ms - HOUR_MS;
+      while (lo >= guessMs - 24 * HOUR_MS && localDate(new Date(lo), tz) === dateStr) lo -= 60_000;
       return lo + 60_000;
     }
   }

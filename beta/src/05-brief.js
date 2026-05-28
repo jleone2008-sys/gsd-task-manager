@@ -406,7 +406,7 @@ async function briefLoadSleepIntent() {
   if (_briefSleepIntentLoaded) return;
   _briefSleepIntentLoaded = true;
   try {
-    const cutoffIso = new Date(Date.now() - 12 * 3600_000).toISOString();
+    const cutoffIso = new Date(Date.now() - 12 * HOUR_MS).toISOString();
     const { data, error } = await db.from('sleep_intents')
       .select('id, intent_at')
       .gte('intent_at', cutoffIso)
@@ -856,7 +856,7 @@ function briefCountTasksDoneToday() {
   // Local midnight today → local midnight tomorrow in UTC ms.
   const startUtc = new Date(Date.UTC(y, m - 1, d)).getTime()
     - tzOffsetMs(today, tz);
-  const endUtc = startUtc + 86400_000;
+  const endUtc = startUtc + DAY_MS;
   let n = 0;
   for (const t of tasks) {
     if (!t.done || !t.completedAt) continue;

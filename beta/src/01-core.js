@@ -175,6 +175,15 @@ function isCleanBackdropClick(e, backdropEl) {
   return e.target === backdropEl && _gsdLastMouseDownTarget === backdropEl;
 }
 
+// Time-unit constants in milliseconds — shared across all app scripts (they
+// load after this file, so these top-level consts are in scope). Backend has
+// its own copy in netlify/functions/lib/time.js. Avoids hand-written
+// 86400000 / multiplier chains drifting in representation.
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS   = 60 * MINUTE_MS;
+const DAY_MS    = 24 * HOUR_MS;
+const WEEK_MS   = 7 * DAY_MS;
+
 const SUPABASE_URL = 'https://dmuwncwptvnnlizuxhta.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IAw1Nc8XezPPWos8iS-kLg_YrNpRIe_';
 const { createClient } = supabase;

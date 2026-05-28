@@ -15,6 +15,7 @@
 
 const { encryptToken, decryptToken } = require('./lib/encryption');
 const { SUPABASE_URL }               = require('./lib/supabase');
+const { DAY_MS }                     = require('./lib/time');
 
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 // Whoop's V1 endpoints (under /developer/v1/) were deprecated in 2025; V2
@@ -98,7 +99,7 @@ exports.handler = async (event) => {
 // ── Per-user sync ────────────────────────────────────────────────────────
 async function syncOneUser(email, provider, days, serviceKey, encKey) {
   const end   = new Date();
-  const start = new Date(Date.now() - days * 86400_000);
+  const start = new Date(Date.now() - days * DAY_MS);
   let rowsUpserted = 0, error = null;
 
   try {
@@ -280,7 +281,7 @@ async function syncOuraUser(email, start, end, serviceKey, encKey) {
   const startDay = dateKey(start);
   // Oura's daily end_date can behave as exclusive — pad by a day so the current
   // day is always in range. Oura simply ignores any future portion.
-  const endDay   = dateKey(new Date(end.getTime() + 86400_000));
+  const endDay   = dateKey(new Date(end.getTime() + DAY_MS));
   const qs = `?start_date=${startDay}&end_date=${endDay}`;
   const authHdr = { Authorization: `Bearer ${accessToken}` };
   const opt = { optional: true };   // skip on ANY error — never abort the core sync
@@ -308,7 +309,7 @@ async function syncOuraUser(email, start, end, serviceKey, encKey) {
   // Heart rate uses datetime, not date. Pull only the last 24h on nightly to
   // keep storage bounded (1 day ≈ 288 samples at 5-min interval per user).
   const hrEnd   = end.toISOString();
-  const hrStart = new Date(end.getTime() - 86400_000).toISOString();
+  const hrStart = new Date(end.getTime() - DAY_MS).toISOString();
   const heartrate = await ouraFetch(
     `${OURA_API}/heartrate?start_datetime=${encodeURIComponent(hrStart)}&end_datetime=${encodeURIComponent(hrEnd)}`,
     authHdr, opt

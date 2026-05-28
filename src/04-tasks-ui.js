@@ -440,7 +440,7 @@ function dueBadgeHTML(due) {
   const today = new Date(); today.setHours(0,0,0,0);
   const d = new Date(due + 'T00:00:00');
   if (isNaN(d.getTime())) return '';
-  const diff = Math.round((d - today) / 86400000);
+  const diff = Math.round((d - today) / DAY_MS);
   let cls = 'due-badge';
   let label = '';
   if (diff < 0) { cls += ' due-overdue'; label = `Overdue · ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`; }

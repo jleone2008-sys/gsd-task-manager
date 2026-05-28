@@ -26,6 +26,7 @@
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL } = require('./lib/supabase');
 const { CLAUDE_MODEL } = require('./lib/models');
+const { DAY_MS } = require('./lib/time');
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -100,7 +101,7 @@ async function tuneOne(userId, progressPicId, serviceKey, anthropicKey) {
 
   // 28-day gate
   if (plan.last_plan_tune_at) {
-    const days = (Date.now() - new Date(plan.last_plan_tune_at).getTime()) / 86400_000;
+    const days = (Date.now() - new Date(plan.last_plan_tune_at).getTime()) / DAY_MS;
     if (days < TUNE_MIN_DAYS) {
       return { status: 'skipped', reason: `last_tune_${Math.floor(days)}d_ago` };
     }
@@ -144,7 +145,7 @@ async function tuneOne(userId, progressPicId, serviceKey, anthropicKey) {
 
   // ── Build context (parallel batch) ───────────────────────────────────
   const nowISO = new Date().toISOString();
-  const sessionsSince = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+  const sessionsSince = new Date(Date.now() - 30 * DAY_MS).toISOString().slice(0, 10);
 
   const [recentSessions, oura7, oura30, whoop7, goalRows, priorTunes] = await Promise.all([
     fetchJson(
@@ -171,7 +172,7 @@ async function tuneOne(userId, progressPicId, serviceKey, anthropicKey) {
     if (t.status !== 'accepted') return t;
     // Window: 30 days after the tune was accepted (or now if more recent).
     const windowStart = t.proposed_at;
-    const windowEnd   = new Date(Math.min(Date.now(), new Date(t.proposed_at).getTime() + 30 * 86400_000)).toISOString();
+    const windowEnd   = new Date(Math.min(Date.now(), new Date(t.proposed_at).getTime() + 30 * DAY_MS)).toISOString();
     const addedNames  = (t.changes || [])
       .filter(c => c.op === 'add' || c.op === 'swap')
       .map(c => c.exercise?.name)

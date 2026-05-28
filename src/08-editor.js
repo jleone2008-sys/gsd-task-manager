@@ -66,9 +66,9 @@ function formatNoteDate(iso) {
   const now = new Date();
   const diff = now - d;
   if (diff < 60000) return 'Just now';
-  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-  if (diff < 604800000) return Math.floor(diff / 86400000) + 'd ago';
+  if (diff < HOUR_MS) return Math.floor(diff / MINUTE_MS) + 'm ago';
+  if (diff < DAY_MS) return Math.floor(diff / HOUR_MS) + 'h ago';
+  if (diff < WEEK_MS) return Math.floor(diff / DAY_MS) + 'd ago';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 function formatNoteDateFull(iso) {

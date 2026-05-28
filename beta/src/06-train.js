@@ -939,7 +939,7 @@ function formatRelDate(iso) {
   if (!iso) return '';
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return '';
-  const days = Math.floor((Date.now() - t) / 86400_000);
+  const days = Math.floor((Date.now() - t) / DAY_MS);
   if (days <= 0)   return 'today';
   if (days === 1)  return 'yesterday';
   if (days < 14)   return `${days} days ago`;
@@ -3295,7 +3295,7 @@ function renderDashboardHeader(p) {
 
 function renderDashboardLatestCard(latest, bfPct, entries) {
   const today = trainTodayLocalDate();
-  const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / 86400_000);
+  const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / DAY_MS);
   const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
   // Body fat: stored AI value (Navy removed). Single branch now.
@@ -3340,7 +3340,7 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
   const weightGoal = _trainProgressState.goals.find(g => g.kind === 'weight') || null;
   const oldest = entries.length > 1 ? entries[entries.length - 1] : null;
   const winDays = oldest
-    ? Math.max(1, Math.round((new Date(latest.captured_date) - new Date(oldest.captured_date)) / 86400_000))
+    ? Math.max(1, Math.round((new Date(latest.captured_date) - new Date(oldest.captured_date)) / DAY_MS))
     : 0;
   const winLabel = !oldest ? null
                  : winDays >= 330 ? '1y'
@@ -3650,9 +3650,9 @@ function renderGoalSection(goal, current, kind) {
   // ETA: rate per day from start, project days-to-target.
   const startDate = new Date(goal.start_date + 'T00:00:00');
   const today = new Date();
-  const daysSinceStart = Math.max(1, Math.round((today - startDate) / 86400_000));
+  const daysSinceStart = Math.max(1, Math.round((today - startDate) / DAY_MS));
   const endDate = new Date(goal.end_date + 'T00:00:00');
-  const daysLeft = Math.max(0, Math.round((endDate - today) / 86400_000));
+  const daysLeft = Math.max(0, Math.round((endDate - today) / DAY_MS));
   let etaTxt;
   if (curVal == null) {
     etaTxt = `Log an entry to start tracking.`;
@@ -5613,7 +5613,7 @@ function trainTDEE(bmr, activityLevel) {
    (gaining) flips to a surplus. */
 function trainCalorieTargetForGoal(tdee, currentLbs, targetLbs, startDate, endDate) {
   if (tdee == null || currentLbs == null || targetLbs == null) return null;
-  const days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / 86400_000));
+  const days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / DAY_MS));
   const deltaLbs = Number(currentLbs) - Number(targetLbs);  // positive = losing
   const deficitPerDay = Math.round((deltaLbs * 3500) / days);
   return {
