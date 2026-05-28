@@ -26,6 +26,7 @@
 
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL }          = require('./lib/supabase');
+const { CLAUDE_MODEL }          = require('./lib/models');
 const {
   fetchJson,
   stripUpdatedAt,
@@ -85,7 +86,7 @@ const BANNED_PROSE_REGEX = new RegExp([
 const GREETING_PREFIX_REGEX = /^(Your\s+\w+\s+Brief\.?\s*|Good\s+(morning|afternoon|evening)\.?\s*|Brief:\s*)/i;
 
 // Defaults — overridable via env vars.
-const DEFAULT_MODEL       = 'claude-opus-4-7';
+const DEFAULT_MODEL       = CLAUDE_MODEL;
 const DEFAULT_MAX_TOKENS  = 1500;
 const DEFAULT_TIMEZONE    = 'America/New_York';
 

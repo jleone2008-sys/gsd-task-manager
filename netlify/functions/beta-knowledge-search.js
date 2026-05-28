@@ -26,9 +26,9 @@
 
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL } = require('./lib/supabase');
+const { EMBEDDING_MODEL } = require('./lib/models');
 
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
-const EMBEDDING_MODEL = 'text-embedding-3-small';
 const DEFAULT_TOP_K   = 5;
 const MAX_TOP_K       = 20;
 

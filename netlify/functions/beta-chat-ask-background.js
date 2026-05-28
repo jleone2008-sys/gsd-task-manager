@@ -37,8 +37,9 @@
 
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL } = require('./lib/supabase');
+const { CLAUDE_MODEL } = require('./lib/models');
 
-const KNOWLEDGE_MODEL = process.env.KNOWLEDGE_MODEL || 'claude-opus-4-7';
+const KNOWLEDGE_MODEL = process.env.KNOWLEDGE_MODEL || CLAUDE_MODEL;
 const CHAT_MAX_TOKENS = 2048;
 const CHAT_MAX_ITER   = 10;
 

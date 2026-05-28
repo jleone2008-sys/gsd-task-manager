@@ -24,10 +24,11 @@
 
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL } = require('./lib/supabase');
+const { CLAUDE_MODEL } = require('./lib/models');
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
-const DEFAULT_MODEL      = 'claude-opus-4-7';
+const DEFAULT_MODEL      = CLAUDE_MODEL;
 const DEFAULT_MAX_TOKENS = 800;
 
 exports.handler = async (event) => {
