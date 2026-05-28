@@ -785,7 +785,7 @@
         <div class="rich-btn-sep"></div>
         <button class="rich-btn rich-link-btn" title="Link">🔗</button>
       </div>
-      <div class="rich-editor" id="newNoteRich" contenteditable="true" spellcheck="true" data-placeholder="Optional note or URL"></div>
+      <div class="rich-editor" id="newNoteRich" contenteditable="true" spellcheck="true" data-placeholder="Add a note…"></div>
 
       <label class="create-panel-label">Due date</label>
       <input type="date" id="newDueDate" class="create-panel-date" formnovalidate>
@@ -1088,6 +1088,7 @@
 
     <!-- Rich text note -->
     <div style="margin-bottom:12px;">
+      <label>Note</label>
       <div class="rich-toolbar" id="richToolbar">
         <button class="rich-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
         <button class="rich-btn" data-cmd="italic" title="Italic"><em>I</em></button>
@@ -1103,16 +1104,16 @@
 
     <!-- Due date -->
     <div style="margin-bottom:12px;">
-      <label style="font-size:11px;color:var(--ink-3);display:block;margin-bottom:5px;">Due date (optional)</label>
-      <input type="date" id="editDueDate" class="auth-input" style="font-size:12.5px;padding:8px 11px;" formnovalidate>
+      <label>Due date</label>
+      <input type="date" id="editDueDate" class="input" formnovalidate>
     </div>
 
     <div id="editRepeatSection"></div>
 
     <div class="modal-footer-row">
       <div class="modal-action-btns">
-        <button class="btn-sm" id="editDeleteBtn" title="Delete task" style="color:var(--guava-700);border-color:#e8a0a0;padding:5px 7px;line-height:1;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-        <button class="btn-sm" id="editCancelBtn">Cancel</button>
+        <button class="btn btn--destructive btn--sm" id="editDeleteBtn" title="Delete task"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        <button class="btn btn--secondary btn--sm" id="editCancelBtn">Cancel</button>
         <button class="btn btn--primary btn--sm" id="editSaveBtn">Save</button>
       </div>
     </div>
