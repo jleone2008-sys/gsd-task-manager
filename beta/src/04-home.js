@@ -129,7 +129,7 @@ function homeEnsureSubStyles() {
   style.textContent = `
     .home-subsection { margin-top: 2px; }
     .home-subsection-h {
-      font-size: 10px; font-weight: 700;
+      font-size: var(--fs-label); font-weight: 700;
       color: var(--ink-4); letter-spacing: 0.08em;
       text-transform: uppercase; margin: 0 0 8px 0;
     }

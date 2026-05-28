@@ -406,7 +406,7 @@ function repeatSectionHTML(currentRecur) {
 
   return `<div class="repeat-row">
     <div class="repeat-icon">${_RECUR_SVG}</div>
-    <span style="font-size:12px;font-weight:600;color:var(--ink-2);flex:1;">Repeat</span>
+    <span style="font-size:var(--fs-pill);font-weight:600;color:var(--ink-2);flex:1;">Repeat</span>
     <label class="toggle-switch">
       <input type="checkbox" class="recur-toggle-chk" ${on?'checked':''}>
       <span class="track"></span>

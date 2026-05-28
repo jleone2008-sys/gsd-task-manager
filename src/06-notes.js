@@ -363,7 +363,7 @@ function renderNotesSidebar() {
   notebooksArr.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(nb => {
     const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
     const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
-    const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
+    const nbIcon = nb.icon ? `<span style="font-size:var(--fs-body);line-height:1;flex-shrink:0">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
     html += `<div class="ns-item${active}" draggable="true" data-nb-id="${nb.id}" data-notes-action="view-notebook">
       ${nbIcon}
       <span>${escHTML(nb.name || 'Untitled')}</span><span class="cnt">${nbCount}</span>
@@ -475,7 +475,7 @@ function renderNotesSidebar() {
     notebooksArr.forEach(nb => {
       const nbCount = notesArr.filter(n => !n.trashed && n.notebookId === nb.id).length;
       const active = notesSidebarView === 'notebook-' + nb.id ? ' active' : '';
-      const nbIcon = nb.icon ? `<span style="font-size:14px;line-height:1">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
+      const nbIcon = nb.icon ? `<span style="font-size:var(--fs-body);line-height:1">${nb.icon}</span>` : `<div class="nb-dot" style="background:${nb.color}"></div>`;
       drawerHtml += `<div class="ns-item${active}" data-notes-action="view-notebook-mobile" data-nb-id="${nb.id}">
         ${nbIcon}
         ${escHTML(nb.name || 'Untitled')} <span class="cnt">${nbCount}</span>
@@ -506,7 +506,7 @@ function updateNlTitle() {
   }
   let extra = '';
   if (notesSidebarView === 'trash' && list.length > 0) {
-    extra = `<button data-notes-action="empty-trash" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:var(--guava-700);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px">Empty Trash</button>`;
+    extra = `<button data-notes-action="empty-trash" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:var(--fs-meta);color:var(--guava-700);font-family:inherit;font-weight:600;padding:2px 6px;border-radius:4px">Empty Trash</button>`;
   } else if (notesSidebarView !== 'trash') {
     extra = `<button data-notes-action="enter-select-mode" title="Select notes" style="margin-left:auto;border:none;background:none;cursor:pointer;padding:2px 4px;border-radius:4px;color:var(--ink-3);display:flex;align-items:center">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
@@ -563,15 +563,15 @@ function renderNoteList() {
   if (!list.length && !noteSearchQuery) {
     el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--ink-3)">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;opacity:0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <div style="font-size:14px;font-weight:600;color:var(--ink-2);margin-bottom:4px">No notes yet</div>
-      <div style="font-size:12px">Tap + to create your first note.</div>
+      <div style="font-size:var(--fs-body);font-weight:600;color:var(--ink-2);margin-bottom:4px">No notes yet</div>
+      <div style="font-size:var(--fs-pill)">Tap + to create your first note.</div>
     </div>`;
     return;
   }
   if (!list.length && noteSearchQuery) {
     el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--ink-3)">
-      <div style="font-size:14px;font-weight:600;color:var(--ink-2)">No results</div>
-      <div style="font-size:12px;margin-top:4px">Try a different search term.</div>
+      <div style="font-size:var(--fs-body);font-weight:600;color:var(--ink-2)">No results</div>
+      <div style="font-size:var(--fs-pill);margin-top:4px">Try a different search term.</div>
     </div>`;
     return;
   }
@@ -615,7 +615,7 @@ function renderNoteList() {
         </div>
         <div class="nl-item-preview">${escHTML(preview)}</div>
         <div class="nl-item-meta" style="gap:6px;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:var(--ink-3)">${retentionHint}</span>
+          <span style="font-size:var(--fs-meta);color:var(--ink-3)">${retentionHint}</span>
           <span style="display:flex;gap:6px">
             <button data-notes-action="note-restore" class="expand-action">Restore</button>
             <button data-notes-action="note-permanent-delete" class="expand-action" style="color:var(--guava-700);border-color:var(--guava-200)">Delete</button>
@@ -708,7 +708,7 @@ function renderNoteEditor() {
             Edited ${formatNoteDate(note.updatedAt)}
           </div>
           <div class="ne-meta-item" style="margin-left:auto;gap:8px">
-            <select data-notes-change="note-nb" data-note-id="${note.id}" style="border:1px solid var(--edge);border-radius:5px;padding:2px 6px;font-size:10px;font-family:inherit;background:var(--surface);color:var(--ink-2);cursor:pointer">
+            <select data-notes-change="note-nb" data-note-id="${note.id}" style="border:1px solid var(--edge);border-radius:5px;padding:2px 6px;font-size:var(--fs-label);font-family:inherit;background:var(--surface);color:var(--ink-2);cursor:pointer">
               <option value="">No notebook</option>
               ${nbOptions}
             </select>
@@ -883,11 +883,11 @@ function showNotebookMenu(e, id) {
     minWidth:'140px', animation:'fadeUp 0.15s ease both'
   });
   menu.innerHTML = `
-    <button data-notes-action="nb-rename" data-nb-id="${id}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--ink)">
+    <button data-notes-action="nb-rename" data-nb-id="${id}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:var(--fs-pill);cursor:pointer;border-radius:7px;color:var(--ink)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Edit
     </button>
-    <button data-notes-action="nb-delete" data-nb-id="${id}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:12px;cursor:pointer;border-radius:7px;color:var(--guava-700)">
+    <button data-notes-action="nb-delete" data-nb-id="${id}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;border:none;background:none;font-family:inherit;font-size:var(--fs-pill);cursor:pointer;border-radius:7px;color:var(--guava-700)">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Delete
     </button>`;
@@ -918,11 +918,11 @@ function showInlinePrompt(title, defaultVal, onConfirm) {
   }
   overlay.style.display = 'flex';
   overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px 24px;width:90%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.15)">
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${title}</div>
-    <input id="inlinePromptInput" type="text" value="${escAttr(defaultVal || '')}" spellcheck="true" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
+    <div style="font-size:var(--fs-item);font-weight:700;margin-bottom:12px">${title}</div>
+    <input id="inlinePromptInput" type="text" value="${escAttr(defaultVal || '')}" spellcheck="true" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:var(--fs-search);outline:none" autofocus>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-      <button data-notes-action="close-inline-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
-      <button id="inlinePromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+      <button data-notes-action="close-inline-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:var(--fs-pill);cursor:pointer">Cancel</button>
+      <button id="inlinePromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:var(--fs-pill);font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>`;
   const inp = document.getElementById('inlinePromptInput');
@@ -975,25 +975,25 @@ function showNotebookPrompt(title, defaultName, defaultIcon, defaultColor, onCon
   }
   overlay.style.display = 'flex';
   overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:20px 24px;width:90%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.15);max-height:80vh;overflow-y:auto">
-    <div style="font-size:15px;font-weight:700;margin-bottom:14px">${title}</div>
+    <div style="font-size:var(--fs-item);font-weight:700;margin-bottom:14px">${title}</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <button class="emoji-pick-btn" id="nbEmojiBtn" title="Tap to pick icon">${defaultIcon || '📓'}</button>
       <div style="flex:1">
-        <input id="nbPromptInput" type="text" value="${escAttr(defaultName || '')}" placeholder="Notebook name..." spellcheck="true" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none" autofocus>
+        <input id="nbPromptInput" type="text" value="${escAttr(defaultName || '')}" placeholder="Notebook name..." spellcheck="true" style="width:100%;box-sizing:border-box;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:var(--fs-search);outline:none" autofocus>
       </div>
     </div>
     <div class="emoji-grid" id="nbEmojiGrid" style="display:none">
       ${NB_EMOJIS.map(e => `<button data-nb-emoji="${e}">${e}</button>`).join('')}
     </div>
     <div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--ink-3);margin-bottom:6px;font-weight:500">Color</div>
+      <div style="font-size:var(--fs-meta);color:var(--ink-3);margin-bottom:6px;font-weight:500">Color</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="nbColorPicker">
         ${NB_COLORS.map(c => `<button data-nb-color="${c}" data-color="${c}" style="width:24px;height:24px;border-radius:50%;border:none;cursor:pointer;background:${c}${c === selectedColor ? ';outline:2px solid var(--ink)' : ''}" ${c === selectedColor ? 'data-selected="true"' : ''}></button>`).join('')}
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-      <button data-notes-action="close-nb-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer">Cancel</button>
-      <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">OK</button>
+      <button data-notes-action="close-nb-prompt" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:var(--fs-pill);cursor:pointer">Cancel</button>
+      <button id="nbPromptConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:var(--fs-pill);font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>`;
   const emojiBtn = document.getElementById('nbEmojiBtn');
@@ -1055,11 +1055,11 @@ function showInlineConfirm(title, message, onConfirm) {
   Object.assign(overlay.style, {position:'fixed',inset:'0',background:'rgba(20,20,60,0.35)',backdropFilter:'blur(3px)',zIndex:'500',display:'flex',alignItems:'center',justifyContent:'center'});
   const card = document.createElement('div');
   Object.assign(card.style, {background:'var(--surface)',borderRadius:'14px',padding:'24px 28px',maxWidth:'340px',width:'90%',boxShadow:'0 8px 32px rgba(0,0,0,0.15)',animation:'fadeUp 0.2s cubic-bezier(0.34,1.4,0.64,1) both'});
-  card.innerHTML = `<div style="font-weight:600;font-size:15px;margin-bottom:6px">${title}</div>
-    <div style="font-size:13px;color:var(--ink-2);margin-bottom:20px">${message}</div>
+  card.innerHTML = `<div style="font-weight:600;font-size:var(--fs-item);margin-bottom:6px">${title}</div>
+    <div style="font-size:var(--fs-search);color:var(--ink-2);margin-bottom:20px">${message}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button id="icCancel" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge-strong);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer;color:var(--ink-2)">Cancel</button>
-      <button id="icConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600">Delete</button>
+      <button id="icCancel" style="padding:7px 16px;border-radius:8px;border:1px solid var(--edge-strong);background:var(--surface);font-family:inherit;font-size:var(--fs-pill);cursor:pointer;color:var(--ink-2)">Cancel</button>
+      <button id="icConfirm" style="padding:7px 16px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:var(--fs-pill);cursor:pointer;font-weight:600">Delete</button>
     </div>`;
   overlay.appendChild(card);
   document.body.appendChild(overlay);

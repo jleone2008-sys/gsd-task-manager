@@ -128,7 +128,7 @@ function briefInjectStyles() {
       gap: 10px; margin-bottom: 14px;
     }
     .brief-eyebrow {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
     }
     .brief-head-right { display: inline-flex; align-items: center; gap: 8px; }
@@ -154,13 +154,13 @@ function briefInjectStyles() {
     .brief-sleep-chip.is-logged {
       background: var(--guava-50); color: var(--guava-700); border-color: transparent; font-weight: 600;
     }
-    .brief-sleep-icon { font-size: 12px; line-height: 1; }
+    .brief-sleep-icon { font-size: var(--fs-pill); line-height: 1; }
     .brief-sleep-label { font-weight: 600; color: var(--ink); }
     .brief-sleep-chip.is-logged .brief-sleep-label { color: inherit; }
     .brief-sleep-time { font-variant-numeric: tabular-nums; }
     .brief-conf {
       display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
-      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
       background: var(--surface-2); color: var(--ink-3);
     }
     .brief-conf.is-low         { background: var(--surface-2); color: var(--ink-4); }
@@ -168,7 +168,7 @@ function briefInjectStyles() {
     .brief-conf.is-fallback    { background: var(--surface-2); color: var(--ink-4); }
 
     .brief-headline {
-      font-size: 22px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-title); font-weight: 700; color: var(--ink);
       letter-spacing: -0.02em; line-height: 1.15;
       margin: 0 0 6px 0;
     }
@@ -188,8 +188,8 @@ function briefInjectStyles() {
     .brief-hero-ring { display: flex; align-items: center; justify-content: center; }
     .brief-hero-svg  { width: 120px; height: 120px; display: block; }
     .brief-hero-value { font-size: 26px; font-weight: 700; fill: var(--ink); }
-    .brief-hero-label { font-size: 9px; font-weight: 700; letter-spacing: .08em; fill: var(--ink-3); }
-    .brief-hero-delta { font-size: 11px; font-weight: 700; fill: var(--ink-4); font-variant-numeric: tabular-nums; }
+    .brief-hero-label { font-size: var(--fs-nano); font-weight: 700; letter-spacing: .08em; fill: var(--ink-3); }
+    .brief-hero-delta { font-size: var(--fs-meta); font-weight: 700; fill: var(--ink-4); font-variant-numeric: tabular-nums; }
     .brief-hero-delta.is-up   { fill: #5e8c4f; }
     .brief-hero-delta.is-down { fill: var(--guava-700); }
 
@@ -218,7 +218,7 @@ function briefInjectStyles() {
     .brief-stat-delta.is-down { color: var(--guava-700); }
     .brief-stat-note { font-size: var(--fs-meta); color: var(--ink-4); font-weight: 500; }
     .brief-stats-baseline {
-      font-size: 10px; color: var(--ink-4); margin-top: 6px;
+      font-size: var(--fs-label); color: var(--ink-4); margin-top: 6px;
       text-align: right; letter-spacing: .02em; font-style: italic;
     }
 
@@ -234,7 +234,7 @@ function briefInjectStyles() {
     }
 
     .brief-play-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
       margin: 0 0 8px 0;
     }
@@ -297,7 +297,7 @@ function briefInjectStyles() {
     }
     .brief-recap-col { display: flex; flex-direction: column; }
     .brief-recap-col-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase; margin: 0 0 8px 0;
     }
     /* Row layout:
@@ -316,7 +316,7 @@ function briefInjectStyles() {
       align-items: baseline; padding: 6px 0; font-size: var(--fs-search);
     }
     .brief-recap-row + .brief-recap-row { border-top: 1px dashed var(--edge); }
-    .brief-recap-icon { font-size: 14px; line-height: 1; }
+    .brief-recap-icon { font-size: var(--fs-body); line-height: 1; }
     .brief-recap-name { color: var(--ink-3); white-space: nowrap; }
     .brief-recap-value {
       color: var(--ink); font-weight: 600; text-align: right;

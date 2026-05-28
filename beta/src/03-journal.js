@@ -1042,7 +1042,7 @@ function ensureJournalStyles() {
     .content[data-tool-view="journal"] { max-width: none; padding: 0; }
     .j-shell { max-width: 720px; margin: 0; padding: 0 25px 80px; position: relative; }
     .j-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    .j-page-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.25; flex: 1; min-width: 0; }
+    .j-page-title { font-size: var(--fs-title); font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.25; flex: 1; min-width: 0; }
     .j-actions { display: flex; gap: 6px; align-items: center; }
     .j-action-btn { width: 36px; height: 36px; border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: background var(--dur-fast); }
     .j-action-btn:hover { background: var(--surface-2); color: var(--ink); }
@@ -1054,27 +1054,27 @@ function ensureJournalStyles() {
     .j-cal-pop-slot { position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 26; width: 280px; }
     @media (max-width: 600px) { .j-cal-pop-slot { left: 0; right: 0; width: auto; } }
     .j-search-bar { position: relative; margin-bottom: 14px; }
-    .j-search-input { width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); font-family: inherit; font-size: 13px; color: var(--ink); background: var(--surface); outline: none; box-sizing: border-box; }
+    .j-search-input { width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-search); color: var(--ink); background: var(--surface); outline: none; box-sizing: border-box; }
     .j-search-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
     .j-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--ink-4); pointer-events: none; }
     .j-search-results { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-raised); max-height: 360px; overflow-y: auto; z-index: 30; }
     .j-sr-item { width: 100%; text-align: left; background: none; border: none; padding: 10px 14px; font-family: inherit; cursor: pointer; border-bottom: 1px solid var(--edge); display: block; }
     .j-sr-item:last-child { border-bottom: none; }
     .j-sr-item:hover { background: var(--surface-2); }
-    .j-sr-date { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
-    .j-sr-meta { font-size: 10px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-    .j-sr-snippet { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+    .j-sr-date { font-size: var(--fs-pill); font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+    .j-sr-meta { font-size: var(--fs-label); color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .j-sr-snippet { font-size: var(--fs-pill); color: var(--ink-3); line-height: 1.5; }
     .j-sr-snippet mark { background: var(--guava-100); color: var(--guava-900); padding: 0 2px; border-radius: 2px; }
-    .j-sr-empty { padding: 16px; font-size: 12px; color: var(--ink-4); text-align: center; }
+    .j-sr-empty { padding: 16px; font-size: var(--fs-pill); color: var(--ink-4); text-align: center; }
 
     .j-cal-pop { position: relative; width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-raised); padding: 12px; }
     .j-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
-    .j-cal-month { font-size: 13px; font-weight: 600; color: var(--ink); }
-    .j-cal-nav { background: none; border: none; padding: 4px 8px; cursor: pointer; color: var(--ink-3); border-radius: var(--r-sm); font-size: 16px; line-height: 1; }
+    .j-cal-month { font-size: var(--fs-search); font-weight: 600; color: var(--ink); }
+    .j-cal-nav { background: none; border: none; padding: 4px 8px; cursor: pointer; color: var(--ink-3); border-radius: var(--r-sm); font-size: var(--fs-card); line-height: 1; }
     .j-cal-nav:hover { background: var(--surface-2); color: var(--ink); }
     .j-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-    .j-cal-dow { font-size: 9px; font-weight: 600; color: var(--ink-4); text-align: center; padding: 4px 0; letter-spacing: 0.05em; }
-    .j-cal-cell { position: relative; aspect-ratio: 1/1; border: none; background: none; font-family: inherit; font-size: 12px; color: var(--ink-2); border-radius: var(--r-sm); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .j-cal-dow { font-size: var(--fs-nano); font-weight: 600; color: var(--ink-4); text-align: center; padding: 4px 0; letter-spacing: 0.05em; }
+    .j-cal-cell { position: relative; aspect-ratio: 1/1; border: none; background: none; font-family: inherit; font-size: var(--fs-pill); color: var(--ink-2); border-radius: var(--r-sm); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; }
     .j-cal-cell:hover:not([disabled]) { background: var(--surface-2); }
     .j-cal-cell.is-today { font-weight: 700; color: var(--guava-700); }
     .j-cal-cell.has-entry::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--guava-500); }
@@ -1101,7 +1101,7 @@ function ensureJournalStyles() {
     .j-card.j-card--empty { box-shadow: none; }
     .j-card.j-card--placeholder { background: transparent; border: 1px dashed var(--edge); box-shadow: none; padding: 12px 16px; cursor: pointer; }
     .j-card.j-card--placeholder:hover { background: var(--surface); border-color: var(--edge-strong); }
-    .j-card-placeholder-text { font-size: 12px; color: var(--ink-4); }
+    .j-card-placeholder-text { font-size: var(--fs-pill); color: var(--ink-4); }
 
     .j-card-photos { background: #1a1714; }
     .j-card-photos img { display: block; cursor: pointer; }
@@ -1119,15 +1119,15 @@ function ensureJournalStyles() {
     .j-card-photos--5plus img:nth-child(1) { grid-row: span 2; }
     .j-card-photos--2 img, .j-card-photos--3 img, .j-card-photos--4 img, .j-card-photos--5plus img { width: 100%; height: 100%; object-fit: cover; }
     .j-card-photos--5plus .j-card-photo-more { position: relative; }
-    .j-card-photos--5plus .j-card-photo-more::after { content: attr(data-extra); position: absolute; inset: 0; background: rgba(0,0,0,0.55); color: #fff; font-size: 18px; font-weight: 600; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .j-card-photos--5plus .j-card-photo-more::after { content: attr(data-extra); position: absolute; inset: 0; background: rgba(0,0,0,0.55); color: #fff; font-size: var(--fs-section); font-weight: 600; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 
     .j-card-body { padding: 18px 22px 14px; }
-    .j-card-title { font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.3; margin-bottom: 8px; letter-spacing: -0.01em; }
-    .j-card-text { font-size: 14px; color: var(--ink-2); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    .j-card-title { font-size: var(--fs-card); font-weight: 600; color: var(--ink); line-height: 1.3; margin-bottom: 8px; letter-spacing: -0.01em; }
+    .j-card-text { font-size: var(--fs-body); color: var(--ink-2); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
     .j-card-text--clamped { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
-    .j-card-mood-inline { font-size: 22px; vertical-align: middle; margin-right: 4px; }
+    .j-card-mood-inline { font-size: var(--fs-title); vertical-align: middle; margin-right: 4px; }
 
-    .j-card-meta { display: flex; gap: 14px; padding: 0 22px 12px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
+    .j-card-meta { display: flex; gap: 14px; padding: 0 22px 12px; flex-wrap: wrap; font-size: var(--fs-pill); color: var(--ink-3); }
     .j-card-meta-item { display: inline-flex; align-items: center; gap: 4px; }
     .j-card-meta-item svg { width: 12px; height: 12px; }
 
@@ -1140,7 +1140,7 @@ function ensureJournalStyles() {
     .j-card-add-photo svg { width: 13px; height: 13px; }
     .j-card-empty-prompt { color: var(--ink-3); font-style: italic; }
     .j-card-start-wrap { padding: 2px 0 4px; }
-    .j-card-start-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--guava-700); color: #fff; border: none; padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; transition: background var(--dur-fast); }
+    .j-card-start-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--guava-700); color: #fff; border: none; padding: 9px 16px; font-family: inherit; font-size: var(--fs-search); font-weight: 600; border-radius: var(--r-md); cursor: pointer; transition: background var(--dur-fast); }
     .j-card-start-btn:hover { background: var(--guava-800); }
     .j-card-auto { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
     .j-card-body > .j-card-auto:first-child { margin-top: 0; padding-top: 0; border-top: none; }
@@ -1155,19 +1155,19 @@ function ensureJournalStyles() {
     .j-back-to-top:hover { background: var(--guava-800); }
     .j-back-to-top svg { width: 18px; height: 18px; }
     @media (max-width: 600px) { .j-back-to-top { bottom: 76px; right: 16px; } }
-    .j-card-entry { font-size: 13px; margin-top: 4px; }
-    .j-card-auto-more { font-size: 11px; color: var(--ink-4); font-style: italic; padding-top: 2px; }
+    .j-card-entry { font-size: var(--fs-search); margin-top: 4px; }
+    .j-card-auto-more { font-size: var(--fs-meta); color: var(--ink-4); font-style: italic; padding-top: 2px; }
     /* "Today I learned" block on the day card. Sits under the
        reflection / mood block, gets its own small label like the
        'What happened' / 'What you finished' auto sections. */
     .j-card-learning { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--edge); }
     .j-card-learning-label {
-      font-size: 10px; font-weight: 700; color: var(--ink-4);
+      font-size: var(--fs-label); font-weight: 700; color: var(--ink-4);
       letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
     }
-    .j-card-learning .j-card-text { font-size: 13px; }
+    .j-card-learning .j-card-text { font-size: var(--fs-search); }
 
-    .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
+    .j-load-sentinel { padding: 24px 0; text-align: center; font-size: var(--fs-pill); color: var(--ink-4); }
 
     /* Edit modal */
     .j-edit-modal { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: flex; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 40px 16px; animation: fadeIn var(--dur-quick) ease both; }
@@ -1175,29 +1175,29 @@ function ensureJournalStyles() {
     .j-edit-card { background: var(--surface); border-radius: var(--r-md); max-width: 680px; width: 100%; box-shadow: var(--shadow-raised); margin-bottom: 40px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
     @media (max-width: 600px) { .j-edit-card { max-height: calc(100vh - 48px); margin-bottom: 0; } }
     .j-edit-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 22px 14px; border-bottom: 1px solid var(--edge); flex-shrink: 0; }
-    .j-edit-title { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
-    .j-edit-save-ind { font-size: 11px; color: var(--ink-4); margin-top: 4px; }
+    .j-edit-title { font-size: var(--fs-section); font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
+    .j-edit-save-ind { font-size: var(--fs-meta); color: var(--ink-4); margin-top: 4px; }
     .j-edit-save-ind.saved { color: var(--moss-fg); }
     .j-edit-save-ind.error { color: var(--guava-700); }
-    .j-edit-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 4px 8px; font-size: 22px; line-height: 1; border-radius: var(--r-sm); }
+    .j-edit-close { background: none; border: none; cursor: pointer; color: var(--ink-3); padding: 4px 8px; font-size: var(--fs-title); line-height: 1; border-radius: var(--r-sm); }
     .j-edit-close:hover { background: var(--surface-2); color: var(--ink); }
     .j-edit-body { padding: 18px 22px 8px; overflow-y: auto; flex: 1; min-height: 0; }
     .j-edit-footer { padding: 14px 22px 18px; border-top: 1px solid var(--edge); flex-shrink: 0; background: var(--surface); }
-    .j-edit-submit { width: 100%; background: var(--guava-700); color: #fff; border: none; padding: 11px 18px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; }
+    .j-edit-submit { width: 100%; background: var(--guava-700); color: #fff; border: none; padding: 11px 18px; font-family: inherit; font-size: var(--fs-search); font-weight: 600; border-radius: var(--r-md); cursor: pointer; }
     .j-edit-submit:hover { background: var(--guava-800); }
 
     .j-view-photos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
     .j-view-photos img { width: 100%; max-height: 70vh; border-radius: var(--r-md); display: block; cursor: zoom-in; object-fit: contain; background: #1a1714; }
-    .j-view-mood-title { font-size: 18px; font-weight: 600; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.01em; line-height: 1.3; }
-    .j-view-text { font-size: 14px; color: var(--ink-2); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    .j-view-mood-title { font-size: var(--fs-section); font-weight: 600; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.01em; line-height: 1.3; }
+    .j-view-text { font-size: var(--fs-body); color: var(--ink-2); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 
     .j-section { margin-bottom: 22px; }
-    .j-section-h { font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
-    .j-list-row { display: flex; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; align-items: center; }
+    .j-section-h { font-size: var(--fs-label); font-weight: 700; color: var(--ink-4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+    .j-list-row { display: flex; gap: 8px; padding: 6px 0; font-size: var(--fs-search); color: var(--ink-2); line-height: 1.5; align-items: center; }
     .j-list-row .j-bullet { color: var(--guava-500); flex-shrink: 0; }
     .j-list-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
-    .j-empty-row { font-size: 12px; color: var(--ink-4); font-style: italic; padding: 4px 0; }
-    .j-error-row { font-size: 12px; color: var(--guava-700); padding: 4px 0; line-height: 1.5; }
+    .j-empty-row { font-size: var(--fs-pill); color: var(--ink-4); font-style: italic; padding: 4px 0; }
+    .j-error-row { font-size: var(--fs-pill); color: var(--guava-700); padding: 4px 0; line-height: 1.5; }
     .j-error-row a { color: var(--guava-800); text-decoration: underline; cursor: pointer; }
     /* Phase 5 — tappable event row. Cursor hint + subtle hover bg so
        users discover the affordance. Energy emoji + tag chip surface
@@ -1206,10 +1206,10 @@ function ensureJournalStyles() {
     .j-event-row.is-editable { cursor: pointer; }
     .j-event-row.is-editable:hover { background: var(--surface-2); padding-left: 4px; padding-right: 4px; margin-left: -4px; margin-right: -4px; }
     .j-event-text { flex: 1; min-width: 0; }
-    .j-event-energy { font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .j-event-energy { font-size: var(--fs-body); line-height: 1; flex-shrink: 0; }
     .j-event-tag {
       display: inline-block; flex-shrink: 0;
-      font-size: 10px; font-weight: 700; letter-spacing: .03em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .03em;
       padding: 2px 8px; border-radius: 999px;
       background: var(--surface-2); color: var(--ink-3);
       text-transform: uppercase;
@@ -1221,14 +1221,14 @@ function ensureJournalStyles() {
        that rendered as block content at the bottom of the page). */
     .j-event-meta-modal .j-edit-card { max-width: 480px; }
     .j-event-meta-time {
-      font-size: 11px; color: var(--ink-4); margin-top: 4px;
+      font-size: var(--fs-meta); color: var(--ink-4); margin-top: 4px;
       letter-spacing: 0.02em;
     }
     /* Relationship dropdown — native <select> styled to match the
        journal's input look. Caret-down chevron drawn via SVG bg. */
     .j-event-meta-tag {
       width: 100%; box-sizing: border-box;
-      padding: 8px 36px 8px 12px; font-size: 14px;
+      padding: 8px 36px 8px 12px; font-size: var(--fs-body);
       background: var(--surface);
       border: 1px solid var(--edge-strong);
       border-radius: var(--r-sm);
@@ -1251,7 +1251,7 @@ function ensureJournalStyles() {
     .j-edit-cancel {
       background: var(--surface); color: var(--ink-2);
       border: 1px solid var(--edge-strong);
-      padding: 8px 16px; font-family: inherit; font-size: 13px;
+      padding: 8px 16px; font-family: inherit; font-size: var(--fs-search);
       font-weight: 600; border-radius: var(--r-md); cursor: pointer;
     }
     .j-edit-cancel:hover { background: var(--surface-2); }
@@ -1259,7 +1259,7 @@ function ensureJournalStyles() {
       margin-right: auto;       /* push Cancel + Save to the right */
       background: none; border: 0;
       color: var(--guava-700); cursor: pointer;
-      font-family: inherit; font-size: 12px; font-weight: 600;
+      font-family: inherit; font-size: var(--fs-pill); font-weight: 600;
       padding: 6px 8px;
     }
     .j-event-meta-remove:hover { color: var(--guava-800); text-decoration: underline; }
@@ -1269,16 +1269,16 @@ function ensureJournalStyles() {
     .j-photos { display: flex; flex-wrap: wrap; gap: 10px; }
     .j-photo { position: relative; width: 88px; height: 88px; border-radius: var(--r-md); overflow: hidden; background: var(--surface-2); border: 1px solid var(--edge); cursor: pointer; }
     .j-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .j-photo-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); border: none; color: #fff; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; cursor: pointer; line-height: 1; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .j-photo-del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); border: none; color: #fff; width: 20px; height: 20px; border-radius: 50%; font-size: var(--fs-meta); cursor: pointer; line-height: 1; padding: 0; display: flex; align-items: center; justify-content: center; }
     .j-photo-del:hover { background: rgba(0,0,0,0.85); }
-    .j-photo-add { width: 88px; height: 88px; border: 1.5px dashed var(--edge-strong); border-radius: var(--r-md); background: none; cursor: pointer; color: var(--ink-3); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 300; }
+    .j-photo-add { width: 88px; height: 88px; border: 1.5px dashed var(--edge-strong); border-radius: var(--r-md); background: none; cursor: pointer; color: var(--ink-3); display: flex; align-items: center; justify-content: center; font-size: var(--fs-title); font-weight: 300; }
     .j-photo-add:hover { border-color: var(--guava-500); color: var(--guava-700); background: var(--guava-50); }
 
-    .j-textarea { width: 100%; min-height: 140px; padding: 12px 14px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); background: var(--surface); font-family: inherit; font-size: 14px; line-height: 1.65; color: var(--ink); resize: vertical; outline: none; box-sizing: border-box; }
+    .j-textarea { width: 100%; min-height: 140px; padding: 12px 14px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); background: var(--surface); font-family: inherit; font-size: var(--fs-body); line-height: 1.65; color: var(--ink); resize: vertical; outline: none; box-sizing: border-box; }
     .j-textarea:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
 
     .j-mood { display: flex; gap: 8px; flex-wrap: wrap; }
-    .j-mood-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); border: 1.5px solid transparent; cursor: pointer; font-size: 22px; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform var(--dur-fast) var(--ease); }
+    .j-mood-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); border: 1.5px solid transparent; cursor: pointer; font-size: var(--fs-title); padding: 0; display: flex; align-items: center; justify-content: center; transition: transform var(--dur-fast) var(--ease); }
     .j-mood-btn:hover { transform: scale(1.08); }
     .j-mood-btn.is-selected { border-color: var(--guava-700); background: var(--guava-50); }
     /* Phase 5 — today's edit-modal picker is read-only; intra-day
@@ -1286,31 +1286,31 @@ function ensureJournalStyles() {
     .j-mood.is-readonly .j-mood-btn { cursor: default; opacity: 0.65; }
     .j-mood.is-readonly .j-mood-btn:hover { transform: none; }
     .j-mood-btn[disabled] { pointer-events: none; }
-    .j-mood-hint { font-size: 11px; color: var(--ink-4); margin-top: 8px; line-height: 1.4; }
+    .j-mood-hint { font-size: var(--fs-meta); color: var(--ink-4); margin-top: 8px; line-height: 1.4; }
 
     /* Photo source modal */
     .j-photo-modal { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 20px; animation: fadeIn var(--dur-quick) ease both; }
     .j-photo-modal-card { background: var(--surface); border-radius: var(--r-lg); padding: 22px; max-width: 360px; width: 100%; box-shadow: var(--shadow-raised); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
-    .j-photo-modal-h { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
+    .j-photo-modal-h { font-size: var(--fs-item); font-weight: 600; color: var(--ink); margin-bottom: 14px; }
     .j-photo-modal-opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: var(--r-md); background: var(--surface); cursor: pointer; width: 100%; font-family: inherit; text-align: left; margin-bottom: 8px; transition: background var(--dur-fast); }
     .j-photo-modal-opt:hover { background: var(--surface-2); }
     .j-photo-modal-opt svg { width: 20px; height: 20px; color: var(--ink-3); flex-shrink: 0; }
     .j-photo-modal-opt-text { display: flex; flex-direction: column; gap: 2px; }
-    .j-photo-modal-opt-name { font-size: 13px; font-weight: 600; color: var(--ink); }
-    .j-photo-modal-opt-desc { font-size: 11px; color: var(--ink-4); }
-    .j-photo-modal-cancel { background: none; border: none; color: var(--ink-3); padding: 10px; cursor: pointer; font-family: inherit; font-size: 12px; width: 100%; margin-top: 4px; }
+    .j-photo-modal-opt-name { font-size: var(--fs-search); font-weight: 600; color: var(--ink); }
+    .j-photo-modal-opt-desc { font-size: var(--fs-meta); color: var(--ink-4); }
+    .j-photo-modal-cancel { background: none; border: none; color: var(--ink-3); padding: 10px; cursor: pointer; font-family: inherit; font-size: var(--fs-pill); width: 100%; margin-top: 4px; }
     .j-photo-modal-cancel:hover { color: var(--ink); }
 
     /* Lightbox */
     .j-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; z-index: 1300; cursor: zoom-out; }
     .j-lightbox-img { max-width: 95vw; max-height: 92vh; object-fit: contain; box-shadow: 0 4px 30px rgba(0,0,0,0.5); border-radius: 4px; }
-    .j-lightbox-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.12); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+    .j-lightbox-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.12); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: var(--fs-title-mobile); line-height: 1; display: flex; align-items: center; justify-content: center; }
     .j-lightbox-close:hover { background: rgba(255,255,255,0.22); }
-    .j-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.12); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+    .j-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.12); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: var(--fs-title-mobile); line-height: 1; display: flex; align-items: center; justify-content: center; }
     .j-lightbox-nav:hover { background: rgba(255,255,255,0.22); }
     .j-lightbox-nav.prev { left: 16px; }
     .j-lightbox-nav.next { right: 16px; }
-    .j-lightbox-counter { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 12px; opacity: 0.75; }
+    .j-lightbox-counter { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); color: #fff; font-size: var(--fs-pill); opacity: 0.75; }
   `;
   document.head.appendChild(style);
 }

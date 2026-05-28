@@ -800,7 +800,7 @@ function renderHabitToday(active) {
   el.innerHTML = `
     ${dueToday.length
       ? `<div class="section-label">Due today</div>${dueHTML}`
-      : '<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:13px">Nothing required today — nice.</div>'}
+      : '<div style="text-align:center;padding:24px;color:var(--ink-3);font-size:var(--fs-search)">Nothing required today — nice.</div>'}
     ${optional.length ? `<div class="section-label">Habits</div>${optHTML}` : ''}
   `;
 }
@@ -814,9 +814,9 @@ function renderHabitAll(active) {
   const archived = habitsArr.filter(h => h.archived);
   if (!active.length && !archived.length) {
     el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--ink-3)">
-      <div style="font-size:32px;margin-bottom:12px">🔥</div>
-      <div style="font-size:15px;font-weight:600;color:var(--ink-2);margin-bottom:4px">No habits yet</div>
-      <div style="font-size:13px">Tap + to create your first habit.</div>
+      <div style="font-size:var(--fs-ring);margin-bottom:12px">🔥</div>
+      <div style="font-size:var(--fs-item);font-weight:600;color:var(--ink-2);margin-bottom:4px">No habits yet</div>
+      <div style="font-size:var(--fs-search)">Tap + to create your first habit.</div>
     </div>`;
     return;
   }
@@ -852,10 +852,10 @@ function renderHabitAll(active) {
     html += `<div class="habit-card" data-habit-action="drill" data-habit-id="${h.id}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <div class="habit-name" style="font-size:15px;font-weight:600">${escHTML(h.name || '')}</div>
-          <div style="font-size:12px;color:var(--guava-700);margin-top:2px">${habitCadenceLabel(h)}</div>
+          <div class="habit-name" style="font-size:var(--fs-item);font-weight:600">${escHTML(h.name || '')}</div>
+          <div style="font-size:var(--fs-pill);color:var(--guava-700);margin-top:2px">${habitCadenceLabel(h)}</div>
         </div>
-        <span style="font-size:28px;line-height:1">${escHTML(h.emoji || '')}</span>
+        <span style="font-size:var(--fs-display);line-height:1">${escHTML(h.emoji || '')}</span>
       </div>
       <div class="habit-week-dots">${dots}</div>
       <div class="habit-card-footer" style="padding-left:0;margin-top:14px;padding-bottom:0">
@@ -871,13 +871,13 @@ function renderHabitAll(active) {
 
   // Archived habits section
   if (archived.length) {
-    html += `<div class="section-label" style="margin-top:24px;cursor:pointer;user-select:none" data-habit-action="toggle-archived">📦 ARCHIVED <span class="arch-arrow">▸</span> <span style="font-weight:400;color:var(--ink-3);font-size:11px">${archived.length}</span></div>`;
+    html += `<div class="section-label" style="margin-top:24px;cursor:pointer;user-select:none" data-habit-action="toggle-archived">📦 ARCHIVED <span class="arch-arrow">▸</span> <span style="font-weight:400;color:var(--ink-3);font-size:var(--fs-meta)">${archived.length}</span></div>`;
     html += `<div id="archivedHabitsSection" style="display:none">`;
     archived.forEach(h => {
       html += `<div class="habit-card" style="opacity:0.6">
         <div class="habit-card-top">
           <span class="habit-emoji">${escHTML(h.emoji || '')}</span><span class="habit-name">${escHTML(h.name || '')}</span>
-          <button data-habit-action="unarchive" data-habit-id="${h.id}" style="margin-left:auto;background:none;border:1px solid var(--edge);border-radius:8px;padding:4px 12px;font-size:11px;font-family:inherit;cursor:pointer;color:var(--ink-2);">Unarchive</button>
+          <button data-habit-action="unarchive" data-habit-id="${h.id}" style="margin-left:auto;background:none;border:1px solid var(--edge);border-radius:8px;padding:4px 12px;font-size:var(--fs-meta);font-family:inherit;cursor:pointer;color:var(--ink-2);">Unarchive</button>
         </div>
       </div>`;
     });
@@ -909,9 +909,9 @@ function renderHabitStats(active) {
 
   if (!active.length) {
     el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--ink-3)">
-      <div style="font-size:32px;margin-bottom:12px">📊</div>
-      <div style="font-size:15px;font-weight:600;color:var(--ink-2);margin-bottom:4px">No statistics yet</div>
-      <div style="font-size:13px">Create some habits to see your stats.</div>
+      <div style="font-size:var(--fs-ring);margin-bottom:12px">📊</div>
+      <div style="font-size:var(--fs-item);font-weight:600;color:var(--ink-2);margin-bottom:4px">No statistics yet</div>
+      <div style="font-size:var(--fs-search)">Create some habits to see your stats.</div>
     </div>`;
     return;
   }
@@ -1080,7 +1080,7 @@ function renderStatsYearly(active) {
       </div>
       <div class="st-card-title" style="margin-top:8px">Monthly Trend</div>
       <div class="st-trend">${trendHtml}</div>
-      <div style="text-align:center;font-size:10px;color:var(--ink-3);margin-top:6px">Tap a month to drill in</div>
+      <div style="text-align:center;font-size:var(--fs-label);color:var(--ink-3);margin-top:6px">Tap a month to drill in</div>
     </div>
     <div class="st-card">
       <div class="st-card-title">Habit Ranking</div>

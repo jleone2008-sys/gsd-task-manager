@@ -4237,10 +4237,10 @@ function ensureTrainStyles() {
       box-shadow: var(--shadow-card); text-align: center;
     }
     .train-empty-title {
-      font-size: 16px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-card); font-weight: 700; color: var(--ink);
       margin-bottom: 4px; letter-spacing: -0.01em;
     }
-    .train-empty-msg { font-size: 13px; color: var(--ink-3); }
+    .train-empty-msg { font-size: var(--fs-search); color: var(--ink-3); }
 
     /* Train pill chrome moved to app.css under the global .pill-bar
        rules so Tasks / Habits / Insights all share the exact same
@@ -4261,16 +4261,16 @@ function ensureTrainStyles() {
       flex-wrap: wrap; gap: 8px; margin-bottom: 6px;
     }
     .tune-proposal-eyebrow {
-      font-size: 10px; font-weight: 700;
+      font-size: var(--fs-label); font-weight: 700;
       color: #7a5a90; letter-spacing: 0.08em; text-transform: uppercase;
     }
     .tune-proposal-focus { font-size: 11.5px; color: var(--ink-3); }
     .tune-proposal-rationale {
-      font-size: 13px; color: var(--ink); line-height: 1.5; margin: 4px 0 12px;
+      font-size: var(--fs-search); color: var(--ink); line-height: 1.5; margin: 4px 0 12px;
     }
     .tune-proposal-changes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .tune-change-line {
-      font-size: 13px; color: var(--ink); line-height: 1.4;
+      font-size: var(--fs-search); color: var(--ink); line-height: 1.4;
     }
     .tune-change-line s { color: var(--ink-4); }
     .tune-change-line strong { color: var(--ink); }
@@ -4306,13 +4306,13 @@ function ensureTrainStyles() {
       border-radius: var(--r-sm);
       padding: 8px 12px; margin-bottom: 12px;
     }
-    .manage-plan-revert-msg { font-size: 12px; color: var(--ink-3); flex: 1 1 auto; }
+    .manage-plan-revert-msg { font-size: var(--fs-pill); color: var(--ink-3); flex: 1 1 auto; }
 
     /* ── Shared train tab chrome ──────────────────────────────────── */
     .train-loading, .train-error {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-md); padding: 24px 18px;
-      font-size: 13px; color: var(--ink-3); text-align: center;
+      font-size: var(--fs-search); color: var(--ink-3); text-align: center;
       box-shadow: var(--shadow-card);
     }
     .train-error { color: var(--guava-700); }
@@ -4320,13 +4320,13 @@ function ensureTrainStyles() {
       margin-left: 8px;
       background: var(--guava-700); color: #fff; border: 0;
       border-radius: var(--r-md); padding: 4px 10px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
+      font-size: var(--fs-pill); font-weight: 600; cursor: pointer;
       font-family: inherit;
     }
     .train-btn-primary {
       background: var(--guava-700); color: #fff; border: 0;
       border-radius: var(--r-md); padding: 8px 14px;
-      font-family: inherit; font-size: 13px; font-weight: 600;
+      font-family: inherit; font-size: var(--fs-search); font-weight: 600;
       cursor: pointer; white-space: nowrap;
     }
     .train-btn-primary:hover { background: var(--guava-800); }
@@ -4334,13 +4334,13 @@ function ensureTrainStyles() {
     .train-btn-secondary {
       background: var(--surface); color: var(--ink-2);
       border: 1px solid var(--edge-strong); border-radius: var(--r-md);
-      padding: 8px 14px; font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; font-family: inherit; font-size: var(--fs-search); font-weight: 600;
       cursor: pointer; white-space: nowrap;
     }
     .train-btn-secondary:disabled { color: var(--ink-4); cursor: not-allowed; }
     .train-btn-link {
       background: none; border: 0; padding: 0; cursor: pointer;
-      font-family: inherit; font-size: 12px; font-weight: 600;
+      font-family: inherit; font-size: var(--fs-pill); font-weight: 600;
       color: var(--guava-700);
     }
 
@@ -4355,7 +4355,7 @@ function ensureTrainStyles() {
       margin-bottom: 6px;
     }
     .plan-eyebrow {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-4); text-transform: uppercase;
     }
     .plan-name {
@@ -4382,11 +4382,11 @@ function ensureTrainStyles() {
     }
     .plan-day:hover { background: var(--surface-2); }
     .plan-day-dow {
-      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      font-size: var(--fs-nano); font-weight: 700; color: var(--ink-4);
       letter-spacing: .04em; text-transform: uppercase;
     }
     .plan-day-name {
-      font-size: 10px; font-weight: 600; color: var(--ink-2);
+      font-size: var(--fs-label); font-weight: 600; color: var(--ink-2);
       line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .plan-day.is-today {
@@ -4407,20 +4407,20 @@ function ensureTrainStyles() {
       width: 36px; height: 36px; border-radius: 50%;
       background: var(--guava-50); color: var(--guava-700);
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
+      font-size: var(--fs-section); flex-shrink: 0;
     }
     .plan-today-text { flex: 1; min-width: 0; }
-    .plan-today-name { font-size: 14px; font-weight: 700; color: var(--ink); }
-    .plan-today-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .plan-today-name { font-size: var(--fs-body); font-weight: 700; color: var(--ink); }
+    .plan-today-meta { font-size: var(--fs-meta); color: var(--ink-3); margin-top: 2px; }
 
     .plan-empty-card { text-align: center; padding: 28px 18px; }
-    .plan-empty-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
-    .plan-empty-msg { font-size: 13px; color: var(--ink-3); line-height: 1.5; max-width: 380px; margin: 0 auto; }
+    .plan-empty-title { font-size: var(--fs-card); font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+    .plan-empty-msg { font-size: var(--fs-search); color: var(--ink-3); line-height: 1.5; max-width: 380px; margin: 0 auto; }
 
     /* ── Plan templates list ─────────────────────────────────────── */
     .plan-templates-block { margin-top: 4px; }
     .plan-templates-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase; margin: 16px 0 8px 0;
     }
     .plan-template-card {
@@ -4432,7 +4432,7 @@ function ensureTrainStyles() {
       box-shadow: var(--shadow-card);
     }
     .plan-template-text { min-width: 0; }
-    .plan-template-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .plan-template-name { font-size: var(--fs-body); font-weight: 700; color: var(--ink); }
     /* Multi-action row on inactive plan cards: Rename / Activate / Delete.
        Stacks vertically on narrow viewports to keep the row card
        legible. */
@@ -4443,18 +4443,18 @@ function ensureTrainStyles() {
     .train-btn-link--danger { color: var(--guava-700); }
     .train-btn-link--danger:hover { color: var(--guava-800); }
     .plan-template-meta {
-      font-size: 11px; color: var(--ink-3); margin-top: 4px; line-height: 1.45;
+      font-size: var(--fs-meta); color: var(--ink-3); margin-top: 4px; line-height: 1.45;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .plan-templates-empty {
       background: var(--surface-2); border: 1px dashed var(--edge-strong);
       border-radius: var(--r-md); padding: 14px;
-      font-size: 12px; color: var(--ink-4); line-height: 1.5;
+      font-size: var(--fs-pill); color: var(--ink-4); line-height: 1.5;
       margin-top: 16px;
     }
     .plan-templates-empty code {
       background: var(--surface); padding: 2px 6px; border-radius: 3px;
-      font-size: 11px; color: var(--ink-2);
+      font-size: var(--fs-meta); color: var(--ink-2);
     }
 
     /* ── Day detail modal ─────────────────────────────────────────── */
@@ -4485,15 +4485,15 @@ function ensureTrainStyles() {
       align-items: center; margin-bottom: 8px;
     }
     .manage-day-dow {
-      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-3); text-transform: uppercase; text-align: center;
     }
-    .manage-day-name { font-size: 13px; padding: 6px 10px; min-width: 0; }
+    .manage-day-name { font-size: var(--fs-search); padding: 6px 10px; min-width: 0; }
     .manage-type-row { display: inline-flex; gap: 3px; }
     .manage-type-pill {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-sm); padding: 4px 10px; cursor: pointer;
-      font-family: inherit; font-size: 11px; font-weight: 700;
+      font-family: inherit; font-size: var(--fs-meta); font-weight: 700;
       color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase;
     }
     .manage-type-pill.is-active {
@@ -4502,7 +4502,7 @@ function ensureTrainStyles() {
     .manage-ex-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
     .manage-ex-head {
       display: grid; grid-template-columns: 1fr 56px 64px 64px 22px; gap: 6px;
-      font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-nano); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase;
       padding: 0 4px; align-items: end;
     }
@@ -4510,21 +4510,21 @@ function ensureTrainStyles() {
       display: grid; grid-template-columns: 1fr 56px 64px 64px 22px; gap: 6px;
       align-items: center;
     }
-    .manage-ex-name { font-size: 12px; padding: 5px 8px; min-width: 0; }
-    .manage-ex-num  { font-size: 12px; padding: 5px 6px; text-align: center; min-width: 0; }
+    .manage-ex-name { font-size: var(--fs-pill); padding: 5px 8px; min-width: 0; }
+    .manage-ex-num  { font-size: var(--fs-pill); padding: 5px 6px; text-align: center; min-width: 0; }
     .manage-ex-remove {
       background: none; border: 0; cursor: pointer;
-      color: var(--ink-4); font-size: 16px; line-height: 1;
+      color: var(--ink-4); font-size: var(--fs-card); line-height: 1;
       padding: 0; width: 22px; height: 22px;
     }
     .manage-ex-remove:hover { color: var(--guava-700); }
     .manage-ex-empty {
-      font-size: 11px; color: var(--ink-4); font-style: italic;
+      font-size: var(--fs-meta); color: var(--ink-4); font-style: italic;
       padding: 6px 4px;
     }
     .manage-add-ex {
       align-self: flex-start; margin-top: 4px;
-      font-size: 11px;
+      font-size: var(--fs-meta);
     }
     .train-modal-head {
       display: flex; align-items: flex-start; justify-content: space-between;
@@ -4532,19 +4532,19 @@ function ensureTrainStyles() {
     }
     .train-modal-close {
       background: none; border: 0; cursor: pointer; padding: 0 6px;
-      font-size: 22px; line-height: 1; color: var(--ink-3);
+      font-size: var(--fs-title); line-height: 1; color: var(--ink-3);
     }
     .day-detail-dow {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-4); text-transform: uppercase;
     }
     .day-detail-name {
-      font-size: 18px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-section); font-weight: 700; color: var(--ink);
       letter-spacing: -0.01em; margin-top: 2px;
     }
     .day-detail-badge {
       display: inline-block;
-      font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
       padding: 3px 8px; border-radius: 999px;
       margin-bottom: 12px;
     }
@@ -4556,17 +4556,17 @@ function ensureTrainStyles() {
       padding: 8px 0; border-top: 1px dashed var(--edge);
     }
     .day-detail-ex:first-child { border-top: 0; }
-    .day-detail-ex-name { font-size: 13px; font-weight: 600; color: var(--ink); }
-    .day-detail-ex-target { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .day-detail-ex-name { font-size: var(--fs-search); font-weight: 600; color: var(--ink); }
+    .day-detail-ex-target { font-size: var(--fs-meta); color: var(--ink-3); margin-top: 2px; }
     .day-detail-empty {
-      font-size: 13px; color: var(--ink-4); padding: 14px 0;
+      font-size: var(--fs-search); color: var(--ink-4); padding: 14px 0;
       text-align: center;
     }
 
     /* ── Already-logged session cards (Today subtab) ───────────────── */
     .logged-session-block { margin-bottom: 14px; }
     .logged-session-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase; margin-bottom: 8px;
     }
     .logged-session-card {
@@ -4588,7 +4588,7 @@ function ensureTrainStyles() {
       flex-wrap: wrap;
     }
     .train-subview-title {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
     }
     /* ── History tab list + cards ────────────────────────────────── */
@@ -4605,20 +4605,20 @@ function ensureTrainStyles() {
       gap: 10px; margin-bottom: 4px;
     }
     .history-card-date {
-      font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .04em;
       color: var(--ink-3); text-transform: uppercase;
     }
     .history-card-head .day-detail-badge { margin-bottom: 0; }
     .history-card-name {
-      font-size: 14px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-body); font-weight: 700; color: var(--ink);
       display: inline-flex; align-items: center; gap: 8px;
     }
-    .history-card-feel { font-size: 16px; }
-    .history-card-summary { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+    .history-card-feel { font-size: var(--fs-card); }
+    .history-card-summary { font-size: var(--fs-pill); color: var(--ink-3); margin-top: 2px; }
     /* ── History recap modal ──────────────────────────────────────── */
     .history-recap-modal { max-width: 560px; }
     .history-recap-body { max-height: 70vh; overflow-y: auto; padding-right: 4px; }
-    .history-recap-date { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+    .history-recap-date { font-size: var(--fs-pill); font-weight: 500; color: var(--ink-3); }
     .history-recap-stat-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
       margin: 10px 0;
@@ -4631,11 +4631,11 @@ function ensureTrainStyles() {
       padding: 10px 8px; text-align: center;
     }
     .history-recap-stat-num {
-      font-size: 18px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-section); font-weight: 700; color: var(--ink);
       font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
     }
     .history-recap-stat-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase; margin-top: 3px;
     }
     .history-recap-ex-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
@@ -4644,29 +4644,29 @@ function ensureTrainStyles() {
       border-radius: var(--r-md); padding: 10px 12px;
     }
     .history-recap-ex-name {
-      font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px;
+      font-size: var(--fs-search); font-weight: 700; color: var(--ink); margin-bottom: 4px;
     }
     .history-recap-set-row {
       display: grid; grid-template-columns: 28px auto 16px auto;
       align-items: baseline; gap: 6px;
-      font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums;
+      font-size: var(--fs-pill); color: var(--ink-2); font-variant-numeric: tabular-nums;
       padding: 2px 0;
     }
-    .history-recap-set-num { font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: .05em; }
+    .history-recap-set-num { font-size: var(--fs-label); font-weight: 700; color: var(--ink-4); letter-spacing: .05em; }
     .history-recap-set-x   { color: var(--ink-4); text-align: center; }
     .history-recap-row {
       display: flex; gap: 10px; align-items: baseline;
       padding: 10px 0; border-top: 1px dashed var(--edge);
-      font-size: 13px; color: var(--ink-2);
+      font-size: var(--fs-search); color: var(--ink-2);
     }
     .history-recap-row-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase;
       min-width: 86px; flex-shrink: 0;
     }
     .history-recap-notes {
       padding-top: 10px; margin-top: 10px; border-top: 1px dashed var(--edge);
-      font-size: 13px; color: var(--ink-2); line-height: 1.55;
+      font-size: var(--fs-search); color: var(--ink-2); line-height: 1.55;
     }
     .history-recap-notes .history-recap-row-label { display: block; margin-bottom: 4px; }
     .logged-session-head {
@@ -4674,14 +4674,14 @@ function ensureTrainStyles() {
       gap: 10px; margin-bottom: 6px;
     }
     .logged-session-name {
-      font-size: 14px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-body); font-weight: 700; color: var(--ink);
       display: inline-flex; align-items: center; gap: 8px;
     }
-    .logged-session-feel { font-size: 16px; }
+    .logged-session-feel { font-size: var(--fs-card); }
     .logged-session-head .day-detail-badge { margin-bottom: 0; }
-    .logged-session-summary { font-size: 12px; color: var(--ink-2); }
+    .logged-session-summary { font-size: var(--fs-pill); color: var(--ink-2); }
     .logged-session-notes {
-      font-size: 12px; color: var(--ink-3); margin-top: 6px;
+      font-size: var(--fs-pill); color: var(--ink-3); margin-top: 6px;
       padding-top: 6px; border-top: 1px dashed var(--edge);
       font-style: italic;
     }
@@ -4713,11 +4713,11 @@ function ensureTrainStyles() {
     .train-day-picker .day-pill-card.is-rest   { background: var(--surface); }
     .train-day-picker .day-pill-card.is-any    { border-style: dashed; background: var(--surface); }
     .train-day-picker .day-pill-dow {
-      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      font-size: var(--fs-nano); font-weight: 700; color: var(--ink-4);
       letter-spacing: .04em; text-transform: uppercase; line-height: 1.1;
     }
     .train-day-picker .day-pill-name {
-      font-size: 10px; font-weight: 700; color: var(--ink); line-height: 1.15;
+      font-size: var(--fs-label); font-weight: 700; color: var(--ink); line-height: 1.15;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .train-day-picker .day-pill-card.is-active .day-pill-name { color: var(--guava-700); }
@@ -4735,11 +4735,11 @@ function ensureTrainStyles() {
       display: flex; align-items: flex-start; justify-content: space-between;
       gap: 10px; margin-bottom: 10px;
     }
-    .ex-card-name { font-size: 14px; font-weight: 700; color: var(--ink); }
-    .ex-card-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .ex-card-name { font-size: var(--fs-body); font-weight: 700; color: var(--ink); }
+    .ex-card-meta { font-size: var(--fs-meta); color: var(--ink-3); margin-top: 2px; }
     .ex-target {
       flex-shrink: 0;
-      font-size: 10px; font-weight: 600;
+      font-size: var(--fs-label); font-weight: 600;
       padding: 4px 10px; border-radius: 999px; white-space: nowrap;
     }
     .ex-target.target-up      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); border: 1px solid var(--moss-edge, #c2d1aa); }
@@ -4751,7 +4751,7 @@ function ensureTrainStyles() {
          circle column is gone. Set · Last session · Today (lbs+reps). */
       display: grid; grid-template-columns: 28px 80px 1fr; gap: 8px;
       padding: 6px 0; border-bottom: 1px solid var(--edge);
-      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      font-size: var(--fs-nano); font-weight: 700; color: var(--ink-4);
       letter-spacing: .08em; text-transform: uppercase;
     }
     .ex-set-row {
@@ -4759,8 +4759,8 @@ function ensureTrainStyles() {
       padding: 7px 0; align-items: center;
     }
     .ex-set-row + .ex-set-row { border-top: 1px dashed var(--edge); }
-    .ex-set-num { font-size: 11px; font-weight: 700; color: var(--ink-3); }
-    .ex-set-last { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+    .ex-set-num { font-size: var(--fs-meta); font-weight: 700; color: var(--ink-3); }
+    .ex-set-last { font-size: var(--fs-meta); color: var(--ink-3); font-variant-numeric: tabular-nums; }
     .ex-set-today { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     /* Input cells: white bg by default, guava ring on focus. The old
        surface-2 (beige) fill is gone — completion is implied by the
@@ -4768,7 +4768,7 @@ function ensureTrainStyles() {
     .ex-cell-input {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-sm); padding: 5px 8px;
-      font-family: inherit; font-size: 13px; color: var(--ink);
+      font-family: inherit; font-size: var(--fs-search); color: var(--ink);
       width: 100%; text-align: center; box-sizing: border-box;
       font-variant-numeric: tabular-nums;
     }
@@ -4785,8 +4785,8 @@ function ensureTrainStyles() {
       border-radius: var(--r-md); padding: 14px; box-shadow: var(--shadow-card);
     }
     .cardio-card-head { margin-bottom: 12px; }
-    .cardio-card-title { font-size: 14px; font-weight: 700; color: var(--ink); }
-    .cardio-card-meta { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .cardio-card-title { font-size: var(--fs-body); font-weight: 700; color: var(--ink); }
+    .cardio-card-meta { font-size: var(--fs-meta); color: var(--ink-3); margin-top: 2px; }
     .cardio-type-grid {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
       margin-bottom: 12px;
@@ -4794,7 +4794,7 @@ function ensureTrainStyles() {
     .cardio-type-pill {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-md); padding: 8px 4px;
-      font-family: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2);
+      font-family: inherit; font-size: var(--fs-pill); font-weight: 600; color: var(--ink-2);
       cursor: pointer; text-align: center;
       display: flex; flex-direction: column; align-items: center; gap: 2px;
     }
@@ -4802,8 +4802,8 @@ function ensureTrainStyles() {
     .cardio-type-pill.is-selected {
       background: var(--moss-bg, #eaf0e3); border-color: var(--moss-fg, #5e8c4f); color: var(--moss-fg, #5e8c4f);
     }
-    .cardio-type-emoji { font-size: 18px; line-height: 1; }
-    .cardio-type-label { font-size: 10px; font-weight: 700; }
+    .cardio-type-emoji { font-size: var(--fs-section); line-height: 1; }
+    .cardio-type-label { font-size: var(--fs-label); font-weight: 700; }
     .cardio-stats-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
     }
@@ -4814,14 +4814,14 @@ function ensureTrainStyles() {
       border-radius: var(--r-md); padding: 14px;
     }
     .when-what-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase; margin-bottom: 8px;
     }
     .session-type-row { display: flex; gap: 8px; }
     .session-type-pill {
       background: var(--surface-2); color: var(--ink-3);
       border: 1px solid var(--edge); border-radius: 999px;
-      padding: 7px 14px; font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 7px 14px; font-family: inherit; font-size: var(--fs-search); font-weight: 600;
       cursor: pointer;
     }
     .session-type-pill.is-active {
@@ -4835,7 +4835,7 @@ function ensureTrainStyles() {
     .bonus-date-pill {
       background: var(--surface); color: var(--ink-3);
       border: 1px solid var(--edge); border-radius: var(--r-md);
-      padding: 6px 10px; font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 6px 10px; font-family: inherit; font-size: var(--fs-pill); font-weight: 600;
       cursor: pointer; white-space: nowrap;
     }
     .bonus-date-pill:hover { background: var(--surface-2); }
@@ -4853,12 +4853,12 @@ function ensureTrainStyles() {
       width: 100%;
       background: var(--surface); border: 1px dashed var(--edge-strong);
       border-radius: var(--r-md); padding: 10px;
-      font-family: inherit; font-size: 12px; font-weight: 600;
+      font-family: inherit; font-size: var(--fs-pill); font-weight: 600;
       color: var(--moss-fg, #5e8c4f); cursor: pointer; margin-top: 8px;
     }
     .activity-row-remove {
       background: none; border: 0; cursor: pointer;
-      color: var(--ink-4); font-size: 18px; line-height: 1;
+      color: var(--ink-4); font-size: var(--fs-section); line-height: 1;
       padding: 8px 4px;
     }
 
@@ -4871,14 +4871,14 @@ function ensureTrainStyles() {
       box-shadow: var(--shadow-card);
     }
     .train-footer-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase; margin-bottom: 6px;
     }
     .train-notes-input {
       width: 100%; min-height: 56px; box-sizing: border-box;
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-sm); padding: 8px 10px;
-      font-family: inherit; font-size: 12px; color: var(--ink);
+      font-family: inherit; font-size: var(--fs-pill); color: var(--ink);
       resize: vertical;
     }
     .train-feel-block { margin-top: 12px; }
@@ -4894,23 +4894,23 @@ function ensureTrainStyles() {
     }
     .mood-btn:hover { background: var(--surface-2); }
     .mood-btn.is-selected { background: var(--guava-50); border-color: var(--guava-700); }
-    .mood-emoji { font-size: 20px; line-height: 1; }
+    .mood-emoji { font-size: var(--fs-title-mobile); line-height: 1; }
     .mood-label {
-      font-size: 9px; font-weight: 700; color: var(--ink-4);
+      font-size: var(--fs-nano); font-weight: 700; color: var(--ink-4);
       letter-spacing: .04em; text-transform: uppercase;
     }
     .train-totals {
       display: flex; gap: 18px; margin-top: 12px; align-items: baseline;
     }
-    .train-total-num { font-size: 18px; font-weight: 800; color: var(--ink); }
+    .train-total-num { font-size: var(--fs-section); font-weight: 800; color: var(--ink); }
     .train-total-label {
-      font-size: 9px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-nano); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-4); text-transform: uppercase;
     }
     .train-submit-btn {
       width: 100%; background: var(--guava-700); color: #fff;
       border: 0; border-radius: var(--r-md);
-      padding: 13px 16px; font-family: inherit; font-size: 14px; font-weight: 700;
+      padding: 13px 16px; font-family: inherit; font-size: var(--fs-body); font-weight: 700;
       cursor: pointer; margin-top: 14px;
     }
     .train-submit-btn:hover { background: var(--guava-800); }
@@ -4919,14 +4919,14 @@ function ensureTrainStyles() {
     /* Form-field reused inside cardio + activity rows */
     .form-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .form-label {
-      font-size: 10px; font-weight: 700; color: var(--ink-3);
+      font-size: var(--fs-label); font-weight: 700; color: var(--ink-3);
       letter-spacing: .05em; text-transform: uppercase;
     }
     .form-input {
       width: 100%; box-sizing: border-box;
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-md); padding: 8px 10px;
-      font-family: inherit; font-size: 13px; color: var(--ink);
+      font-family: inherit; font-size: var(--fs-search); color: var(--ink);
     }
     .form-input:focus {
       outline: none; border-color: var(--guava-700);
@@ -4943,16 +4943,16 @@ function ensureTrainStyles() {
       padding: 10px 8px; text-align: center;
     }
     .fb-stat-num {
-      font-size: 18px; font-weight: 800; color: var(--guava-700);
+      font-size: var(--fs-section); font-weight: 800; color: var(--guava-700);
       font-variant-numeric: tabular-nums; line-height: 1;
     }
     .fb-stat-label {
-      font-size: 9px; font-weight: 700; letter-spacing: .05em;
+      font-size: var(--fs-nano); font-weight: 700; letter-spacing: .05em;
       color: var(--ink-4); text-transform: uppercase; margin-top: 4px;
     }
     .fb-observations {
       list-style: none; padding: 0; margin: 8px 0 0;
-      font-size: 12px; color: var(--ink-2); line-height: 1.55;
+      font-size: var(--fs-pill); color: var(--ink-2); line-height: 1.55;
     }
     .fb-observations li {
       padding: 6px 10px; background: var(--guava-50); border-left: 3px solid var(--guava-700);
@@ -4974,13 +4974,13 @@ function ensureTrainStyles() {
       background: var(--surface);
       border: 1px solid var(--moss-edge, #c2d1aa);
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      font-size: var(--fs-section);
     }
     .train-habit-prompt-body {
       min-width: 0; display: flex; flex-direction: column; gap: 4px;
     }
-    .train-habit-prompt-title { font-size: 13px; font-weight: 600; color: var(--ink); }
-    .train-habit-prompt-msg { font-size: 11px; color: var(--ink-3); line-height: 1.45; }
+    .train-habit-prompt-title { font-size: var(--fs-search); font-weight: 600; color: var(--ink); }
+    .train-habit-prompt-msg { font-size: var(--fs-meta); color: var(--ink-3); line-height: 1.45; }
     .train-habit-prompt-actions {
       grid-column: 1 / -1;
       display: flex; gap: 8px; justify-content: flex-end;
@@ -4988,7 +4988,7 @@ function ensureTrainStyles() {
     }
     .train-habit-prompt-actions .train-btn-secondary,
     .train-habit-prompt-actions .train-btn-primary {
-      padding: 6px 12px; font-size: 12px;
+      padding: 6px 12px; font-size: var(--fs-pill);
     }
 
     /* ── Progress subtab ──────────────────────────────────────────── */
@@ -4998,7 +4998,7 @@ function ensureTrainStyles() {
       flex-wrap: wrap;
     }
     .progress-header-stats {
-      font-size: 12px; color: var(--ink-3);
+      font-size: var(--fs-pill); color: var(--ink-3);
       display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
     }
     .progress-header-stats strong { color: var(--ink); font-weight: 700; text-transform: capitalize; }
@@ -5014,14 +5014,14 @@ function ensureTrainStyles() {
       gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
     }
     .progress-card-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
     }
-    .progress-card-meta { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+    .progress-card-meta { font-size: var(--fs-meta); color: var(--ink-4); margin-top: 2px; }
 
     .progress-empty-card { text-align: center; padding: 28px 18px; }
-    .progress-empty-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
-    .progress-empty-msg { font-size: 13px; color: var(--ink-3); line-height: 1.5; max-width: 380px; margin: 0 auto; }
+    .progress-empty-title { font-size: var(--fs-item); font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+    .progress-empty-msg { font-size: var(--fs-search); color: var(--ink-3); line-height: 1.5; max-width: 380px; margin: 0 auto; }
 
     .latest-stats-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
@@ -5031,15 +5031,15 @@ function ensureTrainStyles() {
       padding: 10px 8px; text-align: center;
     }
     .latest-stat-num {
-      font-size: 20px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-title-mobile); font-weight: 700; color: var(--ink);
       letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
     }
     .latest-stat-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase; margin-top: 4px;
     }
     .latest-stat-method {
-      font-size: 11px; font-weight: 500; color: var(--ink-4); display: block;
+      font-size: var(--fs-meta); font-weight: 500; color: var(--ink-4); display: block;
       margin-top: 2px;
     }
 
@@ -5052,15 +5052,15 @@ function ensureTrainStyles() {
       padding: 10px 8px; text-align: center;
     }
     .cal-target-num {
-      font-size: 20px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-title-mobile); font-weight: 700; color: var(--ink);
       font-variant-numeric: tabular-nums;
     }
     .cal-target-l {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase; margin-top: 4px;
     }
     .cal-deficit {
-      font-size: 11px; font-weight: 700;
+      font-size: var(--fs-meta); font-weight: 700;
       padding: 3px 8px; border-radius: 999px;
       background: var(--guava-50); color: var(--guava-700);
     }
@@ -5073,20 +5073,20 @@ function ensureTrainStyles() {
       background: var(--surface); border: 1px dashed var(--edge);
       border-radius: var(--r-sm); padding: 8px 6px; text-align: center;
     }
-    .cal-macro-g { font-size: 14px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-    .cal-macro-l { font-size: 10px; color: var(--ink-4); margin-top: 2px; }
+    .cal-macro-g { font-size: var(--fs-body); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .cal-macro-l { font-size: var(--fs-label); color: var(--ink-4); margin-top: 2px; }
 
     .goal-row { padding: 8px 0; }
     .goal-row + .goal-row { border-top: 1px dashed var(--edge); }
     .goal-row-head {
       display: flex; align-items: baseline; justify-content: space-between;
-      gap: 8px; font-size: 12px;
+      gap: 8px; font-size: var(--fs-pill);
     }
     .goal-row-title { color: var(--ink-2); }
     .goal-row-title strong { color: var(--ink); }
     .goal-row-cur { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
     .goal-row-pct {
-      font-size: 11px; font-weight: 700; color: var(--guava-700);
+      font-size: var(--fs-meta); font-weight: 700; color: var(--guava-700);
       padding: 2px 6px; background: var(--guava-50); border-radius: 999px;
       margin-left: 6px;
     }
@@ -5098,11 +5098,11 @@ function ensureTrainStyles() {
       background: var(--guava-700); height: 100%; border-radius: 999px;
       transition: width var(--dur-slower) ease;
     }
-    .goal-row-meta { font-size: 11px; color: var(--ink-4); }
+    .goal-row-meta { font-size: var(--fs-meta); color: var(--ink-4); }
 
     .trend-svg { width: 100%; height: 60px; display: block; }
     .trend-delta {
-      font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+      font-size: var(--fs-pill); font-weight: 700; font-variant-numeric: tabular-nums;
       padding: 3px 8px; border-radius: 999px; background: var(--surface-2);
       color: var(--ink-2);
     }
@@ -5118,11 +5118,11 @@ function ensureTrainStyles() {
     .entry-row + .entry-row { border-top: 1px dashed var(--edge); }
     .entry-row:hover { background: var(--surface-2); }
     .entry-row-date {
-      font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+      font-size: var(--fs-pill); color: var(--ink-3); font-variant-numeric: tabular-nums;
       flex-shrink: 0;
     }
     .entry-row-stats {
-      display: inline-flex; gap: 10px; font-size: 12px; color: var(--ink-2);
+      display: inline-flex; gap: 10px; font-size: var(--fs-pill); color: var(--ink-2);
       flex-wrap: wrap; justify-content: flex-end;
     }
     .entry-row-stats strong { color: var(--ink); font-weight: 700; }
@@ -5131,10 +5131,10 @@ function ensureTrainStyles() {
     .progress-wizard { display: flex; flex-direction: column; gap: 14px; }
     .progress-wizard-head { padding: 0 2px; }
     .progress-wizard-title {
-      font-size: 20px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-title-mobile); font-weight: 700; color: var(--ink);
       letter-spacing: -0.02em; margin-bottom: 4px;
     }
-    .progress-wizard-msg { font-size: 13px; color: var(--ink-3); line-height: 1.5; }
+    .progress-wizard-msg { font-size: var(--fs-search); color: var(--ink-3); line-height: 1.5; }
     .train-form-card {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-md); padding: 16px;
@@ -5143,17 +5143,17 @@ function ensureTrainStyles() {
     }
     .train-form-section { display: flex; flex-direction: column; gap: 6px; }
     .train-form-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
     }
-    .train-form-label-inline { font-size: 11px; color: var(--ink-3); }
+    .train-form-label-inline { font-size: var(--fs-meta); color: var(--ink-3); }
     .train-form-label-inline .req { color: var(--guava-700); }
-    .train-form-hint { font-size: 11px; color: var(--ink-4); line-height: 1.45; }
+    .train-form-hint { font-size: var(--fs-meta); color: var(--ink-4); line-height: 1.45; }
     .train-choice-row { display: flex; gap: 6px; flex-wrap: wrap; }
     .train-choice-pill {
       background: var(--surface); border: 1px solid var(--edge-strong);
       border-radius: 999px; padding: 6px 14px; cursor: pointer;
-      font-family: inherit; font-size: 13px; color: var(--ink-2);
+      font-family: inherit; font-size: var(--fs-search); color: var(--ink-2);
     }
     .train-choice-pill.is-active {
       background: var(--guava-50); border-color: var(--guava-700); color: var(--guava-700);
@@ -5168,10 +5168,10 @@ function ensureTrainStyles() {
     .train-choice-card.is-active {
       background: var(--guava-50); border-color: var(--guava-700);
     }
-    .train-choice-card-title { font-size: 13px; font-weight: 700; color: var(--ink); }
-    .train-choice-card-desc { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .train-choice-card-title { font-size: var(--fs-search); font-weight: 700; color: var(--ink); }
+    .train-choice-card-desc { font-size: var(--fs-meta); color: var(--ink-3); margin-top: 2px; }
     .train-choice-card-meta {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); margin-top: 4px; text-transform: uppercase;
     }
     .train-choice-card.is-active .train-choice-card-meta { color: var(--guava-700); }
@@ -5196,16 +5196,16 @@ function ensureTrainStyles() {
       aspect-ratio: 3/4; min-height: 100px;
       background: var(--surface-2); border: 1px dashed var(--edge-strong);
       border-radius: var(--r-md); cursor: pointer; overflow: hidden;
-      color: var(--ink-3); font-size: 12px; transition: background var(--dur-quick) ease;
+      color: var(--ink-3); font-size: var(--fs-pill); transition: background var(--dur-quick) ease;
     }
     .progress-photo-slot:hover { background: var(--surface); }
     .progress-photo-slot.is-empty .progress-photo-plus {
-      font-size: 28px; line-height: 1; color: var(--ink-4); margin-bottom: 4px;
+      font-size: var(--fs-display); line-height: 1; color: var(--ink-4); margin-bottom: 4px;
     }
     /* Required/optional pill on empty photo slots. Required gets a
        guava chip so the two mandatory slots read at a glance. */
     .progress-photo-slot.is-empty .progress-photo-req {
-      font-size: 9px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-nano); font-weight: 700; letter-spacing: .06em;
       text-transform: uppercase; color: var(--ink-4);
       background: var(--surface); border: 1px solid var(--edge);
       padding: 2px 6px; border-radius: 999px; margin-top: 4px;
@@ -5225,15 +5225,15 @@ function ensureTrainStyles() {
     }
     .train-collapse-chevron {
       display: inline-block; transition: transform var(--dur-quick) var(--ease);
-      color: var(--ink-3); font-size: 12px;
+      color: var(--ink-3); font-size: var(--fs-pill);
     }
     .train-collapse-chevron.is-open { transform: rotate(90deg); }
     .train-collapse-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
     }
     .train-collapse-badge {
-      font-size: 10px; font-weight: 700; color: var(--guava-700);
+      font-size: var(--fs-label); font-weight: 700; color: var(--guava-700);
       background: var(--guava-50); padding: 2px 8px; border-radius: 999px;
       margin-left: auto;
     }
@@ -5246,7 +5246,7 @@ function ensureTrainStyles() {
     }
     .progress-photo-slot .progress-photo-label {
       position: absolute; bottom: 4px; left: 6px;
-      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .05em;
       text-transform: uppercase; color: #fff;
       background: rgba(20,15,10,0.55); padding: 2px 6px; border-radius: 4px;
     }
@@ -5258,17 +5258,17 @@ function ensureTrainStyles() {
       position: absolute; top: 4px; right: 4px;
       width: 22px; height: 22px; border-radius: 50%;
       background: rgba(20,15,10,0.65); color: #fff; border: 0;
-      font-size: 14px; cursor: pointer; line-height: 1;
+      font-size: var(--fs-body); cursor: pointer; line-height: 1;
       display: flex; align-items: center; justify-content: center;
     }
     .progress-photo-slot .progress-photo-replace {
       position: absolute; top: 4px; right: 4px;
-      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .04em;
       background: rgba(20,15,10,0.55); color: #fff;
       padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
     }
     .progress-photo-loading {
-      font-size: 11px; color: var(--ink-4);
+      font-size: var(--fs-meta); color: var(--ink-4);
     }
     .progress-photo-strip {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
@@ -5283,12 +5283,12 @@ function ensureTrainStyles() {
     /* AI photo-analysis rows */
     .progress-ai-row {
       display: flex; gap: 8px; align-items: baseline;
-      padding: 4px 0; font-size: 13px; color: var(--ink-2);
+      padding: 4px 0; font-size: var(--fs-search); color: var(--ink-2);
       line-height: 1.4;
     }
     .progress-ai-row + .progress-ai-row { border-top: 1px dashed var(--edge); }
     .progress-ai-row-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase;
       min-width: 78px; flex-shrink: 0;
     }
@@ -5315,7 +5315,7 @@ function ensureTrainStyles() {
        when only one entry exists (no comparison possible). */
     .metric-cell-delta {
       align-self: flex-start;
-      font-size: 9px; font-weight: 700; letter-spacing: .02em;
+      font-size: var(--fs-nano); font-weight: 700; letter-spacing: .02em;
       font-variant-numeric: tabular-nums;
       padding: 2px 7px; border-radius: 999px; line-height: 1.3;
       white-space: nowrap;
@@ -5324,16 +5324,16 @@ function ensureTrainStyles() {
     .metric-cell-delta.down    { background: var(--guava-50);          color: var(--guava-700); }
     .metric-cell-delta.neutral { background: var(--surface-2);          color: var(--ink-3); }
     .metric-cell-num {
-      font-size: 20px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-title-mobile); font-weight: 700; color: var(--ink);
       letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
       line-height: 1.1; white-space: nowrap;
     }
     .metric-cell-unit {
-      font-size: 11px; font-weight: 600; color: var(--ink-3);
+      font-size: var(--fs-meta); font-weight: 600; color: var(--ink-3);
       margin-left: 2px;
     }
     .metric-cell-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .04em;
       color: var(--ink-4); text-transform: uppercase; white-space: nowrap;
     }
     /* Sparkline: bigger now (28px) so the time-series story reads. When
@@ -5347,7 +5347,7 @@ function ensureTrainStyles() {
     .metric-spark-empty::after {
       content: 'log more entries';
       position: absolute; inset: 50% 0 0 0; transform: translateY(-50%);
-      text-align: center; font-size: 9px; color: var(--ink-4);
+      text-align: center; font-size: var(--fs-nano); color: var(--ink-4);
       letter-spacing: .04em; text-transform: uppercase; font-weight: 600;
     }
     /* (Removed the 480px → 2x2 fallback per usage feedback — the four
@@ -5370,12 +5370,12 @@ function ensureTrainStyles() {
       margin-bottom: 10px;
     }
     .train-pill {
-      display: inline-block; font-size: 10px; font-weight: 700;
+      display: inline-block; font-size: var(--fs-label); font-weight: 700;
       letter-spacing: .05em; padding: 2px 8px; border-radius: 999px;
       background: var(--surface-2); color: var(--ink-3); text-transform: uppercase;
     }
     .coach-overview {
-      font-size: 14px; line-height: 1.55; color: var(--ink-2);
+      font-size: var(--fs-body); line-height: 1.55; color: var(--ink-2);
       margin-bottom: 14px;
     }
     .coach-focus-block { display: flex; flex-direction: column; gap: 10px; }
@@ -5389,18 +5389,18 @@ function ensureTrainStyles() {
       width: 22px; height: 22px; border-radius: 50%;
       background: var(--guava-700); color: #fff;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      font-size: var(--fs-meta); font-weight: 700; flex-shrink: 0;
     }
-    .coach-focus-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
-    .coach-focus-why { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; line-height: 1.5; }
+    .coach-focus-title { font-size: var(--fs-search); font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+    .coach-focus-why { font-size: var(--fs-pill); color: var(--ink-3); margin-bottom: 6px; line-height: 1.5; }
     .coach-focus-ex { display: flex; flex-wrap: wrap; gap: 4px; }
     .coach-ex-pill {
       background: var(--surface-2); border: 1px solid var(--edge);
       border-radius: 999px; padding: 2px 8px;
-      font-size: 11px; color: var(--ink-2);
+      font-size: var(--fs-meta); color: var(--ink-2);
     }
     .coach-focus-hint {
-      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .05em;
       color: var(--guava-700); margin-top: 6px; text-transform: uppercase;
     }
     .coach-secondary {
@@ -5411,17 +5411,17 @@ function ensureTrainStyles() {
     }
     .coach-secondary-row {
       display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-      font-size: 12px;
+      font-size: var(--fs-pill);
     }
     .coach-secondary-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
       color: var(--ink-4); text-transform: uppercase;
       min-width: 78px; flex-shrink: 0;
     }
     .coach-chip-group { display: inline-flex; flex-wrap: wrap; gap: 4px; }
     .coach-secondary-chip {
       background: var(--surface-2); padding: 2px 8px; border-radius: 999px;
-      font-size: 11px; color: var(--ink-2);
+      font-size: var(--fs-meta); color: var(--ink-2);
     }
     /* Big photo block INSIDE the coach card (Variation A spec). 2-up or
        3-up depending on slots filled. Bigger than the Latest Entry
@@ -5441,7 +5441,7 @@ function ensureTrainStyles() {
     }
     .coach-photo-label {
       position: absolute; bottom: 6px; left: 8px;
-      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .05em;
       color: #fff; background: rgba(20,15,10,0.55);
       padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
     }
@@ -5454,7 +5454,7 @@ function ensureTrainStyles() {
       background: var(--surface-2); border: 1px dashed var(--edge-strong);
     }
     .coach-upgrade-msg {
-      font-size: 12px; color: var(--ink-3); line-height: 1.5; flex: 1;
+      font-size: var(--fs-pill); color: var(--ink-3); line-height: 1.5; flex: 1;
       min-width: 200px;
     }
     .coach-focus-row--legacy {
@@ -5464,12 +5464,12 @@ function ensureTrainStyles() {
     .coach-callout {
       margin-top: 12px; display: flex; gap: 10px; align-items: start;
       background: var(--moss-bg, #eaf0e3); border-radius: var(--r-md);
-      padding: 10px 12px; font-size: 12px;
+      padding: 10px 12px; font-size: var(--fs-pill);
       color: var(--moss-fg, #5e8c4f); line-height: 1.5;
     }
-    .coach-callout-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .coach-callout-icon { font-size: var(--fs-body); line-height: 1; flex-shrink: 0; }
     .coach-limitation {
-      margin-top: 8px; font-size: 11px; color: var(--ink-4);
+      margin-top: 8px; font-size: var(--fs-meta); color: var(--ink-4);
       font-style: italic;
     }
 
@@ -5486,7 +5486,7 @@ function ensureTrainStyles() {
       position: relative;
     }
     .goal-combined-card .progress-card-label {
-      font-size: 12px; color: var(--guava-700);
+      font-size: var(--fs-pill); color: var(--guava-700);
     }
     .goal-combined-card .progress-card-meta { color: var(--ink-3); }
     .goal-section { padding: 12px 0; }
@@ -5496,12 +5496,12 @@ function ensureTrainStyles() {
       gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
     }
     .goal-section-eyebrow {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .08em;
       color: var(--guava-700); text-transform: uppercase; margin-bottom: 4px;
     }
     .goal-section.is-empty .goal-section-eyebrow { color: var(--ink-3); }
     .goal-section-title {
-      font-size: 14px; font-weight: 700; color: var(--ink);
+      font-size: var(--fs-body); font-weight: 700; color: var(--ink);
       letter-spacing: -0.01em; line-height: 1.3;
     }
     .goal-section-title--empty { color: var(--ink-3); font-weight: 600; }
@@ -5515,12 +5515,12 @@ function ensureTrainStyles() {
     }
     .goal-big-stats {
       display: flex; justify-content: space-between; gap: 8px;
-      font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums;
+      font-size: var(--fs-meta); color: var(--ink-3); font-variant-numeric: tabular-nums;
       flex-wrap: wrap;
     }
     .goal-big-stats strong { color: var(--ink); font-weight: 700; }
     .goal-big-eta {
-      font-size: 12px; color: var(--ink-2); margin-top: 8px;
+      font-size: var(--fs-pill); color: var(--ink-2); margin-top: 8px;
       line-height: 1.5;
     }
     .goal-big-eta strong { color: var(--guava-700); }
@@ -5544,25 +5544,25 @@ function ensureTrainStyles() {
       gap: 10px; margin-bottom: 8px;
     }
     .train-ai-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
       color: var(--ink-3); text-transform: uppercase;
     }
     .train-ai-tag {
-      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      font-size: var(--fs-label); font-weight: 700; letter-spacing: .04em;
       padding: 2px 8px; border-radius: 999px;
       background: var(--surface); color: var(--ink-4); text-transform: uppercase;
     }
     .train-ai-tag.is-ai { background: var(--guava-50); color: var(--guava-700); }
     .train-ai-insight {
-      font-size: 14px; color: var(--ink); line-height: 1.5;
+      font-size: var(--fs-body); color: var(--ink); line-height: 1.5;
       margin-bottom: 6px;
     }
     .train-ai-observations {
       margin: 6px 0 0; padding-left: 18px;
-      font-size: 13px; color: var(--ink-2); line-height: 1.55;
+      font-size: var(--fs-search); color: var(--ink-2); line-height: 1.55;
     }
     .train-ai-observations li { margin-bottom: 2px; }
-    .train-ai-msg { font-size: 12px; color: var(--ink-4); }
+    .train-ai-msg { font-size: var(--fs-pill); color: var(--ink-4); }
     .train-ai-skel {
       height: 12px; border-radius: 6px; background: var(--edge);
       animation: trainAiPulse 1.4s ease-in-out infinite;

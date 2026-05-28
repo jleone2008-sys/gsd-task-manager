@@ -146,7 +146,7 @@ function renderTaskStats() {
       </div>
       <div class="st-card-title" style="margin-top:8px">${taskStatsView.toUpperCase()} BREAKDOWN</div>
       <div class="st-trend">${barsHtml}</div>
-      <div style="display:flex;gap:8px;margin-top:6px;font-size:10px;color:var(--ink-3)">
+      <div style="display:flex;gap:8px;margin-top:6px;font-size:var(--fs-label);color:var(--ink-3)">
         <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:8px;height:8px;background:var(--edge-strong);opacity:0.6;border-radius:2px"></span>Created</span>
         <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:8px;height:8px;background:var(--guava-500);border-radius:2px"></span>Completed</span>
       </div>

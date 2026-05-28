@@ -268,44 +268,44 @@ function ensureSettingsStyles() {
     .settings-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
     .settings-section { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 22px 24px; margin-bottom: 18px; box-shadow: var(--shadow-card); }
     .settings-section.settings-danger { border-color: var(--guava-200); background: var(--guava-50); }
-    .settings-h { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 4px; letter-spacing: -0.01em; }
-    .settings-sub { font-size: 12px; color: var(--ink-3); line-height: 1.6; margin-bottom: 14px; }
+    .settings-h { font-size: var(--fs-card); font-weight: 600; color: var(--ink); margin-bottom: 4px; letter-spacing: -0.01em; }
+    .settings-sub { font-size: var(--fs-pill); color: var(--ink-3); line-height: 1.6; margin-bottom: 14px; }
     .settings-tab-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--edge); cursor: pointer; }
     .settings-tab-row:first-of-type { border-top: none; }
     .settings-tab-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--guava-700); cursor: pointer; flex-shrink: 0; }
     .settings-tab-row--locked { cursor: default; opacity: 0.7; }
     .settings-tab-row--locked input { cursor: not-allowed; }
-    .settings-tab-label { font-size: 13px; font-weight: 600; color: var(--ink); min-width: 80px; }
-    .settings-tab-desc { font-size: 12px; color: var(--ink-3); line-height: 1.5; flex: 1; }
+    .settings-tab-label { font-size: var(--fs-search); font-weight: 600; color: var(--ink); min-width: 80px; }
+    .settings-tab-desc { font-size: var(--fs-pill); color: var(--ink-3); line-height: 1.5; flex: 1; }
     .settings-reorder { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
-    .settings-reorder button { width: 22px; height: 16px; border: 1px solid var(--edge); background: var(--surface); border-radius: var(--r-sm); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 9px; line-height: 1; }
+    .settings-reorder button { width: 22px; height: 16px; border: 1px solid var(--edge); background: var(--surface); border-radius: var(--r-sm); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: var(--fs-nano); line-height: 1; }
     .settings-reorder button:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
     .settings-reorder button[disabled] { opacity: 0.3; cursor: not-allowed; }
     .settings-health-source { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 4px 0 16px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); }
-    .settings-health-source-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+    .settings-health-source-label { font-size: var(--fs-pill); font-weight: 600; color: var(--ink-2); }
     .settings-health-source-opts { display: flex; gap: 18px; flex-wrap: wrap; }
-    .settings-health-source-opts label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; }
-    .settings-soon { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-4); }
+    .settings-health-source-opts label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-search); color: var(--ink); cursor: pointer; }
+    .settings-soon { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-4); }
     .settings-int-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
     .settings-int-card { background: var(--surface-2); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 14px 16px; }
     .settings-int-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .settings-int-name { font-size: 13px; font-weight: 600; color: var(--ink); }
-    .settings-int-status { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-4); }
+    .settings-int-name { font-size: var(--fs-search); font-weight: 600; color: var(--ink); }
+    .settings-int-status { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-4); }
     .settings-int-status.connected { color: var(--moss-fg); }
     .settings-int-desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.55; margin-bottom: 10px; }
-    .settings-btn-secondary { background: var(--surface); border: 1px solid var(--edge-strong); color: var(--ink-2); padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+    .settings-btn-secondary { background: var(--surface); border: 1px solid var(--edge-strong); color: var(--ink-2); padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-pill); font-weight: 500; cursor: pointer; }
     .settings-btn-secondary:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
     .settings-btn-secondary[disabled] { opacity: 0.55; cursor: not-allowed; }
-    .settings-btn-danger { background: var(--guava-700); border: 1px solid var(--guava-700); color: #fff; padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .settings-btn-danger { background: var(--guava-700); border: 1px solid var(--guava-700); color: #fff; padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-pill); font-weight: 600; cursor: pointer; }
     .settings-btn-danger:hover { background: var(--guava-800); }
-    .settings-saved { display: inline-block; margin-left: 10px; font-size: 11px; color: var(--moss-fg); opacity: 0; transition: opacity var(--dur-calm); }
+    .settings-saved { display: inline-block; margin-left: 10px; font-size: var(--fs-meta); color: var(--moss-fg); opacity: 0; transition: opacity var(--dur-calm); }
     .settings-saved.visible { opacity: 1; }
     .settings-int-card--whoop { grid-column: 1 / -1; }
     .settings-whoop-sync-error { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--guava-700); background: rgba(199, 75, 75, 0.08); border: 1px solid rgba(199, 75, 75, 0.25); border-radius: var(--r-sm); padding: 6px 10px; margin: 6px 0 10px; font-weight: 500; }
-    .settings-whoop-sync-error-dot { color: var(--guava-700); font-size: 10px; line-height: 1; }
-    .settings-whoop-sync-ok { font-size: 11px; color: var(--ink-3); margin: 6px 0 10px; }
+    .settings-whoop-sync-error-dot { color: var(--guava-700); font-size: var(--fs-label); line-height: 1; }
+    .settings-whoop-sync-ok { font-size: var(--fs-meta); color: var(--ink-3); margin: 6px 0 10px; }
     .settings-whoop-creds-summary { font-size: 11.5px; color: var(--ink-3); margin: 6px 0 10px; }
-    .settings-whoop-creds-summary code { background: var(--surface); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+    .settings-whoop-creds-summary code { background: var(--surface); padding: 1px 6px; border-radius: 4px; font-size: var(--fs-meta); }
     .settings-whoop-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .settings-btn-linklike { background: none; border: none; color: var(--ink-3); font-size: 11.5px; cursor: pointer; padding: 0; text-decoration: underline; font-family: inherit; }
     .settings-btn-linklike:hover { color: var(--guava-700); }
@@ -313,12 +313,12 @@ function ensureSettingsStyles() {
     .settings-whoop-help summary { cursor: pointer; font-weight: 500; color: var(--ink-2); }
     .settings-whoop-help[open] summary { margin-bottom: 8px; }
     .settings-whoop-help ol { margin: 0; padding-left: 18px; line-height: 1.7; }
-    .settings-whoop-help code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: 11px; word-break: break-all; }
+    .settings-whoop-help code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: var(--fs-meta); word-break: break-all; }
     .settings-whoop-help a { color: var(--guava-700); }
     .settings-whoop-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
     .settings-whoop-field { display: flex; flex-direction: column; gap: 4px; }
-    .settings-whoop-field span { font-size: 11px; font-weight: 600; color: var(--ink-2); }
-    .settings-whoop-field input { font-family: inherit; font-size: 12px; padding: 7px 10px; border: 1px solid var(--edge-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
+    .settings-whoop-field span { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-2); }
+    .settings-whoop-field input { font-family: inherit; font-size: var(--fs-pill); padding: 7px 10px; border: 1px solid var(--edge-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
     .settings-whoop-field input:focus { outline: none; border-color: var(--guava-700); }
     @media (max-width: 600px) { .settings-page { padding: 20px 14px 80px; } .settings-section { padding: 18px 16px; } .settings-whoop-form { grid-template-columns: 1fr; } }
   `;
@@ -841,7 +841,7 @@ function renderConnectedCalendarsList() {
     const isPrimary = key === '';
     const headerLabel = isPrimary ? 'Primary account' : escapeHtml(key);
     const disconnectBtn = isPrimary ? '' : `
-      <button class="settings-btn-secondary" data-settings-action="unlink-google" data-account-email="${escapeHtml(key)}" style="font-size:11px;padding:4px 8px;">Disconnect</button>
+      <button class="settings-btn-secondary" data-settings-action="unlink-google" data-account-email="${escapeHtml(key)}" style="font-size:var(--fs-meta);padding:4px 8px;">Disconnect</button>
     `;
     const rows = items.map(c => `
       <label class="settings-tab-row" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
