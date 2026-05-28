@@ -1491,7 +1491,10 @@
   }
   .modal input:focus, .modal textarea:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
   .modal textarea { resize: vertical; min-height: 60px; }
-  .modal-tags { display: flex; gap: var(--space-1); flex-wrap: nowrap; align-items: center; overflow: hidden; }
+  /* Pills sit below the title, centered, mirroring .create-panel-tags so the
+     edit and create flows match. (Previously cramped into the footer row with
+     nowrap/overflow — now full-width below the title so they can wrap + center.) */
+  .modal-tags { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; justify-content: center; margin: var(--space-1) 0 var(--space-3); }
   .modal-footer-row {
     display: flex; align-items: center;
     gap: var(--space-2); flex-wrap: nowrap; overflow: hidden;
