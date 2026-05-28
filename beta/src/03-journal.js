@@ -357,6 +357,11 @@ function isJournalSectionEnabled(tool) {
 /* ── DATA: CALENDAR EVENTS ───────────────────────────────── */
 
 const CALENDAR_CACHE_FRESH_MS = 5 * 60 * 1000;
+// Rolling forward window for the per-load calendar sync after the one-time
+// historical backfill has run. We look back a couple of days (catches late
+// same-day edits / declines and timezone-midnight boundaries) and ahead 30.
+const CAL_SYNC_AHEAD_DAYS            = 30;
+const CAL_SYNC_FORWARD_LOOKBACK_DAYS = 2;
 
 async function readCalendarCache(dateStr) {
   try {
@@ -675,24 +680,48 @@ async function syncCalendarHistory() {
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) return;
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const signupAt = currentUser?.created_at ? new Date(currentUser.created_at) : oneYearAgo;
-    const start = signupAt > oneYearAgo ? signupAt : oneYearAgo;
+
+    // Past calendar events are immutable once they've happened, so the full
+    // historical backfill only needs to run ONCE per user. After that we just
+    // refresh a small rolling forward window — re-pulling a year of history on
+    // every page load was wasteful. The one-time backfill is flagged
+    // server-side via mark_calendar_backfilled() (NULL column = not yet done).
+    let backfilled = false;
+    try {
+      const { data: prof } = await db.from('user_profiles')
+        .select('calendar_backfilled_at').eq('supabase_user_id', session.user.id).maybeSingle();
+      backfilled = !!(prof && prof.calendar_backfilled_at);
+    } catch (e) { console.warn('[journal] backfill-flag read failed', e); }
+
     const end = new Date();
-    end.setDate(end.getDate() + 30);
+    end.setDate(end.getDate() + CAL_SYNC_AHEAD_DAYS);
+    let start;
+    if (backfilled) {
+      start = new Date();
+      start.setDate(start.getDate() - CAL_SYNC_FORWARD_LOOKBACK_DAYS);
+    } else {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const signupAt = currentUser?.created_at ? new Date(currentUser.created_at) : oneYearAgo;
+      start = signupAt > oneYearAgo ? signupAt : oneYearAgo;
+    }
     const pairs = await getEnabledCalendarIds();
 
     // Iterate enabled (calendar, account) pairs; merge events from each
     // into a single by-date map. One failure is logged and skipped so
     // the others still land.
     const allEvents = [];
+    // Track whether any pair failed (missing token, http error, throw). We only
+    // record the one-time backfill as complete when it ran cleanly, so a
+    // transient failure doesn't permanently skip pulling a calendar's history.
+    let syncHadFailure = false;
     for (const pair of pairs) {
       const calId        = pair.id;
       const accountEmail = pair.account_email || '';
       let token = await getGoogleAccessToken(false, accountEmail || undefined);
       if (!token) {
         console.warn(`[journal] history sync skipped ${accountEmail || 'primary'}/${calId} — no token`);
+        syncHadFailure = true;
         continue;
       }
       let pageToken = '';
@@ -709,11 +738,12 @@ async function syncCalendarHistory() {
           let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
           if (res.status === 401 || res.status === 403) {
             token = await getGoogleAccessToken(true, accountEmail || undefined);
-            if (!token) break;
+            if (!token) { syncHadFailure = true; break; }
             res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
           }
           if (!res.ok) {
             console.warn(`[journal] history sync ${accountEmail || 'primary'}/${calId} failed: ${res.status}`);
+            syncHadFailure = true;
             break;
           }
           const data = await res.json();
@@ -726,6 +756,7 @@ async function syncCalendarHistory() {
         } while (pageToken && pages < 12);
       } catch (err) {
         console.warn(`[journal] history sync ${accountEmail || 'primary'}/${calId} threw`, err);
+        syncHadFailure = true;
       }
     }
 
@@ -766,6 +797,13 @@ async function syncCalendarHistory() {
     // currently-loaded window), so iterating every byDate key is cheap.
     if (document.getElementById('jTimeline')) {
       for (const date of Object.keys(byDate)) rerenderTimelineCard(date);
+    }
+
+    // Record the one-time historical backfill as complete so later loads only
+    // refresh the forward window. Skip if a pair failed (so we retry history
+    // next load) — best-effort; a failed RPC just means we backfill again.
+    if (!backfilled && !syncHadFailure) {
+      db.rpc('mark_calendar_backfilled').then(null, e => console.warn('[journal] mark_calendar_backfilled failed', e));
     }
   } catch (e) { console.warn('[journal] history sync failed', e); }
 }
