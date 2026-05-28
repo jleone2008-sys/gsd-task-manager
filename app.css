@@ -1714,15 +1714,30 @@
     }
   }
 
-  /* ── Stats modal — overrides .overlay-card defaults for the wider
-     content the task/habit stats charts need. Z-index raised above
-     z-fab-mobile (250) so the FAB doesn't poke through. */
-  .stats-overlay { z-index: 350; }
+  /* ── Stats modal — overrides .overlay defaults for the wider content
+     the task/habit stats charts need. Selectors are chained (.overlay
+     + .stats-overlay) so they win against the canonical .overlay rule
+     which lives later in app.css (same specificity → later wins).
+     Z-index raised above z-fab-mobile (250) AND z-mobile-nav (300) so
+     neither pokes through. --mobile-nav-h is the bottom-nav footprint
+     (15+22+15 = 52px tall + 1px border + safe-area-inset). On mobile
+     the overlay reserves that much bottom padding so the centered card
+     never slides under the nav. */
+  :root { --mobile-nav-h: calc(53px + env(safe-area-inset-bottom, 0px)); }
+  .overlay.stats-overlay { z-index: 350; }
   .stats-overlay-card {
     max-width: 720px;
     max-height: calc(100vh - 32px);
     display: flex; flex-direction: column;
     padding: 18px 22px 22px;
+  }
+  @media (max-width: 899px) {
+    .overlay.stats-overlay {
+      padding-bottom: calc(var(--space-4) + var(--mobile-nav-h));
+    }
+    .stats-overlay-card {
+      max-height: calc(100vh - 32px - var(--mobile-nav-h));
+    }
   }
   .stats-overlay-head {
     display: flex; align-items: center; justify-content: space-between;
