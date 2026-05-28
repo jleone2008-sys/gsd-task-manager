@@ -53,6 +53,8 @@
     --shadow-raised:     0 2px 4px rgba(20,15,10,0.06), 0 8px 20px rgba(20,15,10,0.08);
     --shadow-fab:        0 4px 10px rgba(184,45,59,0.28), 0 2px 4px rgba(184,45,59,0.16);
     --shadow-focus:      0 0 0 3px rgba(184,45,59,0.22);
+    --scrim:      rgba(20,30,80,0.45);
+    --scrim-blur: blur(6px);
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
     --ease:     cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -710,7 +712,7 @@
   <!-- BRAND:section:overlays -->
   <section id="overlays">
     <h2>Overlays + modals</h2>
-    <p>One overlay backdrop, one overlay-card. The existing <code>.modal-overlay</code> tint (<code>rgba(20,30,80,0.45)</code>) + 6px backdrop blur is canonical — don't pick a new tint per feature.</p>
+    <p>One overlay backdrop, one overlay-card. The canonical backdrop is the <code>--scrim</code> tint (<code>rgba(20,30,80,0.45)</code>) + <code>--scrim-blur</code> (6px) — <strong>always reference the tokens, never hardcode a per-feature tint/blur.</strong> Every modal/overlay in the app (<code>.modal-overlay</code>, <code>.overlay</code>, <code>.create-panel</code>, <code>#confirmDialog</code>, habit/journal/train/home modals) points at these tokens, including JS-injected <code>&lt;style&gt;</code> blocks, so backdrops can never drift apart again.</p>
 
     <div class="example">
       <div style="position:relative;background:var(--ink);border-radius:var(--r-md);padding:80px 20px;overflow:hidden">
@@ -731,6 +733,7 @@
     <ul>
       <li><code>.overlay</code> — fixed full-viewport backdrop. Add <code>.is-open</code> to show. Subsumes the legacy <code>.modal-overlay</code>.</li>
       <li><code>.overlay-card</code> — the centered card. Uses <code>--r-lg</code> for the card itself (overlays are the one place the larger radius reads right).</li>
+      <li><code>--scrim</code> / <code>--scrim-blur</code> — the one backdrop tint + blur. Any new full-screen overlay sets <code>background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);</code>.</li>
     </ul>
   </section>
 

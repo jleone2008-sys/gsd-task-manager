@@ -4459,8 +4459,8 @@ function ensureTrainStyles() {
 
     /* ── Day detail modal ─────────────────────────────────────────── */
     .train-modal-overlay {
-      position: fixed; inset: 0; background: rgba(20,15,10,0.45);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      position: fixed; inset: 0; background: var(--scrim);
+      backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
       display: flex; align-items: flex-start; justify-content: center;
       z-index: 1100; padding: 60px 16px 16px;
       overflow-y: auto;

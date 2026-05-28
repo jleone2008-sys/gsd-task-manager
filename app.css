@@ -64,6 +64,15 @@
     --shadow-fab:        0 4px 10px rgba(184,45,59,0.28), 0 2px 4px rgba(184,45,59,0.16);
     --shadow-focus:      0 0 0 3px rgba(184,45,59,0.22);
 
+    /* ── Overlay scrim (modal backdrop) ─────────────────────────
+       ONE canonical backdrop tint + blur for EVERY modal/overlay in
+       the app (brand framework: rgba(20,30,80,0.45) + 6px blur). Use
+       these tokens — never hardcode a per-feature tint/blur, which is
+       exactly how the backdrops drifted before. Works in JS-injected
+       <style> blocks too since they resolve against this :root. */
+    --scrim:      rgba(20,30,80,0.45);
+    --scrim-blur: blur(6px);
+
     /* ── Type families ──────────────────────────────────────── */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -1338,9 +1347,9 @@
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
-    background: rgba(20,15,10,0.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: var(--scrim);
+    backdrop-filter: var(--scrim-blur);
+    -webkit-backdrop-filter: var(--scrim-blur);
     align-items: center;
     justify-content: center;
     padding: var(--space-4);
@@ -1451,7 +1460,7 @@
   .repeat-end-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
 
   /* MODAL */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,30,80,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4); }
   #legalModal { z-index: var(--z-legal); }
   .modal-overlay.open { display: flex; animation: fadeIn var(--dur-quick) ease both; }
   .modal { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: var(--space-5); width: 100%; max-width: var(--max-modal); box-shadow: var(--shadow-raised); position: relative; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
@@ -2154,8 +2163,9 @@
   #confirmDialog {
     display: none;
     position: fixed; inset: 0; z-index: var(--z-confirm);
-    background: rgba(20,20,60,0.45);
-    backdrop-filter: blur(3px);
+    background: var(--scrim);
+    backdrop-filter: var(--scrim-blur);
+    -webkit-backdrop-filter: var(--scrim-blur);
     align-items: center; justify-content: center;
     padding: var(--space-5);
   }
@@ -2708,7 +2718,7 @@
   .habit-stat-num .l { font-size: var(--fs-nano); color: var(--ink-3); }
 
   /* Habit create panel */
-  .habit-create-panel { display: none; position: fixed; inset: 0; z-index: var(--z-modal); background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: var(--space-4); }
+  .habit-create-panel { display: none; position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); align-items: center; justify-content: center; padding: var(--space-4); }
   .habit-create-panel.open { display: flex; }
   .habit-create-inner { width: 100%; max-width: var(--max-create); background: var(--surface); border: 1px solid var(--edge-strong); border-radius: var(--r-md); box-shadow: var(--shadow-raised); padding: var(--space-4-5); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
   .habit-create-row { display: flex; gap: var(--space-2); margin-bottom: var(--space-2-5); align-items: center; }
@@ -2729,7 +2739,7 @@
   .habit-create-actions .btn-save { background: var(--guava-700); color: #fff; }
 
   /* Habit edit modal */
-  .habit-edit-overlay { display: none; position: fixed; inset: 0; background: rgba(20,20,60,0.35); backdrop-filter: blur(3px); z-index: var(--z-dropdown); align-items: center; justify-content: center; }
+  .habit-edit-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); z-index: var(--z-dropdown); align-items: center; justify-content: center; }
   .habit-edit-overlay.open { display: flex; }
   .habit-edit-modal { background: var(--surface); border-radius: var(--r-md); padding: var(--space-6); width: 90%; max-width: 420px; box-shadow: var(--shadow-raised); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
   .habit-edit-modal h3 { font-size: var(--fs-body); font-weight: var(--fw-bold); margin: 0 0 var(--space-4); }
@@ -2744,7 +2754,7 @@
   .habit-edit-save { display: flex; gap: var(--space-2); }
 
   /* ══════ HABIT DRILL-IN ══════ */
-  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: var(--z-dropdown); background: rgba(20,30,80,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); align-items: center; justify-content: center; }
+  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: var(--z-dropdown); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); align-items: center; justify-content: center; }
   .habit-drill-overlay.open { display: flex; }
   .habit-drill-panel { width: 90%; max-width: var(--max-modal-lg); max-height: 85vh; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--shadow-raised); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-slow) var(--ease-spring) both; }
   .habit-drill-header { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3-5) var(--space-4); border-bottom: 1px solid var(--edge); }
@@ -3582,9 +3592,9 @@
       flex-direction: row;
       position: fixed;
       inset: 0;
-      background: rgba(20, 15, 10, 0.45);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: var(--scrim);
+      backdrop-filter: var(--scrim-blur);
+      -webkit-backdrop-filter: var(--scrim-blur);
       z-index: var(--z-editor-mobile);
       align-items: stretch;
       justify-content: center;
@@ -3778,8 +3788,8 @@
   .overlay {
     display: none;
     position: fixed; inset: 0;
-    background: rgba(20,30,80,0.45);
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: var(--scrim);
+    backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
     align-items: center; justify-content: center;
     padding: var(--space-4); z-index: var(--z-modal);
   }

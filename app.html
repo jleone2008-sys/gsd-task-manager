@@ -59,7 +59,8 @@
      a multi-line textarea, then Skip / Submit. */
   .mood-reflect-overlay {
     position: fixed; inset: 0;
-    background: rgba(20, 15, 10, 0.45);
+    background: var(--scrim);
+    backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
     display: flex; align-items: center; justify-content: center;
     z-index: 1100;
     padding: 16px;
@@ -260,7 +261,7 @@
   .home-skeleton { color: var(--ink-4); font-size: var(--t-sm); padding: 10px 2px; }
 
   /* In-page modals (note editor + Quick Notes) — fade in + blur backdrop */
-  .home-modal-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(20,15,10,0.32); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); opacity: 0; transition: opacity .22s ease; }
+  .home-modal-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); opacity: 0; transition: opacity .22s ease; }
   .home-modal-overlay.open { opacity: 1; }
   .home-modal { width: 100%; max-width: 640px; max-height: 82vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); transform: translateY(8px); transition: transform .22s ease; overflow: hidden; }
   .home-modal-overlay.open .home-modal { transform: translateY(0); }
@@ -1081,7 +1082,8 @@
       <span class="modal-title">Edit Task</span>
       <button class="modal-close" id="editModalClose">&#x2715;</button>
     </div>
-    <textarea class="modal-textarea" id="editText" rows="2" placeholder="Task..." spellcheck="true"></textarea>
+    <input type="text" class="input" id="editText" placeholder="Task..." spellcheck="true">
+
 
     <!-- Tags/pills — below the title and centered, matching the create panel. -->
     <div class="modal-tags" id="editTags"></div>
