@@ -298,7 +298,7 @@ function ensureSettingsStyles() {
     .settings-btn-secondary[disabled] { opacity: 0.55; cursor: not-allowed; }
     .settings-btn-danger { background: var(--guava-700); border: 1px solid var(--guava-700); color: #fff; padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .settings-btn-danger:hover { background: var(--guava-800); }
-    .settings-saved { display: inline-block; margin-left: 10px; font-size: 11px; color: var(--moss-fg); opacity: 0; transition: opacity 0.2s; }
+    .settings-saved { display: inline-block; margin-left: 10px; font-size: 11px; color: var(--moss-fg); opacity: 0; transition: opacity var(--dur-calm); }
     .settings-saved.visible { opacity: 1; }
     .settings-int-card--whoop { grid-column: 1 / -1; }
     .settings-whoop-sync-error { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--guava-700); background: rgba(199, 75, 75, 0.08); border: 1px solid rgba(199, 75, 75, 0.25); border-radius: var(--r-sm); padding: 6px 10px; margin: 6px 0 10px; font-weight: 500; }

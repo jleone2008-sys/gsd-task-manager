@@ -203,7 +203,7 @@
       <span class="todo-title">Real-device motion smoke test</span>
       <span class="badge badge-progress">IN PROGRESS</span>
     </div>
-    <div class="todo-context">Motion overhaul (Phases 0-3) is fully shipped. After deploy, dogfood on real iOS + desktop: confirm tab crossfade (120ms) doesn't feel sluggish, brief reveal fires once per day per session, mobile tab indicator slides correctly between icons, task completion choreo plays. Flip to opacity-only at 100ms if the scale-in feels heavy (per plan's Phase 2c fallback). Reduced-motion (System Settings → Reduce motion) should no-op every animation.</div>
+    <div class="todo-context">Motion overhaul (Phases 0-3) plus the app-wide consistency pass are shipped. After deploy, dogfood on real iOS + desktop: confirm tab crossfade (120ms) doesn't feel sluggish, brief reveal fires once per day per session, mobile tab indicator slides correctly between icons, task completion choreo plays. <strong>New surfaces to spot-check:</strong> Home health rings draw + scores count up on first Home visit per session (mirrors the brief); Train stat numbers count up per subtab per session + when opening a history recap (volume keeps comma grouping, e.g. "1,234"); Train/Journal modals fade-up on open; Journal save indicator + Train submit button pulse while syncing and shake on failure. Flip to opacity-only at 100ms if the scale-in feels heavy (per plan's Phase 2c fallback). Reduced-motion (System Settings → Reduce motion) should no-op every animation — verified the Home/Train count-ups leave server-rendered values (incl. comma grouping) untouched.</div>
   </div>
 
 </div>
@@ -216,6 +216,16 @@
 <p class="quiet">Newest first. Cap ~15 entries; older entries roll into the collapsed archive.</p>
 
 <div class="changelog">
+  <div class="changelog-row"><span class="changelog-date">2026-05-28</span><span><strong>Motion consistency pass — extended the overhaul's patterns to Home, Train &amp; Journal.</strong> The original overhaul wired Tasks/Habits/Brief; these tabs were skipped. Now consistent:
+    <ul style="margin:6px 0 0 0;padding-left:18px;">
+      <li><strong>Home rings:</strong> <code>homeAnimateRings()</code> in <code>04-home.js</code> sweeps each <code>.home-ring-arc</code> (staggered 100ms) via <code>GSDMotion.drawArc</code> and counts up <code>.home-ring-score</code>, keyed once per day per session (mirrors <code>briefAnimateStats</code>). Wired at both Oura + Whoop ring injection points in <code>hydrateHomeToday</code>. Added <code>home-ring-arc</code> class to <code>ringSvg</code> + <code>ringSvgWithLabel</code>; <code>tabular-nums</code> on <code>.home-ring-score</code>.</li>
+      <li><strong>Train stats:</strong> <code>trainAnimateStats()</code> in <code>06-train.js</code> counts up <code>.fb-stat-num</code> / <code>.history-recap-stat-num</code> / <code>.latest-stat-num</code>. Keyed once per session per subtab at the end of <code>renderTrain</code>; unkeyed (animates each open) on the history recap body. Handles comma-grouped integers ("1,234") and skips non-numeric centers ("Cardio", "—").</li>
+      <li><strong>Entrance fades:</strong> <code>.train-modal-overlay</code>/<code>.train-modal</code> and journal <code>.j-edit-modal</code>/<code>.j-edit-card</code> + <code>.j-photo-modal</code> now use the canonical <code>fadeIn</code> + <code>fadeUp</code> (<code>--ease-spring</code>) entrance, matching <code>.modal</code>.</li>
+      <li><strong>Sync feedback (Phase 3b extension):</strong> journal save indicator (<code>updateSaveIndicator</code>) gets <code>.is-syncing</code> pulse while saving + <code>.is-sync-failed</code> shake on error; Train submit button pulses while submitting + shakes on failure.</li>
+      <li><strong>Token migration (Phase 1d completion):</strong> remaining hardcoded transition durations in <code>03-journal.js</code>, <code>06-train.js</code>, <code>02-settings.js</code> swapped to exact-match tokens (<code>--dur-fast</code>/<code>--dur-quick</code>/<code>--dur-calm</code>/<code>--dur-slower</code>) — zero feel change. No hardcoded <code>0.NNs</code> durations remain in <code>src/</code> or <code>beta/src/</code>.</li>
+      <li><strong>Reduced-motion:</strong> both new count-up helpers early-return under <code>GSDMotion.reduced</code>, leaving server-rendered values intact (incl. comma grouping). FLIP was evaluated for Journal/Train and intentionally skipped — the journal is an append-only timeline and train lists are static/chronological, so items never change position.</li>
+    </ul>
+  </span></div>
   <div class="changelog-row"><span class="changelog-date">2026-05-27</span><span><strong>Motion overhaul — Phases 1-3 shipped (full plan landed in one session).</strong>
     <ul style="margin:6px 0 0 0;padding-left:18px;">
       <li><strong>Phase 1a counter:</strong> <code>briefAnimateStats()</code> in <code>05-brief.js</code> wraps integer <code>.brief-stat-num</code> values in <code>GSDMotion.reveal</code>+<code>countUp</code> keyed by <code>(brief_date, mode)</code> in sessionStorage so Tier-1 re-renders don't reflicker.</li>

@@ -35,7 +35,7 @@ Before planning, exploring, or building ANY feature in this repo:
 
 ## Other rules
 
-- Working branch: `dev` is default. Feature branches only for multi-commit plans. `main` is release-only.
+- Working branch: `main` is default — work directly on it. Pushing to `main` deploys to production (gsdtasks.com). Feature branches only when explicitly requested. (The old `dev` integration branch is stale/abandoned as of 2026-05-28.)
 - Surgical edits: one change at a time during execution, read before write.
 - Do not Co-Author Claude on commits.
 - App features go in `app.html` (not `index.html` — that's the marketing page).

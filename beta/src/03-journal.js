@@ -993,7 +993,7 @@ function ensureJournalStyles() {
     .j-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
     .j-page-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.25; flex: 1; min-width: 0; }
     .j-actions { display: flex; gap: 6px; align-items: center; }
-    .j-action-btn { width: 36px; height: 36px; border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: background 0.12s; }
+    .j-action-btn { width: 36px; height: 36px; border-radius: var(--r-md); border: 1px solid var(--edge); background: var(--surface); color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: background var(--dur-fast); }
     .j-action-btn:hover { background: var(--surface-2); color: var(--ink); }
     .j-action-btn.is-on { background: var(--guava-700); border-color: var(--guava-700); color: #fff; }
     .j-action-btn svg { width: 16px; height: 16px; }
@@ -1089,7 +1089,7 @@ function ensureJournalStyles() {
     .j-card-add-photo svg { width: 13px; height: 13px; }
     .j-card-empty-prompt { color: var(--ink-3); font-style: italic; }
     .j-card-start-wrap { padding: 2px 0 4px; }
-    .j-card-start-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--guava-700); color: #fff; border: none; padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; transition: background 0.12s; }
+    .j-card-start-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--guava-700); color: #fff; border: none; padding: 9px 16px; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; transition: background var(--dur-fast); }
     .j-card-start-btn:hover { background: var(--guava-800); }
     .j-card-auto { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
     .j-card-body > .j-card-auto:first-child { margin-top: 0; padding-top: 0; border-top: none; }
@@ -1099,7 +1099,7 @@ function ensureJournalStyles() {
     .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
     .j-card-habit-pct { color: var(--guava-700); font-weight: 700; flex-shrink: 0; }
 
-    .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-raised); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background 0.12s, opacity 0.15s; }
+    .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-raised); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background var(--dur-fast), opacity var(--dur-quick); }
     .j-back-to-top.is-visible { display: flex; }
     .j-back-to-top:hover { background: var(--guava-800); }
     .j-back-to-top svg { width: 18px; height: 18px; }
@@ -1119,9 +1119,9 @@ function ensureJournalStyles() {
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: 12px; color: var(--ink-4); }
 
     /* Edit modal */
-    .j-edit-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 40px 16px; }
+    .j-edit-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 40px 16px; animation: fadeIn var(--dur-quick) ease both; }
     @media (max-width: 600px) { .j-edit-modal { padding: 24px 14px; align-items: center; } }
-    .j-edit-card { background: var(--surface); border-radius: var(--r-md); max-width: 680px; width: 100%; box-shadow: var(--shadow-raised); margin-bottom: 40px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow: hidden; }
+    .j-edit-card { background: var(--surface); border-radius: var(--r-md); max-width: 680px; width: 100%; box-shadow: var(--shadow-raised); margin-bottom: 40px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
     @media (max-width: 600px) { .j-edit-card { max-height: calc(100vh - 48px); margin-bottom: 0; } }
     .j-edit-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 22px 14px; border-bottom: 1px solid var(--edge); flex-shrink: 0; }
     .j-edit-title { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
@@ -1238,10 +1238,10 @@ function ensureJournalStyles() {
     .j-mood-hint { font-size: 11px; color: var(--ink-4); margin-top: 8px; line-height: 1.4; }
 
     /* Photo source modal */
-    .j-photo-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.45); display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 20px; }
-    .j-photo-modal-card { background: var(--surface); border-radius: var(--r-lg); padding: 22px; max-width: 360px; width: 100%; box-shadow: var(--shadow-raised); }
+    .j-photo-modal { position: fixed; inset: 0; background: rgba(20,15,10,0.45); display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 20px; animation: fadeIn var(--dur-quick) ease both; }
+    .j-photo-modal-card { background: var(--surface); border-radius: var(--r-lg); padding: 22px; max-width: 360px; width: 100%; box-shadow: var(--shadow-raised); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
     .j-photo-modal-h { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
-    .j-photo-modal-opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: var(--r-md); background: var(--surface); cursor: pointer; width: 100%; font-family: inherit; text-align: left; margin-bottom: 8px; transition: background 0.12s; }
+    .j-photo-modal-opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: var(--r-md); background: var(--surface); cursor: pointer; width: 100%; font-family: inherit; text-align: left; margin-bottom: 8px; transition: background var(--dur-fast); }
     .j-photo-modal-opt:hover { background: var(--surface-2); }
     .j-photo-modal-opt svg { width: 20px; height: 20px; color: var(--ink-3); flex-shrink: 0; }
     .j-photo-modal-opt-text { display: flex; flex-direction: column; gap: 2px; }
@@ -2174,9 +2174,18 @@ function updateSaveIndicator() {
   const el = document.getElementById('jEditSaveInd');
   if (!el) return;
   el.classList.remove('saved', 'error');
+  // Phase 3b — pair the textual status with the app's shared sync motion
+  // language: soft pulse while writing, one-shot shake on failure.
+  el.classList.toggle('is-syncing', journalState.saveStatus === 'saving');
   if (journalState.saveStatus === 'saving') { el.textContent = 'Saving…'; }
   else if (journalState.saveStatus === 'saved') { el.textContent = 'Saved'; el.classList.add('saved'); }
-  else if (journalState.saveStatus === 'error') { el.textContent = 'Save failed'; el.classList.add('error'); }
+  else if (journalState.saveStatus === 'error') {
+    el.textContent = 'Save failed'; el.classList.add('error');
+    el.classList.remove('is-sync-failed');
+    void el.offsetWidth;                       // restart shake
+    el.classList.add('is-sync-failed');
+    setTimeout(() => el.classList.remove('is-sync-failed'), 400);
+  }
   else { el.textContent = ''; }
 }
 

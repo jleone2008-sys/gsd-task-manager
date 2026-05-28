@@ -82,6 +82,45 @@ function renderTrain() {
   } else {
     renderTrainProgress(root);
   }
+
+  // Count up the just-rendered stat values, keyed once per session per view so
+  // flipping between subtabs doesn't replay. Mirrors the Daily Brief / Home
+  // reveal. Loading renders have no countable stats, so the key isn't burned
+  // until the data render lands.
+  trainAnimateStats(root, { key: 'train-view:' + _trainActiveView });
+}
+
+// Count up numeric stat values within a freshly-rendered container. Handles
+// plain ("128") and comma-grouped ("1,234") integers; non-numeric centers
+// (e.g. "Cardio", "—") and zeros are skipped. With opts.key the reveal fires
+// once per session; without, it runs every call (used by the history recap
+// modal, which should animate each time it opens). Reduced-motion users get
+// final values immediately (countUp short-circuits internally).
+function trainAnimateStats(container, opts) {
+  if (!container || !window.GSDMotion) return;
+  const SEL = '.fb-stat-num, .history-recap-stat-num, .latest-stat-num';
+  const isNum = (raw) => /^-?\d{1,3}(,\d{3})*$/.test(raw) || /^-?\d+$/.test(raw);
+  const targets = [...container.querySelectorAll(SEL)].filter((n) => {
+    const raw = (n.textContent || '').trim();
+    return isNum(raw) && parseInt(raw.replace(/,/g, ''), 10) !== 0;
+  });
+  if (!targets.length) return; // nothing to animate — don't burn the session key
+  // True no-op under reduced-motion: leave the server-rendered values intact
+  // (countUp's reduced path would drop comma grouping, e.g. "1,234" → "1234").
+  if (window.GSDMotion.reduced) return;
+  const run = () => targets.forEach((n) => {
+    const raw = (n.textContent || '').trim();
+    const to = parseInt(raw.replace(/,/g, ''), 10);
+    const grouped = raw.includes(',');
+    n.textContent = '0';
+    window.GSDMotion.countUp(n, {
+      to, dur: 600,
+      format: grouped ? (v) => Math.round(v).toLocaleString() : undefined,
+    });
+  });
+  const o = opts || {};
+  if (o.key) window.GSDMotion.reveal(container, { key: o.key, run });
+  else run();
 }
 
 function trainSwitchView(view) {
@@ -2016,7 +2055,7 @@ function renderTodayFooter(st) {
       <div><div class="train-total-num">${totals.left.num}</div><div class="train-total-label">${totals.left.label}</div></div>
       <div><div class="train-total-num">${totals.right.num}</div><div class="train-total-label">${totals.right.label}</div></div>
     </div>
-    <button class="train-submit-btn" data-train-action="submit-session" ${st.submitting ? 'disabled' : ''}>
+    <button class="train-submit-btn${st.submitting ? ' is-syncing' : ''}" data-train-action="submit-session" ${st.submitting ? 'disabled' : ''}>
       ${st.submitting ? 'Saving…' : 'Submit + Get Feedback'}
     </button>
   </div>`;
@@ -2411,6 +2450,15 @@ async function trainSubmitTodaySession() {
     console.warn('[train] submit failed', e);
     st.submitting = false;
     renderTrain();
+    // Phase 3b — shake the submit button once to reinforce the failure in the
+    // app's shared sync motion language, alongside the toast.
+    const btn = document.querySelector('.train-submit-btn');
+    if (btn) {
+      btn.classList.remove('is-sync-failed');
+      void btn.offsetWidth;
+      btn.classList.add('is-sync-failed');
+      setTimeout(() => btn.classList.remove('is-sync-failed'), 400);
+    }
     showTrainToast('Submit failed — ' + (e.message || 'try again'));
   }
 }
@@ -2855,7 +2903,7 @@ function openHistoryRecap(sessionId) {
       const titleEl = document.getElementById('historyRecapTitle');
       const bodyEl  = document.getElementById('historyRecapBody');
       if (titleEl) titleEl.innerHTML = renderHistoryRecapTitle(data);
-      if (bodyEl)  bodyEl.innerHTML  = renderHistoryRecapBody(data);
+      if (bodyEl)  { bodyEl.innerHTML = renderHistoryRecapBody(data); trainAnimateStats(bodyEl); }
     } catch (e) {
       console.warn('[train] history recap load failed', e);
       const bodyEl = document.getElementById('historyRecapBody');
@@ -4326,7 +4374,7 @@ function ensureTrainStyles() {
       text-align: center; cursor: pointer; min-width: 0; overflow: hidden;
       display: flex; flex-direction: column; gap: 2px;
       min-height: 50px; justify-content: center;
-      transition: background 0.12s ease;
+      transition: background var(--dur-fast) ease;
     }
     .plan-day:hover { background: var(--surface-2); }
     .plan-day-dow {
@@ -4412,11 +4460,13 @@ function ensureTrainStyles() {
       display: flex; align-items: flex-start; justify-content: center;
       z-index: 1100; padding: 60px 16px 16px;
       overflow-y: auto;
+      animation: fadeIn var(--dur-quick) ease both;
     }
     .train-modal {
       background: var(--surface); border-radius: var(--r-lg);
       max-width: 480px; width: 100%; padding: 20px;
       box-shadow: var(--shadow-raised);
+      animation: fadeUp var(--dur-mid) var(--ease-spring) both;
     }
     /* Manage Plan modal: wider canvas for the day-by-day editor. */
     .train-modal.manage-plan-modal { max-width: 640px; }
@@ -4521,7 +4571,7 @@ function ensureTrainStyles() {
       margin-bottom: 8px;
       box-shadow: var(--shadow-card);
     }
-    .logged-session-card.is-clickable { cursor: pointer; transition: background 0.12s ease, border-color 0.12s ease; }
+    .logged-session-card.is-clickable { cursor: pointer; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease; }
     .logged-session-card.is-clickable:hover { background: var(--surface-2); border-color: var(--edge-strong); }
     /* Day-picker wrap (Workout pill, pick subview): the day grid grows
        horizontally; below it sits the Manage plans link in the bottom-right
@@ -4543,7 +4593,7 @@ function ensureTrainStyles() {
       background: var(--surface); border: 1px solid var(--edge);
       border-radius: var(--r-md); padding: 12px 14px;
       box-shadow: var(--shadow-card); cursor: pointer;
-      transition: background 0.12s ease, border-color 0.12s ease;
+      transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
     }
     .history-card:hover { background: var(--surface-2); border-color: var(--edge-strong); }
     .history-card-head {
@@ -5042,7 +5092,7 @@ function ensureTrainStyles() {
     }
     .goal-bar-fill {
       background: var(--guava-700); height: 100%; border-radius: 999px;
-      transition: width 0.3s ease;
+      transition: width var(--dur-slower) ease;
     }
     .goal-row-meta { font-size: 11px; color: var(--ink-4); }
 
@@ -5059,7 +5109,7 @@ function ensureTrainStyles() {
     .entry-row {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 4px; cursor: pointer; gap: 10px;
-      transition: background 0.12s ease;
+      transition: background var(--dur-fast) ease;
     }
     .entry-row + .entry-row { border-top: 1px dashed var(--edge); }
     .entry-row:hover { background: var(--surface-2); }
@@ -5142,7 +5192,7 @@ function ensureTrainStyles() {
       aspect-ratio: 3/4; min-height: 100px;
       background: var(--surface-2); border: 1px dashed var(--edge-strong);
       border-radius: var(--r-md); cursor: pointer; overflow: hidden;
-      color: var(--ink-3); font-size: 12px; transition: background 0.15s ease;
+      color: var(--ink-3); font-size: 12px; transition: background var(--dur-quick) ease;
     }
     .progress-photo-slot:hover { background: var(--surface); }
     .progress-photo-slot.is-empty .progress-photo-plus {
@@ -5457,7 +5507,7 @@ function ensureTrainStyles() {
     }
     .goal-big-bar-fill {
       background: var(--guava-700); height: 100%; border-radius: 999px;
-      transition: width 0.3s ease;
+      transition: width var(--dur-slower) ease;
     }
     .goal-big-stats {
       display: flex; justify-content: space-between; gap: 8px;

@@ -244,7 +244,7 @@ function ringSvg(score, color) {
   const off = c * (1 - pct);
   return `<svg viewBox="0 0 80 80">
     <circle class="home-ring-track" cx="40" cy="40" r="${r}" fill="none" stroke-width="7"/>
-    <circle cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
+    <circle class="home-ring-arc" cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
             stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 40 40)"/>
     <text class="home-ring-score" x="40" y="41" text-anchor="middle" dominant-baseline="central">${score == null ? '—' : Math.round(score)}</text>
   </svg>`;
@@ -338,7 +338,7 @@ function ringSvgWithLabel(pct, color, labelText) {
   const off = c * (1 - fill);
   return `<svg viewBox="0 0 80 80">
     <circle class="home-ring-track" cx="40" cy="40" r="${r}" fill="none" stroke-width="7"/>
-    <circle cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
+    <circle class="home-ring-arc" cx="40" cy="40" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
             stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 40 40)"/>
     <text class="home-ring-score" x="40" y="41" text-anchor="middle" dominant-baseline="central">${hEsc(String(labelText))}</text>
   </svg>`;
@@ -808,6 +808,40 @@ function homeWeekInnerHTML(oura, entriesByDate) {
 
 /* ── Hydration ────────────────────────────────────────────── */
 
+// Animate the health rings on first reveal per day per session — arcs sweep
+// in (staggered 100ms) and integer scores count up, mirroring the Daily
+// Brief's coordinated reveal (briefAnimateStats in 05-brief.js). Re-renders
+// within the same session short-circuit via the reveal key so flipping back
+// to Home doesn't replay. Non-integer centers (e.g. Whoop strain "12.3") are
+// left alone by the count-up. Reduced-motion users get final values at once.
+function homeAnimateRings(container) {
+  if (!container || !window.GSDMotion) return;
+  // True no-op under reduced-motion: leave the server-rendered rings/scores
+  // intact rather than resetting then snapping them to final.
+  if (window.GSDMotion.reduced) return;
+  window.GSDMotion.reveal(container, {
+    key: 'home-rings:' + homeToday(),
+    run: () => {
+      container.querySelectorAll('.home-ring-arc').forEach((arc, i) => {
+        const r = parseFloat(arc.getAttribute('r')) || 0;
+        const C = 2 * Math.PI * r;
+        const offAttr = arc.getAttribute('stroke-dashoffset');
+        const off = offAttr != null ? parseFloat(offAttr) : 0;
+        const targetFrac = r > 0 ? 1 - (off / C) : 1;
+        window.GSDMotion.drawArc(arc, { to: targetFrac, delay: i * 100 });
+      });
+      container.querySelectorAll('.home-ring-score').forEach((n) => {
+        const raw = (n.textContent || '').trim();
+        if (!/^-?\d+$/.test(raw)) return;
+        const to = parseInt(raw, 10);
+        if (!Number.isFinite(to) || to === 0) return;
+        n.textContent = '0';
+        window.GSDMotion.countUp(n, { to, dur: 600 });
+      });
+    },
+  });
+}
+
 async function hydrateHomeToday() {
   // Health rings (gated by selected source + connection).
   const ringsEl = () => document.getElementById('homeRingsRow');
@@ -820,7 +854,7 @@ async function hydrateHomeToday() {
     const whoop = await loadWhoopScores();
     const hasData = whoop && Array.isArray(whoop.days) && whoop.days.length > 0;
     if (hasData) {
-      if (ringsEl()) ringsEl().innerHTML = homeWhoopRingsRowHTML(whoop);
+      if (ringsEl()) { ringsEl().innerHTML = homeWhoopRingsRowHTML(whoop); homeAnimateRings(ringsEl()); }
     } else {
       if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">Connect your Whoop to see recovery, strain, and sleep.</div>
         <button class="home-cta" data-home-cta="settings">Connect Whoop →</button>`;
@@ -834,7 +868,7 @@ async function hydrateHomeToday() {
     const oura = await loadOuraScores();
     const hasData = oura && Array.isArray(oura.days) && oura.days.length > 0;
     if (hasData) {
-      if (ringsEl()) ringsEl().innerHTML = homeRingsRowHTML(oura);
+      if (ringsEl()) { ringsEl().innerHTML = homeRingsRowHTML(oura); homeAnimateRings(ringsEl()); }
     } else {
       if (ringsEl()) ringsEl().innerHTML = `<div class="home-empty">Connect your Oura Ring to see sleep, readiness, and activity.</div>
         <button class="home-cta" data-home-cta="settings">Connect Oura →</button>`;
