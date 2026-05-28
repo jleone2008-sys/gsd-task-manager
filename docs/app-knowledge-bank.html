@@ -195,7 +195,7 @@
       <span class="todo-title">First Phase-10 efficacy block in production brief</span>
       <span class="badge badge-progress">IN PROGRESS</span>
     </div>
-    <div class="todo-context">Cold-start: brief skips the efficacy paragraph until any signature has ≥5 outcomes. With <code>bedtime_target</code> recording one stub per brief, threshold hits in ~1 week. After threshold, spot-check the brief context to confirm <code>efficacy_profile</code> is populated and Claude's output references it sensibly.</div>
+    <div class="todo-context">Cold-start: brief skips the efficacy paragraph until any signature has ≥5 outcomes. With <code>bedtime_target</code> recording one stub per brief, threshold hits in ~1 week. After threshold, spot-check the brief context to confirm <code>efficacy_profile</code> is populated and Claude's output references it sensibly.<br><strong>2026-05-28 status:</strong> <code>bedtime_target:22:30</code> already has 5 raw outcomes (first 05-26, last 05-27) but <code>v_user_action_efficacy</code> returns 0 rows — the follow-up values (<code>value_at_t_plus_1</code>/<code>value_at_t_plus_3</code>) are still null on those rows, so nothing qualifies yet. Watch whether <code>cron-evaluate-actions</code> backfills them (one sibling row, <code>22:00</code>, did get a t+1 value, so the cron is at least partly working). Block surfaces only once scored deltas exist, not on raw count.</div>
   </div>
 
   <div class="todo-item">
