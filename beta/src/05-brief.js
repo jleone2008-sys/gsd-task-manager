@@ -135,7 +135,7 @@ function briefInjectStyles() {
     .brief-weather-chip {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 4px 10px; border: 1px solid var(--edge); border-radius: 999px;
-      font-size: var(--t-xs); color: var(--ink-2); white-space: nowrap;
+      font-size: var(--fs-meta); color: var(--ink-2); white-space: nowrap;
     }
     .brief-weather-temp { font-weight: 700; color: var(--ink); }
     /* Sleep self-report chip — slots into the head-right cluster between
@@ -146,7 +146,7 @@ function briefInjectStyles() {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 4px 10px; border: 1px solid var(--edge); border-radius: 999px;
       background: var(--surface); color: var(--ink-2);
-      font-family: inherit; font-size: var(--t-xs); cursor: pointer;
+      font-family: inherit; font-size: var(--fs-meta); cursor: pointer;
       white-space: nowrap; line-height: 1; -webkit-tap-highlight-color: transparent;
       transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
     }
@@ -173,7 +173,7 @@ function briefInjectStyles() {
       margin: 0 0 6px 0;
     }
     .brief-subhead {
-      font-size: var(--t-sm); color: var(--ink-2); line-height: 1.45;
+      font-size: var(--fs-search); color: var(--ink-2); line-height: 1.45;
       margin: 0 0 16px 0;
     }
 
@@ -198,7 +198,7 @@ function briefInjectStyles() {
       display: grid; grid-template-columns: 1fr auto; gap: 8px;
       align-items: baseline;
       padding: 6px 0;
-      font-size: var(--t-sm);
+      font-size: var(--fs-search);
     }
     .brief-stat-row + .brief-stat-row { border-top: 1px dashed var(--edge); }
     .brief-stat-label { color: var(--ink-2); }
@@ -207,7 +207,7 @@ function briefInjectStyles() {
       display: inline-flex; align-items: baseline; gap: 8px;
     }
     .brief-stat-num { font-weight: 700; }
-    .brief-stat-delta { font-size: var(--t-xs); font-weight: 700; }
+    .brief-stat-delta { font-size: var(--fs-meta); font-weight: 700; }
     /* is-good / is-bad are the new server-driven classes (delta_dir field).
        is-up / is-down are kept for back-compat with briefs generated before
        the recap migration; they encode "arrow direction" rather than
@@ -216,7 +216,7 @@ function briefInjectStyles() {
     .brief-stat-delta.is-bad  { color: var(--guava-700); }
     .brief-stat-delta.is-up   { color: #5e8c4f; }
     .brief-stat-delta.is-down { color: var(--guava-700); }
-    .brief-stat-note { font-size: var(--t-xs); color: var(--ink-4); font-weight: 500; }
+    .brief-stat-note { font-size: var(--fs-meta); color: var(--ink-4); font-weight: 500; }
     .brief-stats-baseline {
       font-size: 10px; color: var(--ink-4); margin-top: 6px;
       text-align: right; letter-spacing: .02em; font-style: italic;
@@ -230,7 +230,7 @@ function briefInjectStyles() {
       display: inline-flex; align-items: center;
       padding: 3px 10px; border: 1px solid var(--guava-50); border-radius: 999px;
       background: var(--guava-50); color: var(--guava-700);
-      font-size: var(--t-xs); white-space: nowrap;
+      font-size: var(--fs-meta); white-space: nowrap;
     }
 
     .brief-play-label {
@@ -243,7 +243,7 @@ function briefInjectStyles() {
       display: grid; grid-template-columns: 22px 76px 1fr; gap: 10px;
       align-items: baseline;
       padding: 8px 0;
-      font-size: var(--t-sm);
+      font-size: var(--fs-search);
     }
     .brief-play-row + .brief-play-row { border-top: 1px solid var(--edge); }
     .brief-play-icon {
@@ -253,7 +253,7 @@ function briefInjectStyles() {
     }
     .brief-play-icon svg { width: 100%; height: 100%; display: block; }
     .brief-play-scope {
-      font-size: var(--t-xs); color: var(--ink-3);
+      font-size: var(--fs-meta); color: var(--ink-3);
       font-weight: 600; white-space: nowrap;
     }
     .brief-play-content { color: var(--ink); line-height: 1.4; }
@@ -262,11 +262,11 @@ function briefInjectStyles() {
       display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
       padding: 4px 0 2px;
     }
-    .brief-empty-msg { font-size: var(--t-sm); color: var(--ink-3); line-height: 1.5; }
-    .brief-skeleton  { color: var(--ink-4); font-size: var(--t-sm); }
-    .brief-error     { color: var(--guava-700); font-size: var(--t-sm); }
+    .brief-empty-msg { font-size: var(--fs-search); color: var(--ink-3); line-height: 1.5; }
+    .brief-skeleton  { color: var(--ink-4); font-size: var(--fs-search); }
+    .brief-error     { color: var(--guava-700); font-size: var(--fs-search); }
     .brief-stale-note {
-      margin-top: 14px; font-size: var(--t-xs); color: var(--ink-4);
+      margin-top: 14px; font-size: var(--fs-meta); color: var(--ink-4);
       display: flex; align-items: center; gap: 8px;
     }
     /* "Last updated at H:MM PM" — small, right-aligned, same gray as the
@@ -277,12 +277,12 @@ function briefInjectStyles() {
       margin-top: 10px;
       margin-bottom: -10px;
       text-align: right;
-      font-size: var(--t-xs);
+      font-size: var(--fs-meta);
       color: var(--ink-4);
     }
 
     .brief-legacy-para {
-      font-size: var(--t-sm); line-height: 1.55; color: var(--ink);
+      font-size: var(--fs-search); line-height: 1.55; color: var(--ink);
       margin: 0 0 10px 0;
     }
     .brief-legacy-para:last-child { margin-bottom: 0; }
@@ -313,7 +313,7 @@ function briefInjectStyles() {
        inherits the same overflow protection. */
     .brief-recap-row {
       display: grid; grid-template-columns: 18px auto minmax(0, 1fr); gap: 8px;
-      align-items: baseline; padding: 6px 0; font-size: var(--t-sm);
+      align-items: baseline; padding: 6px 0; font-size: var(--fs-search);
     }
     .brief-recap-row + .brief-recap-row { border-top: 1px dashed var(--edge); }
     .brief-recap-icon { font-size: 14px; line-height: 1; }

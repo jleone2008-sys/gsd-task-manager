@@ -20,16 +20,16 @@
     background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md);
     box-shadow: var(--shadow-card); padding: 16px; min-width: 0; margin-bottom: 22px;
   }
-  .home-card-meta { font-size: var(--t-xs); color: var(--ink-4); white-space: nowrap; }
+  .home-card-meta { font-size: var(--fs-meta); color: var(--ink-4); white-space: nowrap; }
 
   /* Boxed flow sections (Events/Tasks/Habits/Notes): each its own card,
      rows inside separated by hairline dividers (.home-row). */
   .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-  .home-section-title { font-size: var(--t-lg); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .home-section-title { font-size: var(--fs-section); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 
   /* Shared pill button — Scratchpad and the Task + add button.
      White, subtle: thin edge, muted text. */
-  .home-pill-btn { flex-shrink: 0; box-sizing: border-box; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--t-sm); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 0 12px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+  .home-pill-btn { flex-shrink: 0; box-sizing: border-box; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--fs-search); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 0 12px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
   .home-pill-btn:hover { background: var(--row-hover-bg); border-color: var(--edge-strong); color: var(--ink-2); }
   /* Icon-only variant: same 28px height as the text pills, just a tighter, larger glyph. */
   .home-pill-btn--icon { padding: 0 9px; font-size: 15px; }
@@ -42,9 +42,9 @@
   .home-ring svg { width: 82px; height: 82px; }
   .home-ring-track { stroke: var(--surface-2); }
   .home-ring-score { font-size: 20px; font-weight: 700; fill: var(--ink); font-variant-numeric: tabular-nums; }
-  .home-ring-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+  .home-ring-label { font-size: var(--fs-meta); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
   /* Trend vs the previous reading (yesterday) */
-  .home-ring-trend { font-size: var(--t-xs); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+  .home-ring-trend { font-size: var(--fs-meta); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-4); }
   .home-ring-trend.is-up { color: #5e8c4f; }
   .home-ring-trend.is-down { color: var(--guava-700); }
 
@@ -160,7 +160,7 @@
     transition: background var(--dur-fast) var(--ease), border-left-color var(--dur-fast) var(--ease), padding-left var(--dur-fast) var(--ease);
   }
   .home-item-list .home-row:last-child, #homeHabits .home-row:last-child { border-bottom: 0; }
-  .home-item-title { flex: 1; min-width: 0; font-size: var(--t-sm); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-item-title { flex: 1; min-width: 0; font-size: var(--fs-search); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .home-row.is-done .home-item-title { color: var(--ink-4); }
   /* Option 4 hover for any clickable home row. .home-row.is-clickable can
      be set explicitly; .home-note-card / .home-event-row.is-editable /
@@ -181,12 +181,12 @@
   }
   .home-note-title-link { color: var(--sky-fg); font-weight: 500; }
   .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
-  .home-habit-streak { flex-shrink: 0; font-size: var(--t-xs); font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  .home-trow-meta { font-size: var(--t-sm); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
+  .home-habit-streak { flex-shrink: 0; font-size: var(--fs-meta); font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .home-trow-meta { font-size: var(--fs-search); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
 
   /* Journal quick-capture — inline textarea, edits save straight to today's entry. */
   .home-journal-input { width: 100%; box-sizing: border-box; display: block; resize: none; overflow: hidden;
-    font-family: inherit; font-size: var(--t-sm); line-height: 1.5; color: var(--ink);
+    font-family: inherit; font-size: var(--fs-search); line-height: 1.5; color: var(--ink);
     background: none; border: 0; padding: 2px 2px; outline: none; min-height: 1.5em; }
   .home-journal-input::placeholder { color: var(--ink-4); }
 
@@ -207,7 +207,7 @@
 
   /* COMPLETED disclosure row — top border separates it from active tasks; none below. */
   .home-done-toggle { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px; cursor: pointer; border-top: 1px solid var(--edge); }
-  .home-done-label { font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; color: var(--ink-3); display: inline-flex; align-items: center; gap: 8px; }
+  .home-done-label { font-size: var(--fs-meta); font-weight: 700; letter-spacing: .06em; color: var(--ink-3); display: inline-flex; align-items: center; gap: 8px; }
   .home-done-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-3); font-size: 11px; font-weight: 700; }
   .home-done-arrow { color: var(--ink-3); transition: transform var(--dur) var(--ease); }
   .home-done-toggle.is-open .home-done-arrow { transform: rotate(180deg); }
@@ -220,7 +220,7 @@
   .home-check.checked svg { display: block; }
 
   /* Calendar (events) — all-day muted, timed in dull blue. */
-  .home-cal-time { font-size: var(--t-sm); width: 70px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .home-cal-time { font-size: var(--fs-search); width: 70px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   .home-cal-time.is-allday { color: var(--ink-4); }
   .home-cal-time.is-timed { color: var(--sky-fg); font-weight: 600; }
   /* Phase 5 — calendar event metadata editor affordance, mirroring
@@ -228,7 +228,7 @@
      modal (relationship_tag, energy_after, notes). */
   /* .home-event-row hover handled by the unified .home-row.is-clickable
      rule above (Option 4: warm bg + guava left-accent). */
-  .home-event-energy { font-size: var(--t-sm); flex-shrink: 0; margin-left: 4px; }
+  .home-event-energy { font-size: var(--fs-search); flex-shrink: 0; margin-left: 4px; }
   .home-event-tag {
     font-size: 10px; font-weight: 600; letter-spacing: .03em;
     padding: 2px 8px; border-radius: 999px;
@@ -237,12 +237,12 @@
   }
 
   /* Last 7 Days — average stat boxes */
-  .home-week-avg { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
+  .home-week-avg { font-size: var(--fs-search); font-weight: 600; color: var(--ink-2); }
   .home-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
   .home-stat { background: #f7f4ec; border: 1px solid var(--edge); border-radius: var(--r-md); padding: 12px 8px; text-align: center; }
   .home-stat-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
   .home-stat-num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-  .home-stat-delta { font-size: var(--t-xs); font-weight: 600; margin-top: 5px; color: var(--ink-4); }
+  .home-stat-delta { font-size: var(--fs-meta); font-weight: 600; margin-top: 5px; color: var(--ink-4); }
   .home-stat-delta.is-up { color: #5e8c4f; }
   .home-stat-delta.is-down { color: var(--guava-700); }
   /* Daily breakdown table (below the averages) — Day · Mood · Slp · Rdy · Act. */
@@ -250,15 +250,15 @@
   .hw-row { display: grid; grid-template-columns: minmax(0, 1.3fr) 0.8fr 1fr 1fr 1fr; align-items: center; padding: 9px 0; }
   .hw-row + .hw-row { border-top: 1px solid var(--edge); }
   .hw-head { padding: 6px 0; }
-  .hw-head .hw-col, .hw-head .hw-day, .hw-head .hw-mood { font-size: var(--t-xs); font-weight: 700; color: var(--ink-3); line-height: 1; }
-  .hw-day { font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); min-width: 0; }
+  .hw-head .hw-col, .hw-head .hw-day, .hw-head .hw-mood { font-size: var(--fs-meta); font-weight: 700; color: var(--ink-3); line-height: 1; }
+  .hw-day { font-size: var(--fs-search); font-weight: 600; color: var(--ink-2); min-width: 0; }
   .hw-mood { font-size: 16px; line-height: 1; text-align: center; }
-  .hw-col { text-align: center; font-size: var(--t-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+  .hw-col { text-align: center; font-size: var(--fs-search); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-4); }
 
   /* Misc */
-  .home-empty { font-size: var(--t-sm); color: var(--ink-4); padding: 6px 2px; }
-  .home-cta { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 6px 0; }
-  .home-skeleton { color: var(--ink-4); font-size: var(--t-sm); padding: 10px 2px; }
+  .home-empty { font-size: var(--fs-search); color: var(--ink-4); padding: 6px 2px; }
+  .home-cta { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-search); font-weight: 600; color: var(--guava-700); cursor: pointer; background: none; border: 0; padding: 6px 0; }
+  .home-skeleton { color: var(--ink-4); font-size: var(--fs-search); padding: 10px 2px; }
 
   /* In-page modals (note editor + Quick Notes) — fade in + blur backdrop */
   .home-modal-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); opacity: 0; transition: opacity .22s ease; }
@@ -266,8 +266,8 @@
   .home-modal { width: 100%; max-width: 640px; max-height: 82vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); transform: translateY(8px); transition: transform .22s ease; overflow: hidden; }
   .home-modal-overlay.open .home-modal { transform: translateY(0); }
   .home-modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--edge); }
-  .home-modal-title { font-size: var(--t-md); font-weight: 700; color: var(--ink); flex: 1; }
-  .home-note-title { flex: 1; font-family: inherit; font-size: var(--t-lg); font-weight: 700; color: var(--ink); border: 0; background: none; outline: none; }
+  .home-modal-title { font-size: var(--fs-item); font-weight: 700; color: var(--ink); flex: 1; }
+  .home-note-title { flex: 1; font-family: inherit; font-size: var(--fs-section); font-weight: 700; color: var(--ink); border: 0; background: none; outline: none; }
   .home-modal-close { flex-shrink: 0; background: none; border: 0; font-size: 22px; line-height: 1; color: var(--ink-3); cursor: pointer; padding: 0 4px; }
   .home-modal-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 12px 16px; display: flex; flex-direction: column; }
   .home-modal-body #homeNoteQuill, .home-modal-body #scratchEditorContent { flex: 1; min-height: 320px; }

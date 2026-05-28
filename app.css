@@ -81,14 +81,8 @@
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-    /* ── Type scale (7 steps) ───────────────────────────────── */
-    --t-xs:  11px;
-    --t-sm:  13px;
-    --t-md:  15px;
-    --t-lg:  18px;
-    --t-xl:  22px;
-    --t-2xl: 30px;
-    --t-3xl: 44px;
+    /* Type scale lives in the --fs-* block below. Legacy --t-* scale removed
+       2026-05-28 — all call sites migrated to the semantic --fs-* tokens. */
 
     /* ── Motion ─────────────────────────────────────────────── */
     --ease:      cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -105,6 +99,7 @@
     --fs-search:        13px;    /* search input, small-card copy */
     --fs-task:          13.5px;  /* task text, habit names, note list titles */
     --fs-body:          14px;    /* base body / editor content */
+    --fs-item:          15px;    /* prominent item text: task text, habit name, modal/empty-state titles (was legacy --t-md) */
     --fs-card:          16px;    /* dense-view card titles (new) */
     --fs-section:       18px;    /* habit stats section headings */
     --fs-title-mobile:  20px;    /* mobile logo, mobile note editor title */
@@ -231,7 +226,7 @@
   .sidebar-btn {
     display: flex; align-items: center; gap: 10px;
     padding: 9px 12px;
-    font-size: var(--t-sm); font-weight: 500;
+    font-size: var(--fs-search); font-weight: 500;
     color: var(--ink-3);
     background: transparent; border: none; border-radius: var(--r-sm);
     cursor: pointer; font-family: inherit; text-align: left;
@@ -472,7 +467,7 @@
     border: 1px solid var(--edge);
     color: var(--ink-3);
     font-family: inherit;
-    font-size: var(--t-sm);
+    font-size: var(--fs-search);
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
@@ -648,7 +643,7 @@
   /* Section label — matches spec .section-hed (uppercase, --ink-4) */
   .section-label {
     padding: 22px 2px 10px;
-    font-size: var(--t-xs);
+    font-size: var(--fs-meta);
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -662,7 +657,7 @@
     background: transparent;
     border-radius: var(--r-sm);
     padding: 0 4px;
-    font-size: var(--t-xs);
+    font-size: var(--fs-meta);
     color: var(--ink-5);
     font-weight: 600;
   }
@@ -768,7 +763,7 @@
 
   .card__title,
   .task-text {
-    font-size: var(--t-md);
+    font-size: var(--fs-item);
     font-weight: 500;
     color: var(--ink);
     line-height: 1.35;
@@ -884,7 +879,7 @@
     height: 20px;
     padding: 0 7px;
     border-radius: var(--r-sm);
-    font-size: var(--t-xs);
+    font-size: var(--fs-meta);
     font-weight: 500;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -908,7 +903,7 @@
     display: inline-flex; align-items: center; gap: 3px;
     height: 20px; padding: 0 7px;
     border-radius: var(--r-sm);
-    font-size: var(--t-xs); font-weight: 500;
+    font-size: var(--fs-meta); font-weight: 500;
     letter-spacing: 0.02em;
     white-space: nowrap;
     background: var(--slate-bg); color: var(--slate-fg);
@@ -998,7 +993,7 @@
     border-bottom-left-radius: var(--r-md);
   }
   .card.card--mini .card-body { cursor: default; }
-  .card.card--mini .card__title { font-size: var(--t-sm); }
+  .card.card--mini .card__title { font-size: var(--fs-search); }
   .card.card--mini .check { width: 16px; height: 16px; }
 
   /* Always-visible × delete on the far left of the mini-card,
@@ -1090,7 +1085,7 @@
     border: none;
     outline: none;
     font-family: inherit;
-    font-size: var(--t-sm);
+    font-size: var(--fs-search);
     color: var(--ink);
     padding: 0;
   }
@@ -1116,7 +1111,7 @@
 
   /* Section heading per spec */
   .section-hed {
-    font-size: var(--t-xs);
+    font-size: var(--fs-meta);
     font-weight: 600;
     color: var(--ink-4);
     letter-spacing: 0.1em;
@@ -2255,7 +2250,7 @@
     padding: 48px 20px; text-align: center; gap: 12px;
   }
   .empty-state-title {
-    font-size: var(--t-md); font-weight: 500; color: var(--ink-3);
+    font-size: var(--fs-item); font-weight: 500; color: var(--ink-3);
     margin: 0;
   }
   .empty-state-btn {
@@ -2265,7 +2260,7 @@
     border: 1px solid var(--edge);
     border-radius: var(--r-sm);
     padding: 6px 12px;
-    font-size: var(--t-sm); font-weight: 500;
+    font-size: var(--fs-search); font-weight: 500;
     font-family: inherit; cursor: pointer;
     transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
@@ -2452,7 +2447,7 @@
   }
   .habit-emoji { font-size: 16px; flex-shrink: 0; line-height: 1; width: auto; text-align: left; }
   .habit-name {
-    font-size: var(--t-md); font-weight: 500;
+    font-size: var(--fs-item); font-weight: 500;
     color: var(--ink); flex: 1; min-width: 0;
     line-height: 1.35;
   }
@@ -2579,7 +2574,7 @@
     font-size: 12px; color: var(--ink-3);
   }
   .habit-card-meta .tag {
-    font-size: var(--t-xs); padding: 0 7px; height: 20px;
+    font-size: var(--fs-meta); padding: 0 7px; height: 20px;
     border-radius: var(--r-sm); font-weight: 500;
     display: inline-flex; align-items: center;
   }
@@ -2926,7 +2921,7 @@
   .brain-upload-status.is-error { background: var(--guava-100); color: var(--guava-800); }
   .brain-upload-status.is-ready { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
   .brain-upload-status .b-status-title { font-weight: 600; }
-  .brain-upload-status .b-status-meta  { color: var(--ink-3); font-size: var(--t-xs, 11px); margin-top: 2px; }
+  .brain-upload-status .b-status-meta  { color: var(--ink-3); font-size: var(--fs-meta); margin-top: 2px; }
 
   /* Phase 6 Commit 6 — Documents section above the notes list.
      Matches the timeline aesthetic from knowledge-tab-mockups.html
@@ -2972,7 +2967,7 @@
     overflow: hidden;
   }
   .brain-doc-meta {
-    font-size: var(--t-xs, 11px); color: var(--ink-4);
+    font-size: var(--fs-meta); color: var(--ink-4);
     margin-top: 6px; display: flex; gap: 6px; align-items: center;
   }
   .brain-doc-meta .b-doc-status {
@@ -3044,7 +3039,7 @@
     overflow: hidden;
   }
   .brain-tl-card-meta {
-    font-size: var(--t-xs, 11px); color: var(--ink-4);
+    font-size: var(--fs-meta); color: var(--ink-4);
     margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
   }
 
@@ -3216,7 +3211,7 @@
     margin-bottom: 8px;
   }
   .pattern-card-meta {
-    font-size: var(--t-xs, 11px); color: var(--ink-4);
+    font-size: var(--fs-meta); color: var(--ink-4);
     display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
   }
   .pattern-card-actions {
@@ -3243,7 +3238,7 @@
     margin-bottom: 6px;
   }
   .weekly-card-headline {
-    font-size: var(--t-lg); font-weight: 700; color: var(--ink);
+    font-size: var(--fs-section); font-weight: 700; color: var(--ink);
     letter-spacing: -0.02em; margin-bottom: 4px;
   }
   .weekly-card-subhead {
