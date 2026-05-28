@@ -18,11 +18,12 @@ const { SUPABASE_URL }               = require('./lib/supabase');
 
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
 // Whoop's V1 endpoints (under /developer/v1/) were deprecated in 2025; V2
-// lives at the root with /v2/* paths. Response shapes are largely the same
-// (metrics still nested under `score`); pagination key may have shifted from
-// `next_token` to `nextToken` — whoopPaginate handles both defensively and
-// logs which form it sees so any further drift surfaces in Netlify logs.
-const WHOOP_API       = 'https://api.prod.whoop.com';
+// stays under the /developer/ prefix at /developer/v2/* paths. Response shapes
+// are largely the same (metrics still nested under `score`); pagination key may
+// have shifted from `next_token` to `nextToken` — whoopPaginate handles both
+// defensively and logs which form it sees so any further drift surfaces in
+// Netlify logs.
+const WHOOP_API       = 'https://api.prod.whoop.com/developer';
 const OURA_TOKEN_URL  = 'https://api.ouraring.com/oauth/token';
 const OURA_API        = 'https://api.ouraring.com/v2/usercollection';
 

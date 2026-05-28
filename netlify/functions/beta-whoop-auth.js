@@ -11,10 +11,10 @@ const { encryptToken, decryptToken } = require('./lib/encryption');
 const { SUPABASE_URL }               = require('./lib/supabase');
 
 const WHOOP_TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token';
-// V2: Whoop dropped the /developer prefix; profile endpoint moved from
-// /developer/v1/user/profile/basic to /v2/user/profile/basic. Response
-// shape is unchanged ({user_id, email, first_name, last_name}).
-const WHOOP_API       = 'https://api.prod.whoop.com';
+// V2: profile endpoint moved from /developer/v1/user/profile/basic to
+// /developer/v2/user/profile/basic (the /developer prefix is retained).
+// Response shape is unchanged ({user_id, email, first_name, last_name}).
+const WHOOP_API       = 'https://api.prod.whoop.com/developer';
 
 exports.handler = async (event) => {
   const { code, state, error } = event.queryStringParameters || {};
