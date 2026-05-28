@@ -440,7 +440,9 @@
       <li><code>.text-numeric</code> — adds <code>font-variant-numeric: tabular-nums</code>. Use on any stat that animates or aligns in a column.</li>
     </ul>
 
-    <div class="callout callout--warn"><strong>Don't</strong> use literal <code>font-size: 14px</code> in markup. Apply the role class on the closest container. If the role you need doesn't exist, propose adding it to this file first.</div>
+    <p class="quiet">The 8 roles above wrap the most-used <code>--fs-*</code> steps; the full scale in <code>app.css</code> has a few more for specific surfaces — <code>--fs-nano</code> 9, <code>--fs-micro</code> 10.5, <code>--fs-pill</code> 12, <code>--fs-task</code> 13.5, <code>--fs-item</code> 15, <code>--fs-title-mobile</code> 20, <code>--fs-title-lg</code> 24, <code>--fs-ring</code> 32, <code>--fs-hero</code> 36. There is <strong>one</strong> font-size token system: <code>--fs-*</code>. (The legacy parallel <code>--t-*</code> scale was removed 2026-05-28; all call sites migrated to <code>--fs-*</code>.)</p>
+
+    <div class="callout callout--warn"><strong>Don't</strong> use literal <code>font-size: 14px</code> in markup. Use the role class, or a <code>--fs-*</code> token if you're writing raw CSS. If the size you need doesn't exist, add it to the <code>--fs-*</code> scale (not a new parallel scale) and document it here.</div>
   </section>
 
   <!-- BRAND:section:space -->
