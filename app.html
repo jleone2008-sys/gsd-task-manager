@@ -32,7 +32,7 @@
   .home-pill-btn { flex-shrink: 0; box-sizing: border-box; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--fs-search); font-weight: 500; color: var(--ink-3); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 0 12px; line-height: 1; cursor: pointer; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
   .home-pill-btn:hover { background: var(--row-hover-bg); border-color: var(--edge-strong); color: var(--ink-2); }
   /* Icon-only variant: same 28px height as the text pills, just a tighter, larger glyph. */
-  .home-pill-btn--icon { padding: 0 9px; font-size: 15px; }
+  .home-pill-btn--icon { padding: 0 9px; font-size: var(--fs-item); }
   .home-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
   /* Rings */
@@ -41,7 +41,7 @@
   .home-ring { display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
   .home-ring svg { width: 82px; height: 82px; }
   .home-ring-track { stroke: var(--surface-2); }
-  .home-ring-score { font-size: 20px; font-weight: 700; fill: var(--ink); font-variant-numeric: tabular-nums; }
+  .home-ring-score { font-size: var(--fs-title-mobile); font-weight: 700; fill: var(--ink); font-variant-numeric: tabular-nums; }
   .home-ring-label { font-size: var(--fs-meta); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
   /* Trend vs the previous reading (yesterday) */
   .home-ring-trend { font-size: var(--fs-meta); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-4); }
@@ -77,22 +77,22 @@
     animation: fadeUp 0.18s ease both;
   }
   .mood-reflect-head { display: flex; align-items: center; gap: 12px; }
-  .mood-reflect-emoji { font-size: 36px; line-height: 1; flex-shrink: 0; }
+  .mood-reflect-emoji { font-size: var(--fs-hero); line-height: 1; flex-shrink: 0; }
   .mood-reflect-headcopy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .mood-reflect-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--guava-700); }
-  .mood-reflect-sub   { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .mood-reflect-label { font-size: var(--fs-meta); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--guava-700); }
+  .mood-reflect-sub   { font-size: var(--fs-item); font-weight: 700; color: var(--ink); line-height: 1.25; }
   .mood-reflect-input {
     width: 100%; box-sizing: border-box;
     background: var(--surface); border: 1px solid var(--edge);
     border-radius: var(--r-md);
     padding: 10px 12px;
-    font-family: inherit; font-size: 14px; line-height: 1.45;
+    font-family: inherit; font-size: var(--fs-body); line-height: 1.45;
     color: var(--ink); resize: vertical; min-height: 88px;
   }
   .mood-reflect-input:focus { outline: none; border-color: var(--guava-700); box-shadow: 0 0 0 2px var(--guava-50); }
   .mood-reflect-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .mood-reflect-skip, .mood-reflect-submit {
-    font-family: inherit; font-size: 13px; font-weight: 600;
+    font-family: inherit; font-size: var(--fs-search); font-weight: 600;
     padding: 8px 16px; border-radius: var(--r-md); cursor: pointer;
     transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
   }
@@ -109,14 +109,14 @@
   .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 9px 4px; cursor: pointer; font-size: 21px; line-height: 1; transition: background 0.12s ease, transform 0.08s ease; }
   .home-mood-btn:hover { background: var(--surface-2); }
   .home-mood-btn:active { background: var(--guava-50); border-color: var(--guava-500); }
-  .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }
+  .home-mood-btn .home-mood-cap { font-size: var(--fs-label); color: var(--ink-3); }
   /* Phase 5 — intra-day check-in chips + summary line below the picker. */
   .home-mood-checkins { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
   .home-mood-chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .home-mood-chip {
     display: inline-flex; align-items: center; gap: 4px;
     background: var(--surface-2); border-radius: 999px;
-    padding: 2px 4px 2px 8px; font-size: 11px; color: var(--ink-2);
+    padding: 2px 4px 2px 8px; font-size: var(--fs-meta); color: var(--ink-2);
     max-width: 100%;
   }
   /* Reflection text on a chip — italic, ink-3, truncates rather than
@@ -128,22 +128,22 @@
     max-width: 220px;
   }
   .home-mood-chip-time { font-variant-numeric: tabular-nums; }
-  .home-mood-chip-emoji { font-size: 13px; line-height: 1; }
+  .home-mood-chip-emoji { font-size: var(--fs-search); line-height: 1; }
   .home-mood-chip-del {
     background: none; border: 0; cursor: pointer;
-    color: var(--ink-4); font-size: 13px; line-height: 1;
+    color: var(--ink-4); font-size: var(--fs-search); line-height: 1;
     padding: 0 4px; border-radius: 999px;
   }
   .home-mood-chip-del:hover { color: var(--guava-700); background: var(--surface); }
   .home-mood-summary {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; color: var(--ink-3);
+    font-size: var(--fs-pill); color: var(--ink-3);
   }
   .home-mood-summary-label {
-    font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em;
     color: var(--ink-4); text-transform: uppercase;
   }
-  .home-mood-summary-emoji { font-size: 16px; line-height: 1; }
+  .home-mood-summary-emoji { font-size: var(--fs-card); line-height: 1; }
   .home-mood-summary-count { font-variant-numeric: tabular-nums; }
 
   /* Line-style rows (Events/Habits/Notes/Tasks): no box, hairline divider
@@ -180,7 +180,7 @@
     padding-left: 8px;
   }
   .home-note-title-link { color: var(--sky-fg); font-weight: 500; }
-  .home-hrow-emoji { font-size: 16px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
+  .home-hrow-emoji { font-size: var(--fs-card); line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
   .home-habit-streak { flex-shrink: 0; font-size: var(--fs-meta); font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
   .home-trow-meta { font-size: var(--fs-search); color: var(--ink-4); white-space: nowrap; flex-shrink: 0; }
 
@@ -208,7 +208,7 @@
   /* COMPLETED disclosure row — top border separates it from active tasks; none below. */
   .home-done-toggle { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px; cursor: pointer; border-top: 1px solid var(--edge); }
   .home-done-label { font-size: var(--fs-meta); font-weight: 700; letter-spacing: .06em; color: var(--ink-3); display: inline-flex; align-items: center; gap: 8px; }
-  .home-done-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-3); font-size: 11px; font-weight: 700; }
+  .home-done-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-3); font-size: var(--fs-meta); font-weight: 700; }
   .home-done-arrow { color: var(--ink-3); transition: transform var(--dur) var(--ease); }
   .home-done-toggle.is-open .home-done-arrow { transform: rotate(180deg); }
 
@@ -230,7 +230,7 @@
      rule above (Option 4: warm bg + guava left-accent). */
   .home-event-energy { font-size: var(--fs-search); flex-shrink: 0; margin-left: 4px; }
   .home-event-tag {
-    font-size: 10px; font-weight: 600; letter-spacing: .03em;
+    font-size: var(--fs-label); font-weight: 600; letter-spacing: .03em;
     padding: 2px 8px; border-radius: 999px;
     background: var(--surface-2); color: var(--ink-3);
     flex-shrink: 0; margin-left: 4px;
@@ -240,7 +240,7 @@
   .home-week-avg { font-size: var(--fs-search); font-weight: 600; color: var(--ink-2); }
   .home-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
   .home-stat { background: #f7f4ec; border: 1px solid var(--edge); border-radius: var(--r-md); padding: 12px 8px; text-align: center; }
-  .home-stat-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+  .home-stat-label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
   .home-stat-num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
   .home-stat-delta { font-size: var(--fs-meta); font-weight: 600; margin-top: 5px; color: var(--ink-4); }
   .home-stat-delta.is-up { color: #5e8c4f; }
@@ -252,7 +252,7 @@
   .hw-head { padding: 6px 0; }
   .hw-head .hw-col, .hw-head .hw-day, .hw-head .hw-mood { font-size: var(--fs-meta); font-weight: 700; color: var(--ink-3); line-height: 1; }
   .hw-day { font-size: var(--fs-search); font-weight: 600; color: var(--ink-2); min-width: 0; }
-  .hw-mood { font-size: 16px; line-height: 1; text-align: center; }
+  .hw-mood { font-size: var(--fs-card); line-height: 1; text-align: center; }
   .hw-col { text-align: center; font-size: var(--fs-search); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-4); }
 
   /* Misc */
@@ -268,7 +268,7 @@
   .home-modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--edge); }
   .home-modal-title { font-size: var(--fs-item); font-weight: 700; color: var(--ink); flex: 1; }
   .home-note-title { flex: 1; font-family: inherit; font-size: var(--fs-section); font-weight: 700; color: var(--ink); border: 0; background: none; outline: none; }
-  .home-modal-close { flex-shrink: 0; background: none; border: 0; font-size: 22px; line-height: 1; color: var(--ink-3); cursor: pointer; padding: 0 4px; }
+  .home-modal-close { flex-shrink: 0; background: none; border: 0; font-size: var(--fs-title); line-height: 1; color: var(--ink-3); cursor: pointer; padding: 0 4px; }
   .home-modal-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 12px 16px; display: flex; flex-direction: column; }
   .home-modal-body #homeNoteQuill, .home-modal-body #scratchEditorContent { flex: 1; min-height: 320px; }
 </style>
@@ -421,8 +421,8 @@
   <div class="sidebar-foot" id="sidebarFooter">
     <div class="avatar" id="sidebarAvatar">S</div>
     <div style="line-height:1.3;min-width:0;flex:1;overflow:hidden;">
-      <div id="sidebarUserName" style="font-weight:600;color:var(--ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Signed in</div>
-      <div id="sidebarUserEmail" style="font-size:10px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+      <div id="sidebarUserName" style="font-weight:600;color:var(--ink);font-size:var(--fs-pill);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Signed in</div>
+      <div id="sidebarUserEmail" style="font-size:var(--fs-label);color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
     </div>
   </div>
 </aside>
@@ -806,7 +806,7 @@
     <div class="habit-create-row">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <button class="emoji-pick-btn" id="habitEmojiBtn" title="Tap to change icon">✅</button>
-        <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
+        <span style="font-size:var(--fs-nano);color:var(--ink-3);white-space:nowrap">Tap icon</span>
       </div>
       <input type="text" id="habitNameInput" placeholder="Habit name..." spellcheck="true">
     </div>
@@ -848,15 +848,15 @@
     </div>
     <div id="habitFreqCount" style="display:none;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px">
-        <input type="number" id="habitFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
-        <span style="font-size:12px;color:var(--ink-3)" id="habitFreqCountLabel">days per week</span>
+        <input type="number" id="habitFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:var(--fs-search);text-align:center;outline:none">
+        <span style="font-size:var(--fs-pill);color:var(--ink-3)" id="habitFreqCountLabel">days per week</span>
       </div>
     </div>
     <div id="habitExtrasToggle" style="display:none;margin-bottom:10px">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink-2)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-pill);color:var(--ink-2)">
         <input type="checkbox" id="habitAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
         Allow extras beyond goal
-        <span style="font-size:10px;color:var(--ink-3)">(log more than the minimum)</span>
+        <span style="font-size:var(--fs-label);color:var(--ink-3)">(log more than the minimum)</span>
       </label>
     </div>
     <div class="habit-create-actions">
@@ -873,9 +873,9 @@
     <div class="habit-create-row">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <button class="emoji-pick-btn" id="habitEditEmojiBtn" title="Tap to change icon">✅</button>
-        <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
+        <span style="font-size:var(--fs-nano);color:var(--ink-3);white-space:nowrap">Tap icon</span>
       </div>
-      <input type="text" id="habitEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
+      <input type="text" id="habitEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:var(--fs-search);outline:none">
     </div>
     <div class="emoji-grid" id="habitEditEmojiGrid" style="display:none">
       <button data-emoji-target="edit" data-emoji="🏃">🏃</button><button data-emoji-target="edit" data-emoji="💪">💪</button>
@@ -901,14 +901,14 @@
          links it can name-match, but here the user can pick manually. -->
     <div class="habit-edit-field">
       <label>Auto-complete from Train</label>
-      <select id="habitEditLibraryKind" style="width:100%;padding:8px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
+      <select id="habitEditLibraryKind" style="width:100%;padding:8px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:var(--fs-search);background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
         <option value="">Not linked (manual only)</option>
         <option value="lifting">🏋️ Lifting · auto-marks when you submit a lift in Train</option>
         <option value="cardio">🏃 Cardio · auto-marks when you submit cardio in Train</option>
         <option value="activity">🧗 Activity · auto-marks when you log a Bonus activity</option>
         <option value="progress">📸 Progress pic · auto-marks when you log a body-comp entry</option>
       </select>
-      <div style="font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4">Links this habit to Train so submitting the matching session auto-marks it complete for that day.</div>
+      <div style="font-size:var(--fs-meta);color:var(--ink-3);margin-top:6px;line-height:1.4">Links this habit to Train so submitting the matching session auto-marks it complete for that day.</div>
     </div>
     <div class="habit-edit-field">
       <label>Frequency</label>
@@ -932,12 +932,12 @@
       </div>
       <div id="habitEditFreqCount" style="display:none;margin-top:8px">
         <div style="display:flex;align-items:center;gap:8px">
-          <input type="number" id="habitEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
-          <span style="font-size:12px;color:var(--ink-3)" id="habitEditFreqCountLabel">days per week</span>
+          <input type="number" id="habitEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:var(--fs-search);text-align:center;outline:none">
+          <span style="font-size:var(--fs-pill);color:var(--ink-3)" id="habitEditFreqCountLabel">days per week</span>
         </div>
       </div>
       <div id="habitEditExtrasToggle" style="display:none;margin-top:8px">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink-2)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-pill);color:var(--ink-2)">
           <input type="checkbox" id="habitEditAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
           Allow extras beyond goal
         </label>
@@ -949,8 +949,8 @@
         <button id="habitEditDeleteBtn">Delete</button>
       </div>
       <div class="habit-edit-save">
-        <button class="btn-cancel" style="padding:6px 14px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:12px;cursor:pointer" id="habitEditCancelBtn">Cancel</button>
-        <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer" id="habitEditSaveBtn">Save</button>
+        <button class="btn-cancel" style="padding:6px 14px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);font-family:inherit;font-size:var(--fs-pill);cursor:pointer" id="habitEditCancelBtn">Cancel</button>
+        <button class="btn-save" style="padding:6px 14px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:var(--fs-pill);font-weight:600;cursor:pointer" id="habitEditSaveBtn">Save</button>
       </div>
     </div>
   </div>
@@ -991,23 +991,23 @@
           <div class="habit-create-row" style="margin-bottom:10px">
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
               <button class="emoji-pick-btn" id="drillEditEmojiBtn" title="Tap to change icon">✅</button>
-              <span style="font-size:9px;color:var(--ink-3);white-space:nowrap">Tap icon</span>
+              <span style="font-size:var(--fs-nano);color:var(--ink-3);white-space:nowrap">Tap icon</span>
             </div>
-            <input type="text" id="drillEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none">
+            <input type="text" id="drillEditName" placeholder="Habit name..." spellcheck="true" style="flex:1;border:1px solid var(--edge-strong);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:var(--fs-search);outline:none">
           </div>
           <!-- Phase 4 — habit library link picker (drill-in Edit tab). Same
                control as the modal habitEditOverlay; keeps both surfaces
                consistent so the user finds the link from either path. -->
           <div class="habit-edit-field">
             <label>Auto-complete from Train</label>
-            <select id="drillEditLibraryKind" style="width:100%;padding:8px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
+            <select id="drillEditLibraryKind" style="width:100%;padding:8px 10px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:var(--fs-search);background:var(--surface);color:var(--ink);cursor:pointer;outline:none">
               <option value="">Not linked (manual only)</option>
               <option value="lifting">🏋️ Lifting · auto-marks when you submit a lift in Train</option>
               <option value="cardio">🏃 Cardio · auto-marks when you submit cardio in Train</option>
               <option value="activity">🧗 Activity · auto-marks when you log a Bonus activity</option>
               <option value="progress">📸 Progress pic · auto-marks when you log a body-comp entry</option>
             </select>
-            <div style="font-size:11px;color:var(--ink-3);margin-top:6px;line-height:1.4">Links this habit to Train so submitting the matching session auto-marks it complete for that day.</div>
+            <div style="font-size:var(--fs-meta);color:var(--ink-3);margin-top:6px;line-height:1.4">Links this habit to Train so submitting the matching session auto-marks it complete for that day.</div>
           </div>
           <div class="emoji-grid" id="drillEditEmojiGrid" style="display:none">
             <button data-emoji-target="drill" data-emoji="🏃">🏃</button><button data-emoji-target="drill" data-emoji="💪">💪</button>
@@ -1049,12 +1049,12 @@
             </div>
             <div id="drillEditFreqCount" style="display:none;margin-top:8px">
               <div style="display:flex;align-items:center;gap:8px">
-                <input type="number" id="drillEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:13px;text-align:center;outline:none">
-                <span style="font-size:12px;color:var(--ink-3)" id="drillEditFreqCountLabel">days per week</span>
+                <input type="number" id="drillEditFreqCountInput" min="1" max="31" value="3" style="width:52px;padding:6px 8px;border:1px solid var(--edge-strong);border-radius:8px;font-family:inherit;font-size:var(--fs-search);text-align:center;outline:none">
+                <span style="font-size:var(--fs-pill);color:var(--ink-3)" id="drillEditFreqCountLabel">days per week</span>
               </div>
             </div>
             <div id="drillEditExtrasToggle" style="display:none;margin-top:8px">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink-2)">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-pill);color:var(--ink-2)">
                 <input type="checkbox" id="drillEditAllowExtras" style="accent-color:var(--guava-700);width:15px;height:15px">
                 Allow extras beyond goal
               </label>
@@ -1066,7 +1066,7 @@
               <button id="drillEditDeleteBtn">Delete</button>
             </div>
             <div class="habit-edit-save">
-              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer" id="drillEditSaveBtn">Save</button>
+              <button class="btn-save" style="padding:8px 20px;border-radius:8px;border:none;background:var(--guava-700);color:#fff;font-family:inherit;font-size:var(--fs-search);font-weight:600;cursor:pointer" id="drillEditSaveBtn">Save</button>
             </div>
           </div>
         </div>
