@@ -2492,7 +2492,11 @@ async function loadTrainAIFeedback(sessionId) {
     console.warn('[train] ai feedback fetch failed', e);
     _trainTodayState.aiFeedback = { status: 'error', message: e.message || 'fetch failed' };
   } finally {
-    if (_trainActiveView === 'today') renderTrain();
+    // Re-render so the just-loaded insight replaces the skeleton. The guard
+    // must match the actual view id ('workout' — the today/session UI lives
+    // under the Workout pill); the old 'today' string never matched, so the
+    // skeleton stayed stuck until an unrelated re-render (e.g. tab switch).
+    if (_trainActiveView === 'workout') renderTrain();
   }
 }
 
