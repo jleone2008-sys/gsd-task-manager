@@ -545,6 +545,16 @@ async function getEnabledCalendarIds() {
   }
 }
 
+// True when the signed-in user has explicitly declined this event. Google
+// marks the user's own attendee row with self:true; responseStatus 'declined'
+// means they said no. Events with no attendees (personal/solo) or where the
+// user isn't listed are never treated as declined.
+function jEventDeclined(e) {
+  const atts = e && e.attendees;
+  if (!Array.isArray(atts)) return false;
+  return atts.some(a => a && a.self && a.responseStatus === 'declined');
+}
+
 async function fetchLiveCalendarEvents(dateStr) {
   const pairs = await getEnabledCalendarIds();
   // Group by account_email so we fetch one access_token per account.
@@ -574,7 +584,7 @@ async function fetchLiveCalendarEvents(dateStr) {
       if (res.status === 401 || res.status === 403) throw new Error('expired');
       if (!res.ok) throw new Error(`api_${res.status}`);
       const data = await res.json();
-      return (data.items || []).map(e => ({
+      return (data.items || []).filter(e => !jEventDeclined(e)).map(e => ({
         id:           e.id,
         summary:      e.summary || '(no title)',
         start:        e.start?.dateTime || e.start?.date || '',
@@ -707,7 +717,10 @@ async function syncCalendarHistory() {
             break;
           }
           const data = await res.json();
-          for (const ev of (data.items || [])) allEvents.push({ ...ev, _calId: calId, _accountEmail: accountEmail });
+          for (const ev of (data.items || [])) {
+            if (jEventDeclined(ev)) continue;
+            allEvents.push({ ...ev, _calId: calId, _accountEmail: accountEmail });
+          }
           pageToken = data.nextPageToken || '';
           pages++;
         } while (pageToken && pages < 12);
