@@ -775,7 +775,17 @@
 
     <div class="create-panel-fields-stack">
       <label class="create-panel-label">Note</label>
-      <textarea id="newNoteInput" class="create-panel-textarea" placeholder="Optional note or URL" spellcheck="true"></textarea>
+      <!-- Rich text note — same editor as the edit modal (wired via the shared
+           wireRichEditor in 08-editor.js) so create and edit behave identically. -->
+      <div class="rich-toolbar" id="newRichToolbar">
+        <button class="rich-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+        <button class="rich-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+        <div class="rich-btn-sep"></div>
+        <button class="rich-btn" data-cmd="insertUnorderedList" title="Bullet list">☰</button>
+        <div class="rich-btn-sep"></div>
+        <button class="rich-btn rich-link-btn" title="Link">🔗</button>
+      </div>
+      <div class="rich-editor" id="newNoteRich" contenteditable="true" spellcheck="true" data-placeholder="Optional note or URL"></div>
 
       <label class="create-panel-label">Due date</label>
       <input type="date" id="newDueDate" class="create-panel-date" formnovalidate>
@@ -1084,7 +1094,7 @@
         <div class="rich-btn-sep"></div>
         <button class="rich-btn" data-cmd="insertUnorderedList" title="Bullet list">☰</button>
         <div class="rich-btn-sep"></div>
-        <button class="rich-btn" id="richLinkBtn" title="Link">🔗</button>
+        <button class="rich-btn rich-link-btn" id="richLinkBtn" title="Link">🔗</button>
       </div>
       <div class="rich-editor" id="editNoteRich" contenteditable="true" spellcheck="true"
         data-placeholder="Add a note…">

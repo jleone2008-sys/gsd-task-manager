@@ -89,13 +89,12 @@ function toggleNewTag(tag) {
 function addTask() {
   const text = document.getElementById('newTaskInput').value.trim();
   if (!text) return;
-  const noteRaw = document.getElementById('newNoteInput').value.trim();
-  // Textarea stores plain text with \n; the rest of the app renders notes as
-  // HTML via DOMPurify, where \n doesn't produce a line break. Wrap each line
-  // in <p> to match the format Quill emits when editing existing notes.
-  const note = noteRaw
-    ? noteRaw.split(/\r?\n/).map(line => `<p>${escHTML(line) || '<br>'}</p>`).join('')
-    : '';
+  // Rich-text note — same contenteditable editor as the edit modal, so we
+  // store its sanitized HTML directly (matches saveEdit). Clean the empty
+  // states the browser leaves behind so a blank editor saves as "".
+  const noteEl = document.getElementById('newNoteRich');
+  let note = noteEl ? noteEl.innerHTML.trim() : '';
+  if (note === '<br>' || note === '<div><br></div>') note = '';
   const due = document.getElementById('newDueDate').value || null;
   const newTask = {
     id: Date.now(), text,
@@ -108,7 +107,7 @@ function addTask() {
   tasks.unshift(newTask);
   tasks.filter(t=>!t.done).sort((a,b)=>(a.order??0)-(b.order??0)).forEach((t,i)=>t.order=i);
   document.getElementById('newTaskInput').value = '';
-  document.getElementById('newNoteInput').value = '';
+  if (noteEl) noteEl.innerHTML = '';
   document.getElementById('newDueDate').value = '';
   // Reset the always-visible repeat picker back to its off-state row.
   newRecur = null;
@@ -252,7 +251,7 @@ function openEdit(id) {
   editRepeatSection.innerHTML = repeatSectionHTML(editRecur);
   initRepeatListeners(editRepeatSection, true);
   document.getElementById('editModal').classList.add('open');
-  setTimeout(()=>updateRichToolbarState(), 50);
+  setTimeout(()=>updateRichToolbarState(document.getElementById('richToolbar')), 50);
 }
 function saveEdit() {
   const t = tasks.find(t=>t.id===editId);
@@ -274,47 +273,55 @@ document.getElementById('editModal').addEventListener('click',function(e){if(e.t
 /* ═══════════════════════════════════════════════
    RICH TEXT NOTE EDITOR
 ═══════════════════════════════════════════════ */
-function richCmd(e, cmd) {
+function richInsertLink(e, editor) {
   e.preventDefault();
-  document.getElementById('editNoteRich').focus();
-  document.execCommand(cmd, false, null);
-  updateRichToolbarState();
-}
-function richInsertLink(e) {
-  e.preventDefault();
-  const editor = document.getElementById('editNoteRich');
+  editor = editor || document.getElementById('editNoteRich');
   editor.focus();
   const sel = window.getSelection();
   const text = sel && sel.toString();
   const url = prompt('Enter URL:', 'https://');
   if (url && url !== 'https://') {
     document.execCommand('insertHTML', false,
-      `<a href="${url}" target="_blank">${text||url}</a>`);
+      `<a href="${escAttr(url)}" target="_blank" rel="noopener">${text||escHTML(url)}</a>`);
   }
 }
-function updateRichToolbarState() {
+function updateRichToolbarState(toolbar) {
+  if (!toolbar) return;
   ['bold','italic'].forEach(cmd=>{
-    const btn = document.querySelector(`.rich-btn[data-cmd="${cmd}"]`);
+    const btn = toolbar.querySelector(`.rich-btn[data-cmd="${cmd}"]`);
     if (btn) btn.classList.toggle('active', document.queryCommandState(cmd));
   });
 }
-function richAutoLink(el) {
-  // Auto-linkify plain-typed URLs — only on space/enter
+// Wire a contenteditable rich note editor + its toolbar. Shared by the task
+// CREATE panel and the EDIT modal so both behave identically: bold / italic /
+// bullet list / link, plus auto-linking of a bare URL on paste. Toolbar
+// buttons use mousedown (not click) so the editor keeps its selection.
+function wireRichEditor(editor, toolbar) {
+  if (!editor || !toolbar) return;
+  toolbar.querySelectorAll('.rich-btn[data-cmd]').forEach(btn => {
+    btn.addEventListener('mousedown', e => {
+      e.preventDefault();
+      editor.focus();
+      document.execCommand(btn.dataset.cmd, false, null);
+      updateRichToolbarState(toolbar);
+    });
+  });
+  const linkBtn = toolbar.querySelector('.rich-link-btn');
+  if (linkBtn) linkBtn.addEventListener('mousedown', e => richInsertLink(e, editor));
+  editor.addEventListener('input', () => updateRichToolbarState(toolbar));
+  editor.addEventListener('paste', e => {
+    const plain = e.clipboardData.getData('text/plain').trim();
+    if (/^https?:\/\/\S+$/.test(plain)) {
+      e.preventDefault();
+      document.execCommand('insertHTML', false, `<a href="${escAttr(plain)}" target="_blank" rel="noopener">${escHTML(plain)}</a>`);
+    }
+  });
 }
-// Paste handler for task note editor — auto-links bare URLs
+// Pills toggle on the edit modal (create panel pills are wired separately via
+// data-new-tag). Legacy .note-checklist-item handling lives in Quill now.
 document.getElementById('editTags').addEventListener('click', e => {
   const btn = e.target.closest('.tag-btn');
   if (btn) btn.classList.toggle('selected');
-});
-// Legacy .note-checklist-item click handler removed; Quill renders checkable
-// list items as <ol><li data-list="checked|unchecked"> and handles the
-// click-to-toggle behavior internally.
-document.getElementById('editNoteRich').addEventListener('paste', e => {
-  const plain = e.clipboardData.getData('text/plain').trim();
-  if (/^https?:\/\/\S+$/.test(plain)) {
-    e.preventDefault();
-    document.execCommand('insertHTML', false, `<a href="${escAttr(plain)}" target="_blank" rel="noopener">${escHTML(plain)}</a>`);
-  }
 });
 // Convert stored HTML to display-safe note.
 // Uses DOMPurify (loaded via CDN in <head>) — strips scripts, styles,
@@ -598,11 +605,6 @@ document.getElementById('editDeleteBtn').addEventListener('click', () => {
   closeModal();
 });
 
-document.querySelectorAll('#richToolbar .rich-btn[data-cmd]').forEach(btn => {
-  btn.addEventListener('mousedown', e => richCmd(e, btn.dataset.cmd));
-});
-document.getElementById('richLinkBtn').addEventListener('mousedown', richInsertLink);
-
-const editNoteRichEl = document.getElementById('editNoteRich');
-editNoteRichEl.addEventListener('keyup', () => richAutoLink(editNoteRichEl));
-editNoteRichEl.addEventListener('input', updateRichToolbarState);
+// Same rich-text behavior on both task surfaces, from one code path.
+wireRichEditor(document.getElementById('editNoteRich'), document.getElementById('richToolbar'));
+wireRichEditor(document.getElementById('newNoteRich'),  document.getElementById('newRichToolbar'));
