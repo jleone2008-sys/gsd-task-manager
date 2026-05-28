@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GSD Motion Features — Interactive Mockup</title>
+<style>
+  :root {
+    --bg: #f6f2ea; --surface: #ffffff; --surface-2: #ede8dc;
+    --edge: #ddd6c7; --edge-strong: #c9c1ad;
+    --ink: #1a1714; --ink-2: #3d362d; --ink-3: #6e6559; --ink-4: #a8a094;
+    --guava-50: #fef5f6; --guava-100: #fde8ea; --guava-200: #fad4d7;
+    --guava-300: #f3a8ae; --guava-500: #d94a55;
+    --guava-700: #b82d3b; --guava-800: #8a1d2a;
+    --sage-bg: #e7ecdb; --sage-fg: #5d7048;
+    --sky-bg: #dce7f2; --sky-fg: #3d5a7a;
+    --moss-bg: #e2e6d3; --moss-fg: #5e6d3f;
+    --clay-bg: #f1dfd4; --clay-fg: #a86247;
+    --r-sm: 3px; --r-md: 4px; --r-lg: 10px;
+    --row-hover-bg: #fcfaf5;
+    --shadow-card: 0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
+    --shadow-focus: 0 0 0 3px rgba(184,45,59,0.22);
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --dur-fast: 120ms;
+    --dur: 180ms;
+    --dur-mid: 220ms;
+    --dur-slow: 280ms;
+    --dur-count: 600ms;
+    --dur-arc: 400ms;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 36px 18px 80px;
+    background: var(--bg);
+    color: var(--ink); font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+  }
+  .page { max-width: 720px; margin: 0 auto; }
+  .intro {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); padding: 20px 24px; margin-bottom: 36px;
+  }
+  .intro h1 { font-size: 22px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .intro p { color: var(--ink-3); font-size: 13px; margin: 0 0 4px; }
+  .intro p:last-child { margin: 0; }
+
+  /* Section / feature card */
+  .feature {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); padding: 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .feature-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 6px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .feature-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--guava-700);
+    background: var(--guava-50); padding: 3px 8px;
+    border-radius: var(--r-pill, 999px); border: 1px solid var(--guava-200);
+    line-height: 1;
+  }
+  .feature-title { font-size: 16px; font-weight: 700; color: var(--ink); flex: 1; }
+  .feature-desc { color: var(--ink-3); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  .feature-demo {
+    background: var(--bg);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    padding: 18px;
+    min-height: 100px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .feature-controls { display: flex; gap: 8px; align-items: center; }
+
+  /* Button — Variation A brand */
+  .btn {
+    font-family: inherit; cursor: pointer; border: 1px solid transparent;
+    font-size: 13px; font-weight: 600;
+    padding: 8px 14px; border-radius: var(--r-md);
+    line-height: 1; display: inline-flex; align-items: center; gap: 6px;
+    transition: background var(--dur-fast) var(--ease),
+                border-color var(--dur-fast) var(--ease),
+                color var(--dur-fast) var(--ease);
+  }
+  .btn--primary { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
+  .btn--primary:hover { background: var(--guava-800); border-color: var(--guava-800); }
+  .btn--secondary { background: var(--surface); color: var(--ink); border-color: var(--edge-strong); font-weight: 500; }
+  .btn--secondary:hover { border-color: var(--ink-3); background: var(--row-hover-bg); }
+  .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+  .label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 4px; }
+
+  /* ============================================================
+     Phase 0 — Press-scale removed (comparison)
+  ============================================================ */
+  .press-btn {
+    font-family: inherit; cursor: pointer; border: none;
+    background: var(--guava-700); color: #fff;
+    padding: 12px 28px; border-radius: var(--r-md);
+    font-size: 15px; font-weight: 600;
+    transition: background var(--dur-fast) var(--ease);
+  }
+  .press-btn:hover { background: var(--guava-800); }
+  .press-btn--old:active { transform: scale(0.94); transition-duration: 60ms; }
+  .press-btn--new:active { /* no transform */ }
+
+  /* ============================================================
+     1a / 2a — Counter animation
+  ============================================================ */
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .stat-tile {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 14px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-num {
+    font-size: 28px; font-weight: 800; color: var(--ink);
+    line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .stat-label { font-size: 11px; color: var(--ink-3); }
+
+  /* ============================================================
+     1b — Task completion choreo
+  ============================================================ */
+  .task {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 11px 14px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease),
+                opacity var(--dur) var(--ease);
+  }
+  .task:hover { background: var(--row-hover-bg); }
+  .task + .task { margin-top: 8px; }
+  .task-check {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--edge-strong); background: var(--surface);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  }
+  .task-check svg { opacity: 0; }
+  .task-title {
+    flex: 1; font-size: 13.5px;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 65%;
+    transition: background-size var(--dur-mid) var(--ease);
+  }
+  .task.done { opacity: 0.4; }
+  .task.done .task-check { background: var(--guava-700); border-color: var(--guava-700); }
+  .task.done .task-check svg { opacity: 1; animation: checkPop 240ms var(--ease); }
+  .task.done .task-title { background-size: 100% 1px; color: var(--ink-3); }
+  @keyframes checkPop {
+    0%   { transform: scale(0.6); }
+    60%  { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  /* ============================================================
+     1c — Mobile tab indicator slide
+  ============================================================ */
+  .tab-nav {
+    position: relative;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 6px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  }
+  .tab-nav::before {
+    content: ''; position: absolute;
+    /* TOP of the nav (was bottom). 2px guava bar, flush with the
+       top edge so it doesn't visually compete with the icon glyphs.
+       Position is JS-driven via --tab-left + --tab-w, set from the
+       active button's offsetLeft / offsetWidth — that's the exact
+       per-pixel measurement and avoids any grid-rounding drift. */
+    top: 0;
+    left: 0;
+    width: var(--tab-w, 0px);
+    height: 2px;
+    background: var(--guava-700);
+    border-radius: 0 0 2px 2px;
+    transform: translateX(var(--tab-left, 0px));
+    transition: transform var(--dur) var(--ease), width var(--dur) var(--ease);
+  }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 10px 4px; font-family: inherit; font-size: 11px;
+    color: var(--ink-4); text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: color var(--dur-fast) var(--ease);
+  }
+  .tab-btn.active { color: var(--guava-700); font-weight: 600; }
+  .tab-icon { width: 18px; height: 18px; }
+
+  /* ============================================================
+     2a — Brief reveal (rings + arcs)
+  ============================================================ */
+  .ring-row { display: flex; gap: 16px; justify-content: center; }
+  .ring {
+    position: relative; width: 80px; height: 80px;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+  }
+  .ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring-bg { stroke: var(--edge); fill: none; stroke-width: 6; }
+  .ring-arc {
+    stroke: var(--guava-700); fill: none; stroke-width: 6;
+    stroke-linecap: round;
+  }
+  .ring-val { font-size: 20px; font-weight: 800; color: var(--ink); position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
+  .ring-cap { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); position: relative; z-index: 1; }
+
+  /* ============================================================
+     2b — FLIP list reorder
+  ============================================================ */
+  .flip-list { display: flex; flex-direction: column; gap: 6px; }
+  .flip-item {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: grab;
+    font-size: 13.5px;
+  }
+  .flip-item-handle {
+    color: var(--ink-4); font-size: 12px; cursor: grab;
+  }
+  .flip-item-num {
+    font-weight: 700; color: var(--guava-700); min-width: 22px;
+  }
+
+  /* ============================================================
+     2c — Tab crossfade
+  ============================================================ */
+  .crossfade-tabs {
+    display: flex; gap: 6px; margin-bottom: 12px;
+  }
+  .crossfade-tabs button {
+    font-family: inherit; cursor: pointer; border: 1px solid var(--edge-strong);
+    background: var(--surface); color: var(--ink-2);
+    padding: 6px 12px; border-radius: var(--r-md);
+    font-size: 12px; font-weight: 500;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .crossfade-tabs button.active { background: var(--guava-700); border-color: var(--guava-700); color: #fff; font-weight: 600; }
+  .crossfade-content { position: relative; min-height: 90px; }
+  .crossfade-pane {
+    position: absolute; inset: 0; padding: 14px;
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms var(--ease), transform 120ms var(--ease);
+    transform: scale(0.98);
+  }
+  .crossfade-pane.active { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+  /* ============================================================
+     2d — Journal date-arrow slide
+  ============================================================ */
+  .journal-frame {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--edge); border-radius: var(--r-md);
+    background: var(--surface);
+  }
+  .journal-page {
+    padding: 18px; min-height: 110px;
+    transition: transform var(--dur-mid) var(--ease), opacity var(--dur-mid) var(--ease);
+  }
+  .journal-page.exit-left { transform: translateX(-100%); opacity: 0; }
+  .journal-page.exit-right { transform: translateX(100%); opacity: 0; }
+  .journal-page.enter-from-right { transform: translateX(100%); opacity: 0; }
+  .journal-page.enter-from-left { transform: translateX(-100%); opacity: 0; }
+  .journal-date { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 4px; }
+  .journal-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .journal-text { color: var(--ink-3); font-size: 13px; }
+  .journal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-top: 1px solid var(--edge);
+    background: var(--bg);
+  }
+  .journal-nav-btn {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 4px 10px; cursor: pointer;
+    font-family: inherit; font-size: 14px; color: var(--ink-3);
+  }
+  .journal-nav-btn:hover { background: var(--row-hover-bg); color: var(--ink); }
+  .journal-nav-label { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  /* ============================================================
+     3a — Skeleton screens
+  ============================================================ */
+  .skeleton {
+    background: var(--surface-2);
+    border-radius: var(--r-sm);
+    animation: skeletonPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes skeletonPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+  }
+  .skeleton-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .skeleton-row { height: 12px; }
+  .skeleton-row.short { width: 35%; }
+  .skeleton-row.med   { width: 65%; }
+  .skeleton-row.long  { width: 88%; }
+  .skeleton-row.title { height: 20px; width: 55%; margin-bottom: 4px; }
+
+  /* ============================================================
+     3b — Optimistic sync feedback
+  ============================================================ */
+  .sync-task {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-md); padding: 11px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px;
+    position: relative;
+  }
+  .sync-task.is-syncing { animation: syncPulse 1.2s ease-in-out infinite; }
+  .sync-task.is-sync-failed { animation: syncShake 360ms var(--ease) 1; border-color: var(--guava-300); background: var(--guava-50); }
+  @keyframes syncPulse {
+    0%, 100% { background: var(--surface); }
+    50%       { background: var(--row-hover-bg); }
+  }
+  @keyframes syncShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-3px); }
+    40%, 80% { transform: translateX(3px); }
+  }
+  .sync-icon {
+    margin-left: auto; font-size: 11px; color: var(--ink-4);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .sync-task.is-syncing .sync-icon { color: var(--ink-3); }
+  .sync-task.is-sync-failed .sync-icon { color: var(--guava-700); font-weight: 600; }
+  .sync-task .sync-spinner {
+    width: 11px; height: 11px; border: 1.5px solid var(--ink-5, #cac3b6);
+    border-top-color: var(--guava-700); border-radius: 50%;
+    animation: spin 800ms linear infinite;
+    display: none;
+  }
+  .sync-task.is-syncing .sync-spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ============================================================
+     3c — Drill-in fadeUp
+  ============================================================ */
+  .drill-overlay {
+    position: absolute; inset: 0;
+    background: rgba(20,30,80,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center; justify-content: center;
+    border-radius: var(--r-md);
+  }
+  .drill-overlay.open { display: flex; }
+  .drill-card {
+    background: var(--surface); border: 1px solid var(--edge);
+    border-radius: var(--r-lg); padding: 18px 22px;
+    max-width: 280px; width: 100%;
+    animation: fadeUp var(--dur-mid) var(--ease);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Reduced-motion accommodation — applies to ALL the above */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="intro">
+    <h1>GSD Motion Features — Interactive Mockup</h1>
+    <p>Every motion pattern from the implementation plan, rendered live. Tap the "Play" button on each card to trigger the animation. Page itself uses the brand tokens (warm bg, ink text, guava-700 accent) so motion shows in context, not in isolation.</p>
+    <p style="margin-top:8px;">All animations honor <code>prefers-reduced-motion: reduce</code> — toggle that in DevTools and replay to see the accessible fallback.</p>
+  </div>
+
+  <!-- ========================================================
+       Phase 0 — Brand-violation removal
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Press-scale removed from buttons</span>
+      <span class="feature-tag">Phase 0</span>
+    </div>
+    <p class="feature-desc">The current FAB + mood buttons scale down on <code>:active</code> — a lifestyle-app pattern that violates the brand framework's "no press-scale" rule. Compare the two below. <strong>Old</strong> presses down; <strong>new</strong> changes color only.</p>
+    <div class="feature-demo" style="display:flex;gap:18px;justify-content:center;align-items:center;">
+      <div style="text-align:center">
+        <div class="label">Old (violates brand)</div>
+        <button class="press-btn press-btn--old">Press me</button>
+      </div>
+      <div style="text-align:center">
+        <div class="label">New (brand-compliant)</div>
+        <button class="press-btn press-btn--new">Press me</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       1a — Counter animation
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Stat numbers count up on reveal</span>
+      <span class="feature-tag">Phase 1a</span>
+    </div>
+    <p class="feature-desc">Brief stats (and other one-shot stat reveals) animate from 0 to their final value over 600ms. Fires <em>once per session per surface</em> — refreshing replays; tab-switching back doesn't.</p>
+    <div class="feature-demo">
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-tile"><span class="stat-num" data-to="84">0</span><span class="stat-label">Sleep</span></div>
+        <div class="stat-tile"><span class="stat-num" data-to="72">0</span><span class="stat-label">Readiness</span></div>
+        <div class="stat-tile"><span class="stat-num" data-to="14">0</span><span class="stat-label">Tasks</span></div>
+      </div>
+    </div>
+    <div class="feature-controls">
+      <button class="btn btn--primary" onclick="playCounters()">▶ Play</button>
+      <button class="btn btn--secondary" onclick="resetCounters()">Reset</button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       1b — Task completion choreo
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Task completion exit choreography</span>
+      <span class="feature-tag">Phase 1b</span>
+    </div>
+    <p class="feature-desc">Click a task. Strike-through sweeps left-to-right over 220ms, the row fades to 40% opacity, the checkmark pops. Row stays in DOM (keeps undo stable). Tap again to undo.</p>
+    <div class="feature-demo">
+      <div class="task" onclick="this.classList.toggle('done')">
+        <span class="task-check"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 7 12 13 4"/></svg></span>
+        <span class="task-title">Ship motion overhaul Phase 1</span>
+      </div>
+      <div class="task" onclick="this.classList.toggle('done')">
+        <span class="task-check"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 7 12 13 4"/></svg></span>
+        <span class="task-title">Review brief contract with Claude</span>
+      </div>
+      <div class="task" onclick="this.classList.toggle('done')">
+        <span class="task-check"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 7 12 13 4"/></svg></span>
+        <span class="task-title">Pull-up bar — 3 sets</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       1c — Mobile tab indicator slide
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Mobile bottom-nav indicator slide</span>
+      <span class="feature-tag">Phase 1c</span>
+    </div>
+    <p class="feature-desc">The active-tab indicator slides between tabs over 180ms instead of teleporting. CSS variable <code>--tab-x</code> drives the transform.</p>
+    <div class="feature-demo">
+      <div class="tab-nav" id="tabNav" style="--tab-x: 0">
+        <button class="tab-btn active" onclick="switchTab(this, 0)"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/></svg>Home</button>
+        <button class="tab-btn" onclick="switchTab(this, 1)"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Tasks</button>
+        <button class="tab-btn" onclick="switchTab(this, 2)"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>Habits</button>
+        <button class="tab-btn" onclick="switchTab(this, 3)"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><line x1="9" y1="7" x2="15" y2="7"/></svg>Journal</button>
+        <button class="tab-btn" onclick="switchTab(this, 4)"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Health</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       2a — Brief reveal (rings + arcs + counters)
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Daily brief reveal — rings draw + scores count</span>
+      <span class="feature-tag">Phase 2a</span>
+    </div>
+    <p class="feature-desc">First paint of the day: SVG arcs sweep clockwise to their values over 400ms each, staggered 100ms apart; numbers count up underneath. Total reveal ~900ms. Fires once per day per session.</p>
+    <div class="feature-demo">
+      <div class="ring-row" id="ringRow">
+        <div class="ring">
+          <svg width="80" height="80" viewBox="0 0 80 80"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-arc" data-pct="84" cx="40" cy="40" r="34"/></svg>
+          <span class="ring-val" data-to="84">0</span>
+          <span class="ring-cap">Sleep</span>
+        </div>
+        <div class="ring">
+          <svg width="80" height="80" viewBox="0 0 80 80"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-arc" data-pct="72" cx="40" cy="40" r="34"/></svg>
+          <span class="ring-val" data-to="72">0</span>
+          <span class="ring-cap">Ready</span>
+        </div>
+        <div class="ring">
+          <svg width="80" height="80" viewBox="0 0 80 80"><circle class="ring-bg" cx="40" cy="40" r="34"/><circle class="ring-arc" data-pct="61" cx="40" cy="40" r="34"/></svg>
+          <span class="ring-val" data-to="61">0</span>
+          <span class="ring-cap">Activity</span>
+        </div>
+      </div>
+    </div>
+    <div class="feature-controls">
+      <button class="btn btn--primary" onclick="playRings()">▶ Play</button>
+      <button class="btn btn--secondary" onclick="resetRings()">Reset</button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       2b — FLIP on list reorder
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">FLIP — list reorders smoothly</span>
+      <span class="feature-tag">Phase 2b</span>
+    </div>
+    <p class="feature-desc">First-Last-Invert-Play technique. When the list mutates (priority sort, filter, drag-reorder), surviving items glide to their new positions over 220ms instead of teleporting. Hit "Shuffle" to see it.</p>
+    <div class="feature-demo">
+      <div class="flip-list" id="flipList">
+        <div class="flip-item" data-id="a"><span class="flip-item-handle">⋮⋮</span><span class="flip-item-num">1</span><span>Recovery walk · 30 min</span></div>
+        <div class="flip-item" data-id="b"><span class="flip-item-handle">⋮⋮</span><span class="flip-item-num">2</span><span>Bloodwork follow-up</span></div>
+        <div class="flip-item" data-id="c"><span class="flip-item-handle">⋮⋮</span><span class="flip-item-num">3</span><span>Push day — bench + accessory</span></div>
+        <div class="flip-item" data-id="d"><span class="flip-item-handle">⋮⋮</span><span class="flip-item-num">4</span><span>Journal: yesterday's mood</span></div>
+        <div class="flip-item" data-id="e"><span class="flip-item-handle">⋮⋮</span><span class="flip-item-num">5</span><span>Pay rent</span></div>
+      </div>
+    </div>
+    <div class="feature-controls">
+      <button class="btn btn--primary" onclick="flipShuffle()">▶ Shuffle</button>
+      <button class="btn btn--secondary" onclick="flipReset()">Reset order</button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       2c — Tab crossfade
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Tab crossfade — 120ms simultaneous</span>
+      <span class="feature-tag">Phase 2c</span>
+    </div>
+    <p class="feature-desc">Switching between tools: outgoing pane fades to opacity 0 while incoming fades to 1 with a subtle scale-in (98% → 100%). Total 120ms, keeps rapid switching snappy.</p>
+    <div class="feature-demo">
+      <div class="crossfade-tabs">
+        <button class="active" onclick="switchCrossfade(this, 0)">Home</button>
+        <button onclick="switchCrossfade(this, 1)">Tasks</button>
+        <button onclick="switchCrossfade(this, 2)">Habits</button>
+        <button onclick="switchCrossfade(this, 3)">Settings</button>
+      </div>
+      <div class="crossfade-content" id="crossfadeContent">
+        <div class="crossfade-pane active"><strong>Home</strong><br><span style="color:var(--ink-3);font-size:13px">Today's brief, mood, and habits.</span></div>
+        <div class="crossfade-pane"><strong>Tasks</strong><br><span style="color:var(--ink-3);font-size:13px">3 priority · 2 due today · 1 overdue</span></div>
+        <div class="crossfade-pane"><strong>Habits</strong><br><span style="color:var(--ink-3);font-size:13px">4 of 5 done today.</span></div>
+        <div class="crossfade-pane"><strong>Settings</strong><br><span style="color:var(--ink-3);font-size:13px">Integrations, account, backup.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       2d — Journal date-arrow slide
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Journal date-arrow slide</span>
+      <span class="feature-tag">Phase 2d</span>
+    </div>
+    <p class="feature-desc">Tapping ◀ / ▶ shifts the journal page like a date carousel — direction-aware 220ms slide. Calendar-grid date taps would use the regular crossfade.</p>
+    <div class="feature-demo" style="padding:0;overflow:hidden">
+      <div class="journal-frame">
+        <div class="journal-page" id="journalPage">
+          <div class="journal-date" id="journalDate">TUESDAY · MAY 27</div>
+          <div class="journal-title">Push day landed clean.</div>
+          <div class="journal-text">Bench felt strong. Mood lifted by 4pm. Sleep target tonight: 10:30 PM.</div>
+        </div>
+        <div class="journal-nav">
+          <button class="journal-nav-btn" onclick="journalNav(-1)">◀</button>
+          <span class="journal-nav-label" id="journalNavLabel">Day 1 of 5</span>
+          <button class="journal-nav-btn" onclick="journalNav(1)">▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       3a — Skeleton screens
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Skeleton screens replace "Loading..."</span>
+      <span class="feature-tag">Phase 3a</span>
+    </div>
+    <p class="feature-desc">Layout previews itself while data fetches. Pulse over 1.2s. Brain fills in the shape so loading feels faster than a spinner.</p>
+    <div class="feature-demo">
+      <div class="skeleton-card" id="skelCard">
+        <div class="skeleton skeleton-row title"></div>
+        <div class="skeleton skeleton-row long"></div>
+        <div class="skeleton skeleton-row med"></div>
+        <div class="skeleton skeleton-row short"></div>
+      </div>
+    </div>
+    <div class="feature-controls">
+      <button class="btn btn--primary" onclick="resolveSkeleton()">▶ Simulate data arrival</button>
+      <button class="btn btn--secondary" onclick="resetSkeleton()">Reset</button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       3b — Optimistic sync feedback
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Optimistic sync — pulse on save, shake on failure</span>
+      <span class="feature-tag">Phase 3b</span>
+    </div>
+    <p class="feature-desc">UI updates immediately on a write. Row gently pulses while syncing. If the network drops, the row shakes once + a retry indicator appears.</p>
+    <div class="feature-demo">
+      <div class="sync-task" id="syncTask">
+        <span class="task-check" style="background:var(--guava-700);border-color:var(--guava-700)"><svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 7 12 13 4"/></svg></span>
+        <span>Mark "push day" complete</span>
+        <span class="sync-icon" id="syncIcon"></span>
+      </div>
+    </div>
+    <div class="feature-controls">
+      <button class="btn btn--primary" onclick="simulateSyncSuccess()">▶ Sync succeeds</button>
+      <button class="btn btn--secondary" onclick="simulateSyncFailure()">▶ Sync fails</button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       3c — Drill-in fadeUp
+  ======================================================== -->
+  <div class="feature">
+    <div class="feature-head">
+      <span class="feature-title">Drill-in modal — fadeUp entrance</span>
+      <span class="feature-tag">Phase 3c</span>
+    </div>
+    <p class="feature-desc">Stats modal, habit detail, task expand, settings sub-pages — every drill-in lifts in with a 220ms <code>fadeUp</code> keyframe (translateY 12px + scale 0.97 → 1). Audit every surface to confirm.</p>
+    <div class="feature-demo" style="position:relative;min-height:170px">
+      <button class="btn btn--primary" onclick="document.getElementById('drillOverlay').classList.add('open')">▶ Open drill-in</button>
+      <div class="drill-overlay" id="drillOverlay" onclick="if(event.target.id==='drillOverlay')this.classList.remove('open')">
+        <div class="drill-card">
+          <div class="label">Habit detail</div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:6px">Read 10 minutes</div>
+          <div style="color:var(--ink-3);font-size:13px;margin-bottom:14px">12-day streak · 86% rate this month</div>
+          <button class="btn btn--secondary" onclick="document.getElementById('drillOverlay').classList.remove('open')">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="intro" style="margin-top:36px">
+    <p style="color:var(--ink-3);font-size:12px;margin:0"><strong>Next:</strong> approve this direction and I'll execute the phased plan in <code>~/.claude/plans/atomic-sleeping-piglet.md</code> against the real app code. Each phase will land as a separate commit on <code>main</code>.</p>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Counter (Phase 1a / 2a primitive)
+// ============================================================
+function countUp(el, dur = 600) {
+  const to = parseInt(el.dataset.to, 10);
+  if (isNaN(to)) return;
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min(1, (now - start) / dur);
+    // ease-out cubic for natural settle
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(to * eased);
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+function playCounters() {
+  resetCounters();
+  document.querySelectorAll('#statGrid .stat-num').forEach((el, i) => {
+    setTimeout(() => countUp(el), i * 80);
+  });
+}
+function resetCounters() {
+  document.querySelectorAll('#statGrid .stat-num').forEach(el => el.textContent = '0');
+}
+
+// ============================================================
+// Tab indicator slide (Phase 1c)
+// JS-driven positioning: read the active button's offsetLeft +
+// offsetWidth and write them as CSS variables. The indicator's
+// transform + width follow exactly — no grid rounding drift,
+// works regardless of tab count or width variation.
+// ============================================================
+function syncTabIndicator(nav, activeBtn) {
+  nav.style.setProperty('--tab-left', activeBtn.offsetLeft + 'px');
+  nav.style.setProperty('--tab-w',    activeBtn.offsetWidth + 'px');
+}
+function switchTab(btn, idx) {
+  const nav = document.getElementById('tabNav');
+  nav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  syncTabIndicator(nav, btn);
+}
+// Position the indicator under the initially-active tab on first paint.
+window.addEventListener('load', () => {
+  const nav = document.getElementById('tabNav');
+  const active = nav.querySelector('.tab-btn.active');
+  if (active) {
+    // Skip the transition on the very first paint so the bar appears
+    // already at its starting spot, not sliding in from 0.
+    const orig = nav.style.getPropertyValue('transition');
+    syncTabIndicator(nav, active);
+  }
+});
+// Re-measure if the viewport changes width (orientation, devtools resize).
+window.addEventListener('resize', () => {
+  const nav = document.getElementById('tabNav');
+  const active = nav.querySelector('.tab-btn.active');
+  if (active) syncTabIndicator(nav, active);
+});
+
+// ============================================================
+// Ring draw + counter (Phase 2a)
+// ============================================================
+function playRings() {
+  resetRings();
+  document.querySelectorAll('#ringRow .ring').forEach((ring, i) => {
+    setTimeout(() => {
+      const arc = ring.querySelector('.ring-arc');
+      const val = ring.querySelector('.ring-val');
+      const pct = parseInt(arc.dataset.pct, 10);
+      const r = parseFloat(arc.getAttribute('r'));
+      const circ = 2 * Math.PI * r;
+      arc.setAttribute('stroke-dasharray', circ);
+      arc.setAttribute('stroke-dashoffset', circ);
+      arc.animate(
+        [{ strokeDashoffset: circ }, { strokeDashoffset: circ * (1 - pct / 100) }],
+        { duration: 400, easing: 'cubic-bezier(0.2,0.8,0.2,1)', fill: 'forwards' }
+      );
+      countUp(val, 600);
+    }, i * 100);
+  });
+}
+function resetRings() {
+  document.querySelectorAll('#ringRow .ring').forEach(ring => {
+    const arc = ring.querySelector('.ring-arc');
+    const val = ring.querySelector('.ring-val');
+    const r = parseFloat(arc.getAttribute('r'));
+    const circ = 2 * Math.PI * r;
+    arc.setAttribute('stroke-dasharray', circ);
+    arc.setAttribute('stroke-dashoffset', circ);
+    val.textContent = '0';
+  });
+}
+// Initialize rings to empty on load
+resetRings();
+
+// ============================================================
+// FLIP — First Last Invert Play (Phase 2b)
+// ============================================================
+function flipChildren(parent, mutate) {
+  const children = Array.from(parent.children);
+  // FIRST: record positions
+  const firstRects = new Map(children.map(c => [c, c.getBoundingClientRect()]));
+  // mutate the DOM
+  mutate();
+  // LAST: record new positions
+  const newChildren = Array.from(parent.children);
+  // INVERT + PLAY: for each child, compute delta and animate
+  newChildren.forEach(child => {
+    const before = firstRects.get(child);
+    if (!before) return;
+    const after = child.getBoundingClientRect();
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    if (dx || dy) {
+      child.animate(
+        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+        { duration: 280, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }
+      );
+    }
+  });
+}
+function flipShuffle() {
+  const list = document.getElementById('flipList');
+  flipChildren(list, () => {
+    const kids = Array.from(list.children).sort(() => Math.random() - 0.5);
+    kids.forEach(k => list.appendChild(k));
+    // Renumber positions
+    kids.forEach((k, i) => k.querySelector('.flip-item-num').textContent = (i + 1).toString());
+  });
+}
+function flipReset() {
+  const list = document.getElementById('flipList');
+  flipChildren(list, () => {
+    const kids = Array.from(list.children).sort((a, b) => a.dataset.id.localeCompare(b.dataset.id));
+    kids.forEach(k => list.appendChild(k));
+    kids.forEach((k, i) => k.querySelector('.flip-item-num').textContent = (i + 1).toString());
+  });
+}
+
+// ============================================================
+// Tab crossfade (Phase 2c)
+// ============================================================
+function switchCrossfade(btn, idx) {
+  const tabs = btn.parentElement;
+  tabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const panes = document.querySelectorAll('#crossfadeContent .crossfade-pane');
+  panes.forEach((p, i) => p.classList.toggle('active', i === idx));
+}
+
+// ============================================================
+// Journal page slide (Phase 2d)
+// ============================================================
+const journalDates = [
+  { date: 'TUESDAY · MAY 27',   title: 'Push day landed clean.',         text: 'Bench felt strong. Mood lifted by 4pm. Sleep target tonight: 10:30 PM.' },
+  { date: 'MONDAY · MAY 26',    title: 'Slow start; recovered by lunch.', text: 'HRV down 8 from norm. Walked 30 min instead of lift. Mood: Okay.' },
+  { date: 'SUNDAY · MAY 25',    title: 'Long run + cookout.',             text: '7 miles felt easy. Sleep score 92. Best day this week.' },
+  { date: 'SATURDAY · MAY 24',  title: 'Light day, scheduled rest.',      text: 'No workout. Read 60 min. Mood: Good.' },
+  { date: 'FRIDAY · MAY 23',    title: 'Hard pull day.',                  text: 'PR on dumbbell row. Late dinner — sleep onset 11:30.' },
+];
+let journalIdx = 0;
+function journalNav(delta) {
+  const next = journalIdx + delta;
+  if (next < 0 || next >= journalDates.length) return;
+  const page = document.getElementById('journalPage');
+  const exitClass = delta > 0 ? 'exit-left' : 'exit-right';
+  const enterClass = delta > 0 ? 'enter-from-right' : 'enter-from-left';
+  page.classList.add(exitClass);
+  setTimeout(() => {
+    journalIdx = next;
+    const d = journalDates[journalIdx];
+    document.getElementById('journalDate').textContent = d.date;
+    page.querySelector('.journal-title').textContent = d.title;
+    page.querySelector('.journal-text').textContent = d.text;
+    page.classList.remove(exitClass);
+    page.classList.add(enterClass);
+    requestAnimationFrame(() => requestAnimationFrame(() => page.classList.remove(enterClass)));
+    document.getElementById('journalNavLabel').textContent = `Day ${journalIdx + 1} of ${journalDates.length}`;
+  }, 220);
+}
+
+// ============================================================
+// Skeleton resolve (Phase 3a)
+// ============================================================
+const skelOriginal = document.getElementById('skelCard').innerHTML;
+function resolveSkeleton() {
+  const el = document.getElementById('skelCard');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    el.innerHTML = `
+      <div style="font-size:18px;font-weight:700;color:var(--ink);margin-bottom:4px">Recovery this week</div>
+      <div style="color:var(--ink);font-size:13.5px">Sleep efficiency 88%, up 4 points.</div>
+      <div style="color:var(--ink-3);font-size:13px">HRV trending up. Push day cleared without rebound.</div>
+      <div style="color:var(--ink-4);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-top:4px">Updated 6:42 AM</div>
+    `;
+    el.style.transition = 'opacity 180ms cubic-bezier(0.2,0.8,0.2,1)';
+    el.style.opacity = '1';
+  }, 220);
+}
+function resetSkeleton() {
+  const el = document.getElementById('skelCard');
+  el.style.transition = '';
+  el.style.opacity = '1';
+  el.innerHTML = skelOriginal;
+}
+
+// ============================================================
+// Optimistic sync (Phase 3b)
+// ============================================================
+function simulateSyncSuccess() {
+  const t = document.getElementById('syncTask');
+  const icon = document.getElementById('syncIcon');
+  t.classList.remove('is-sync-failed');
+  t.classList.add('is-syncing');
+  icon.innerHTML = '<span class="sync-spinner"></span>syncing';
+  setTimeout(() => {
+    t.classList.remove('is-syncing');
+    icon.innerHTML = '';
+  }, 1800);
+}
+function simulateSyncFailure() {
+  const t = document.getElementById('syncTask');
+  const icon = document.getElementById('syncIcon');
+  t.classList.remove('is-sync-failed', 'is-syncing');
+  t.classList.add('is-syncing');
+  icon.innerHTML = '<span class="sync-spinner"></span>syncing';
+  setTimeout(() => {
+    t.classList.remove('is-syncing');
+    t.classList.add('is-sync-failed');
+    icon.innerHTML = '⚠ retry';
+  }, 1500);
+}
+</script>
+</body>
+</html>
