@@ -106,7 +106,7 @@ function briefHeroRingSVG(score, label, delta, key) {
   const deltaClass = delta > 0 ? 'is-up' : delta < 0 ? 'is-down' : '';
   return `<svg viewBox="0 0 120 120" class="brief-hero-svg">
     <circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="8"/>
-    <circle cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"
+    <circle class="brief-hero-arc" cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"
             stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 60 60)"/>
     <text x="60" y="56" text-anchor="middle" dominant-baseline="central" class="brief-hero-value">${score == null ? '—' : Math.round(score)}</text>
     <text x="60" y="76" text-anchor="middle" dominant-baseline="central" class="brief-hero-label">${briefEsc(label || '')}</text>
@@ -151,7 +151,6 @@ function briefInjectStyles() {
       transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     .brief-sleep-chip:hover   { background: var(--surface-2); color: var(--ink); border-color: var(--edge-strong); }
-    .brief-sleep-chip:active  { transform: scale(0.97); }
     .brief-sleep-chip.is-logged {
       background: var(--guava-50); color: var(--guava-700); border-color: transparent; font-weight: 600;
     }
@@ -472,8 +471,18 @@ async function briefClearSleepIntent() {
 }
 
 function briefSkeletonHTML() {
+  // Phase 3a — content-shaped skeleton: eyebrow line, headline bar,
+  // subhead, hero ring placeholder, two stat rows. Replaces the static
+  // "Loading your brief…" copy so the layout doesn't jump on resolve.
   return `${briefHeadHTML('', '')}
-          <div class="brief-skeleton">Loading your brief…</div>`;
+          <div class="brief-skeleton">
+            <div class="skeleton" style="width:35%;height:10px;margin-top:4px;"></div>
+            <div class="skeleton" style="width:70%;height:24px;margin-top:14px;"></div>
+            <div class="skeleton" style="width:90%;height:14px;margin-top:10px;"></div>
+            <div class="skeleton" style="width:120px;height:120px;border-radius:50%;margin:22px auto 18px;"></div>
+            <div class="skeleton" style="width:100%;height:14px;"></div>
+            <div class="skeleton" style="width:80%;height:14px;"></div>
+          </div>`;
 }
 
 function briefEmptyHTML() {
@@ -713,6 +722,48 @@ function briefRender() {
   else if (_briefState.brief?.structured)        el.innerHTML = briefStructuredHTML(_briefState.brief);
   else if (_briefState.brief?.narrative)         el.innerHTML = briefLegacyHTML(_briefState.brief);
   else if (_briefState.brief)                    el.innerHTML = briefEmptyHTML();
+  briefAnimateStats(el);
+}
+
+// Phase 1a — animate integer stat values once per (brief-date, mode) per session.
+// Tier-1 re-renders (task toggle, habit check) replay briefRender() but the
+// reveal-key in sessionStorage short-circuits subsequent calls so the numbers
+// don't flicker on every micro-update. Non-integer values (e.g. "82%" or
+// "—") are ignored — only digits-only text counts up. Reduced-motion users
+// see the final value immediately.
+function briefAnimateStats(root) {
+  if (!root || !window.GSDMotion) return;
+  const brief = _briefState && _briefState.brief;
+  if (!brief) return;
+  const dateKey  = brief.brief_date || brief.date || '';
+  const mode     = brief.mode || '';
+  const sessionKey = 'brief-stats:' + dateKey + ':' + mode;
+  window.GSDMotion.reveal(root, {
+    key: sessionKey,
+    run: () => {
+      // Hero ring arc sweeps in first; numeric stats begin to count up
+      // shortly after so the motion reads as one coordinated reveal
+      // rather than two independent events firing simultaneously.
+      const heroArc = root.querySelector('.brief-hero-arc');
+      if (heroArc) {
+        const r = parseFloat(heroArc.getAttribute('r')) || 0;
+        const C = 2 * Math.PI * r;
+        const offsetAttr = heroArc.getAttribute('stroke-dashoffset');
+        const off = offsetAttr != null ? parseFloat(offsetAttr) : 0;
+        const targetFrac = r > 0 ? 1 - (off / C) : 1;
+        window.GSDMotion.drawArc(heroArc, { to: targetFrac });
+      }
+      const nums = root.querySelectorAll('.brief-stat-num');
+      nums.forEach((n) => {
+        const raw = (n.textContent || '').trim();
+        if (!/^-?\d+$/.test(raw)) return;
+        const to = parseInt(raw, 10);
+        if (!Number.isFinite(to) || to === 0) return;
+        n.textContent = '0';
+        window.GSDMotion.countUp(n, { to, dur: 600 });
+      });
+    },
+  });
 }
 
 /* ── Tier 1 realtime: client-side recompute of deterministic blocks ───────

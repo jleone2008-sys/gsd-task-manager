@@ -654,6 +654,28 @@ function closeDeleteAccountModal() {
 // ── Tool switching ──────────────────────────────────────
 let activeTool = 'home';
 let _navFromPop = false;
+
+// Phase 1c — mobile bottom-nav active indicator. Reads the active button's
+// offset within the nav and writes the position + width as CSS variables;
+// the ::before pseudo on .mobile-bottom-nav animates between values.
+function updateMobileTabIndicator() {
+  const nav = document.querySelector('.mobile-bottom-nav');
+  if (!nav) return;
+  const active = nav.querySelector('.mobile-nav-btn.active');
+  if (!active) { nav.dataset.indicatorReady = 'false'; return; }
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = active.getBoundingClientRect();
+  const w = Math.round(btnRect.width * 0.5);
+  const x = Math.round((btnRect.left - navRect.left) + (btnRect.width - w) / 2);
+  nav.style.setProperty('--tab-indicator-x', x + 'px');
+  nav.style.setProperty('--tab-indicator-w', w + 'px');
+  nav.dataset.indicatorReady = 'true';
+}
+window.addEventListener('load', () => {
+  // First paint may happen before the nav has its active class; wait one frame.
+  requestAnimationFrame(updateMobileTabIndicator);
+});
+window.addEventListener('resize', updateMobileTabIndicator);
 function switchTool(tool) {
   if (tool === activeTool) return;
   if (activeTool === 'tasks' && searchQuery) { searchQuery = ''; }
@@ -666,15 +688,46 @@ function switchTool(tool) {
     if (typeof routerSyncUrl === 'function') routerSyncUrl(route);
     else history.pushState({tool, note: null, drill: false}, '');
   }
-  document.querySelectorAll('[data-tool-view]').forEach(el => {
-    el.style.display = el.dataset.toolView === tool ? '' : 'none';
-  });
+  // Phase 2c — 120ms simultaneous crossfade between tool views. Outgoing
+  // fades opacity 1→0; incoming fades opacity 0→1 with a tiny scale-in.
+  // Reduced-motion users get the instant swap. Run sequentially per element
+  // because we still need the outgoing one to stay mounted for the 120ms.
+  const incoming = Array.from(document.querySelectorAll(`[data-tool-view="${tool}"]`));
+  const others   = Array.from(document.querySelectorAll('[data-tool-view]')).filter(el => el.dataset.toolView !== tool);
+  const canCrossfade = !!window.GSDMotion && !window.GSDMotion.reduced;
+  if (!canCrossfade) {
+    document.querySelectorAll('[data-tool-view]').forEach(el => {
+      el.style.display = el.dataset.toolView === tool ? '' : 'none';
+    });
+  } else {
+    const DUR = 120;
+    const ease = 'cubic-bezier(0.2,0.8,0.2,1)';
+    // Fade out the currently-shown views (if any). Hide them after the fade.
+    others.forEach(el => {
+      if (getComputedStyle(el).display === 'none') return;       // already hidden — skip
+      const a = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR, easing: ease });
+      a.addEventListener('finish', () => { el.style.display = 'none'; el.style.opacity = ''; });
+    });
+    // Reveal the incoming view in the same 120ms window — opacity + tiny
+    // scale-in. Set initial inline style synchronously so there's no flash
+    // at opacity 1 before the animation kicks in.
+    incoming.forEach(el => {
+      el.style.display = '';
+      el.style.opacity = '0';
+      const a = el.animate(
+        [{ opacity: 0, transform: 'scale(0.98)' }, { opacity: 1, transform: 'scale(1)' }],
+        { duration: DUR, easing: ease, fill: 'forwards' }
+      );
+      a.addEventListener('finish', () => { el.style.opacity = ''; });
+    });
+  }
   document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tool === tool);
   });
   document.querySelectorAll('.sidebar-btn[data-tool]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.tool === tool);
   });
+  updateMobileTabIndicator();
   // Home shows the greeting as its heading (set in renderHome), so its topbar title is blank.
   // Phase 6: 'notes' tab renamed to 'Insights' (per the master plan's
   // final 5-tab structure: Today · Tasks · Train · Reflect · Insights).

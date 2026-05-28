@@ -1029,7 +1029,7 @@ function ensureJournalStyles() {
     .j-card {
       background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md);
       overflow: hidden; box-shadow: var(--shadow-card); cursor: pointer;
-      transition: box-shadow 0.15s, transform 0.08s;
+      transition: box-shadow var(--dur-quick) var(--ease), transform var(--dur-fast) var(--ease);
       /* Browser-native virtualization (Phase 2 audit) — skips layout +
          paint for off-screen cards while keeping correct scroll height.
          contain-intrinsic-size is the placeholder height the browser
@@ -1222,7 +1222,7 @@ function ensureJournalStyles() {
     .j-textarea:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
 
     .j-mood { display: flex; gap: 8px; flex-wrap: wrap; }
-    .j-mood-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); border: 1.5px solid transparent; cursor: pointer; font-size: 22px; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+    .j-mood-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); border: 1.5px solid transparent; cursor: pointer; font-size: 22px; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform var(--dur-fast) var(--ease); }
     .j-mood-btn:hover { transform: scale(1.08); }
     .j-mood-btn.is-selected { border-color: var(--guava-700); background: var(--guava-50); }
     /* Phase 5 — today's edit-modal picker is read-only; intra-day
@@ -2366,8 +2366,35 @@ document.addEventListener('click', async e => {
     if (month < 0) { month = 11; year--; }
     if (month > 11) { month = 0; year++; }
     journalState.viewMonth = { year, month };
-    rerenderJournalCalendarPopover();
-    loadJournalMonth(year, month).then(rerenderJournalCalendarPopover);
+    // Phase 2d — direction-aware slide on the month grid. Outgoing grid
+    // animates off in the opposite direction of the user's intent, then
+    // the new grid renders and slides in from the user's side. WAAPI on
+    // the .j-cal-grid element only (header stays put).
+    const gridSel = '.j-cal-popover .j-cal-grid';
+    const oldGrid = document.querySelector(gridSel);
+    const canSlide = !!window.GSDMotion && !window.GSDMotion.reduced && oldGrid;
+    if (canSlide) {
+      const dist = 20;  // px — subtle, not a carousel
+      const dir = delta > 0 ? 1 : -1;
+      oldGrid.animate(
+        [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: `translateX(${-dir * dist}px)` }],
+        { duration: 110, easing: 'cubic-bezier(0.2,0.8,0.2,1)', fill: 'forwards' }
+      );
+      setTimeout(() => {
+        rerenderJournalCalendarPopover();
+        const newGrid = document.querySelector(gridSel);
+        if (newGrid) {
+          newGrid.animate(
+            [{ opacity: 0, transform: `translateX(${dir * dist}px)` }, { opacity: 1, transform: 'translateX(0)' }],
+            { duration: 140, easing: 'cubic-bezier(0.2,0.8,0.2,1)', fill: 'forwards' }
+          );
+        }
+        loadJournalMonth(year, month).then(rerenderJournalCalendarPopover);
+      }, 110);
+    } else {
+      rerenderJournalCalendarPopover();
+      loadJournalMonth(year, month).then(rerenderJournalCalendarPopover);
+    }
     return;
   }
 

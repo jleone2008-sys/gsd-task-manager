@@ -174,7 +174,7 @@ function renderHome() {
     <div class="home-card" id="homeBrief"></div>
     <div class="home-card home-section">
       ${homeSectionHead('Events')}
-      <div id="homeCalendar"><div class="home-skeleton">Loading events…</div></div>
+      <div id="homeCalendar"><div class="skeleton" style="height:14px;width:90%;"></div><div class="skeleton" style="height:14px;width:60%;"></div></div>
     </div>
     <div class="home-card home-section">
       ${homeSectionHead('Tasks', '<button class="home-pill-btn home-pill-btn--icon" data-task-action="open-create" title="Add task">+</button>')}
@@ -727,7 +727,7 @@ function homeAutoGrow(el) {
 /* ── Card 4: Last 7 Days ──────────────────────────────────── */
 
 function homeWeekSkeletonHTML() {
-  return homeSectionHead('Last 7 Days') + `<div class="home-skeleton">Loading…</div>`;
+  return homeSectionHead('Last 7 Days') + `<div class="skeleton" style="height:14px;width:80%;"></div><div class="skeleton" style="height:14px;width:65%;"></div><div class="skeleton" style="height:14px;width:70%;"></div>`;
 }
 // Average a metric over `count` days starting at `startIdx` of the (newest-first)
 // days array; null when no data in that window.

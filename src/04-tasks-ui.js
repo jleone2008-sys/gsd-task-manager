@@ -158,6 +158,20 @@ function renderTaskStats() {
 
 function render() {
   const c = document.getElementById('taskContainer');
+  // Phase 2b — FLIP wrap. Snapshots the position of every existing task
+  // row (id="ti-…") before render mutates innerHTML, then animates each
+  // surviving row from its old position to its new one. New rows just
+  // appear; removed rows just disappear (no exit-animation slot). The
+  // closure body is the original render logic.
+  const runRender = () => _renderInner(c);
+  if (c && window.GSDMotion && c.querySelector('[id^="ti-"]')) {
+    window.GSDMotion.flip(c, runRender, { selector: '[id^="ti-"]' });
+  } else {
+    runRender();
+  }
+}
+
+function _renderInner(c) {
   // Keep the beta Home tab's tasks section in sync. render() is always
   // called after `tasks` is mutated, and refreshHomeTasks reads the array
   // (not the DOM), so this covers every exit path. Per-section refresh —

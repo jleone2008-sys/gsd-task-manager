@@ -135,20 +135,37 @@ function addTask() {
 function toggleDone_t(id) {
   const t = tasks.find(t=>t.id===id);
   if (!t) return;
-  t.done = !t.done;
-  t.status = t.done ? 'done' : 'todo';
-  t.completedAt = t.done ? Date.now() : null;
-  // Re-uncheck clears spawned so a future re-completion re-evaluates the
-  // recurrence.
-  if (!t.done) t.spawned = false;
-  render();
-  saveTask(t);
-  // Lazy-spawn handles recurrence: if the parent was overdue and the
-  // next due date is already today/past, spawn now; otherwise wait for
-  // the load-time / day-change check.
-  if (t.done && t.recur) ensureRecurringSpawns();
-  // Tier 1 realtime: brief task_counts recompute from live tasks state.
-  if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
+  // Phase 1b — exit choreo on completion. Play the fade+strike before render
+  // re-creates the list. Re-open (un-completing) skips choreo so the row
+  // appears in its new section immediately. Persist + downstream effects
+  // fire synchronously so the DB doesn't wait on the animation.
+  const becomingDone = !t.done;
+  const row = becomingDone ? document.getElementById('ti-' + id) : null;
+  const canAnimate = !!window.GSDMotion && !window.GSDMotion.reduced;
+
+  const apply = () => {
+    t.done = !t.done;
+    t.status = t.done ? 'done' : 'todo';
+    t.completedAt = t.done ? Date.now() : null;
+    // Re-uncheck clears spawned so a future re-completion re-evaluates the
+    // recurrence.
+    if (!t.done) t.spawned = false;
+    render();
+    saveTask(t);
+    // Lazy-spawn handles recurrence: if the parent was overdue and the
+    // next due date is already today/past, spawn now; otherwise wait for
+    // the load-time / day-change check.
+    if (t.done && t.recur) ensureRecurringSpawns();
+    // Tier 1 realtime: brief task_counts recompute from live tasks state.
+    if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
+  };
+
+  if (row && canAnimate) {
+    row.classList.add('completing');
+    setTimeout(apply, 180);
+  } else {
+    apply();
+  }
 }
 function toggleTop3(id) {
   const t = tasks.find(t=>t.id===id);

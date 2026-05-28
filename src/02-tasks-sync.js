@@ -22,6 +22,12 @@ function showToast(msg, type) {
   dot.className = 'err-dot ' + (type === 'sync' ? 'amber' : 'red');
   retry.style.display = type === 'sync' ? '' : 'none';
   toast.classList.add('visible');
+  // Phase 3b — shake the toast on appearance so the failure is harder to
+  // miss. Re-trigger by toggling the class off and back on if it's already
+  // visible from a prior error in the same session.
+  toast.classList.remove('is-sync-failed');
+  void toast.offsetWidth;                            // force reflow → restart anim
+  toast.classList.add('is-sync-failed');
   clearTimeout(toastTimer);
 }
 function hideToast() {

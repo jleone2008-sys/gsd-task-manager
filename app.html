@@ -107,7 +107,7 @@
   .home-mood { display: flex; gap: 8px; }
   .home-mood-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 9px 4px; cursor: pointer; font-size: 21px; line-height: 1; transition: background 0.12s ease, transform 0.08s ease; }
   .home-mood-btn:hover { background: var(--surface-2); }
-  .home-mood-btn:active { transform: scale(0.96); background: var(--guava-50); border-color: var(--guava-500); }
+  .home-mood-btn:active { background: var(--guava-50); border-color: var(--guava-500); }
   .home-mood-btn .home-mood-cap { font-size: 10px; color: var(--ink-3); }
   /* Phase 5 — intra-day check-in chips + summary line below the picker. */
   .home-mood-checkins { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
@@ -1187,6 +1187,7 @@
 </div>
 
 <script src="/beta/src/00-router.js" defer></script>
+<script src="/beta/src/00-motion.js" defer></script>
 <!-- Renders every subtab pill bar (Tasks / Habits / Insights / Train)
      from one config so the rows stay visually consistent and pill
      edits are one-place. Loads BEFORE the per-tab JS so pills exist

@@ -122,8 +122,11 @@ async function toggleCompletion(habitClientId, dateStr) {
     // Tier 1 realtime: brief habit row recomputes from live completions.
     if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
     setStatus('syncing');
+    // Phase 3b — pulse the affected card while the delete is in flight.
+    _markHabitSyncing(habitClientId, true);
     const { error } = await db.from('habit_completions').delete().eq('id', existing.id);
     setStatus(error ? 'error' : 'saved');
+    _markHabitSyncing(habitClientId, false, !!error);
     if (error) {
       console.error('deleteCompletion:', error.message);
       // Revert optimistic removal so UI matches server state
@@ -138,6 +141,7 @@ async function toggleCompletion(habitClientId, dateStr) {
     // Tier 1 realtime: brief habit row recomputes from live completions.
     if (typeof homeBriefRecompute === 'function') homeBriefRecompute();
     setStatus('syncing');
+    _markHabitSyncing(habitClientId, true);
     const row = { user_id: currentUser.id, habit_id: habitSid, completed_date: dateStr };
     let { data, error } = await db.from('habit_completions').insert(row).select();
     // Local completion state can drift out of sync with the DB (e.g. a dropped
@@ -153,6 +157,7 @@ async function toggleCompletion(habitClientId, dateStr) {
       if (!res.error && res.data?.[0]) { data = res.data; error = null; }
     }
     setStatus(error ? 'error' : 'saved');
+    _markHabitSyncing(habitClientId, false, !!error);
     if (error) { console.error('addCompletion:', error.message); habitCompletions = habitCompletions.filter(c => c !== temp); renderHabits(); return; }
     if (data?.[0]) {
       const idx = habitCompletions.indexOf(temp);
@@ -160,6 +165,25 @@ async function toggleCompletion(habitClientId, dateStr) {
       completionRowIdMap.set(data[0].id, data[0].id);
     }
   }
+}
+
+// Phase 3b — toggle pulse / shake on the affected habit card. Looks for the
+// card by data-habit-id in both Today and All sections + the Home tab's
+// habits list. Silent no-op when the card isn't mounted (e.g. user
+// navigated away mid-sync).
+function _markHabitSyncing(habitClientId, on, failed) {
+  const cards = document.querySelectorAll(`.habit-card[data-habit-id="${habitClientId}"]`);
+  cards.forEach((card) => {
+    card.classList.toggle('is-syncing', !!on);
+    if (!on) {
+      if (failed) {
+        card.classList.remove('is-sync-failed');
+        void card.offsetWidth;                       // restart shake
+        card.classList.add('is-sync-failed');
+        setTimeout(() => card.classList.remove('is-sync-failed'), 400);
+      }
+    }
+  });
 }
 
 // Count completions for a habit on a specific date
@@ -692,8 +716,11 @@ const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 function renderHabits() {
   if (typeof habitsArr === 'undefined') return;
   const active = habitsArr.filter(h => !h.archived);
-  renderHabitToday(active);
-  renderHabitAll(active);
+  // Phase 2b — FLIP wrap on the Today + All habit containers. Identity is
+  // data-habit-id, so surviving cards glide between positions when the
+  // user toggles a habit and the due/optional split shifts.
+  _flipHabitContainer('habit-today', () => renderHabitToday(active));
+  _flipHabitContainer('habit-all',   () => renderHabitAll(active));
   renderHabitStats(active);
   updateHabitStatsBar(active);
   // Keep the beta Home tab's habit section in sync (no-op elsewhere / in prod).
@@ -701,6 +728,16 @@ function renderHabits() {
   // the tasks/notes sections.
   if (typeof refreshHomeHabits === 'function') refreshHomeHabits();
   else if (typeof refreshHomeData === 'function') refreshHomeData();
+}
+
+function _flipHabitContainer(elId, run) {
+  const el = document.getElementById(elId);
+  if (!el) { run(); return; }
+  if (window.GSDMotion && el.querySelector('.habit-card[data-habit-id]')) {
+    window.GSDMotion.flip(el, run, { selector: '.habit-card[data-habit-id]', idAttr: 'data-habit-id' });
+  } else {
+    run();
+  }
 }
 
 /**

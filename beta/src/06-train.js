@@ -5170,7 +5170,7 @@ function ensureTrainStyles() {
       font-family: inherit; text-align: left;
     }
     .train-collapse-chevron {
-      display: inline-block; transition: transform 0.15s ease;
+      display: inline-block; transition: transform var(--dur-quick) var(--ease);
       color: var(--ink-3); font-size: 12px;
     }
     .train-collapse-chevron.is-open { transform: rotate(90deg); }

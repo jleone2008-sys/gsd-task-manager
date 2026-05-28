@@ -160,8 +160,10 @@
     --dur-slower:  0.3s;
     --dur-slowest: 0.4s;
 
-    --ease-out:      ease;
+    --ease-out:      cubic-bezier(0.2, 0.8, 0.2, 1); /* alias of --ease */
     --ease-material: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-count:     600ms;  /* GSDMotion.countUp default */
+    --dur-arc:       400ms;  /* GSDMotion.drawArc default */
     --ease-spring:   cubic-bezier(0.34, 1.4, 0.64, 1);
     --ease-bounce:   cubic-bezier(0.34, 1.56, 0.64, 1);
   }
@@ -790,6 +792,21 @@
   .task-item.dragging { opacity: 0.35; }
   .task-item.drag-target { border-color: var(--guava-300); box-shadow: var(--shadow-focus); }
 
+  /* Exit choreo for completion (Phase 1b). Plays for ~180ms before the
+     task list re-renders. Strike-through is part of .done; this class adds
+     the fade so the user sees the row dim before it leaves. */
+  .task-item.completing {
+    opacity: 0.4;
+    transition: opacity var(--dur) var(--ease);
+  }
+  .task-item.completing .task-text,
+  .task-item.completing .card__title {
+    color: var(--ink-4);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-5);
+    transition: color var(--dur) var(--ease), text-decoration-color var(--dur) var(--ease);
+  }
+
   /* Check circle — normal flex item inside .card-head, which uses
      align-items: center so the check vertically centers with the title
      block. When the card expands, .card__expand renders below .card-head
@@ -1216,7 +1233,7 @@
     z-index: var(--z-fab-mobile);
   }
   .fab:hover { background: var(--guava-500); transform: translateY(-1px); }
-  .fab:active { transform: translateY(0) scale(0.96); }
+  .fab:active { transform: translateY(0); }
   .fab svg { width: 20px; height: 20px; }
   .fab.hidden { opacity: 0; pointer-events: none; transform: translateY(4px); }
   @media (min-width: 900px) {
@@ -1239,7 +1256,26 @@
     align-items: stretch;
     gap: 2px;
     z-index: var(--z-mobile-nav);
+    /* Phase 1c — animated active-tab indicator. The ::before pill slides
+       between tabs as switchTool writes --tab-indicator-x (px) and
+       --tab-indicator-w (px) onto the nav. Dimensions default to 0 until
+       the first paint sets them so there's no flash. */
   }
+  .mobile-bottom-nav::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 0;
+    width: var(--tab-indicator-w, 0px);
+    height: 3px;
+    border-radius: 999px;
+    background: var(--guava-700);
+    transform: translateX(var(--tab-indicator-x, 0px));
+    transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), opacity var(--dur) var(--ease);
+    opacity: 1;
+    pointer-events: none;
+  }
+  .mobile-bottom-nav[data-indicator-ready="false"]::before { opacity: 0; }
   @media (min-width: 900px) { .mobile-bottom-nav { display: none; } }
   .mobile-nav-btn {
     flex: 1;
@@ -1493,11 +1529,6 @@
     50%  { transform: scale(1.25); }
     100% { transform: scale(1); }
   }
-  @keyframes streakPulse {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(1.12); }
-    100% { transform: scale(1); }
-  }
   @keyframes logoSlide {
     from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -1524,7 +1555,6 @@
   .habit-card:nth-child(n+6) { animation: slideDown var(--dur-calm) ease var(--dur-quick) both; }
   .habit-check.checked { animation: checkPop var(--dur-slow) ease; }
   .habit-day-dot.just-toggled { animation: dotPop var(--dur-slow) ease; }
-  .fab:active { transform: scale(0.9); }
 
   /* MOBILE */
   @media (max-width: 899.98px) {
@@ -3835,4 +3865,63 @@
     border-radius: 999px;
     background: var(--guava-700); color: #fff;
     font-size: var(--fs-label); font-weight: var(--fw-bold);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SKELETON — loading placeholder (Phase 3a)
+     Drop a .skeleton element where content will land; height/width
+     come from the caller. The pulse loops at 1.2s; reduced-motion
+     users get a static dimmed bar (no pulse).
+  ═══════════════════════════════════════════════════════════════ */
+  .skeleton {
+    display: block;
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--bg) 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+    border-radius: var(--r-md);
+    animation: skeletonPulse 1.2s ease-in-out infinite;
+    min-height: 12px;
+  }
+  .skeleton + .skeleton { margin-top: 8px; }
+  @keyframes skeletonPulse {
+    0%   { background-position: 200% 0; opacity: 0.85; }
+    50%  { background-position: 0% 0;   opacity: 1; }
+    100% { background-position: -200% 0; opacity: 0.85; }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     OPTIMISTIC SYNC FEEDBACK (Phase 3b)
+     .is-syncing — soft opacity pulse while the write is in flight.
+     .is-sync-failed — one-shot horizontal shake; pair with a retry
+     hint element nearby.
+  ═══════════════════════════════════════════════════════════════ */
+  .is-syncing { animation: syncPulse 1.2s ease-in-out infinite; }
+  @keyframes syncPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
+  .is-sync-failed { animation: syncShake 200ms ease-out 1; }
+  @keyframes syncShake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-3px); }
+    50%      { transform: translateX(3px); }
+    75%      { transform: translateX(-2px); }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     REDUCED MOTION — accessibility guard.
+     Honors the OS / browser "Reduce motion" preference. State
+     changes still happen visually (opacity-based feedback is kept,
+     since it's information, not decoration), but transforms,
+     translations, and keyframe animations collapse to ~no-op.
+     Paired with GSDMotion.reduced in beta/src/00-motion.js which
+     short-circuits the JS-driven animations.
+     Keep this block LAST so its specificity wins.
+  ═══════════════════════════════════════════════════════════════ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }

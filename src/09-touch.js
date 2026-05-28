@@ -170,9 +170,9 @@ document.addEventListener('touchend', function(e) {
   if (swipeDelta >= SWIPE_THRESHOLD) {
     if (isRight) {
       // Swipe right — complete
-      inner.forEach(el => { el.style.transition = 'transform 0.2s ease'; el.style.transform = ''; });
+      inner.forEach(el => { el.style.transition = 'transform var(--dur-mid) var(--ease)'; el.style.transform = ''; });
       const cbg = item.querySelector('.swipe-complete-bg');
-      if (cbg) { cbg.style.transition = 'opacity 0.2s ease'; cbg.style.opacity = '0'; }
+      if (cbg) { cbg.style.transition = 'opacity var(--dur-mid) var(--ease)'; cbg.style.opacity = '0'; }
       item.classList.remove('swiping-right');
       if (type === 'task') {
         toggleDone_t(id);
@@ -182,14 +182,14 @@ document.addEventListener('touchend', function(e) {
       setTimeout(() => { inner.forEach(el => el.style.transition = ''); if (cbg) cbg.style.transition = ''; }, 200);
     } else {
       // Swipe left — delete (tasks only)
-      item.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      item.style.transition = 'transform var(--dur-mid) var(--ease), opacity var(--dur-mid) var(--ease)';
       item.style.transform  = 'translateX(-100%)';
       item.style.opacity    = '0';
       setTimeout(() => swipeDeleteTask(id), 200);
     }
   } else {
     // Snap back
-    inner.forEach(el => { el.style.transition = 'transform 0.2s ease'; el.style.transform = ''; });
+    inner.forEach(el => { el.style.transition = 'transform var(--dur-mid) var(--ease)'; el.style.transform = ''; });
     const bg = item.querySelector('.swipe-delete-bg');
     if (bg) bg.style.opacity = '';
     const cbg = item.querySelector('.swipe-complete-bg');

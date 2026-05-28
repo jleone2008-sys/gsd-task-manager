@@ -505,8 +505,34 @@
       <tr><td><code>--dur-mid</code></td><td>220ms</td><td>Modal open, card expand</td></tr>
       <tr><td><code>--dur-slow</code></td><td>280ms</td><td>Page-level transitions</td></tr>
       <tr><td><code>--ease</code></td><td>cubic-bezier(0.2,0.8,0.2,1)</td><td>Everything (don't introduce new eases)</td></tr>
+      <tr><td><code>--ease-out</code></td><td>alias of <code>--ease</code></td><td>Use when a property hints at directionality (e.g. ease-out feels "settles in")</td></tr>
+      <tr><td><code>--dur-count</code></td><td>600ms</td><td>Number count-ups (<code>GSDMotion.countUp</code> default)</td></tr>
+      <tr><td><code>--dur-arc</code></td><td>400ms</td><td>SVG arc draw (<code>GSDMotion.drawArc</code> default)</td></tr>
     </table>
     <div class="callout callout--info"><strong>No press-scale on buttons.</strong> The app uses flat hover-color transitions only. Don't add <code>transform: scale</code> on <code>:active</code> — that's a lifestyle-app pattern that doesn't match the dense, utilitarian feel.</div>
+
+    <h3>GSDMotion JS API</h3>
+    <p>One shared module: <code>beta/src/00-motion.js</code>. Exposes <code>window.GSDMotion</code>; loaded after <code>00-router.js</code> so every tab module sees it. Each helper short-circuits when <code>GSDMotion.reduced</code> is true (the OS / browser "Reduce motion" preference) and ends in the visually-correct final state — no animation, no broken view.</p>
+    <table class="tokens">
+      <tr><th>Helper</th><th>Use for</th></tr>
+      <tr><td><code>GSDMotion.reduced</code></td><td>Live boolean; check before opting into long/custom animations.</td></tr>
+      <tr><td><code>GSDMotion.countUp(el, {to, dur})</code></td><td>Animate text content from 0 → integer over <code>--dur-count</code> ms. Element should use <code>font-variant-numeric: tabular-nums</code> to avoid layout jitter.</td></tr>
+      <tr><td><code>GSDMotion.flip(parent, run, {selector, idAttr})</code></td><td>First-Last-Invert-Play on a list re-render. <code>selector</code> targets the items to track, <code>idAttr</code> names a data attribute for stable identity across <code>innerHTML</code> rewrites.</td></tr>
+      <tr><td><code>GSDMotion.reveal(el, {key, run})</code></td><td>One-shot IntersectionObserver wrapper, optionally keyed per-session via <code>sessionStorage</code> so the same reveal doesn't fire twice in a session.</td></tr>
+      <tr><td><code>GSDMotion.drawArc(circle, {to, dur, delay})</code></td><td>Sweep an SVG <code>&lt;circle&gt;</code> from empty to <code>to</code> (0..1) of its circumference over <code>--dur-arc</code> ms.</td></tr>
+    </table>
+
+    <h3>Reduced-motion contract</h3>
+    <p>A single <code>@media (prefers-reduced-motion: reduce)</code> block at the bottom of <code>app.css</code> collapses every CSS animation and transition to ~0ms. JS-driven motion short-circuits via <code>GSDMotion.reduced</code>. State changes (opacity, color, content) still happen visibly — they convey <em>information</em>; only decorative motion is suppressed. Test by enabling "Reduce motion" in macOS System Settings or Chrome DevTools rendering panel.</p>
+
+    <h3>Patterns by surface</h3>
+    <ul>
+      <li><strong>Optimistic sync feedback</strong> — add <code>.is-syncing</code> (opacity pulse, 1.2s loop) while a write is in flight; on failure add <code>.is-sync-failed</code> (one-shot 200ms shake). Toast on error gains the shake automatically.</li>
+      <li><strong>Skeletons</strong> — drop a <code>.skeleton</code> element where content will land; height/width come from the caller. Replaces "Loading…" text on first paint.</li>
+      <li><strong>Task completion</strong> — adds <code>.task-item.completing</code> for ~180ms before the list re-renders, so the user sees the row dim + strike before it leaves.</li>
+      <li><strong>Tab crossfade</strong> — 120ms simultaneous opacity crossfade + tiny scale-in on the incoming view. Snappy enough to not feel sluggish; smooth enough to break the cut.</li>
+      <li><strong>Brief reveal</strong> — hero ring arc sweep + stat count-up fire once per (brief-date, mode) per session via <code>GSDMotion.reveal</code> keyed in <code>sessionStorage</code>.</li>
+    </ul>
   </section>
 
   <!-- BRAND:section:hover-focus -->
