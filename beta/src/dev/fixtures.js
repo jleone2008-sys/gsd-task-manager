@@ -139,8 +139,11 @@
       mode,
       headline: isMorning ? 'Protect your deep work' : 'Wind down a little earlier',
       subhead: isMorning
-        ? 'Readiness is solid — front-load the hard task before noon.'
-        : 'Two tasks left; close them, then aim for a 10:30 lights-out.',
+        ? 'Front-load the hard task before noon while focus is high. Your calendar is clear until the 2pm block, so the morning is your deep-work window.'
+        : 'Close the two open tasks, then aim for a 10:30 lights-out. Today stayed light and your habits held, so an early night sets tomorrow up well.',
+      insight: isMorning
+        ? 'Mornings after a clear-calendar block have tended to be your most productive lately — guard this one.'
+        : 'Tonight echoes the evenings where an earlier wind-down has paid off for your recovery.',
       weather_chip: isMorning ? '74° · Austin' : null,
       confidence: 'high',
       hero_metric: { key: 'readiness_score', label: 'Readiness', value: 78, delta_vs_7d: 3 },

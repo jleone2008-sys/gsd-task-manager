@@ -87,6 +87,10 @@ function playIconSVG(name) {
   return PLAY_ICON_SVG[name] || PLAY_ICON_SVG.other;
 }
 
+// Small trend/insight glyph for the optional learned-insight line. Canonical
+// 1.8 stroke, currentColor (inherits the guava icon color from .brief-insight-icon).
+const BRIEF_INSIGHT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"/><path d="M17 8h4v4"/></svg>';
+
 /* ── Hero ring SVG (120px, score+label+delta inside) ──────── */
 
 // Vibrant ring strokes (the "B" palette). Rings are strokes, not text, so they
@@ -179,6 +183,19 @@ function briefInjectStyles() {
       font-size: var(--fs-search); color: var(--ink-2); line-height: 1.45;
       margin: 0 0 16px 0;
     }
+    /* Optional learned-insight line — a quiet "the system noticed this" note
+       under the subhead. Subtler than the subhead (smaller, muted ink), set
+       off by a thin guava left-rule + a small trend icon so it reads as a
+       distinct register without competing for attention. Only rendered when
+       structured.insight is non-null (most days it's absent). */
+    .brief-insight {
+      display: flex; gap: 7px; align-items: flex-start;
+      margin: -4px 0 16px 0; padding-left: 10px;
+      border-left: 2px solid var(--guava-300);
+      font-size: var(--fs-pill); line-height: 1.45; color: var(--ink-3);
+    }
+    .brief-insight-icon { flex: 0 0 auto; width: 13px; height: 13px; color: var(--guava-700); margin-top: 2px; }
+    .brief-insight-icon svg { width: 100%; height: 100%; display: block; }
 
     .brief-divider {
       height: 1px; background: var(--edge); margin: 16px 0;
@@ -684,6 +701,7 @@ function briefStructuredHTML(brief) {
   return `${briefHeadHTML(briefWeatherChipHTML(s.weather_chip), briefBadgeHTML(brief))}
     <h2 class="brief-headline">${briefEsc(s.headline || '')}</h2>
     ${s.subhead ? `<p class="brief-subhead">${briefEsc(s.subhead)}</p>` : ''}
+    ${s.insight ? `<div class="brief-insight"><span class="brief-insight-icon">${BRIEF_INSIGHT_ICON}</span><span>${briefEsc(s.insight)}</span></div>` : ''}
     <div class="brief-divider"></div>
     <div class="brief-hero-grid">
       <div class="brief-hero-ring">${heroHtml}</div>

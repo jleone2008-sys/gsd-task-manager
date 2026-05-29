@@ -664,9 +664,28 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       adherence:           round2(r.mean_adherence),
       delta_when_followed: round1(r.mean_delta_t1_when_followed),
       delta_when_ignored:  round1(r.mean_delta_t1_when_ignored),
+      // Plain-language, number-free direction so the brief's insight line can
+      // surface the takeaway without echoing a signature or a delta value.
+      direction:           round1(r.mean_delta_t1_when_followed) > round1(r.mean_delta_t1_when_ignored) ? 'helps' : 'neutral_or_hurts',
       confidence:          confidence,
     };
   });
+
+  // The most-established patterns the weekly synthesis has discovered for this
+  // user. These are already plain-language, user-facing strings (the weekly
+  // Opus wrote them), so they're the cleanest source for the brief's optional
+  // insight line. Non-dismissed only, strongest first, capped to 3. Empty
+  // during cold-start (no weekly run yet) — the insight line simply omits.
+  const patternRowsRaw = await fetchJson(
+    `${SUPABASE_URL}/rest/v1/patterns_discovered?user_id=eq.${user.user_id}&dismissed_by_user=eq.false&select=label,description,strength_score,n&order=strength_score.desc.nullslast&limit=3`,
+    hdr,
+  );
+  const recent_patterns = (patternRowsRaw || []).map(p => ({
+    label:       p.label || null,
+    description: p.description || null,
+    strength:    p.strength_score != null ? Number(p.strength_score) : null,
+    n:           p.n != null ? Number(p.n) : null,
+  }));
 
   const ctx = {
     user: { timezone: user.timezone, user_id: user.user_id },
@@ -856,6 +875,9 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     // signatures are minted; cron-evaluate-actions.js for how outcomes
     // are scored; v_user_action_efficacy.sql for the rollup.
     efficacy_profile: efficacy_profile,
+    // Plain-language patterns from weekly synthesis — source for the optional
+    // insight line. Already user-facing; safe to paraphrase (never numbers).
+    recent_patterns: recent_patterns,
     _oura_stale: ouraStale,
   };
 
@@ -995,7 +1017,8 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '',
     'FIELDS YOU PRODUCE:',
     'headline — ONE sentence ≤30 chars. Verb-first call. Examples: "Recovery day.", "Push day.", "Light day.", "Hold the line.", "Catch-up morning.". NEVER prefix with a greeting ("Your X Brief", "Good morning") — the card header shows that.',
-    'subhead — ONE sentence ≤80 chars stating the play. Examples: "Pull back on intensity. Protect tonight\'s sleep.", "Front-load the hardest task; lift later if recovered."',
+    'subhead — ONE or TWO sentences, ≤180 chars total. Sentence 1 states the PLAY (the action). Sentence 2 (include it whenever you have a real reason) states the WHY, connecting at least two signals into one thread — e.g. a cause + a trend, or last night + yesterday\'s behavior. Do NOT pad to two sentences when you have nothing substantive to add; a sharp one-sentence play beats a stretched two-sentence one. Examples: "Pull back on intensity and protect tonight\'s sleep. Your HRV slipped a second morning and Tuesday\'s late night is still clearing." / "Front-load the hardest task while focus is high; the afternoon meeting block will eat your deep-work window."',
+    'insight — OPTIONAL single sentence ≤140 chars surfacing ONE learned pattern about THIS user, rendered as a quiet line under the subhead. SOURCES, in priority: (1) recent_patterns — the weekly analysis already wrote these in plain language; paraphrase one, do not quote a number from it. (2) A response_profile/efficacy entry whose direction is "helps" AND confidence is "high" — phrase the takeaway, never the signature name or any delta value. Hedge it ("has lined up with", "tends to", "lately"); never state it as proven fact. MODE: morning = forward ("worth protecting tonight\'s wind-down"); evening = reflective ("tonight echoes the evenings where X paid off"). HARD RULES: at most ONE pattern; no numbers; no medical claims; never name an internal signature; never invent a pattern. OMIT the field entirely (return null / leave empty) when there is no strong, high-confidence pattern — most days, especially early on, will have no insight, and that is correct. A fabricated or weak insight is worse than none.',
     'evidence_pills — 0-3 short context tags ≤4 words each. Pills must ADD context the stats row CAN\'T show. The stats list already shows things like "elevated", "well below norm", "X steps" — pills that just paraphrase those notes are USELESS and will be cut. Good pills surface: CAUSES ("Late night Friday", "Workout yesterday"), STREAKS ("2nd low HRV", "3rd recovery dip"), COUNTERFACTUALS ("Light load worked", "Caffeine helped"), or PATTERNS ("Recovers slow Mondays"). DO NOT name specific events, tasks, or counts. Skip entirely if you have nothing the stats list isn\'t already saying.',
     'hero_metric_key — OPTIONAL override of the server\'s pick for the hero ring. Server hint: ' + (hint || 'none') + '. Set null to accept the server pick; or pick one of "sleep_score", "readiness_score", "activity_score" if a different metric is the story.',
     // Bedtime is fully formulaic now (server decides between 9:30 / 10:00 /
@@ -1014,6 +1037,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- today_plan.workout.logged_today_all / today_recap.train_sessions_today = EVERY session logged today. The user can log more than one (e.g. a bonus walk in the afternoon AND the main lift in the evening); logged_today is just the primary one (a lift outranks a bonus/cardio for the recap row). CRITICAL: never say a workout/lift/cardio was "skipped", "missed", or didn\'t happen if a session of that type appears in logged_today_all — check the full list before any "skipped" framing.',
     '- yesterday.workout = yesterday\'s PRIMARY Train session (if any); yesterday.workout_all = every session logged yesterday (may be multiple). Useful for "Lifted yesterday" pills — and, like logged_today_all, never call a type skipped if it appears in workout_all.',
     '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
+    '- recent_patterns = the strongest patterns the weekly analysis has discovered for this user (label + plain-language description, already user-facing). This is the PRIMARY source for the optional insight line — paraphrase one when it connects to today, hedged and number-free. Empty during cold-start; then just omit insight. Do NOT cram a pattern into the headline.',
     '- health_labs = the user\'s most recent bloodwork values, ONE per test_name, within the last 90 days. health_labs.age_days = how old the snapshot is. Use these as REASONING context for the brief\'s framing — e.g. if Lp(a) is flagged HIGH and today is a recovery day, you can frame the play with awareness ("CV-friendly recovery day" in subhead) without quoting numbers. NEVER echo specific lab values in headline/subhead — the server has no UI surface for them yet and quoting them out of context risks medical-claim territory. When you reference labs in an evidence_pill, frame freshness explicitly ("Bloodwork 2 wks ago" not "Bloodwork shows X"). Skip entirely if health_labs is null or all flags are normal — labs without an anomaly aren\'t worth surfacing.',
     '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
     `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
@@ -1036,7 +1060,7 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     // patterns the data shows are working and de-emphasizes ones that
     // aren't. Never surfaced to the user in copy.
     (Array.isArray(ctx.efficacy_profile) && ctx.efficacy_profile.length > 0)
-      ? 'RESPONSE PROFILE: efficacy_profile in your context lists the system\'s past recommendation signatures with measured outcomes for this user — adherence rate, mean delta of the source_metric when followed (≥0.7 score) vs when ignored (≤0.3). Treat positive delta_when_followed as evidence the recommendation TYPE is working for them; negative or zero deltas mean the recommendation isn\'t landing and should be deprioritized in headline/subhead framing. NEVER mention efficacy_profile or its numbers in your output — this is internal calibration only. Do not name signatures back to the user.'
+      ? 'RESPONSE PROFILE: efficacy_profile lists the system\'s past recommendation signatures with measured outcomes for this user — adherence, and mean delta of the source_metric when followed vs ignored, plus a number-free "direction" ("helps" / "neutral_or_hurts") and a confidence level. Use it two ways: (a) INTERNAL CALIBRATION — lean headline/subhead framing toward types that "help", away from ones that don\'t; (b) INSIGHT LINE — you MAY surface ONE entry whose direction is "helps" AND confidence is "high", as a hedged, plain-language takeaway in the insight field (e.g. "earlier bedtimes have lined up with your better recoveries"). NEVER output a delta number, an adherence value, or the raw signature string; never present it as proven. Prefer recent_patterns over efficacy_profile for the insight line when both exist.'
       : '',
   ].filter(Boolean);
   return lines.join('\n');
@@ -1050,7 +1074,11 @@ function briefToolSchema(mode) {
     },
     subhead: {
       type: 'string',
-      description: 'ONE sentence ≤80 chars stating the play. No specific numbers or task/event names.',
+      description: 'ONE or TWO sentences, ≤180 chars total: the play, plus the "why" connecting 2+ signals when there is a real reason. No specific numbers or task/event names.',
+    },
+    insight: {
+      type: ['string', 'null'],
+      description: 'OPTIONAL ≤140-char single sentence surfacing ONE learned pattern (from recent_patterns, or a high-confidence "helps" efficacy entry), hedged and number-free. Null/omit when no strong, confident pattern applies — most days will be null.',
     },
     evidence_pills: {
       type: 'array',
@@ -1103,15 +1131,30 @@ function normalizeStructured(raw, mode, ctx) {
   if (!headline) return null;
   headline = softTruncate(headline, 30);
 
-  // Subhead: trim, cap (100 gives headroom for two short sentences; the
-  // model targets ~80, and word-safe trimming avoids mid-word cuts).
-  let subhead = softTruncate(String(raw.subhead || '').trim(), 100);
+  // Subhead: trim, cap (180 = two short sentences; the model targets ≤180,
+  // and word-safe trimming avoids mid-word cuts).
+  let subhead = softTruncate(String(raw.subhead || '').trim(), 180);
 
   // Evidence pills: drop pills with >4 words or >30 chars; cap to 3
   const pills = (Array.isArray(raw.evidence_pills) ? raw.evidence_pills : [])
     .map(p => String(p || '').trim())
     .filter(p => p && p.split(/\s+/).length <= 4 && p.length <= 30)
     .slice(0, 3);
+
+  // Insight (optional): a hedged, learned-pattern line. Validated
+  // INDEPENDENTLY — a bad insight is dropped to null rather than failing the
+  // whole brief (the field is optional, so graceful degradation beats a
+  // deterministic fallback). Rejected when: empty, contains a metric-looking
+  // number (2-3 digit run — the model is told no numbers; "three weeks" in
+  // words is fine), or trips the banned-prose scan.
+  let insight = softTruncate(String(raw.insight || '').trim(), 140);
+  if (insight) {
+    const hasMetricNumber = /\b\d{2,3}\b/.test(insight);
+    if (hasMetricNumber || BANNED_PROSE_REGEX.test(insight)) {
+      console.warn('daily-brief: dropping insight (number or banned phrase):', insight.slice(0, 120));
+      insight = '';
+    }
+  }
 
   // Banned-phrase scan: only applies to Claude's text (the factual blocks
   // are server-built and trusted).
@@ -1167,6 +1210,7 @@ function normalizeStructured(raw, mode, ctx) {
       weather_chip,
       headline,
       subhead,
+      insight: insight || null,
       hero_metric,
       stats,
       evidence_pills: pills,
@@ -1210,6 +1254,7 @@ function buildActionStubs(sleepRec, mode, ctx) {
 // that don't read the structured column.
 function buildFlatNarrative(s) {
   const lines = [s.headline, s.subhead];
+  if (s.insight) lines.push(s.insight);
   if (s.evidence_pills?.length) lines.push(s.evidence_pills.join(' · '));
   // Recap blocks: flatten left + right columns into prose for the legacy
   // narrative column. Order matches the rendered grid (left first).
