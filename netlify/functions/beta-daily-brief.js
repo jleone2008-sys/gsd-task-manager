@@ -66,11 +66,12 @@ const { MOOD_LABELS, MOOD_SCALE_NOTE, moodLabel } = require('./lib/mood-scale');
 const { getWeather } = require('./lib/weather');
 const { buildClaimSet, buildSystemPromptV2, validateAgainstClaims } = require('./lib/brief-claims');
 
-// Brief reformulation rollout flag. When set, the brief is composed from a
-// verified day-stamped claim set (lib/brief-claims) with the friendly
-// personal-helper voice, instead of the raw-context-dump prompt. Default OFF
-// so deploying is a no-op until we flip it in prod to validate a live regen.
-const USE_CLAIMSET = process.env.BRIEF_CLAIMSET === '1' || process.env.BRIEF_CLAIMSET === 'true';
+// Brief reformulation — LIVE by default. The brief is composed from a verified
+// day-stamped claim set (lib/brief-claims) in the friendly personal-helper
+// voice, instead of the raw-context-dump prompt. Kept env-disableable as a
+// no-deploy kill-switch: set BRIEF_CLAIMSET=0 (or "false") to fall back to the
+// legacy prompt without a redeploy.
+const USE_CLAIMSET = process.env.BRIEF_CLAIMSET !== '0' && process.env.BRIEF_CLAIMSET !== 'false';
 
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
