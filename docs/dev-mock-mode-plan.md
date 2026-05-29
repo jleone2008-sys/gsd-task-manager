@@ -1,6 +1,31 @@
-# Dev mock-mode — design spec (plan only, not yet built)
+# Dev mock-mode — design spec
 
-Status: **proposed**. Written 2026-05-28. No code shipped yet.
+Status: **SHIPPED** 2026-05-28 (all 4 phases). Written 2026-05-28.
+
+## What shipped
+- `beta/src/dev/fixtures.js` — deterministic, date-relative fixtures for every
+  visible surface (tasks, subtasks, habits + completions, notes/notebooks,
+  journal, mood, oura_daily/whoop_daily, weather, two daily_briefs morning+evening,
+  workout plan/sessions/sets, body-comp, weekly briefs, patterns, knowledge docs,
+  identity/settings). Defines `window.GSD_FIXTURES`; no side effects.
+- `beta/src/dev/mock-mode.js` — triple-gated activation; overrides
+  `supabase.createClient()` (so the `const db` in 01-core becomes an in-memory
+  stub), bypasses auth via a fake session, intercepts `window.fetch` for
+  `/.netlify/functions/*` + `googleapis.com`, and shows a "MOCK DATA" banner.
+  The stub is a full chainable query builder (filters/order/limit/range/single/
+  maybeSingle + insert/update/upsert/delete that mutate the in-memory store, so
+  edits persist for the session). Realtime `channel`, `storage`, and `rpc` stubbed.
+- `app.html` — both dev scripts loaded (deferred, before 01-core.js) inside
+  `<!-- DEV-MOCK-MODE:start … :end -->` markers.
+- `scripts/inject-dev-mode.mjs` + `netlify.toml [build] command` — strips the
+  marker block from `app.html` on `CONTEXT === 'production'` only (Gate 3).
+- Verified live: `npx netlify-cli dev` → `http://localhost:8888/app.html?mock=1`
+  boots the real UI on fake data with no login; all tabs render, zero console
+  errors. The strip script was dry-run-verified (removes only the dev block).
+
+## Not done (external, can't be automated from here)
+- Optional preview-URL password is a Netlify dashboard site-setting. Gate 2
+  (hostname refuse) + Gate 3 (prod strip) already make prod safe without it.
 
 ## Problem
 

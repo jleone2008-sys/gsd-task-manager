@@ -98,7 +98,7 @@
     if (pill.extraClass) cls.push(pill.extraClass);
     if (pill.default) cls.push('active');
     const iconHTML = pill.icon
-      ? `<svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${pill.icon}</svg>`
+      ? `<svg class="train-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${pill.icon}</svg>`
       : '';
     const countCls = pill.countClass || 'pill-count';
     const countHTML = pill.count

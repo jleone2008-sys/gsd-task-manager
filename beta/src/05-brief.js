@@ -74,13 +74,13 @@ function briefEsc(s) {
 /* ── Inline SVG icons for play rows ───────────────────────── */
 
 const PLAY_ICON_SVG = {
-  walk:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="3" r="1.4" fill="currentColor" stroke="none"/><path d="M5 14l2-4 2 2 1 2M9 9l2-2 3 1M6 6l3-1"/></svg>',
-  tasks:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8l2 2 3-4"/></svg>',
-  habits: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14c2.5 0 4.5-1.8 4.5-4.2 0-1.8-.9-2.7-1.8-3.5C9.7 5.4 9 4.2 9 2.5 7 3.5 5 5.5 5 8c-1 .5-1.5 1.5-1.5 2.5C3.5 12.4 5.3 14 8 14z"/></svg>',
-  sleep:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 9.5A5.5 5.5 0 016.5 3 5.5 5.5 0 1013 9.5z"/></svg>',
-  work:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="11" height="8" rx="1"/><path d="M6 5V3.5h4V5"/></svg>',
-  meal:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v5a2 2 0 002 2v5M6 2v5M11 2c-1.5 0-2 1-2 3s1 3 2 3v5"/></svg>',
-  other:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.5" fill="currentColor" stroke="none"/></svg>',
+  walk:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="3" r="1.4" fill="currentColor" stroke="none"/><path d="M5 14l2-4 2 2 1 2M9 9l2-2 3 1M6 6l3-1"/></svg>',
+  tasks:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8l2 2 3-4"/></svg>',
+  habits: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14c2.5 0 4.5-1.8 4.5-4.2 0-1.8-.9-2.7-1.8-3.5C9.7 5.4 9 4.2 9 2.5 7 3.5 5 5.5 5 8c-1 .5-1.5 1.5-1.5 2.5C3.5 12.4 5.3 14 8 14z"/></svg>',
+  sleep:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 9.5A5.5 5.5 0 016.5 3 5.5 5.5 0 1013 9.5z"/></svg>',
+  work:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="11" height="8" rx="1"/><path d="M6 5V3.5h4V5"/></svg>',
+  meal:   '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v5a2 2 0 002 2v5M6 2v5M11 2c-1.5 0-2 1-2 3s1 3 2 3v5"/></svg>',
+  other:  '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="2.5" fill="currentColor" stroke="none"/></svg>',
 };
 
 function playIconSVG(name) {
@@ -89,14 +89,17 @@ function playIconSVG(name) {
 
 /* ── Hero ring SVG (120px, score+label+delta inside) ──────── */
 
+// Brand earth-palette tokens (mirrors app.css :root): sleep→plum-fg,
+// readiness→ochre-fg, activity→sage-fg. Literal hex because the SVG stroke
+// attribute can't resolve CSS vars.
 const HERO_RING_COLORS = {
-  sleep_score:     '#8a6a84',
-  readiness_score: '#bf9c47',
-  activity_score:  '#7a8a59',
+  sleep_score:     '#6b4862',
+  readiness_score: '#a37826',
+  activity_score:  '#5d7048',
 };
 
 function briefHeroRingSVG(score, label, delta, key) {
-  const color = HERO_RING_COLORS[key] || '#8a6a84';
+  const color = HERO_RING_COLORS[key] || '#6b4862';
   const r = 52;
   const c = 2 * Math.PI * r;
   const pct = score == null ? 0 : Math.max(0, Math.min(100, score)) / 100;

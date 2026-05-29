@@ -3329,7 +3329,7 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     // End-point dot draws attention to the current value at the right edge.
     const lastX = xs[xs.length - 1], lastY = ys[ys.length - 1];
     return `<svg class="metric-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2.5" fill="${color}"/>
     </svg>`;
   };
@@ -3740,7 +3740,7 @@ function renderDashboardTrendCard(entries) {
       <span class="trend-delta ${deltaCls}">${deltaTxt}</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
-      <path d="${d}" fill="none" stroke="var(--guava-700)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="var(--guava-700)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       ${dots}
     </svg>
   </div>`;
@@ -5152,7 +5152,7 @@ function ensureTrainStyles() {
     .train-choice-row { display: flex; gap: 6px; flex-wrap: wrap; }
     .train-choice-pill {
       background: var(--surface); border: 1px solid var(--edge-strong);
-      border-radius: 999px; padding: 6px 14px; cursor: pointer;
+      border-radius: var(--r-md); padding: 6px 14px; cursor: pointer;
       font-family: inherit; font-size: var(--fs-search); color: var(--ink-2);
     }
     .train-choice-pill.is-active {

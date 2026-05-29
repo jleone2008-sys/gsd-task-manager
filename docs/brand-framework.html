@@ -51,7 +51,6 @@
     --shadow-card:       0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
     --shadow-card-hover: 0 1px 0 rgba(20,15,10,0.04), 0 2px 4px rgba(20,15,10,0.08);
     --shadow-raised:     0 2px 4px rgba(20,15,10,0.06), 0 8px 20px rgba(20,15,10,0.08);
-    --shadow-fab:        0 4px 10px rgba(184,45,59,0.28), 0 2px 4px rgba(184,45,59,0.16);
     --shadow-focus:      0 0 0 3px rgba(184,45,59,0.22);
     --scrim:      rgba(20,30,80,0.45);
     --scrim-blur: blur(6px);
@@ -156,7 +155,7 @@
   .text-body    { font-size: var(--fs-body);    font-weight: var(--fw-regular);  line-height: 1.55; color: var(--ink); }
   .text-body-sm { font-size: var(--fs-search);  font-weight: var(--fw-regular);  line-height: 1.5;  color: var(--ink-2); }
   .text-meta    { font-size: var(--fs-meta);    font-weight: var(--fw-medium);   line-height: 1.45; color: var(--ink-3); }
-  .text-label   { font-size: var(--fs-label);   font-weight: var(--fw-bold);     line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+  .text-label   { font-size: var(--fs-label);   font-weight: var(--fw-bold);     line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 
   /* Buttons — Variation A (Refined Brand). r-md, no shadows, flat. */
   .btn {
@@ -319,7 +318,7 @@
     </div>
 
     <h3>Ink (text)</h3>
-    <p class="quiet">5-step text scale. Use <code>--ink</code> for primary body, <code>--ink-3</code> for captions/meta, <code>--ink-4</code> for muted/disabled.</p>
+    <p class="quiet">5-step text scale. Use <code>--ink</code> for primary body, <code>--ink-3</code> for captions/meta, <code>--ink-4</code> for muted/disabled <em>decorative</em> text only. <strong>Don't use <code>--ink-4</code> for content-bearing text</strong> (e.g. uppercase eyebrow labels) — at ≈2.6:1 on white it fails WCAG AA. The <code>.text-label</code> role uses <code>--ink-3</code> (≈5.7:1) for that reason.</p>
     <div class="swatches">
       <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-meta"><span class="swatch-name">--ink</span><span class="swatch-hex">#1a1714</span></div></div>
       <div class="swatch"><div class="swatch-color" style="background:var(--ink-2)"></div><div class="swatch-meta"><span class="swatch-name">--ink-2</span><span class="swatch-hex">#3d362d</span></div></div>
@@ -370,6 +369,15 @@
       <tr><td><code>--status-today-fg/bg</code></td><td>clay-fg / clay-bg</td><td>Due today</td></tr>
       <tr><td><code>--status-later-fg/bg</code></td><td>slate-fg / slate-bg</td><td>Due later</td></tr>
       <tr><td><code>--status-done-fg/bg</code></td><td>moss-fg / moss-bg</td><td>Completed</td></tr>
+    </table>
+
+    <h3>Health ring colors</h3>
+    <p class="quiet">The Home rings + daily-brief hero/stat rings map each metric to an earth-palette <code>fg</code> token (literal hex in JS, since SVG <code>stroke</code> can't read CSS vars). Don't introduce bespoke ring hex.</p>
+    <table class="tokens">
+      <tr><th>Metric</th><th>Token (fg)</th><th>Hex</th></tr>
+      <tr><td>Sleep</td><td><code>--plum-fg</code></td><td>#6b4862</td></tr>
+      <tr><td>Readiness / recovery</td><td><code>--ochre-fg</code></td><td>#a37826</td></tr>
+      <tr><td>Activity / strain</td><td><code>--sage-fg</code></td><td>#5d7048</td></tr>
     </table>
   </section>
 
@@ -480,13 +488,12 @@
   <!-- BRAND:section:elevation -->
   <section id="elevation">
     <h2>Elevation</h2>
-    <p>Shadows are reserved for actual elevation: cards lift slightly, modals/popovers more, the FAB sits highest. <strong>Buttons and chips do not have shadows</strong> — they're flat surfaces.</p>
+    <p>Shadows are reserved for actual elevation: cards lift slightly, modals/popovers more. <strong>Buttons and chips do not have shadows</strong> — they're flat surfaces. <strong>The FAB and the floating action buttons (scratch / stats / chat / back-to-top) are flat too</strong> — they carry only the subtle <code>--shadow-card</code> (same as resting cards), not a heavier or colored glow. The earlier guava-tinted <code>--shadow-fab</code> token was removed 2026-05-28 so the red FAB reads as flat as the white chat icon next to it.</p>
     <table class="tokens">
       <tr><th>Token</th><th>Use for</th></tr>
-      <tr><td><code>--shadow-card</code></td><td>All resting cards</td></tr>
+      <tr><td><code>--shadow-card</code></td><td>All resting cards <em>and</em> the FAB / floating action buttons</td></tr>
       <tr><td><code>--shadow-card-hover</code></td><td>Card hover state</td></tr>
       <tr><td><code>--shadow-raised</code></td><td>Modals, popovers, drawer sheets</td></tr>
-      <tr><td><code>--shadow-fab</code></td><td>FAB (primary floating action)</td></tr>
       <tr><td><code>--shadow-focus</code></td><td>Focus ring (3px guava-700 / 22% alpha)</td></tr>
     </table>
     <div class="example">
@@ -494,7 +501,7 @@
         <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-md);padding:14px 18px;box-shadow:var(--shadow-card);font-size:12px;color:var(--ink-3)">card</div>
         <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-md);padding:14px 18px;box-shadow:var(--shadow-card-hover);font-size:12px;color:var(--ink-3)">card-hover</div>
         <div style="background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:14px 18px;box-shadow:var(--shadow-raised);font-size:12px;color:var(--ink-3)">raised</div>
-        <div style="background:var(--guava-700);color:#fff;border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-fab);font-size:22px;font-weight:700">+</div>
+        <div style="background:var(--guava-700);color:#fff;border-radius:var(--r-lg);width:48px;height:48px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-card);font-size:22px;font-weight:700">+</div>
       </div>
     </div>
   </section>

@@ -1,3 +1,10 @@
+[build]
+  # Strips the committed dev mock-mode <script> block from app.html on
+  # production deploys only (Gate 3). No-op on preview/branch/local builds.
+  # Publish dir stays the repo root (Netlify default when unset); functions
+  # are still auto-detected from netlify/functions.
+  command = "node scripts/inject-dev-mode.mjs"
+
 [build.environment]
   # SUPABASE_URL is the public project endpoint and is intentionally
   # hardcoded in beta/src/01-core.js — every browser request needs it.

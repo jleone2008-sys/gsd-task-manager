@@ -1150,7 +1150,7 @@ function ensureJournalStyles() {
     .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
     .j-card-habit-pct { color: var(--guava-700); font-weight: 700; flex-shrink: 0; }
 
-    .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-raised); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background var(--dur-fast), opacity var(--dur-quick); }
+    .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-card); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background var(--dur-fast), opacity var(--dur-quick); }
     .j-back-to-top.is-visible { display: flex; }
     .j-back-to-top:hover { background: var(--guava-800); }
     .j-back-to-top svg { width: 18px; height: 18px; }
@@ -1236,7 +1236,7 @@ function ensureJournalStyles() {
       font-family: inherit;
       cursor: pointer;
       appearance: none; -webkit-appearance: none; -moz-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6559' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6559' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 12px center;
     }
@@ -1543,12 +1543,12 @@ function renderDayCard(dateStr) {
   const isStartWriting = !hasManual && isToday;
   const addPhotoHtml = `
         <button class="j-card-edit j-card-add-photo" data-jcard-add-photo="${dateStr}" title="Add photos" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <span class="j-card-edit-label">Add photos</span>
         </button>`;
   const footerEditHtml = isStartWriting ? '' : `
         <button class="j-card-edit" data-jcard-edit="${dateStr}" title="Edit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
           <span class="j-card-edit-label">Edit</span>
         </button>`;
 
@@ -1724,12 +1724,12 @@ function renderJournalSearchRow() {
   return `
     <div class="j-search-row" id="jSearchRow">
       <div class="j-search-bar">
-        <svg class="j-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg class="j-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="j-search-input" id="jSearchInput" placeholder="Search entries, events, tasks…" value="${escapeHtml(journalState.searchQuery)}" />
         <div id="jSearchResults"></div>
       </div>
       <button class="j-action-btn${calOn}" id="jCalToggle" title="Choose date" aria-pressed="${journalState.calendarOpen}" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       </button>
       <div id="jCalPopSlot" class="j-cal-pop-slot" style="${journalState.calendarOpen ? '' : 'display:none'}">${renderJournalCalendar()}</div>
     </div>`;
@@ -2343,7 +2343,7 @@ async function renderJournal() {
       <input type="file" id="jCardCameraInput" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0;" />
     </div>
     <button class="j-back-to-top" id="jBackToTop" type="button" title="Back to top" aria-label="Back to top">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
     </button>`;
 
   setupScrollObserver();
@@ -2753,11 +2753,11 @@ function openPhotoSourceModal() {
       <div class="j-photo-modal-card">
         <div class="j-photo-modal-h">Add photo</div>
         <button class="j-photo-modal-opt" data-jphoto-source="camera">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Take photo</span><span class="j-photo-modal-opt-desc">Use your camera</span></div>
         </button>
         <button class="j-photo-modal-opt" data-jphoto-source="device">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <div class="j-photo-modal-opt-text"><span class="j-photo-modal-opt-name">Upload from device</span><span class="j-photo-modal-opt-desc">Pick one or more files</span></div>
         </button>
         <button class="j-photo-modal-cancel" data-jphoto-cancel="1">Cancel</button>

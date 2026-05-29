@@ -65,7 +65,6 @@
     --shadow-card:       0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
     --shadow-card-hover: 0 1px 0 rgba(20,15,10,0.04), 0 2px 4px rgba(20,15,10,0.08);
     --shadow-raised:     0 2px 4px rgba(20,15,10,0.06), 0 8px 20px rgba(20,15,10,0.08);
-    --shadow-fab:        0 4px 10px rgba(184,45,59,0.28), 0 2px 4px rgba(184,45,59,0.16);
     --shadow-focus:      0 0 0 3px rgba(184,45,59,0.22);
 
     /* ── Overlay scrim (modal backdrop) ─────────────────────────
@@ -246,7 +245,7 @@
     font-weight: 600;
   }
   /* Legacy icons are stroke-only (no filled shapes) — keep fill: none on active. */
-  .sidebar-btn.is-active svg { fill: none; stroke: var(--guava-700); stroke-width: 2.2; }
+  .sidebar-btn.is-active svg { fill: none; stroke: var(--guava-700); stroke-width: 1.8; }
   .sidebar-btn .count {
     margin-left: auto;
     font-size: var(--fs-meta); font-weight: 600;
@@ -565,7 +564,7 @@
   .tag-btn {
     height: 28px;
     padding: 0 14px;
-    border-radius: 999px;
+    border-radius: var(--r-md);
     border: 1px solid var(--edge-strong);
     background: var(--surface);
     color: var(--ink-3);
@@ -1234,7 +1233,7 @@
     background: var(--guava-700);
     color: #fff;
     border: none;
-    box-shadow: var(--shadow-fab);
+    box-shadow: var(--shadow-card);
     cursor: pointer;
     display: grid; place-items: center;
     transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
@@ -1313,7 +1312,7 @@
   .mobile-nav-btn.active svg {
     fill: none;
     stroke: var(--guava-700);
-    stroke-width: 2.2;
+    stroke-width: 1.8;
   }
   /* Native-style badge — nestled in the icon's top-right corner.
      The icon is 22px wide, centered horizontally; anchoring the badge to
@@ -3727,7 +3726,7 @@
   .text-body    { font-size: var(--fs-body);    font-weight: var(--fw-regular);  line-height: 1.55; color: var(--ink); }
   .text-body-sm { font-size: var(--fs-search);  font-weight: var(--fw-regular);  line-height: 1.5;  color: var(--ink-2); }
   .text-meta    { font-size: var(--fs-meta);    font-weight: var(--fw-medium);   line-height: 1.45; color: var(--ink-3); }
-  .text-label   { font-size: var(--fs-label);   font-weight: var(--fw-bold);     line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+  .text-label   { font-size: var(--fs-label);   font-weight: var(--fw-bold);     line-height: 1.2;  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
   .text-numeric { font-variant-numeric: tabular-nums; }
 
   /* ── Buttons (Variation A \xe2\x80\x94 Refined Brand) ────────────────────

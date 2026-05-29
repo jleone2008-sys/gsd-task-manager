@@ -15,7 +15,10 @@
      4) Last 7 Days — per-day scores + mood emoji + average mood
 ═══════════════════════════════════════════════════════════════ */
 
-const HOME_RING_COLORS = { sleep: '#8a6a84', readiness: '#bf9c47', activity: '#7a8a59' };
+// Brand earth-palette tokens (mirrors app.css :root): sleep→plum-fg,
+// readiness→ochre-fg, activity→sage-fg. Literal hex because SVG stroke/
+// inline-color attributes can't resolve CSS vars.
+const HOME_RING_COLORS = { sleep: '#6b4862', readiness: '#a37826', activity: '#5d7048' };
 // Mood scale: 1=Bad ... 5=Great. Array index N → mood value N+1.
 // (Inverted from the original 1=best convention via the
 // invert_mood_scale.sql migration to match standard 1-5 ratings.)
@@ -585,7 +588,7 @@ function homeTaskCardHTML(t) {
         </div>
         ${dueHtml}
         <button class="check checkbox" data-task-action="toggle-done" aria-label="${t.done ? 'Reopen' : 'Complete'}">
-          <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
       </div>
     </div></div>`;
@@ -622,7 +625,7 @@ function homeTasksInnerHTML() {
   const doneHtml = doneToday.length
     ? `<div class="home-done-toggle" data-home-done-toggle role="button" tabindex="0">
         <span class="home-done-label">FINISHED TODAY <span class="home-done-pill">${doneToday.length}</span></span>
-        <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="home-tasks-done" id="homeTasksDone" hidden>${doneToday.map(t => homeTaskCardHTML(t)).join('')}</div>`
     : '';
@@ -656,7 +659,7 @@ function homeHabitsInnerHTML() {
         <span class="home-item-title">${esc(h.name || '')}</span>
         ${streakHtml}
         <button class="home-check${isDone ? ' checked' : ''}" data-habit-action="toggle-complete" data-habit-id="${h.id}" data-habit-date="${today}" title="${isDone ? 'Undo' : 'Mark done'}">
-          <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          <svg width="9" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
       </div>`;
   };
@@ -675,7 +678,7 @@ function homeHabitsInnerHTML() {
   const otherHtml = other.length
     ? `<div class="home-done-toggle" data-home-habits-toggle role="button" tabindex="0">
         <span class="home-done-label">OTHER HABITS <span class="home-done-pill">${other.length}</span></span>
-        <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg class="home-done-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="home-habits-other" id="homeHabitsOther" hidden>${other.map(rowHTML).join('')}</div>`
     : '';
