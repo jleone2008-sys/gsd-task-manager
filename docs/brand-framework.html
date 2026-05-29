@@ -21,17 +21,17 @@
 <style>
   /* Tokens mirrored from app.css :root. Resync when app.css tokens move. */
   :root {
-    --bg:          #f6f2ea;
-    --surface:     #ffffff;
-    --surface-2:   #ede8dc;
-    --edge:        #ddd6c7;
-    --edge-strong: #c9c1ad;
+    --bg:          #fbf6ee;
+    --surface:     #fffdfa;
+    --surface-2:   #f5ece0;
+    --edge:        #ecdfce;
+    --edge-strong: #d8c6ad;
     --row-hover-bg: #fcfaf5;
-    --ink:   #1a1714;
-    --ink-2: #3d362d;
-    --ink-3: #6e6559;
-    --ink-4: #a8a094;
-    --ink-5: #cac3b6;
+    --ink:   #1c1410;
+    --ink-2: #4a3b30;
+    --ink-3: #7a6a5a;
+    --ink-4: #b3a594;
+    --ink-5: #c9bca8;
     --guava-900: #6b1320;
     --guava-800: #8a1d2a;
     --guava-700: #b82d3b;
@@ -40,13 +40,13 @@
     --guava-200: #fad4d7;
     --guava-100: #fde8ea;
     --guava-50:  #fef5f6;
-    --sage-fg:  #5d7048;  --sage-bg:  #e7ecdb;
-    --sky-fg:   #3d5a7a;  --sky-bg:   #dce7f2;
-    --clay-fg:  #a86247;  --clay-bg:  #f1dfd4;
-    --moss-fg:  #5e6d3f;  --moss-bg:  #e2e6d3;
-    --slate-fg: #5a6673;  --slate-bg: #dee2e7;
-    --ochre-fg: #a37826;  --ochre-bg: #f0e4c9;
-    --plum-fg:  #6b4862;  --plum-bg:  #e5dae2;
+    --sage-fg:  #4f8a47;  --sage-bg:  #e2efd9;
+    --sky-fg:   #3a76a6;  --sky-bg:   #d9e8f4;
+    --clay-fg:  #cf6a2c;  --clay-bg:  #f7e3d0;
+    --moss-fg:  #469a55;  --moss-bg:  #dcefd6;
+    --slate-fg: #54719f;  --slate-bg: #e0e6f0;
+    --ochre-fg: #bf8718;  --ochre-bg: #f6e7c6;
+    --plum-fg:  #744a93;  --plum-bg:  #e8def0;
     --r-sm: 3px;  --r-md: 4px;  --r-lg: 10px;
     --shadow-card:       0 1px 0 rgba(20,15,10,0.03), 0 1px 2px rgba(20,15,10,0.06);
     --shadow-card-hover: 0 1px 0 rgba(20,15,10,0.04), 0 2px 4px rgba(20,15,10,0.08);
@@ -310,21 +310,21 @@
     <h3>Ground (background, surfaces, edges)</h3>
     <p class="quiet">The paper-weight palette. Everything else sits on top of these.</p>
     <div class="swatches">
-      <div class="swatch"><div class="swatch-color" style="background:var(--bg)"></div><div class="swatch-meta"><span class="swatch-name">--bg</span><span class="swatch-hex">#f6f2ea</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--surface);border-bottom:1px solid var(--edge)"></div><div class="swatch-meta"><span class="swatch-name">--surface</span><span class="swatch-hex">#ffffff</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--surface-2)"></div><div class="swatch-meta"><span class="swatch-name">--surface-2</span><span class="swatch-hex">#ede8dc</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--edge)"></div><div class="swatch-meta"><span class="swatch-name">--edge</span><span class="swatch-hex">#ddd6c7</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--edge-strong)"></div><div class="swatch-meta"><span class="swatch-name">--edge-strong</span><span class="swatch-hex">#c9c1ad</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--bg)"></div><div class="swatch-meta"><span class="swatch-name">--bg</span><span class="swatch-hex">#fbf6ee</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface);border-bottom:1px solid var(--edge)"></div><div class="swatch-meta"><span class="swatch-name">--surface</span><span class="swatch-hex">#fffdfa</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--surface-2)"></div><div class="swatch-meta"><span class="swatch-name">--surface-2</span><span class="swatch-hex">#f5ece0</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--edge)"></div><div class="swatch-meta"><span class="swatch-name">--edge</span><span class="swatch-hex">#ecdfce</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--edge-strong)"></div><div class="swatch-meta"><span class="swatch-name">--edge-strong</span><span class="swatch-hex">#d8c6ad</span></div></div>
     </div>
 
     <h3>Ink (text)</h3>
     <p class="quiet">5-step text scale. Use <code>--ink</code> for primary body, <code>--ink-3</code> for captions/meta, <code>--ink-4</code> for muted/disabled <em>decorative</em> text only. <strong>Don't use <code>--ink-4</code> for content-bearing text</strong> (e.g. uppercase eyebrow labels) — at ≈2.6:1 on white it fails WCAG AA. The <code>.text-label</code> role uses <code>--ink-3</code> (≈5.7:1) for that reason.</p>
     <div class="swatches">
-      <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-meta"><span class="swatch-name">--ink</span><span class="swatch-hex">#1a1714</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--ink-2)"></div><div class="swatch-meta"><span class="swatch-name">--ink-2</span><span class="swatch-hex">#3d362d</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--ink-3)"></div><div class="swatch-meta"><span class="swatch-name">--ink-3</span><span class="swatch-hex">#6e6559</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--ink-4)"></div><div class="swatch-meta"><span class="swatch-name">--ink-4</span><span class="swatch-hex">#a8a094</span></div></div>
-      <div class="swatch"><div class="swatch-color" style="background:var(--ink-5)"></div><div class="swatch-meta"><span class="swatch-name">--ink-5</span><span class="swatch-hex">#cac3b6</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink)"></div><div class="swatch-meta"><span class="swatch-name">--ink</span><span class="swatch-hex">#1c1410</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink-2)"></div><div class="swatch-meta"><span class="swatch-name">--ink-2</span><span class="swatch-hex">#4a3b30</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink-3)"></div><div class="swatch-meta"><span class="swatch-name">--ink-3</span><span class="swatch-hex">#7a6a5a</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink-4)"></div><div class="swatch-meta"><span class="swatch-name">--ink-4</span><span class="swatch-hex">#b3a594</span></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--ink-5)"></div><div class="swatch-meta"><span class="swatch-name">--ink-5</span><span class="swatch-hex">#c9bca8</span></div></div>
     </div>
 
     <h3>Guava (single accent)</h3>
@@ -372,12 +372,12 @@
     </table>
 
     <h3>Health ring colors</h3>
-    <p class="quiet">The Home rings + daily-brief hero/stat rings map each metric to an earth-palette <code>fg</code> token (literal hex in JS, since SVG <code>stroke</code> can't read CSS vars). Don't introduce bespoke ring hex.</p>
+    <p class="quiet">The Home rings + daily-brief hero/stat rings use a dedicated vibrant stroke set (literal hex in JS — <code>HOME_RING_COLORS</code> in <code>04-home.js</code>, <code>HERO_RING_COLORS</code> in <code>05-brief.js</code>). Rings are <em>strokes</em>, not text, so they run brighter than the same-family chip tokens (which must stay dark enough to read). Keep ring hex in those two constants only — don't scatter new ones.</p>
     <table class="tokens">
-      <tr><th>Metric</th><th>Token (fg)</th><th>Hex</th></tr>
-      <tr><td>Sleep</td><td><code>--plum-fg</code></td><td>#6b4862</td></tr>
-      <tr><td>Readiness / recovery</td><td><code>--ochre-fg</code></td><td>#a37826</td></tr>
-      <tr><td>Activity / strain</td><td><code>--sage-fg</code></td><td>#5d7048</td></tr>
+      <tr><th>Metric</th><th>Family</th><th>Ring hex</th></tr>
+      <tr><td>Sleep</td><td>violet (plum family)</td><td>#7e5fc0</td></tr>
+      <tr><td>Readiness / recovery</td><td>amber (ochre family)</td><td>#dd9412</td></tr>
+      <tr><td>Activity / strain</td><td>green (moss/sage family)</td><td>#46a85a</td></tr>
     </table>
   </section>
 

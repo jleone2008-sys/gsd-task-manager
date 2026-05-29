@@ -15,10 +15,11 @@
      4) Last 7 Days — per-day scores + mood emoji + average mood
 ═══════════════════════════════════════════════════════════════ */
 
-// Brand earth-palette tokens (mirrors app.css :root): sleep→plum-fg,
-// readiness→ochre-fg, activity→sage-fg. Literal hex because SVG stroke/
-// inline-color attributes can't resolve CSS vars.
-const HOME_RING_COLORS = { sleep: '#6b4862', readiness: '#a37826', activity: '#5d7048' };
+// Vibrant ring strokes (the "B" palette). Rings are strokes, not text, so they
+// use brighter values than the earth chip tokens (which must stay dark enough
+// to read as chip text): sleep→violet, readiness→amber, activity→green. Literal
+// hex because SVG stroke/inline-color attributes can't resolve CSS vars.
+const HOME_RING_COLORS = { sleep: '#7e5fc0', readiness: '#dd9412', activity: '#46a85a' };
 // Mood scale: 1=Bad ... 5=Great. Array index N → mood value N+1.
 // (Inverted from the original 1=best convention via the
 // invert_mood_scale.sql migration to match standard 1-5 ratings.)

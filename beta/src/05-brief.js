@@ -89,17 +89,17 @@ function playIconSVG(name) {
 
 /* ── Hero ring SVG (120px, score+label+delta inside) ──────── */
 
-// Brand earth-palette tokens (mirrors app.css :root): sleep→plum-fg,
-// readiness→ochre-fg, activity→sage-fg. Literal hex because the SVG stroke
-// attribute can't resolve CSS vars.
+// Vibrant ring strokes (the "B" palette). Rings are strokes, not text, so they
+// use brighter values than the earth chip tokens: sleep→violet, readiness→amber,
+// activity→green. Literal hex because the SVG stroke attribute can't resolve vars.
 const HERO_RING_COLORS = {
-  sleep_score:     '#6b4862',
-  readiness_score: '#a37826',
-  activity_score:  '#5d7048',
+  sleep_score:     '#7e5fc0',
+  readiness_score: '#dd9412',
+  activity_score:  '#46a85a',
 };
 
 function briefHeroRingSVG(score, label, delta, key) {
-  const color = HERO_RING_COLORS[key] || '#6b4862';
+  const color = HERO_RING_COLORS[key] || '#7e5fc0';
   const r = 52;
   const c = 2 * Math.PI * r;
   const pct = score == null ? 0 : Math.max(0, Math.min(100, score)) / 100;
