@@ -66,13 +66,6 @@ const { MOOD_LABELS, MOOD_SCALE_NOTE, moodLabel } = require('./lib/mood-scale');
 const { getWeather } = require('./lib/weather');
 const { buildClaimSet, buildSystemPromptV2, validateAgainstClaims } = require('./lib/brief-claims');
 
-// Brief reformulation — LIVE by default. The brief is composed from a verified
-// day-stamped claim set (lib/brief-claims) in the friendly personal-helper
-// voice, instead of the raw-context-dump prompt. Kept env-disableable as a
-// no-deploy kill-switch: set BRIEF_CLAIMSET=0 (or "false") to fall back to the
-// legacy prompt without a redeploy.
-const USE_CLAIMSET = process.env.BRIEF_CLAIMSET !== '0' && process.env.BRIEF_CLAIMSET !== 'false';
-
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
 // response is rejected and the deterministic fallback is stored instead.
@@ -873,8 +866,8 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     pending_anomalies: (pendingAnomalies || []),
     // Internal flag — distinguishes partial-fill staleness ("activity
     // present, sleep null — open the Oura app") from wall-clock staleness
-    // ("nothing synced in 24h — tap refresh"). Stripped from the Claude
-    // payload in callClaude alongside _oura_stale.
+    // ("nothing synced in 24h — tap refresh"). Used server-side only; never
+    // sent to Claude (the brief is composed from the claim set, not raw ctx).
     _oura_partial_sleep: ouraPartialSleep,
     // Phase 10 — internal calibration data. Claude leans into signatures
     // with positive delta_when_followed and away from ones with negative
@@ -948,25 +941,15 @@ async function callClaude(ctx, mode, anthropicKey) {
   // Cold-start gate
   const n_sleep   = ctx.baselines_30d?.n_days_sleep || 0;
   const n_mood    = ctx.baselines_30d?.n_days_mood || 0;
-  const baselineN = Math.max(n_sleep, n_mood);
-  const coldStart = baselineN < 14;
+  const coldStart = Math.max(n_sleep, n_mood) < 14;
 
-  // Claim-set path (flag-gated): compose from a verified, day-stamped fact set
-  // in the personal-helper voice. Legacy path: the raw-context-dump prompt.
-  const claims = USE_CLAIMSET ? buildClaimSet(mode, ctx) : null;
-  const systemPrompt = USE_CLAIMSET
-    ? buildSystemPromptV2(mode, claims, { coldStart })
-    : buildSystemPrompt(mode, ctx, { coldStart, baselineN });
-
-  // Strip internal flags before sending to Claude
-  const { _oura_stale, _oura_partial_sleep, _claims, ...payload } = ctx;
-
-  // In claim-set mode the model composes ONLY from the claims (the claim set
-  // already encodes every fact, correctly dated), so we send a tiny meta block
-  // instead of the full raw context dump.
-  const userContent = USE_CLAIMSET
-    ? `Write the ${mode} brief from the claim set in your instructions. Call record_daily_brief once.\n\n${JSON.stringify({ mode, cold_start: coldStart, hero_hint: ctx.hero_hint || null }, null, 0)}`
-    : `Generate the ${mode} coach brief using record_daily_brief.\n\n${JSON.stringify(payload, null, 0)}`;
+  // The brief is composed from a verified, day-stamped claim set — the only
+  // facts the model may state (see lib/brief-claims.js). The deterministic
+  // blocks (hero ring, stats, recap, weather) are still built server-side from
+  // ctx; the model only writes the prose, drawing solely from these claims.
+  const claims = buildClaimSet(mode, ctx);
+  const systemPrompt = buildSystemPromptV2(mode, claims, { coldStart });
+  const userContent = `Write the ${mode} brief from the claim set in your instructions. Call record_daily_brief once.\n\n${JSON.stringify({ mode, cold_start: coldStart, hero_hint: ctx.hero_hint || null }, null, 0)}`;
 
   const body = {
     model:      model,
@@ -1001,14 +984,12 @@ async function callClaude(ctx, mode, anthropicKey) {
   // success, null on rejection.
   const raw = toolUseBlock.input || {};
 
-  // Claim-set guard: reject prose that cites a non-existent claim or a number
-  // not present in any claim it used. Catches the misattribution class hard.
-  if (USE_CLAIMSET && claims) {
-    const v = validateAgainstClaims(raw, claims);
-    if (!v.ok) {
-      console.warn('daily-brief: claim validation failed, substituting fallback:', v.reason);
-      return buildFallback({ reason: `claim_validation:${v.reason}`, context: ctx, mode });
-    }
+  // Claim guard: reject prose that cites a non-existent claim or a number not
+  // present in any claim it used. Catches the misattribution class hard.
+  const v = validateAgainstClaims(raw, claims);
+  if (!v.ok) {
+    console.warn('daily-brief: claim validation failed, substituting fallback:', v.reason);
+    return buildFallback({ reason: `claim_validation:${v.reason}`, context: ctx, mode });
   }
 
   const normalized = normalizeStructured(raw, mode, ctx);
@@ -1034,68 +1015,9 @@ async function callClaude(ctx, mode, anthropicKey) {
     model:             j.model || model,
     prompt_tokens:     j.usage?.input_tokens || null,
     completion_tokens: j.usage?.output_tokens || null,
-    input_snapshot:    payload,
+    input_snapshot:    { claims, mode, cold_start: coldStart },
     fallback_reason:   null,
   };
-}
-
-function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
-  const hint = ctx.hero_hint;
-  const lines = [
-    'You are the user\'s chief-of-staff briefing partner. Direct, verb-first, no filler. No emojis. No medical claims.',
-    '',
-    'YOUR JOB IS NARROW. You only write text-only synthesis. The server builds all factual blocks (weather chip, hero ring numbers, stats list, play rows of events/tasks/habits/sleep). You MUST NOT produce numbers, counts, event titles, or task titles — anything factual.',
-    '',
-    'FIELDS YOU PRODUCE:',
-    'headline — ONE sentence ≤30 chars. Verb-first call. Examples: "Recovery day.", "Push day.", "Light day.", "Hold the line.", "Catch-up morning.". NEVER prefix with a greeting ("Your X Brief", "Good morning") — the card header shows that.',
-    'subhead — ONE or TWO sentences, ≤180 chars total. Sentence 1 states the PLAY (the action). Sentence 2 (include it whenever you have a real reason) states the WHY, connecting at least two signals into one thread — e.g. a cause + a trend, or last night + yesterday\'s behavior. Do NOT pad to two sentences when you have nothing substantive to add; a sharp one-sentence play beats a stretched two-sentence one. Examples: "Pull back on intensity and protect tonight\'s sleep. Your HRV slipped a second morning and Tuesday\'s late night is still clearing." / "Front-load the hardest task while focus is high; the afternoon meeting block will eat your deep-work window."',
-    'insight — OPTIONAL single sentence ≤140 chars surfacing ONE learned pattern about THIS user, rendered as a quiet line under the subhead. SOURCES, in priority: (1) recent_patterns — the weekly analysis already wrote these in plain language; paraphrase one, do not quote a number from it. (2) A response_profile/efficacy entry whose direction is "helps" AND confidence is "high" — phrase the takeaway, never the signature name or any delta value. Hedge it ("has lined up with", "tends to", "lately"); never state it as proven fact. MODE: morning = forward ("worth protecting tonight\'s wind-down"); evening = reflective ("tonight echoes the evenings where X paid off"). HARD RULES: at most ONE pattern; no numbers; no medical claims; never name an internal signature; never invent a pattern. OMIT the field entirely (return null / leave empty) when there is no strong, high-confidence pattern — most days, especially early on, will have no insight, and that is correct. A fabricated or weak insight is worse than none.',
-    'evidence_pills — 0-3 short context tags ≤4 words each. Pills must ADD context the stats row CAN\'T show. The stats list already shows things like "elevated", "well below norm", "X steps" — pills that just paraphrase those notes are USELESS and will be cut. Good pills surface: CAUSES ("Late night Friday", "Workout yesterday"), STREAKS ("2nd low HRV", "3rd recovery dip"), COUNTERFACTUALS ("Light load worked", "Caffeine helped"), or PATTERNS ("Recovers slow Mondays"). DO NOT name specific events, tasks, or counts. Skip entirely if you have nothing the stats list isn\'t already saying.',
-    'hero_metric_key — OPTIONAL override of the server\'s pick for the hero ring. Server hint: ' + (hint || 'none') + '. Set null to accept the server pick; or pick one of "sleep_score", "readiness_score", "activity_score" if a different metric is the story.',
-    // Bedtime is fully formulaic now (server decides between 9:30 / 10:00 /
-    // 10:30 PM based on recovery + body temp + sickness tags). Do NOT
-    // produce sleep_target_time — the field is gone from the tool schema.
-    'confidence — "high" if baselines have n>=30 AND last night\'s data is complete; "medium" if n=14-29 or one signal missing; "low" if n<14 or last night missing.',
-    '',
-    'BANNED — using any of these triggers a fallback: "worth noting", "fun evening", "the week\'s been rich", "actually land", "no weather to report", "your body\'s still", any percentile/median/IQR/p25/p50/p75 reference, any "ms"/"milliseconds" reference. Also: never invent numbers or names — the data you can see (recovery, activity, baselines, weeks-rolling) is for your reasoning only; you must not echo specific numbers/titles in headline/subhead/pills.',
-    '',
-    'CONTEXT YOU SEE (for reasoning, not for echoing):',
-    '- yesterday.recovery = LAST NIGHT\'s sleep that ended this morning (sleep_score, readiness_score, HRV, resting_hr).',
-    '- yesterday.activity = YESTERDAY\'s day (activity_score, steps, stress).',
-    '- today_plan.workout.planned = today\'s prescribed Train session from the user\'s active plan. Use the day name in the headline when it\'s a lift/cardio day ("Push day.", "Cardio today."). Skip in headline on rest days.',
-    '- today_plan.workout.last_same_day = the user\'s most recent prior session matching today\'s day_name. Use for streak / consistency framing only — DO NOT echo specific weights or reps in headline/subhead/pills.',
-    '- today_plan.workout.logged_today = a session already in the books for today (evening mode or same-day refire). When present, frame the brief around what got done, not what\'s prescribed.',
-    '- today_plan.workout.logged_today_all / today_recap.train_sessions_today = EVERY session logged today. The user can log more than one (e.g. a bonus walk in the afternoon AND the main lift in the evening); logged_today is just the primary one (a lift outranks a bonus/cardio for the recap row). CRITICAL: never say a workout/lift/cardio was "skipped", "missed", or didn\'t happen if a session of that type appears in logged_today_all — check the full list before any "skipped" framing.',
-    '- yesterday.workout = yesterday\'s PRIMARY Train session (if any); yesterday.workout_all = every session logged yesterday (may be multiple). Useful for "Lifted yesterday" pills — and, like logged_today_all, never call a type skipped if it appears in workout_all.',
-    '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
-    '- recent_patterns = the strongest patterns the weekly analysis has discovered for this user (label + plain-language description, already user-facing). This is the PRIMARY source for the optional insight line — paraphrase one when it connects to today, hedged and number-free. Empty during cold-start; then just omit insight. Do NOT cram a pattern into the headline.',
-    '- health_labs = the user\'s most recent bloodwork values, ONE per test_name, within the last 90 days. health_labs.age_days = how old the snapshot is. Use these as REASONING context for the brief\'s framing — e.g. if Lp(a) is flagged HIGH and today is a recovery day, you can frame the play with awareness ("CV-friendly recovery day" in subhead) without quoting numbers. NEVER echo specific lab values in headline/subhead — the server has no UI surface for them yet and quoting them out of context risks medical-claim territory. When you reference labs in an evidence_pill, frame freshness explicitly ("Bloodwork 2 wks ago" not "Bloodwork shows X"). Skip entirely if health_labs is null or all flags are normal — labs without an anomaly aren\'t worth surfacing.',
-    '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
-    `- mood values arrive as labels (Bad/Low/Okay/Good/Great). ${MOOD_SCALE_NOTE}`,
-    '- yesterday.mood_checkins / today_recap.mood_checkins = individual mood entries with optional user reflection notes (e.g. "rough morning, slept badly"). When a note carries a clear theme that connects to other data (low HRV + "anxious meeting day"), reference it in subhead/pills using neutral paraphrase — NEVER quote the user\'s words verbatim back at them in the headline. Mood notes alone aren\'t enough to override the wearable signal but they sharpen the "why" framing.',
-    '- yesterday.habits.done_names_yesterday = specific habits the user completed YESTERDAY (e.g. "Reading / Podcast", "10k steps"). The field name carries the time window explicitly — these are NOT today\'s habits. Use ONLY when there\'s a clean tie-in to the day\'s framing (reading streak + better sleep, missed workout + low activity). Reference by name in subhead/pills, never the headline. If no meaningful connection, ignore — listing habit names alone is noise.',
-    // Strict guards — these explicitly forbid the "habits sealed a clean
-    // day" / "full habits" / "all habits done" hallucinations we kept
-    // hitting. The recap's deterministic count is the source of truth;
-    // Claude must not contradict it.
-    '- NEVER claim "full habits", "all habits sealed", "closed all habits", "every habit done", or equivalent unless yesterday.habits.done >= yesterday.habits.due. If you can\'t verify that from the data, omit any habit-completion claim entirely.',
-    '- EVENING MODE specifically: the recap\'s LEFT column ("Today") shows yesterday\'s habit count as a placeholder — today\'s count is not finalized until after midnight. Do NOT write headline/subhead/pills claiming today\'s habits sealed, closed, or completed. You do not know today\'s habit outcome at evening-brief time.',
-    '- TRAINING ATTRIBUTION (both modes, critical): today\'s logged training is ONLY today_recap.train_sessions_today / today_plan.workout.logged_today_all. yesterday.workout / yesterday.workout_all are a PRIOR day — NEVER describe them as part of today. When recapping the day (evening) or framing it (morning), if today\'s session list contains no lift, do NOT say the user lifted/trained-hard/"clean lift" today, even when yesterday.workout was a lift. A bonus walk today + a lift yesterday means TODAY was a bonus walk; the lift belongs to yesterday and may only be referenced as yesterday ("lifted yesterday", a streak pill). Match the verb tense and day to the session\'s actual date.',
-    '- yesterday.sleep_intent = the user\'s self-reported bedtime + Oura\'s detected sleep onset + the gap in minutes between them (settle_minutes). Present only on morning briefs and only when both the tap and Oura\'s data exist. Use settle_minutes as the framing signal: <10 = fast, 10-25 = normal (no callout), 25+ = long settle. Surface in subhead/pills ONLY when settle_minutes >= 25 AND the night also had poor sleep_score or low recovery — combined signal that the user was trying to wind down but the body wasn\'t cooperating. Phrase as "took ~30 min to fall asleep" or "long settle time" — never quote the exact intent_local_time back at the user; they tapped it, they don\'t need to read it again. Skip entirely when sleep_intent is null or settle_minutes is small.',
-    coldStart
-      ? `COLD-START: only ${baselineN} days of baseline data. Skip evidence_pills entirely. Set confidence="low". Keep headline factual, no comparative claims.`
-      : '',
-    // Phase 10 — efficacy profile addendum. Only added when there's at
-    // least one signature with the minimum sample size. Tells Claude
-    // which of the system's past recommendations have actually moved
-    // the target metric for THIS user — so the brief reinforces
-    // patterns the data shows are working and de-emphasizes ones that
-    // aren't. Never surfaced to the user in copy.
-    (Array.isArray(ctx.efficacy_profile) && ctx.efficacy_profile.length > 0)
-      ? 'RESPONSE PROFILE: efficacy_profile lists the system\'s past recommendation signatures with measured outcomes for this user — adherence, and mean delta of the source_metric when followed vs ignored, plus a number-free "direction" ("helps" / "neutral_or_hurts") and a confidence level. Use it two ways: (a) INTERNAL CALIBRATION — lean headline/subhead framing toward types that "help", away from ones that don\'t; (b) INSIGHT LINE — you MAY surface ONE entry whose direction is "helps" AND confidence is "high", as a hedged, plain-language takeaway in the insight field (e.g. "earlier bedtimes have lined up with your better recoveries"). NEVER output a delta number, an adherence value, or the raw signature string; never present it as proven. Prefer recent_patterns over efficacy_profile for the insight line when both exist.'
-      : '',
-  ].filter(Boolean);
-  return lines.join('\n');
 }
 
 function briefToolSchema(mode) {
@@ -1130,7 +1052,7 @@ function briefToolSchema(mode) {
     used_claim_ids: {
       type: 'array',
       items: { type: 'string' },
-      description: 'Claim-set mode only: the exact claim ids (e.g. ["c1","c4"]) the headline/subhead/insight draw on. Used to verify no fact or number was invented.',
+      description: 'The exact claim ids (e.g. ["c1","c4"]) the headline/subhead/insight draw on. Used to verify no fact or number was invented.',
     },
   };
   return {
