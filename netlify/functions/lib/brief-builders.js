@@ -96,9 +96,10 @@ function buildWeatherChip(weather, mode) {
   const high  = `${Math.round(weather.temp_high_f)}°`;
   const low   = weather.temp_low_f != null ? `${Math.round(weather.temp_low_f)}°` : null;
   const temps = low ? `${high}/${low}` : high;
-  const place = (weather.location || '').split(',')[0].trim();
-  const core  = place ? `${temps} · ${place}` : temps;
-  const tempsBlock = mode === 'evening' ? `Tmrw ${core}` : core;
+  // City callout removed 2026-05-29 — the chip is now a tappable affordance
+  // that opens a detail modal (which shows location), so it stays compact
+  // (temps only). Evening shows tomorrow's range.
+  const tempsBlock = mode === 'evening' ? `Tmrw ${temps}` : temps;
   const emoji = weather.weather_emoji;
   return emoji ? `${emoji} ${tempsBlock}` : tempsBlock;
 }

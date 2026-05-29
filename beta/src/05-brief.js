@@ -528,11 +528,10 @@ function briefBadgeHTML(brief) {
 
 function briefWeatherChipHTML(chip) {
   if (!chip) return '';
-  const [temp, place] = String(chip).split(/\s*·\s*/);
-  if (place) {
-    return `<span class="brief-weather-chip"><span class="brief-weather-temp">${briefEsc(temp)}</span> · ${briefEsc(place)}</span>`;
-  }
-  return `<span class="brief-weather-chip">${briefEsc(chip)}</span>`;
+  // Drop any legacy "· City" suffix (the server no longer sends it) and render
+  // a tappable button that opens the weather-detail modal.
+  const temp = String(chip).split(/\s*·\s*/)[0];
+  return `<button type="button" class="brief-weather-chip is-tappable" data-brief-action="open-weather" title="Weather details" aria-label="Weather details">${briefEsc(temp)}</button>`;
 }
 
 function briefStatsHTML(stats) {
@@ -1205,6 +1204,195 @@ function briefWireOnce() {
       briefLogSleepIntent();
     } else if (action === 'sleep-clear') {
       briefClearSleepIntent();
+    } else if (action === 'open-weather') {
+      briefOpenWeather();
     }
   });
+}
+
+/* ════════════════════════════════════════
+   WEATHER DETAIL MODAL (tap the brief weather chip)
+   Live read from /.netlify/functions/beta-weather; lets the user update
+   location by ZIP or city via /.netlify/functions/beta-set-location.
+════════════════════════════════════════ */
+function briefWeatherInjectStyles() {
+  if (document.getElementById('bwxStyles')) return;
+  const st = document.createElement('style');
+  st.id = 'bwxStyles';
+  st.textContent = `
+    .brief-weather-chip.is-tappable { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease; }
+    .brief-weather-chip.is-tappable:hover { background: var(--surface-2); border-color: var(--edge-strong); color: var(--ink); }
+    .bwx-overlay { position: fixed; inset: 0; z-index: 400; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: none; align-items: flex-end; justify-content: center; }
+    .bwx-overlay.is-open { display: flex; animation: fadeIn var(--dur) var(--ease); }
+    .bwx-card { width: 100%; max-width: 480px; background: var(--surface); border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: var(--shadow-raised); max-height: 92vh; overflow-y: auto; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
+    @media (min-width: 600px) { .bwx-overlay { align-items: center; } .bwx-card { border-radius: var(--r-lg); max-height: 86vh; } }
+    .bwx-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .bwx-loc { display: flex; align-items: center; gap: 6px; font-size: var(--fs-section); font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+    .bwx-loc-sub { font-size: var(--fs-meta); color: var(--ink-3); margin-top: 2px; }
+    .bwx-close { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--surface); color: var(--ink-3); display: flex; align-items: center; justify-content: center; cursor: pointer; flex: 0 0 auto; font-size: 15px; }
+    .bwx-close:hover { background: var(--surface-2); color: var(--ink); }
+    .bwx-now { display: flex; align-items: center; gap: 14px; padding: 6px 2px 14px; border-bottom: 1px solid var(--edge); }
+    .bwx-now-emoji { font-size: 46px; line-height: 1; }
+    .bwx-now-temp { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .bwx-now-meta { font-size: var(--fs-search); color: var(--ink-2); }
+    .bwx-now-feels { font-size: var(--fs-meta); color: var(--ink-3); }
+    .bwx-hilo { font-weight: 700; color: var(--ink-2); }
+    .bwx-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 14px 0; }
+    .bwx-metric { background: var(--surface-2); border-radius: var(--r-md); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+    .bwx-metric-label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+    .bwx-metric-value { font-size: var(--fs-card); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .bwx-metric-note { font-size: var(--fs-meta); color: var(--ink-4); }
+    .bwx-metric-value .uv-hi { color: var(--ochre-fg); }
+    .bwx-section-label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 14px 0 8px; }
+    .bwx-hourly { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+    .bwx-hour { flex: 0 0 auto; width: 52px; background: var(--surface-2); border-radius: var(--r-md); padding: 8px 4px; text-align: center; display: flex; flex-direction: column; gap: 3px; align-items: center; }
+    .bwx-hour-t { font-size: var(--fs-meta); color: var(--ink-3); }
+    .bwx-hour-e { font-size: 17px; line-height: 1; }
+    .bwx-hour-temp { font-size: var(--fs-pill); font-weight: 700; color: var(--ink); }
+    .bwx-hour-p { font-size: var(--fs-nano); color: var(--sky-fg); font-weight: 700; min-height: 11px; }
+    .bwx-tomorrow { display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); border-radius: var(--r-md); padding: 10px 12px; margin-top: 8px; font-size: var(--fs-search); }
+    .bwx-tomorrow-left { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
+    .bwx-tomorrow-right { color: var(--ink); font-weight: 700; }
+    .bwx-loc-edit { margin-top: 16px; border-top: 1px solid var(--edge); padding-top: 14px; }
+    .bwx-loc-edit-row { display: flex; gap: 8px; margin-top: 8px; }
+    .bwx-input { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--edge-strong); border-radius: var(--r-md); padding: 8px 10px; font-family: inherit; font-size: var(--fs-search); color: var(--ink); outline: none; }
+    .bwx-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
+    .bwx-save { background: var(--guava-700); color: #fff; border: none; border-radius: var(--r-md); padding: 8px 16px; font-size: var(--fs-search); font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .bwx-save[disabled] { opacity: .55; cursor: default; }
+    .bwx-hint { font-size: var(--fs-meta); color: var(--ink-4); margin-top: 6px; }
+    .bwx-loading, .bwx-error { padding: 24px 4px; font-size: var(--fs-search); color: var(--ink-3); text-align: center; }
+    .bwx-error { color: var(--guava-700); }
+  `;
+  document.head.appendChild(st);
+}
+
+async function briefWeatherToken() {
+  try { const s = (await db.auth.getSession()).data?.session; return s?.access_token || null; }
+  catch (_) { return null; }
+}
+
+function briefWeatherEsc(e) { if (e.key === 'Escape') briefCloseWeather(); }
+
+function briefCloseWeather() {
+  const ov = document.getElementById('bwxOverlay');
+  if (ov) ov.classList.remove('is-open');
+  document.removeEventListener('keydown', briefWeatherEsc);
+}
+
+async function briefOpenWeather() {
+  briefWeatherInjectStyles();
+  let ov = document.getElementById('bwxOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'bwxOverlay';
+    ov.className = 'bwx-overlay';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov) { briefCloseWeather(); return; }
+      const a = e.target.closest('[data-bwx]');
+      if (!a) return;
+      if (a.dataset.bwx === 'close') briefCloseWeather();
+      else if (a.dataset.bwx === 'save') briefSaveLocation();
+    });
+    ov.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.id === 'bwxLocInput') { e.preventDefault(); briefSaveLocation(); }
+    });
+  }
+  ov.innerHTML = `<div class="bwx-card"><div class="bwx-loading">Loading weather…</div></div>`;
+  ov.classList.add('is-open');
+  document.addEventListener('keydown', briefWeatherEsc);
+
+  try {
+    const token = await briefWeatherToken();
+    const res = await fetch('/.netlify/functions/beta-weather', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    briefRenderWeather(data);
+  } catch (e) {
+    const card = document.querySelector('#bwxOverlay .bwx-card');
+    if (card) card.innerHTML = `<div class="bwx-head"><div class="bwx-loc">Weather</div><button class="bwx-close" data-bwx="close" aria-label="Close">✕</button></div><div class="bwx-error">Couldn't load weather — ${briefEsc(String(e.message || ''))}</div>${briefWeatherEditHTML('')}`;
+  }
+}
+
+function briefWeatherEditHTML(currentLabel) {
+  return `<div class="bwx-loc-edit">
+    <div class="bwx-section-label" style="margin:0">Location</div>
+    <div class="bwx-loc-edit-row">
+      <input class="bwx-input" id="bwxLocInput" type="text" inputmode="text" value="" placeholder="ZIP code (or City, ST)">
+      <button class="bwx-save" id="bwxLocSave" data-bwx="save">Save</button>
+    </div>
+    <div class="bwx-hint">Enter a US ZIP for the fastest match, or "City, ST".${currentLabel ? ` Current: ${briefEsc(currentLabel)}.` : ''}</div>
+  </div>`;
+}
+
+function briefRenderWeather(d) {
+  const card = document.querySelector('#bwxOverlay .bwx-card');
+  if (!card) return;
+
+  if (!d.has_location) {
+    card.innerHTML = `<div class="bwx-head"><div><div class="bwx-loc">Weather</div></div><button class="bwx-close" data-bwx="close" aria-label="Close">✕</button></div>
+      <div class="bwx-error" style="color:var(--ink-3)">No location set yet — add one to see your forecast.</div>
+      ${briefWeatherEditHTML('')}`;
+    return;
+  }
+
+  const c = d.current || {}, t = d.today || {}, tm = d.tomorrow || {};
+  const uvNote = t.uv_max == null ? '' : (t.uv_max >= 8 ? 'very high' : t.uv_max >= 6 ? 'high · cover up' : t.uv_max >= 3 ? 'moderate' : 'low');
+  const uvClass = (t.uv_max != null && t.uv_max >= 6) ? ' class="uv-hi"' : '';
+  const hours = (d.hourly || []).map(h => `<div class="bwx-hour"><span class="bwx-hour-t">${briefEsc(h.label || '')}</span><span class="bwx-hour-e">${h.emoji || ''}</span><span class="bwx-hour-temp">${h.temp_f != null ? h.temp_f + '°' : '—'}</span><span class="bwx-hour-p">${h.precip_pct ? h.precip_pct + '%' : ''}</span></div>`).join('');
+
+  card.innerHTML = `
+    <div class="bwx-head">
+      <div>
+        <div class="bwx-loc">📍 ${briefEsc(d.location_label || 'Your location')}</div>
+        <div class="bwx-loc-sub">${c.condition ? briefEsc(c.condition[0].toUpperCase() + c.condition.slice(1)) : 'Current conditions'}</div>
+      </div>
+      <button class="bwx-close" data-bwx="close" aria-label="Close">✕</button>
+    </div>
+    <div class="bwx-now">
+      <span class="bwx-now-emoji">${c.emoji || t.emoji || '🌡️'}</span>
+      <div>
+        <div class="bwx-now-temp">${c.temp_f != null ? c.temp_f + '°' : '—'}</div>
+        <div class="bwx-now-meta">${c.condition ? briefEsc(c.condition) + ' · ' : ''}<span class="bwx-hilo">H ${t.high_f != null ? t.high_f + '°' : '—'} / L ${t.low_f != null ? t.low_f + '°' : '—'}</span></div>
+        ${c.feels_f != null ? `<div class="bwx-now-feels">Feels like ${c.feels_f}°</div>` : ''}
+      </div>
+    </div>
+    <div class="bwx-metrics">
+      <div class="bwx-metric"><span class="bwx-metric-label">Precip</span><span class="bwx-metric-value">${t.precip_pct != null ? t.precip_pct + '%' : '—'}</span><span class="bwx-metric-note">${t.precip_pct != null ? (t.precip_pct >= 50 ? 'likely' : t.precip_pct >= 20 ? 'possible' : 'none expected') : ''}</span></div>
+      <div class="bwx-metric"><span class="bwx-metric-label">Wind</span><span class="bwx-metric-value">${c.wind_mph != null ? c.wind_mph + ' mph' : '—'}</span><span class="bwx-metric-note">${c.gust_mph != null ? 'gusts ' + c.gust_mph : ''}</span></div>
+      <div class="bwx-metric"><span class="bwx-metric-label">UV index</span><span class="bwx-metric-value"><span${uvClass}>${t.uv_max != null ? t.uv_max : '—'}</span></span><span class="bwx-metric-note">${uvNote}</span></div>
+      <div class="bwx-metric"><span class="bwx-metric-label">Humidity</span><span class="bwx-metric-value">${c.humidity != null ? c.humidity + '%' : '—'}</span><span class="bwx-metric-note">${c.humidity != null ? (c.humidity >= 70 ? 'humid' : c.humidity >= 30 ? 'comfortable' : 'dry') : ''}</span></div>
+      <div class="bwx-metric"><span class="bwx-metric-label">Sun</span><span class="bwx-metric-value">${t.sunrise_label || '—'}</span><span class="bwx-metric-note">${t.sunset_label ? 'set ' + t.sunset_label : ''}</span></div>
+      <div class="bwx-metric"><span class="bwx-metric-label">Daylight</span><span class="bwx-metric-value">${t.daylight_min != null ? Math.floor(t.daylight_min / 60) + 'h ' + (t.daylight_min % 60) + 'm' : '—'}</span><span class="bwx-metric-note"></span></div>
+    </div>
+    ${hours ? `<div class="bwx-section-label">Next 12 hours</div><div class="bwx-hourly">${hours}</div>` : ''}
+    ${(tm.high_f != null) ? `<div class="bwx-tomorrow"><span class="bwx-tomorrow-left">${tm.emoji || ''} Tomorrow${tm.condition ? ' · ' + briefEsc(tm.condition) : ''}</span><span class="bwx-tomorrow-right">${tm.high_f}° / ${tm.low_f != null ? tm.low_f + '°' : '—'}${tm.precip_pct ? ' · ' + tm.precip_pct + '%' : ''}</span></div>` : ''}
+    ${briefWeatherEditHTML(d.location_label || '')}
+  `;
+}
+
+async function briefSaveLocation() {
+  const input = document.getElementById('bwxLocInput');
+  const btn   = document.getElementById('bwxLocSave');
+  const val   = (input?.value || '').trim();
+  if (!val) { input?.focus(); return; }
+  const body = /^\d{5}$/.test(val) ? { zip: val } : { city: val };
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const token = await briefWeatherToken();
+    const res = await fetch('/.netlify/functions/beta-set-location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.detail || data.error || ('HTTP ' + res.status));
+    if (typeof showToast === 'function') showToast(`Location set to ${data.weather_label || val}`, 'ok');
+    // Refetch the modal against the new coordinates. The brief's cached chip
+    // catches up on the next weather snapshot / brief regen.
+    briefOpenWeather();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    if (typeof showToast === 'function') showToast(`Couldn't set location — ${e.message}`, 'offline');
+  }
 }

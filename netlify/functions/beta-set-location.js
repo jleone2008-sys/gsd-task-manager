@@ -89,9 +89,54 @@ exports.handler = async (event) => {
   let body;
   try { body = event.body ? JSON.parse(event.body) : {}; }
   catch { return cors(json(400, { error: 'bad_json' })); }
+  const zipInput  = String(body.zip || '').trim();
   const cityInput = String(body.city || '').trim();
-  if (!cityInput) return cors(json(400, { error: 'missing_city' }));
+  if (!zipInput && !cityInput) return cors(json(400, { error: 'missing_location' }));
   if (cityInput.length > 200) return cors(json(400, { error: 'city_too_long' }));
+
+  // ── ZIP path ──────────────────────────────────────────────────────────
+  // US ZIP → lat/lng via zippopotam.us (free, no key). Open-Meteo's geocoder
+  // is name-based and unreliable for postal codes, so we use a ZIP-native
+  // service here. Self-contained: resolves, upserts, returns — the city path
+  // below is untouched.
+  if (zipInput) {
+    if (!/^\d{5}$/.test(zipInput)) {
+      return cors(json(400, { error: 'bad_zip', detail: 'Enter a 5-digit US ZIP code.' }));
+    }
+    let zj;
+    try {
+      const zr = await fetch(`https://api.zippopotam.us/us/${zipInput}`);
+      if (zr.status === 404) return cors(json(404, { error: 'zip_not_found', detail: `No US location for ZIP ${zipInput}.` }));
+      if (!zr.ok) return cors(json(502, { error: 'zip_geocode_failed', detail: `HTTP ${zr.status}` }));
+      zj = await zr.json();
+    } catch (err) {
+      return cors(json(502, { error: 'zip_geocode_unreachable', detail: err.message }));
+    }
+    const place = zj?.places?.[0];
+    if (!place || place.latitude == null || place.longitude == null) {
+      return cors(json(404, { error: 'zip_not_found', detail: `No US location for ZIP ${zipInput}.` }));
+    }
+    const cityName  = place['place name'] || '';
+    const stateAbbr = place['state abbreviation'] || place.state || '';
+    const weather_label = `${[cityName, stateAbbr].filter(Boolean).join(', ')} ${zipInput}`.trim();
+    const lat = Number(place.latitude), lng = Number(place.longitude);
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/user_preferences?on_conflict=user_id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey:         serviceKey,
+          Authorization:  `Bearer ${serviceKey}`,
+          Prefer:         'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({ user_id: callerUserId, city: weather_label, weather_lat: lat, weather_lng: lng, weather_label }),
+      });
+      if (!r.ok) { const text = await r.text(); return cors(json(500, { error: 'store_failed', detail: text.slice(0, 200) })); }
+    } catch (err) {
+      return cors(json(500, { error: 'store_unreachable', detail: err.message }));
+    }
+    return cors(json(200, { ok: true, city: weather_label, weather_lat: lat, weather_lng: lng, weather_label }));
+  }
 
   // Parse "City, State" — Open-Meteo's geocoder expects just the city name
   // (state in the input confuses it). We strip the state for the query and

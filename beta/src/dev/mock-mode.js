@@ -241,7 +241,23 @@
     if (u.includes('beta-train-feedback')) return jsonResponse({ ai_feedback: { summary: 'Solid work — progressive overload is on track.', focus: ['Keep rest under 2 min on accessories'] } });
     if (u.includes('beta-progress-pic-analysis')) return jsonResponse({ ai_analysis: { body_type: 'mesomorph', stage: 'lean', needs_work: ['upper chest'], focus_areas: ['incline pressing'] } });
     if (u.includes('beta-sync-now')) return jsonResponse({ ok: true, rows_upserted: 0 });
-    if (u.includes('beta-set-location')) return jsonResponse({ ok: true, lat: 30.27, lng: -97.74, city: 'Austin' });
+    if (u.includes('beta-weather')) return jsonResponse({
+      ok: true, has_location: true, location_label: 'Austin, TX', updated_at: new Date().toISOString(),
+      current: { temp_f: 74, feels_f: 76, humidity: 45, wind_mph: 8, gust_mph: 15, condition: 'partly cloudy', emoji: '⛅', code: 2 },
+      today: { high_f: 78, low_f: 57, feels_high_f: 80, precip_pct: 10, uv_max: 7, condition: 'partly cloudy', emoji: '⛅', code: 2, sunrise_label: '6:42a', sunset_label: '8:14p', daylight_min: 812 },
+      tomorrow: { high_f: 72, low_f: 55, precip_pct: 60, condition: 'light rain', emoji: '🌦️', code: 61 },
+      hourly: [
+        { label: 'Now', temp_f: 74, precip_pct: 0,  emoji: '⛅' },
+        { label: '2p',  temp_f: 77, precip_pct: 0,  emoji: '☀️' },
+        { label: '3p',  temp_f: 78, precip_pct: 0,  emoji: '☀️' },
+        { label: '4p',  temp_f: 77, precip_pct: 10, emoji: '⛅' },
+        { label: '5p',  temp_f: 73, precip_pct: 30, emoji: '🌦️' },
+        { label: '6p',  temp_f: 70, precip_pct: 35, emoji: '🌦️' },
+        { label: '7p',  temp_f: 67, precip_pct: 15, emoji: '⛅' },
+        { label: '8p',  temp_f: 64, precip_pct: 0,  emoji: '☁️' },
+      ],
+    });
+    if (u.includes('beta-set-location')) return jsonResponse({ ok: true, weather_lat: 30.27, weather_lng: -97.74, city: 'Austin, TX', weather_label: 'Austin, TX' });
     if (u.includes('beta-knowledge-search')) return jsonResponse({ matches: [] });
     if (u.includes('refresh-google-token')) return jsonResponse({ access_token: 'mock-google-token', expires_in: 3600 });
     return jsonResponse({ ok: true });
