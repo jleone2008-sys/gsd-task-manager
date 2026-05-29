@@ -64,6 +64,13 @@ const ANTHROPIC_URL   = 'https://api.anthropic.com/v1/messages';
 const { recommendSleepTarget } = require('./lib/recommendations');
 const { MOOD_LABELS, MOOD_SCALE_NOTE, moodLabel } = require('./lib/mood-scale');
 const { getWeather } = require('./lib/weather');
+const { buildClaimSet, buildSystemPromptV2, validateAgainstClaims } = require('./lib/brief-claims');
+
+// Brief reformulation rollout flag. When set, the brief is composed from a
+// verified day-stamped claim set (lib/brief-claims) with the friendly
+// personal-helper voice, instead of the raw-context-dump prompt. Default OFF
+// so deploying is a no-op until we flip it in prod to validate a live regen.
+const USE_CLAIMSET = process.env.BRIEF_CLAIMSET === '1' || process.env.BRIEF_CLAIMSET === 'true';
 
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
@@ -943,17 +950,29 @@ async function callClaude(ctx, mode, anthropicKey) {
   const baselineN = Math.max(n_sleep, n_mood);
   const coldStart = baselineN < 14;
 
-  const systemPrompt = buildSystemPrompt(mode, ctx, { coldStart, baselineN });
+  // Claim-set path (flag-gated): compose from a verified, day-stamped fact set
+  // in the personal-helper voice. Legacy path: the raw-context-dump prompt.
+  const claims = USE_CLAIMSET ? buildClaimSet(mode, ctx) : null;
+  const systemPrompt = USE_CLAIMSET
+    ? buildSystemPromptV2(mode, claims, { coldStart })
+    : buildSystemPrompt(mode, ctx, { coldStart, baselineN });
 
   // Strip internal flags before sending to Claude
-  const { _oura_stale, _oura_partial_sleep, ...payload } = ctx;
+  const { _oura_stale, _oura_partial_sleep, _claims, ...payload } = ctx;
+
+  // In claim-set mode the model composes ONLY from the claims (the claim set
+  // already encodes every fact, correctly dated), so we send a tiny meta block
+  // instead of the full raw context dump.
+  const userContent = USE_CLAIMSET
+    ? `Write the ${mode} brief from the claim set in your instructions. Call record_daily_brief once.\n\n${JSON.stringify({ mode, cold_start: coldStart, hero_hint: ctx.hero_hint || null }, null, 0)}`
+    : `Generate the ${mode} coach brief using record_daily_brief.\n\n${JSON.stringify(payload, null, 0)}`;
 
   const body = {
     model:      model,
     max_tokens: maxTokens,
     system:     systemPrompt,
     messages: [
-      { role: 'user', content: `Generate the ${mode} coach brief using record_daily_brief.\n\n${JSON.stringify(payload, null, 0)}` },
+      { role: 'user', content: userContent },
     ],
     tools:       [briefToolSchema(mode)],
     tool_choice: { type: 'tool', name: 'record_daily_brief' },
@@ -980,6 +999,17 @@ async function callClaude(ctx, mode, anthropicKey) {
   // Server-side normalization. Returns { structured, action_stubs } on
   // success, null on rejection.
   const raw = toolUseBlock.input || {};
+
+  // Claim-set guard: reject prose that cites a non-existent claim or a number
+  // not present in any claim it used. Catches the misattribution class hard.
+  if (USE_CLAIMSET && claims) {
+    const v = validateAgainstClaims(raw, claims);
+    if (!v.ok) {
+      console.warn('daily-brief: claim validation failed, substituting fallback:', v.reason);
+      return buildFallback({ reason: `claim_validation:${v.reason}`, context: ctx, mode });
+    }
+  }
+
   const normalized = normalizeStructured(raw, mode, ctx);
   if (normalized === null) {
     console.warn('daily-brief: normalization rejected output (banned phrase or invalid shape), substituting fallback');
@@ -1096,6 +1126,11 @@ function briefToolSchema(mode) {
     // bedtime is fully formulaic (lib/recommendations.recommendSleepTarget)
     // so the model no longer produces it — keeping the tool schema lean.
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    used_claim_ids: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Claim-set mode only: the exact claim ids (e.g. ["c1","c4"]) the headline/subhead/insight draw on. Used to verify no fact or number was invented.',
+    },
   };
   return {
     name: 'record_daily_brief',
