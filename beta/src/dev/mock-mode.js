@@ -114,8 +114,9 @@
           if (_limit != null) rows = rows.slice(0, _limit);
           data = rows;
         }
-        if (_single)      data = (Array.isArray(data) ? data[0] : data) ?? null;
-        else if (_maybe)  data = (Array.isArray(data) ? data[0] : data) ?? null;
+        // single() and maybeSingle() behave identically in the mock (real
+        // single() throwing on 0/≠1 rows isn't worth simulating for fixtures).
+        if (_single || _maybe) data = (Array.isArray(data) ? data[0] : data) ?? null;
       } catch (e) {
         error = { message: e.message, code: 'MOCK_ERR' };
         data = _single || _maybe ? null : [];

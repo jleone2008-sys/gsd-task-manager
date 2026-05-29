@@ -76,7 +76,6 @@
   // Completions across the last 7 days for the heatmap. Map by habit PK.
   const habit_completions = [];
   let cpk = 900;
-  const habitPK = habits.map((h) => h.id);
   // deterministic pattern: each habit hits most days
   const patterns = [
     [0, 1, 2, 3, 4, 6],     // water

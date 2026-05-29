@@ -578,18 +578,25 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   // by type so the main work (a lift) outranks a bonus/cardio. The full list
   // flows to Claude as logged_today_all so it never claims a session type was
   // skipped when it's actually in the books.
-  const workoutsTodayLogged = (recentSessions || []).filter(s => s.session_date === today);
   const SESSION_TYPE_RANK = { lift: 3, cardio: 2, bonus: 1, rest: 0 };
-  const sessionRank = (s) => SESSION_TYPE_RANK[s?.day_type] ?? 3;  // unknown/null type = treat as main work
-  const workoutTodayLogged  = workoutsTodayLogged
-    .slice()
-    .sort((a, b) => sessionRank(b) - sessionRank(a))[0] || null;
-  // Yesterday's logged session(s) — same multi-session handling as today, so a
-  // morning brief doesn't mislabel a lift as skipped when a bonus was also logged.
-  const workoutsYesterday   = (recentSessions || []).filter(s => s.session_date === yday);
-  const workoutYesterday    = workoutsYesterday
-    .slice()
-    .sort((a, b) => sessionRank(b) - sessionRank(a))[0] || null;
+  const sessionRank  = (s) => SESSION_TYPE_RANK[s?.day_type] ?? 3;  // unknown/null type = treat as main work
+  const sessionsOn   = (date) => (recentSessions || []).filter(s => s.session_date === date);
+  // PRIMARY = the highest-ranked session that day (main work outranks a
+  // bonus/cardio), for the single-slot recap row. .slice() keeps the caller's
+  // array unsorted — its order is preserved for the full list sent to Claude.
+  const primaryOf    = (list) => list.slice().sort((a, b) => sessionRank(b) - sessionRank(a))[0] || null;
+  const summarizeAll = (list) => list.map(summarizeSession).filter(Boolean);
+
+  // Today's logged session(s). The full list flows to Claude (logged_today_all)
+  // so it never claims a logged session type was "skipped".
+  const workoutsTodayLogged        = sessionsOn(today);
+  const workoutTodayLogged         = primaryOf(workoutsTodayLogged);
+  const workoutsTodayLoggedSummary = summarizeAll(workoutsTodayLogged);
+  // Yesterday — same multi-session handling so a morning brief doesn't mislabel
+  // a lift as skipped when a bonus was also logged.
+  const workoutsYesterday          = sessionsOn(yday);
+  const workoutYesterday           = primaryOf(workoutsYesterday);
+  const workoutsYesterdaySummary   = summarizeAll(workoutsYesterday);
   // Last session matching today's planned day_name — for "last time you
   // did Full Body A you hit 215×8" comparisons.
   const workoutSameDayName  = workoutTodayPlanned?.name
@@ -718,7 +725,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       // set list is in train_recent for token-budget reasons. workout = the
       // primary (lift outranks bonus/cardio); workout_all = every session.
       workout: summarizeSession(workoutYesterday),
-      workout_all: workoutsYesterday.map(summarizeSession).filter(Boolean),
+      workout_all: workoutsYesterdaySummary,
       // Sleep-intent comparison: user-tapped bedtime vs Oura's detected
       // sleep onset for last night. Only populated on morning briefs when
       // the cron has matched the intent against Oura data. Null when no
@@ -758,7 +765,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
         } : null,
         last_same_day:    summarizeSession(workoutSameDayName),
         logged_today:     summarizeSession(workoutTodayLogged),
-        logged_today_all: workoutsTodayLogged.map(summarizeSession).filter(Boolean),
+        logged_today_all: workoutsTodayLoggedSummary,
       },
     },
     tomorrow_plan: (mode === 'evening') ? {
@@ -809,7 +816,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       // App-logged Train session for today, if any. Separate from
       // workouts_today (Oura) — that's wearable-detected motion.
       train_session_today:  summarizeSession(workoutTodayLogged),
-      train_sessions_today: workoutsTodayLogged.map(summarizeSession).filter(Boolean),
+      train_sessions_today: workoutsTodayLoggedSummary,
       tasks_completed_today: countTasksInLocalDay(tasksAll, today, user.timezone),
       open_priority_tasks:   (tasksTopOpen || []).length,
     } : null,
