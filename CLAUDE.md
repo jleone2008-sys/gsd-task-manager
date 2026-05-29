@@ -36,6 +36,7 @@ Before planning, exploring, or building ANY feature in this repo:
 ## Other rules
 
 - Working branch: `main` is default — work directly on it. Pushing to `main` deploys to production (gsdtasks.com). Feature branches only when explicitly requested. (The old `dev` integration branch is stale/abandoned as of 2026-05-28.)
+- **Push prompt at end of phase work.** After finishing any substantial/phase-level chunk of work (a feature, a multi-file refactor, a build-out, an audit-and-fix pass), if those changes are not already committed and pushed to `main`, end the turn by asking whether to push it live. Don't push without an explicit yes, and don't auto-prompt for tiny one-off edits — this is for meaningful units of work. (Still never commit unless asked; this just adds the closing prompt so live deploys aren't forgotten.)
 - Surgical edits: one change at a time during execution, read before write.
 - Do not Co-Author Claude on commits.
 - App features go in `app.html` (not `index.html` — that's the marketing page).

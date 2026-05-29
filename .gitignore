@@ -9,3 +9,12 @@
 
 # Node / scripts
 node_modules/
+
+# Claude Code per-machine local settings (the .local suffix = don't share).
+# launch.json (preview-server config) is intentionally NOT ignored so it can
+# be committed if we want it shared.
+.claude/settings.local.json
+
+# Stray scratch dumps occasionally left at repo root by tooling sessions.
+.j_defs.txt
+.journal_excerpt.txt
