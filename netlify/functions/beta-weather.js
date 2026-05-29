@@ -37,6 +37,30 @@ function clockLabel(localIso) {
 }
 const r0 = (v) => (v == null ? null : Math.round(Number(v)));
 
+// Open-Meteo's daily weather_code is the single most-SEVERE code of the day,
+// so one transient snow-coded hour makes a 56°/42° rainy day read as "snow".
+// Derive a more representative daily headline from that day's hourly codes:
+// drop frozen-precip codes when the day's low is too warm for them (~>37°F),
+// then take the most-severe remaining precip code (or, if no precip, the most
+// severe code overall). Falls back to the raw daily code if hourly is absent.
+function isFrozenCode(c) {
+  return (c >= 71 && c <= 77) || c === 85 || c === 86 || c === 56 || c === 57 || c === 66 || c === 67;
+}
+function dayHeadlineCode(hourlyTimes, hourlyCodes, dateStr, lowF, fallback) {
+  if (!Array.isArray(hourlyTimes) || !Array.isArray(hourlyCodes) || !dateStr) return fallback;
+  const day = [];
+  for (let i = 0; i < hourlyTimes.length; i++) {
+    if (String(hourlyTimes[i]).slice(0, 10) === dateStr && hourlyCodes[i] != null) day.push(Number(hourlyCodes[i]));
+  }
+  if (!day.length) return fallback;
+  const tooWarmForFrozen = lowF != null && Number(lowF) > 37;
+  let pool = tooWarmForFrozen ? day.filter(c => !isFrozenCode(c)) : day.slice();
+  if (!pool.length) pool = day.slice();
+  const precip = pool.filter(c => c >= 51);
+  const sel = precip.length ? precip : pool;
+  return Math.max(...sel);
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
@@ -124,8 +148,10 @@ exports.handler = async (event) => {
     }
   }
 
-  const todayCode = d.weather_code?.[0] ?? null;
-  const tmrwCode  = d.weather_code?.[1] ?? null;
+  // Headline codes derived from hourly (not the over-severe daily aggregate),
+  // temperature-guarded so warm-day "snow" artifacts read as rain.
+  const todayCode = dayHeadlineCode(h.time, h.weather_code, d.time?.[0], d.temperature_2m_min?.[0], d.weather_code?.[0] ?? null);
+  const tmrwCode  = dayHeadlineCode(h.time, h.weather_code, d.time?.[1], d.temperature_2m_min?.[1], d.weather_code?.[1] ?? null);
   const sunrise   = d.sunrise?.[0] ?? null;
   const sunset    = d.sunset?.[0]  ?? null;
 
