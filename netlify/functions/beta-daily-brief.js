@@ -569,11 +569,27 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   const yesterdayDow3 = DOW3[weekdayInTz(yday, user.timezone)] || null;
   // Today's prescribed session (from the active plan's day_template).
   const workoutTodayPlanned = dayForDow(activePlan, todayDow3);
-  // Today's already-logged session (if user logged something earlier today
-  // — possible in evening mode or a Same-day cron re-fire).
-  const workoutTodayLogged  = (recentSessions || []).find(s => s.session_date === today) || null;
-  // Yesterday's logged session.
-  const workoutYesterday    = (recentSessions || []).find(s => s.session_date === yday) || null;
+  // Today's already-logged session(s). A user can log MORE THAN ONE session
+  // in a day (e.g. a bonus walk in the afternoon + the main lift in the
+  // evening), so we collect ALL of today's rows — the old `.find` returned
+  // only the first the query happened to surface, which dropped the second
+  // session and made the brief report a lift "skipped" when it was logged.
+  // `workoutTodayLogged` is the PRIMARY for the single-slot recap row: rank
+  // by type so the main work (a lift) outranks a bonus/cardio. The full list
+  // flows to Claude as logged_today_all so it never claims a session type was
+  // skipped when it's actually in the books.
+  const workoutsTodayLogged = (recentSessions || []).filter(s => s.session_date === today);
+  const SESSION_TYPE_RANK = { lift: 3, cardio: 2, bonus: 1, rest: 0 };
+  const sessionRank = (s) => SESSION_TYPE_RANK[s?.day_type] ?? 3;  // unknown/null type = treat as main work
+  const workoutTodayLogged  = workoutsTodayLogged
+    .slice()
+    .sort((a, b) => sessionRank(b) - sessionRank(a))[0] || null;
+  // Yesterday's logged session(s) — same multi-session handling as today, so a
+  // morning brief doesn't mislabel a lift as skipped when a bonus was also logged.
+  const workoutsYesterday   = (recentSessions || []).filter(s => s.session_date === yday);
+  const workoutYesterday    = workoutsYesterday
+    .slice()
+    .sort((a, b) => sessionRank(b) - sessionRank(a))[0] || null;
   // Last session matching today's planned day_name — for "last time you
   // did Full Body A you hit 215×8" comparisons.
   const workoutSameDayName  = workoutTodayPlanned?.name
@@ -699,8 +715,10 @@ async function buildContext(user, brief_date, mode, serviceKey) {
         return { ...(counts || {}), done_names_yesterday: doneNames };
       })(),
       // Train session logged for yesterday (if any). Summary only — full
-      // set list is in train_recent for token-budget reasons.
+      // set list is in train_recent for token-budget reasons. workout = the
+      // primary (lift outranks bonus/cardio); workout_all = every session.
       workout: summarizeSession(workoutYesterday),
+      workout_all: workoutsYesterday.map(summarizeSession).filter(Boolean),
       // Sleep-intent comparison: user-tapped bedtime vs Oura's detected
       // sleep onset for last night. Only populated on morning briefs when
       // the cron has matched the intent against Oura data. Null when no
@@ -738,8 +756,9 @@ async function buildContext(user, brief_date, mode, serviceKey) {
               }))
             : [],
         } : null,
-        last_same_day:   summarizeSession(workoutSameDayName),
-        logged_today:    summarizeSession(workoutTodayLogged),
+        last_same_day:    summarizeSession(workoutSameDayName),
+        logged_today:     summarizeSession(workoutTodayLogged),
+        logged_today_all: workoutsTodayLogged.map(summarizeSession).filter(Boolean),
       },
     },
     tomorrow_plan: (mode === 'evening') ? {
@@ -789,7 +808,8 @@ async function buildContext(user, brief_date, mode, serviceKey) {
       })),
       // App-logged Train session for today, if any. Separate from
       // workouts_today (Oura) — that's wearable-detected motion.
-      train_session_today: summarizeSession(workoutTodayLogged),
+      train_session_today:  summarizeSession(workoutTodayLogged),
+      train_sessions_today: workoutsTodayLogged.map(summarizeSession).filter(Boolean),
       tasks_completed_today: countTasksInLocalDay(tasksAll, today, user.timezone),
       open_priority_tasks:   (tasksTopOpen || []).length,
     } : null,
@@ -984,7 +1004,8 @@ function buildSystemPrompt(mode, ctx, { coldStart, baselineN }) {
     '- today_plan.workout.planned = today\'s prescribed Train session from the user\'s active plan. Use the day name in the headline when it\'s a lift/cardio day ("Push day.", "Cardio today."). Skip in headline on rest days.',
     '- today_plan.workout.last_same_day = the user\'s most recent prior session matching today\'s day_name. Use for streak / consistency framing only — DO NOT echo specific weights or reps in headline/subhead/pills.',
     '- today_plan.workout.logged_today = a session already in the books for today (evening mode or same-day refire). When present, frame the brief around what got done, not what\'s prescribed.',
-    '- yesterday.workout = the Train session logged yesterday (if any). Useful for "Lifted yesterday" pills.',
+    '- today_plan.workout.logged_today_all / today_recap.train_sessions_today = EVERY session logged today. The user can log more than one (e.g. a bonus walk in the afternoon AND the main lift in the evening); logged_today is just the primary one (a lift outranks a bonus/cardio for the recap row). CRITICAL: never say a workout/lift/cardio was "skipped", "missed", or didn\'t happen if a session of that type appears in logged_today_all — check the full list before any "skipped" framing.',
+    '- yesterday.workout = yesterday\'s PRIMARY Train session (if any); yesterday.workout_all = every session logged yesterday (may be multiple). Useful for "Lifted yesterday" pills — and, like logged_today_all, never call a type skipped if it appears in workout_all.',
     '- train_recent = last 5 sessions, summary only. Use for "3rd lift this week" / "skipped 2" streak callouts in pills.',
     '- health_labs = the user\'s most recent bloodwork values, ONE per test_name, within the last 90 days. health_labs.age_days = how old the snapshot is. Use these as REASONING context for the brief\'s framing — e.g. if Lp(a) is flagged HIGH and today is a recovery day, you can frame the play with awareness ("CV-friendly recovery day" in subhead) without quoting numbers. NEVER echo specific lab values in headline/subhead — the server has no UI surface for them yet and quoting them out of context risks medical-claim territory. When you reference labs in an evidence_pill, frame freshness explicitly ("Bloodwork 2 wks ago" not "Bloodwork shows X"). Skip entirely if health_labs is null or all flags are normal — labs without an anomaly aren\'t worth surfacing.',
     '- pending_anomalies = wearable metrics that deviated >2σ from the user\'s 30-day baseline. When present, LEAD the brief with the most severe one (highest |z_score|): headline acknowledges it (e.g. "HRV alarm." for hrv_ms below; "Sleep streak." for sleep_score above), subhead explains the play. Pills can reference "X below norm" / "X above norm" without echoing the numeric value (server already shows the value in the stats row). When pending_anomalies is empty, just write the normal brief — no need to mention "no anomalies today".',
@@ -1058,15 +1079,26 @@ function normalizeStructured(raw, mode, ctx) {
   if (!raw || typeof raw !== 'object') return null;
 
   // ── Claude's text fields ───────────────────────────────────────────────
+  // Length guard, but WORD-SAFE — never cut mid-word (a hard .slice(0,n)
+  // produced subheads like "…tomorrow's li"). If over the cap, fall back to
+  // the last whole word that fits. The model is already told to stay within
+  // these limits; this is just the defensive net.
+  const softTruncate = (s, max) => {
+    if (s.length <= max) return s;
+    const cut = s.slice(0, max);
+    const sp = cut.lastIndexOf(' ');
+    return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trim();
+  };
+
   // Headline: strip greeting prefix, trim, cap length
   let headline = String(raw.headline || '').trim();
   headline = headline.replace(GREETING_PREFIX_REGEX, '').trim();
   if (!headline) return null;
-  if (headline.length > 30) headline = headline.slice(0, 30).trim();
+  headline = softTruncate(headline, 30);
 
-  // Subhead: trim, cap
-  let subhead = String(raw.subhead || '').trim();
-  if (subhead.length > 80) subhead = subhead.slice(0, 80).trim();
+  // Subhead: trim, cap (100 gives headroom for two short sentences; the
+  // model targets ~80, and word-safe trimming avoids mid-word cuts).
+  let subhead = softTruncate(String(raw.subhead || '').trim(), 100);
 
   // Evidence pills: drop pills with >4 words or >30 chars; cap to 3
   const pills = (Array.isArray(raw.evidence_pills) ? raw.evidence_pills : [])
