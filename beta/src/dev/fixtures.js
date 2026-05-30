@@ -250,9 +250,18 @@
     { id: 1701, user_id: USER_ID, weight_lb: 179, body_fat_pct: 16.8, measured_at: daysAgo(9) },
   ];
   const body_comp_goals = [
-    { id: 1710, user_id: USER_ID, goal_type: 'recomp', target_weight_lb: 175, target_body_fat_pct: 14, created_at: iso(40 * DAY) },
+    { id: 1710, user_id: USER_ID, kind: 'weight', start_date: daysAgo(40), end_date: daysAgo(-44), start_value: 182, target_value: 175, is_active: true, created_at: iso(40 * DAY) },
   ];
   const progress_pics = [];
+  // Weight timeline — decoupled from progress_pics. Descending by measured_date.
+  const body_weight = [
+    { id: 1720, user_id: USER_ID, measured_date: today,       weight_lbs: 178.2, source: 'manual' },
+    { id: 1721, user_id: USER_ID, measured_date: daysAgo(1),  weight_lbs: 178.6, source: 'manual' },
+    { id: 1722, user_id: USER_ID, measured_date: daysAgo(2),  weight_lbs: 178.9, source: 'manual' },
+    { id: 1723, user_id: USER_ID, measured_date: daysAgo(4),  weight_lbs: 179.4, source: 'manual' },
+    { id: 1724, user_id: USER_ID, measured_date: daysAgo(7),  weight_lbs: 180.1, source: 'manual' },
+    { id: 1725, user_id: USER_ID, measured_date: daysAgo(14), weight_lbs: 181.0, source: 'progress_pic' },
+  ];
 
   /* ── Insights ───────────────────────────────────────────── */
   const weekly_briefs = [
@@ -273,7 +282,8 @@
     { id: 1, email: EMAIL, supabase_user_id: USER_ID, access_status: 'active', role: 'standard', status: 'active', tab_permissions: VALID_TABS.slice(), calendar_backfilled_at: iso(10 * DAY) },
   ];
   const user_preferences = [
-    { user_id: USER_ID, timezone: 'America/Chicago', weather_lat: 30.27, weather_lng: -97.74, weather_city: 'Austin' },
+    { user_id: USER_ID, timezone: 'America/Chicago', weather_lat: 30.27, weather_lng: -97.74, weather_city: 'Austin',
+      sex: 'male', dob: '1990-05-12', height_in: 70, activity_level: 'moderate', activity_level_override: false, units: 'imperial', body_comp_profile_set_at: iso(60 * DAY) },
   ];
   const user_settings = [
     { user_id: USER_ID, integrations: { oura: { connected: true }, whoop: { connected: false }, dropbox: { connected: false }, health_source: 'oura' } },
@@ -313,6 +323,7 @@
       body_comp_profile,
       body_comp_goals,
       progress_pics,
+      body_weight,
       weekly_briefs,
       patterns_discovered,
       knowledge_documents,

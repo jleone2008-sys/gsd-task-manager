@@ -450,6 +450,11 @@ function trainWireOnce() {
       runProgressPicAnalysis(id);
       return;
     }
+    if (action === 'weight-log-save') {
+      const input = document.getElementById('weightLogInput');
+      saveBodyWeight(input ? input.value : '');
+      return;
+    }
   });
 
   // File input change handler — Supabase doesn't fire on 'input' for
@@ -2755,6 +2760,7 @@ const _trainProgressState = {
   error:         null,
   profile:       null,     // { sex, dob, height_in, activity_level, activity_level_override, units }
   entries:       [],       // last 90 days of progress_pics rows, desc by captured_date
+  weights:       [],       // last 90 days of body_weight rows, desc by measured_date (the canonical weight timeline — decoupled from progress_pics)
   goals:         [],       // active body_comp_goals rows
   view:          'dashboard', // 'dashboard' | 'wizard' | 'new-entry' | 'goal'
   // In-flight new-entry form state — survives action handler renders.
@@ -2772,7 +2778,7 @@ async function loadTrainProgressData() {
   try {
     const since = trainShiftDate(trainTodayLocalDate(), -90);
 
-    const [profRes, entryRes, goalRes] = await Promise.all([
+    const [profRes, entryRes, goalRes, weightRes] = await Promise.all([
       // Body-comp profile lives on user_preferences (user-owned table
       // with full RLS — read+write own row). Migrated off user_profiles
       // in user_preferences.sql so the wizard can use a plain upsert
@@ -2790,15 +2796,24 @@ async function loadTrainProgressData() {
         .select('id,kind,start_date,end_date,start_value,target_value,is_active')
         .eq('user_id', currentUser.id)
         .eq('is_active', true),
+      // Weight timeline — decoupled from progress_pics so frequent weigh-ins
+      // never shadow body_fat_pct. Most-recent row = canonical current weight.
+      db.from('body_weight')
+        .select('id,measured_date,weight_lbs,note,source')
+        .eq('user_id', currentUser.id)
+        .gte('measured_date', since)
+        .order('measured_date', { ascending: false }),
     ]);
 
     if (profRes.error)  throw profRes.error;
     if (entryRes.error) throw entryRes.error;
     if (goalRes.error)  throw goalRes.error;
+    if (weightRes.error) throw weightRes.error;
 
     _trainProgressState.profile = profRes.data || null;
     _trainProgressState.entries = entryRes.data || [];
     _trainProgressState.goals   = goalRes.data  || [];
+    _trainProgressState.weights = weightRes.data || [];
     _trainProgressState.loaded  = true;
 
     // Kick off a single signed-URL batch for every photo across the
@@ -3316,11 +3331,16 @@ async function saveWizardProfile() {
 function renderProgressDashboard() {
   const p = _trainProgressState.profile;
   const entries = _trainProgressState.entries;
+  const weights = _trainProgressState.weights;
   const latest = entries[0] || null;
+  // Canonical current weight comes from the body_weight timeline (decoupled
+  // from progress_pics) — NOT the latest photo entry. This is what lets the
+  // user log weight as often as they like without disturbing body fat.
+  const latestWeight = weights[0]?.weight_lbs != null ? Number(weights[0].weight_lbs) : null;
 
   // Compute the deterministic stack: BMR → TDEE → daily target.
   const age = trainAgeYears(p.dob);
-  const weightLbs = latest?.weight_lbs != null ? Number(latest.weight_lbs) : null;
+  const weightLbs = latestWeight;
   const bmr = trainBMR(p.sex, weightLbs, p.height_in, age);
   const tdee = trainTDEE(bmr, p.activity_level);
 
@@ -3347,15 +3367,39 @@ function renderProgressDashboard() {
   // Goals were previously at position 5 and routinely got buried below
   // the giant Coach Card; promoting them right under the metrics strip
   // keeps the user's North Star above the fold.
+  const hasData = latest || latestWeight != null;
+
   return `
     ${renderDashboardHeader(p)}
-    ${latest ? renderDashboardLatestCard(latest, bfPct, entries) : renderDashboardEmptyCard()}
-    ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct)}
+    ${renderWeightLogCard(weights)}
+    ${hasData ? renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight) : renderDashboardEmptyCard()}
+    ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight)}
     ${latest ? renderProgressAIAnalysis(latest) : ''}
     ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
-    ${entries.length > 1 ? renderDashboardTrendCard(entries) : ''}
+    ${weights.length > 1 ? renderDashboardTrendCard(weights) : ''}
     ${renderDashboardEntriesList(entries)}
   `;
+}
+
+// Quick weight logger — one tap on the Progress dashboard, decoupled from the
+// photo-entry flow. Upserts today's body_weight row (one per day). Reads the
+// input's DOM value directly on save so per-keystroke re-renders aren't needed
+// (no focus loss). Prefills with today's logged weight if it exists.
+function renderWeightLogCard(weights) {
+  const today = trainTodayLocalDate();
+  const todayRow = (weights || []).find(w => w.measured_date === today) || null;
+  const val = todayRow?.weight_lbs != null ? Number(todayRow.weight_lbs).toFixed(1) : '';
+  const loggedNote = todayRow ? `<span class="progress-card-meta" style="margin-left:8px">Logged today</span>` : '';
+  return `<div class="progress-card weight-log-card">
+    <div class="weight-log-head">
+      <span class="progress-card-label">Today's weight</span>${loggedNote}
+    </div>
+    <div class="weight-log-row">
+      <input id="weightLogInput" class="form-input weight-log-input" type="number" inputmode="decimal"
+        step="0.1" min="0" placeholder="lbs" value="${val}">
+      <button class="train-btn-primary weight-log-btn" data-train-action="weight-log-save">Log</button>
+    </div>
+  </div>`;
 }
 
 function renderDashboardHeader(p) {
@@ -3376,30 +3420,40 @@ function renderDashboardHeader(p) {
   </div>`;
 }
 
-function renderDashboardLatestCard(latest, bfPct, entries) {
+function renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight) {
+  weights = weights || [];
   const today = trainTodayLocalDate();
-  const ageDays = Math.round((new Date(today) - new Date(latest.captured_date)) / DAY_MS);
+  // Eyebrow reference date: latest photo entry if present, else latest weigh-in
+  // (weight-only users have no progress_pics row yet).
+  const refDate = latest?.captured_date || weights[0]?.measured_date || today;
+  const ageDays = Math.round((new Date(today) - new Date(refDate)) / DAY_MS);
   const ageTxt = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
   // Body fat: stored AI value (Navy removed). Single branch now.
   const bfNum = bfPct != null ? `${bfPct.toFixed(1)}%` : '—';
 
-  // LBM = weight × (1 − bf/100). Deterministic. Skip when either is missing.
-  const w = latest.weight_lbs != null ? Number(latest.weight_lbs) : null;
+  // Current weight = freshest body_weight row (decoupled from photos).
+  const w = latestWeight != null ? Number(latestWeight) : null;
   const bf = bfPct;   // single source: stored AI value (Navy removed)
+  // LBM uses the freshest weight × latest body fat — so it refreshes between
+  // photos instead of being frozen at the last photo-day weight.
   const lbm = (w != null && bf != null) ? w * (1 - bf / 100) : null;
+  const waistNow = latest?.waist_in != null ? Number(latest.waist_in) : null;
 
-  // Sparklines from recent entries (newest-first → reverse). Last 6 points
-  // each, only entries where the metric exists.
+  // Sparklines (newest-first → reverse, last 6). Weight pulls from the
+  // body_weight timeline; bf/lbm/waist from progress_pics entries (per-entry
+  // LBM uses that entry's photo-day weight snapshot).
   const points = (arr) => {
-    const vals = entries.slice(0, 6).reverse()
-      .map(e => arr === 'weight'  ? e.weight_lbs
-              : arr === 'bf'      ? (e.body_fat_pct != null ? Number(e.body_fat_pct) : null)
-              : arr === 'lbm'     ? (e.weight_lbs && e.body_fat_pct ? Number(e.weight_lbs) * (1 - Number(e.body_fat_pct) / 100) : null)
-              :                     e.waist_in)
-      .filter(v => v != null && Number.isFinite(Number(v)))
-      .map(Number);
-    return vals;
+    if (arr === 'weight') {
+      return weights.slice(0, 6).reverse()
+        .map(e => e.weight_lbs)
+        .filter(v => v != null && Number.isFinite(Number(v))).map(Number);
+    }
+    return entries.slice(0, 6).reverse()
+      .map(e => arr === 'bf'   ? (e.body_fat_pct != null ? Number(e.body_fat_pct) : null)
+              : arr === 'lbm'  ? (e.weight_lbs && e.body_fat_pct ? Number(e.weight_lbs) * (1 - Number(e.body_fat_pct) / 100) : null)
+              :                  e.waist_in)
+      .filter(v => v != null && Number.isFinite(Number(v))).map(Number);
   };
   const spark = (vals, color) => {
     if (vals.length < 2) return `<div class="metric-spark-empty"></div>`;
@@ -3417,29 +3471,34 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
     </svg>`;
   };
 
-  // ── Delta pills: oldest → newest entry within the loaded window ──
-  // Compute delta + dynamic window label (1y / Xmo / Xd) so the user
-  // sees not just the current value but the trend at-a-glance.
+  // ── Delta pills: oldest → newest within each metric's own window ──
+  // Body comp (bf/lean mass/waist) windows come from progress_pics; weight
+  // gets its own window from the body_weight timeline (so its delta reflects
+  // every weigh-in, not just photo days).
   const weightGoal = _trainProgressState.goals.find(g => g.kind === 'weight') || null;
+  const winLabelFor = (days) => days >= 330 ? '1y'
+                              : days >= 150 ? '6mo'
+                              : days >=  60 ? `${Math.round(days / 30)}mo`
+                              :               `${days}d`;
+
   const oldest = entries.length > 1 ? entries[entries.length - 1] : null;
-  const winDays = oldest
-    ? Math.max(1, Math.round((new Date(latest.captured_date) - new Date(oldest.captured_date)) / DAY_MS))
-    : 0;
-  const winLabel = !oldest ? null
-                 : winDays >= 330 ? '1y'
-                 : winDays >= 150 ? '6mo'
-                 : winDays >=  60 ? `${Math.round(winDays / 30)}mo`
-                 :                  `${winDays}d`;
+  const compWinDays = oldest ? Math.max(1, Math.round((new Date(latest.captured_date) - new Date(oldest.captured_date)) / DAY_MS)) : 0;
+  const compWinLabel = oldest ? winLabelFor(compWinDays) : null;
 
-  const oldW = oldest?.weight_lbs   != null ? Number(oldest.weight_lbs)   : null;
-  const oldBf = oldest?.body_fat_pct != null ? Number(oldest.body_fat_pct) : null;
-  const oldWaist = oldest?.waist_in != null ? Number(oldest.waist_in) : null;
-  const oldLbm = (oldW != null && oldBf != null) ? oldW * (1 - oldBf / 100) : null;
+  const oldBf    = oldest?.body_fat_pct != null ? Number(oldest.body_fat_pct) : null;
+  const oldWaist = oldest?.waist_in     != null ? Number(oldest.waist_in)     : null;
+  const oldWpic  = oldest?.weight_lbs   != null ? Number(oldest.weight_lbs)   : null;  // photo-day weight, LBM only
+  const oldLbm   = (oldWpic != null && oldBf != null) ? oldWpic * (1 - oldBf / 100) : null;
 
-  const deltaWeight = (w   != null && oldW   != null) ? w   - oldW   : null;
+  const wOldRow  = weights.length > 1 ? weights[weights.length - 1] : null;
+  const wOld     = wOldRow?.weight_lbs != null ? Number(wOldRow.weight_lbs) : null;
+  const wWinDays = wOldRow ? Math.max(1, Math.round((new Date(weights[0].measured_date) - new Date(wOldRow.measured_date)) / DAY_MS)) : 0;
+  const wWinLabel = wOldRow ? winLabelFor(wWinDays) : null;
+
+  const deltaWeight = (w   != null && wOld   != null) ? w   - wOld   : null;
   const deltaBf     = (bf  != null && oldBf  != null) ? bf  - oldBf  : null;
   const deltaLbm    = (lbm != null && oldLbm != null) ? lbm - oldLbm : null;
-  const deltaWaist  = (latest.waist_in != null && oldWaist != null) ? Number(latest.waist_in) - oldWaist : null;
+  const deltaWaist  = (waistNow != null && oldWaist != null) ? waistNow - oldWaist : null;
 
   // Direction-correctness map. Weight is goal-aware (bulk → up good,
   // cut → down good); the rest have fixed conventions.
@@ -3447,40 +3506,41 @@ function renderDashboardLatestCard(latest, bfPct, entries) {
   const isWeightCut  = weightGoal && Number(weightGoal.target_value) < Number(weightGoal.start_value);
   const weightIsGood = (d) => isWeightBulk ? d > 0 : isWeightCut ? d < 0 : null;
 
-  const pill = (delta, unit, isGoodFn) => {
-    if (delta == null || winLabel == null) return '';
+  // Each pill carries its own window label (weight differs from body comp).
+  const pill = (delta, unit, isGoodFn, label) => {
+    if (delta == null || label == null) return '';
     const abs = Math.abs(delta);
     const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
     const good = typeof isGoodFn === 'function' ? isGoodFn(delta) : isGoodFn;
     const cls = good === true ? 'up' : good === false ? 'down' : 'neutral';
-    return `<span class="metric-cell-delta ${cls}">${sign}${abs.toFixed(1)}${unit} · ${winLabel}</span>`;
+    return `<span class="metric-cell-delta ${cls}">${sign}${abs.toFixed(1)}${unit} · ${label}</span>`;
   };
 
   // Thin 4-cell metrics strip. Each cell: top-aligned delta pill, then
   // label, then big number with small unit suffix, then sparkline.
   const metricsStrip = `<div class="metrics-strip">
     <div class="metric-cell">
-      ${pill(deltaLbm, ' lbs', d => d > 0)}
+      ${pill(deltaLbm, ' lbs', d => d > 0, compWinLabel)}
       <div class="metric-cell-label">Lean mass</div>
       <div class="metric-cell-num">${lbm != null ? lbm.toFixed(1) : '—'}<span class="metric-cell-unit">lbs</span></div>
       ${spark(points('lbm'), 'var(--moss-fg, #5e8c4f)')}
     </div>
     <div class="metric-cell">
-      ${pill(deltaWeight, ' lbs', weightIsGood)}
+      ${pill(deltaWeight, ' lbs', weightIsGood, wWinLabel)}
       <div class="metric-cell-label">Weight</div>
       <div class="metric-cell-num">${w != null ? w.toFixed(1) : '—'}<span class="metric-cell-unit">lbs</span></div>
       ${spark(points('weight'), 'var(--guava-700)')}
     </div>
     <div class="metric-cell">
-      ${pill(deltaBf, '%', d => d < 0)}
+      ${pill(deltaBf, '%', d => d < 0, compWinLabel)}
       <div class="metric-cell-label">Body fat</div>
       <div class="metric-cell-num">${bfNum}</div>
       ${spark(points('bf'), 'var(--guava-700)')}
     </div>
     <div class="metric-cell">
-      ${pill(deltaWaist, '"', d => d < 0)}
+      ${pill(deltaWaist, '"', d => d < 0, compWinLabel)}
       <div class="metric-cell-label">Waist</div>
-      <div class="metric-cell-num">${latest.waist_in != null ? Number(latest.waist_in).toFixed(1) : '—'}<span class="metric-cell-unit">in</span></div>
+      <div class="metric-cell-num">${waistNow != null ? waistNow.toFixed(1) : '—'}<span class="metric-cell-unit">in</span></div>
       ${spark(points('waist'), 'var(--ink-3)')}
     </div>
   </div>`;
@@ -3696,7 +3756,7 @@ function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, cal
 // so the Progress dashboard doesn't fragment into two big gradient
 // blocks. Each section keeps the headline + Start/Now/Target row + ETA
 // from the mockup, separated by a hairline divider.
-function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct) {
+function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight) {
   return `<div class="goal-combined-card">
     <div class="progress-card-head" style="margin-bottom:10px">
       <div>
@@ -3706,7 +3766,7 @@ function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct) {
     </div>
     <div class="goal-section ${weightGoal ? '' : 'is-empty'}">
       ${weightGoal
-        ? renderGoalSection(weightGoal, latest?.weight_lbs, 'weight')
+        ? renderGoalSection(weightGoal, latestWeight, 'weight')
         : renderGoalSectionEmpty('weight')}
     </div>
     <div class="goal-section ${fatGoal ? '' : 'is-empty'}">
@@ -3797,10 +3857,10 @@ function renderGoalSectionEmpty(kind) {
   </div>`;
 }
 
-function renderDashboardTrendCard(entries) {
-  // Mini sparkline for weight only (most reliably filled). Last 8 entries
+function renderDashboardTrendCard(weights) {
+  // Mini weight sparkline from the body_weight timeline. Last 8 weigh-ins
   // newest-first; reverse for time-going-right.
-  const points = entries.slice(0, 8).reverse().filter(e => e.weight_lbs != null);
+  const points = (weights || []).slice(0, 8).reverse().filter(e => e.weight_lbs != null);
   if (points.length < 2) return '';
   const W = 280, H = 60, pad = 4;
   const vals = points.map(p => Number(p.weight_lbs));
@@ -3818,7 +3878,7 @@ function renderDashboardTrendCard(entries) {
     <div class="progress-card-head">
       <div>
         <div class="progress-card-label">Weight trend</div>
-        <div class="progress-card-meta">Last ${points.length} entries</div>
+        <div class="progress-card-meta">Last ${points.length} weigh-ins</div>
       </div>
       <span class="trend-delta ${deltaCls}">${deltaTxt}</span>
     </div>
@@ -3850,17 +3910,60 @@ function renderDashboardEntriesList(entries) {
   </div>`;
 }
 
+// Quick weigh-in: upsert today's body_weight row (one per day). Fully
+// decoupled from progress_pics — never touches body fat / measurements /
+// photos. Optimistic local patch + re-render so the metrics strip, calorie
+// target, and weight goal update instantly.
+async function saveBodyWeight(rawValue) {
+  const num = parseFloat(String(rawValue == null ? '' : rawValue).trim());
+  if (!Number.isFinite(num) || num <= 0) {
+    showTrainToast('Enter a weight first');
+    return;
+  }
+  const measured_date = trainTodayLocalDate();
+  const weight = Math.round(num * 10) / 10;
+  try {
+    const row = {
+      user_id:       currentUser.id,
+      measured_date,
+      weight_lbs:    weight,
+      source:        'manual',
+      updated_at:    new Date().toISOString(),
+    };
+    const { data: saved, error } = await db.from('body_weight')
+      .upsert(row, { onConflict: 'user_id,measured_date' })
+      .select()
+      .single();
+    if (error) throw error;
+    const rec = saved || row;
+    const idx = _trainProgressState.weights.findIndex(wRow => wRow.measured_date === measured_date);
+    if (idx >= 0) _trainProgressState.weights[idx] = rec;
+    else _trainProgressState.weights.unshift(rec);
+    _trainProgressState.weights.sort((a, b) => b.measured_date.localeCompare(a.measured_date));
+    showTrainToast(`Logged ${weight.toFixed(1)} lbs`);
+    renderTrain();
+  } catch (e) {
+    console.warn('[train] body weight save failed', e);
+    showTrainToast('Save failed — ' + (e.message || 'try again'));
+  }
+}
+
 /* ── New entry form ───────────────────────────────────────────────── */
 
 function ensureEntryDraft() {
   if (_trainProgressState.entryDraft) return;
   const latest = _trainProgressState.entries[0];
+  // Prefill weight from the weight timeline (today's weigh-in if logged, else
+  // the most recent) so a photo entry starts from the user's current weight.
+  const today = trainTodayLocalDate();
+  const todayW = _trainProgressState.weights.find(w => w.measured_date === today);
+  const wPrefill = todayW?.weight_lbs ?? _trainProgressState.weights[0]?.weight_lbs ?? null;
   // Navy formula was retired — only waist carries over as a standalone
   // tracking number (it's one of the 4 strip metrics on the dashboard).
   // Neck/hips/chest/arms/thighs are no longer captured.
   _trainProgressState.entryDraft = {
-    captured_date: trainTodayLocalDate(),
-    weight_lbs:    '',
+    captured_date: today,
+    weight_lbs:    wPrefill != null ? String(wPrefill) : '',
     waist_in:      latest?.waist_in  != null ? String(latest.waist_in)  : '',
     notes:         '',
     // Photo state — three slots (front / side / back). `file` holds the
@@ -4122,6 +4225,29 @@ async function saveProgressEntry() {
     else _trainProgressState.entries.unshift(saved);
     _trainProgressState.entries.sort((a, b) => b.captured_date.localeCompare(a.captured_date));
 
+    // Mirror the photo-day weight into the weight timeline so it counts as a
+    // weigh-in (keeps current weight + trend in sync with the entry form).
+    // progress_pics.weight_lbs stays as the photo-day snapshot for per-photo
+    // lean-mass history; body_weight is the canonical timeline.
+    if (row.weight_lbs != null) {
+      try {
+        const bw = {
+          user_id:       currentUser.id,
+          measured_date: saved.captured_date,
+          weight_lbs:    Number(row.weight_lbs),
+          source:        'progress_pic',
+          updated_at:    new Date().toISOString(),
+        };
+        const { data: bwSaved } = await db.from('body_weight')
+          .upsert(bw, { onConflict: 'user_id,measured_date' }).select().single();
+        const rec = bwSaved || bw;
+        const wi = _trainProgressState.weights.findIndex(w => w.measured_date === saved.captured_date);
+        if (wi >= 0) _trainProgressState.weights[wi] = rec;
+        else _trainProgressState.weights.unshift(rec);
+        _trainProgressState.weights.sort((a, b) => b.measured_date.localeCompare(a.measured_date));
+      } catch (bwErr) { console.warn('[train] body_weight mirror failed', bwErr); }
+    }
+
     // Auto-mark any habit linked to 'progress' for this entry's date.
     autoMarkLinkedHabitsForSession({
       day_type:     'progress',
@@ -4200,7 +4326,7 @@ function ensureGoalDraft(kind) {
   const inTwelveWeeks = trainShiftDate(today, 84);
   let startVal = existing?.start_value;
   if (startVal == null) {
-    if (kind === 'weight') startVal = latest?.weight_lbs ?? '';
+    if (kind === 'weight') startVal = _trainProgressState.weights[0]?.weight_lbs ?? '';
     else startVal = latest?.body_fat_pct ?? '';
   }
   _trainProgressState.goalDraft = {
@@ -5390,6 +5516,12 @@ function ensureTrainStyles() {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; padding: 0 2px; margin-bottom: 8px;
     }
+    /* Quick weight logger — sits at the top of the dashboard. */
+    .weight-log-card { margin-bottom: 10px; }
+    .weight-log-head { display: flex; align-items: baseline; margin-bottom: 8px; }
+    .weight-log-row { display: flex; align-items: center; gap: 8px; }
+    .weight-log-input { flex: 1 1 auto; min-width: 0; }
+    .weight-log-btn { flex: 0 0 auto; white-space: nowrap; }
     /* Always 4-wide. On narrow viewports cells shrink rather than wrap to
        a 2x2 grid — keeps the four metrics at-a-glance scannable. */
     .metrics-strip {
