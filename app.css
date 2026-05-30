@@ -243,7 +243,7 @@
 
   /* ── Gradient grounds: a soft light wash on <body> ── */
   html[data-palette="paper-grad"] body {
-    background: linear-gradient(150deg, #fbccb2 0%, #fbe9d6 45%, #fbf6ee 100%);
+    background: linear-gradient(150deg, #f7d3c2 0%, #fbe9d6 45%, #fbf6ee 100%);
     background-attachment: fixed;
   }
   html[data-palette="sage-grad"] body {
@@ -3704,7 +3704,9 @@
       align-items: stretch;
       justify-content: center;
       padding: 16px;
-      padding-bottom: calc(16px + 68px + env(safe-area-inset-bottom, 0px));
+      /* Clear the bottom tab-bar (~70px + safe-area) plus a comfortable gap so
+         the note card never tucks under the navbar. */
+      padding-bottom: calc(16px + 90px + env(safe-area-inset-bottom, 0px));
       box-sizing: border-box;
       animation: fadeIn var(--dur-quick) ease both;
     }
