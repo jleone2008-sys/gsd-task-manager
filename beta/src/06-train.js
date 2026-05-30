@@ -1518,17 +1518,31 @@ async function loadLastSetsForActivePlan() {
       .limit(300);
     if (error) throw error;
 
+    // Group per exercise into the most-recent session (`sets`) + the session
+    // before it (`priorSets`, for the progression engine's stall detection) +
+    // a per-exercise session count. Rows arrive completed_at DESC, so the first
+    // session_id seen per exercise is its most recent.
     const byEx = {};
+    const allSessionIds = new Set();
     for (const row of data || []) {
-      if (!byEx[row.exercise_name]) {
-        byEx[row.exercise_name] = { sessionId: row.session_id, sets: [] };
-      }
-      if (byEx[row.exercise_name].sessionId === row.session_id) {
-        byEx[row.exercise_name].sets.push(row);
-      }
+      allSessionIds.add(row.session_id);
+      let e = byEx[row.exercise_name];
+      if (!e) { e = byEx[row.exercise_name] = { sessionId: row.session_id, sets: [], priorSets: [], _order: [] }; }
+      if (!e._order.includes(row.session_id)) e._order.push(row.session_id);
+      if (row.session_id === e._order[0])      e.sets.push(row);
+      else if (row.session_id === e._order[1]) e.priorSets.push(row);
     }
-    for (const k of Object.keys(byEx)) byEx[k].sets.sort((a, b) => a.set_index - b.set_index);
+    for (const k of Object.keys(byEx)) {
+      const e = byEx[k];
+      e.sets.sort((a, b) => a.set_index - b.set_index);
+      e.priorSets.sort((a, b) => a.set_index - b.set_index);
+      e.sessionCount = e._order.length;
+      delete e._order;
+    }
     _trainState.lastSetsByExercise = byEx;
+    // Total distinct sessions in the window — used as the user's training-age
+    // proxy for novice linear progression (<12 = novice).
+    _trainState.userSessionCount = allSessionIds.size;
   } catch (e) {
     console.warn('[train] load last sets failed', e);
     _trainState.lastSetsByExercise = {};
@@ -1898,8 +1912,25 @@ function renderTodayLiftCard(ex, st) {
     ? last.sets.map(fmtLastSet).join(', ')
     : 'No prior data';
 
-  const target = ex.target_text
-    ? `<span class="ex-target target-${ex.target_kind || 'hold'}">${trainEsc(ex.target_text)}</span>`
+  // Progression badge — computed from logged history by the deterministic
+  // engine (06-progression.js), replacing the static seed target_text. The
+  // autoreg inputs (lastFeel/lastRir/readiness) wire in with the RIR-capture
+  // increment; absent, the engine runs pure double-progression. Manual
+  // 'warning' exercises are returned untouched by the engine.
+  const prog = (typeof computeNextTarget === 'function')
+    ? computeNextTarget(ex, {
+        lastSets:         last && last.sets,
+        priorSessions:    last && last.priorSets && last.priorSets.length ? [last.priorSets] : [],
+        sessionCount:     last ? (last.sessionCount || ((last.sets && last.sets.length) ? 1 : 0)) : 0,
+        userSessionCount: _trainState.userSessionCount || 0,
+        lastFeel:         _trainState.lastSetsByExercise && last ? (last.feel || null) : null,
+        lastRir:          last ? (last.rir != null ? last.rir : null) : null,
+      }, { readiness: _trainState.todayReadiness != null ? _trainState.todayReadiness : null, hrvLow: !!_trainState.todayHrvLow })
+    : null;
+  const targetText = prog ? (prog.target_text || '') : (ex.target_text || '');
+  const targetKind = prog ? (prog.target_kind || 'hold') : (ex.target_kind || 'hold');
+  const target = targetText
+    ? `<span class="ex-target target-${targetKind}" ${prog && prog.reason ? `title="${trainEsc(prog.reason)}"` : ''}>${trainEsc(targetText)}</span>`
     : '';
 
   const rows = sets.map((s, i) => {
@@ -4745,6 +4776,8 @@ function ensureTrainStyles() {
     .ex-target.target-up      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); border: 1px solid var(--moss-edge, #c2d1aa); }
     .ex-target.target-hold    { background: var(--guava-50); color: var(--guava-700); border: 1px solid var(--guava-100); }
     .ex-target.target-warning { background: var(--amber-bg, #faf1dc); color: var(--amber-fg, #a87622); border: 1px solid var(--amber-edge, #e2c98c); }
+    /* Calibration (new/swapped exercise, no history yet) — neutral, no number. */
+    .ex-target.target-calibrate { background: var(--surface-2); color: var(--ink-3); border: 1px solid var(--edge); font-weight: 500; }
 
     .ex-table-head {
       /* Grid dropped from 4 → 3 columns: the trailing 28px completion
