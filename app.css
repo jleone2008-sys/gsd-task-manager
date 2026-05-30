@@ -296,9 +296,14 @@
     .bwx-card, .j-edit-card, .j-edit-footer, .j-photo-modal-card,
     .floating-search, .floating-scratch, .floating-stats, .j-fbtn, .j-float-search,
     /* interactive controls / toolbars (not cards) — keep crisp + solid */
-    .pill, .insights-search-input, .insights-action-btn, .home-pill-btn,
+    .insights-search-input, .insights-action-btn, .home-pill-btn,
     .btn--secondary, .btn-sm, .freq-btn, .settings-appearance-opt
   ) { background: var(--surface-solid); }
+  /* Pills are handled separately: only INACTIVE pills get the solid surface.
+     An active pill must keep its accent fill (var(--guava-700)) — folding
+     `.pill` into the :is() list above out-specified `.pill.active` and turned
+     the selected pill into white-text-on-white (looked transparent w/ outline). */
+  html[data-cards="soft"] .pill:not(.active) { background: var(--surface-solid); }
 
   /* ──────────────────────────────────────────────────────────────
      APP SHELL — sidebar (desktop) + main column
@@ -548,7 +553,10 @@
     display: flex;
     align-items: center;
     padding: 0 20px 12px;
-    background: var(--bg);
+    /* Transparent so the topbar's background (solid OR the palette gradient)
+       flows continuously through the pill row — a solid var(--bg) here painted
+       a mismatched block over gradient palettes. */
+    background: transparent;
   }
   @media (min-width: 900px) {
     .pill-bar { padding: 0 40px 14px; }
