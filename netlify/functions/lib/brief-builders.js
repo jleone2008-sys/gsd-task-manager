@@ -135,10 +135,32 @@ function buildHeroMetric(claudeKey, ctx) {
   };
 }
 
-// Build the stats list (Sleep, Activity, Resting HR, HRV) — exclude the hero
-// metric. All numbers from raw recovery/activity rows. Deltas computed against
-// the 7-day baseline. Special notes for sleep score, HRV banding, RHR elevation.
-function buildStats(heroKey, ctx) {
+// Build the rotating hero set: all three Oura scores (readiness, sleep,
+// activity) for the state circle to cycle through. Each item mirrors the
+// buildHeroMetric shape so the client renders + animates them identically.
+// Metrics with no data are dropped.
+function buildRotation(ctx) {
+  const r  = sanitizeScores(ctx.yesterday?.recovery || {});
+  const a  = sanitizeScores(ctx.yesterday?.activity || {});
+  const b7 = ctx.baselines_7d || {};
+  const src = [
+    { key: 'readiness_score', value: r.readiness_score, baseline: b7.readiness_score_median },
+    { key: 'sleep_score',     value: r.sleep_score,     baseline: b7.sleep_score_median },
+    { key: 'activity_score',  value: a.activity_score,  baseline: b7.activity_score_median },
+  ];
+  return src.filter(m => m.value != null).map(m => ({
+    key: m.key,
+    value: Math.round(Number(m.value)),
+    label: HERO_METRIC_LABELS[m.key],
+    delta_vs_7d: (m.baseline != null) ? Math.round(Number(m.value) - Number(m.baseline)) : 0,
+  }));
+}
+
+// Build the stats list shown beside the rotating circle. The three Oura SCORES
+// (sleep / readiness / activity) now live in the rotating circle, so they're
+// NOT repeated here: only Sleep DURATION (with its difference vs baseline),
+// Resting HR, and HRV remain. Steps move to the recap "Yesterday" column.
+function buildStats(ctx) {
   const r  = sanitizeScores(ctx.yesterday?.recovery || {});
   const a  = sanitizeScores(ctx.yesterday?.activity || {});
   const b7 = ctx.baselines_7d || {};
@@ -159,48 +181,29 @@ function buildStats(heroKey, ctx) {
   };
   const rows = [];
 
-  if (heroKey !== 'sleep_score' && (r.total_sleep_min != null || r.sleep_score != null)) {
-    const dur = formatMinutes(r.total_sleep_min);
-    const dd  = fmtDelta(r.total_sleep_min, b7.total_sleep_min_median);
+  // Sleep DURATION row (the sleep SCORE now rotates in the circle, so it's
+  // not repeated here). The difference vs the 7-day baseline is formatted in
+  // h/m — "↑22m", "↓1h22m" — instead of a bare minute count.
+  const fmtMinDelta = (today, base) => {
+    if (today == null || base == null) return { text: null, signed: 0 };
+    const d = Math.round(Number(today) - Number(base));
+    if (d === 0) return { text: null, signed: 0 };
+    const mins = Math.abs(d), h = Math.floor(mins / 60), m = mins % 60;
+    return { text: (d > 0 ? '↑' : '↓') + (h > 0 ? `${h}h${m}m` : `${m}m`), signed: d };
+  };
+  if (r.total_sleep_min != null) {
+    const dd = fmtMinDelta(r.total_sleep_min, b7.total_sleep_min_median);
     rows.push({
       label:     'Sleep',
-      value:     dur || (r.sleep_score != null ? String(r.sleep_score) : '—'),
+      value:     formatMinutes(r.total_sleep_min) || '—',
       delta:     dd.text,
       delta_dir: tagDir('Sleep', dd.signed),
-      note:      (dur && r.sleep_score != null) ? `score ${r.sleep_score}` : null,
-    });
-  }
-
-  // Activity row: score as value, steps as note — UNLESS score and steps
-  // disagree (high score on low-step day = Oura's "rest day credit"), in
-  // which case show a qualifier instead so the row doesn't look broken.
-  if (heroKey !== 'activity_score' && (a.activity_score != null || a.steps != null)) {
-    let note = null;
-    if (a.activity_score != null && a.steps != null && a.activity_score >= 80 && a.steps < 4000) {
-      note = 'low-movement day';
-    } else if (a.steps != null) {
-      note = `${a.steps.toLocaleString()} steps · yesterday`;
-    }
-    const dd = fmtDelta(a.activity_score, b7.activity_score_median);
-    rows.push({
-      label:     'Activity',
-      value:     a.activity_score != null ? String(a.activity_score) : '—',
-      delta:     dd.text,
-      delta_dir: tagDir('Activity', dd.signed),
-      note,
-    });
-  }
-
-  if (heroKey !== 'readiness_score' && r.readiness_score != null) {
-    const dd = fmtDelta(r.readiness_score, b7.readiness_score_median);
-    rows.push({
-      label:     'Readiness',
-      value:     String(r.readiness_score),
-      delta:     dd.text,
-      delta_dir: tagDir('Readiness', dd.signed),
       note:      null,
     });
   }
+
+  // Activity + Readiness score rows removed — both scores now live in the
+  // rotating circle, and steps moved to the recap "Yesterday" column.
 
   // Resting HR: lower is better — negative delta renders green, positive red.
   if (r.resting_hr != null) {
@@ -312,6 +315,7 @@ function buildRecap(mode, ctx, sleepTargetTime) {
       label:       'Yesterday',
       habits:      habitsPct(ctx.yesterday?.habits),
       tasks_done:  ctx.yesterday?.tasks_completed_count ?? null,
+      steps:       sanitizeScores(ctx.yesterday?.activity || {}).steps ?? null,
       bedtime:     computeBedtime(ctx.yesterday?.recovery),
       mood_label:  ctx.yesterday?.mood?.value_label ?? null,
       train:       trainSummary(ctx.yesterday?.workout),
@@ -332,6 +336,7 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     label:       'Today',
     habits:      habitsPct(ctx.yesterday?.habits),    // habits don't finalize until midnight
     tasks_done:  ctx.today_recap?.tasks_completed_today ?? null,
+    steps:       sanitizeScores(ctx.yesterday?.activity || {}).steps ?? null,
     bedtime:     null,           // yesterday's bedtime is stale by evening
     mood_label:  ctx.today_recap?.mood_label ?? null,
     train:       trainSummary(ctx.today_recap?.train_session_today),
@@ -468,6 +473,7 @@ module.exports = {
   buildWeatherChip,
   sanitizeScores,
   buildHeroMetric,
+  buildRotation,
   buildStats,
   computeBedtime,
   buildRecap,

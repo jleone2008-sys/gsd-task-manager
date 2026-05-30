@@ -146,21 +146,30 @@
         : 'Tonight echoes the evenings where an earlier wind-down has paid off for your recovery.',
       weather_chip: isMorning ? '74° · Austin' : null,
       confidence: 'high',
-      hero_metric: { key: 'readiness_score', label: 'Readiness', value: 78, delta_vs_7d: 3 },
+      // Single hero kept for backward-compat (old cached briefs); `rotation`
+      // drives the auto-cycling state circle when present.
+      hero_metric: { key: 'readiness_score', label: 'READINESS', value: 78, delta_vs_7d: 3 },
+      rotation: [
+        { key: 'readiness_score', label: 'READINESS', value: 78, delta_vs_7d: 3 },
+        { key: 'sleep_score',     label: 'SLEEP',     value: 82, delta_vs_7d: 4 },
+        { key: 'activity_score',  label: 'ACTIVITY',  value: 74, delta_vs_7d: -2 },
+      ],
+      // Scores now live in the circle; stats show Sleep DURATION + Resting HR + HRV.
       stats: [
-        { key: 'sleep_score',    label: 'Sleep',    value: 82, delta: '↑4', delta_dir: 'good' },
-        { key: 'activity_score', label: 'Activity', value: 74, delta: '↓2', delta_dir: 'bad' },
+        { label: 'Sleep',      value: '7h 40m', delta: '↑22m', delta_dir: 'good' },
+        { label: 'Resting HR', value: '52 bpm', delta: '↓2',   delta_dir: 'good' },
+        { label: 'HRV',        value: '68 ms',  delta: '↑5',   delta_dir: 'good' },
       ],
       evidence_pills: isMorning
         ? [{ text: 'HRV steady', tone: 'neutral' }, { text: 'Slept 7h40m', tone: 'positive' }, { text: 'Overdue tasks', tone: 'negative' }]
         : [{ text: 'On track', tone: 'positive' }, { text: '3/5 habits', tone: 'neutral' }],
       recap: isMorning
         ? {
-            left:  { label: 'Yesterday', habits: { pct: 80, done: 4, due: 5 }, tasks_done: 3, bedtime: '10:45 PM', mood_label: 'Good' },
+            left:  { label: 'Yesterday', habits: { pct: 80, done: 4, due: 5 }, steps: 8432, tasks_done: 3, bedtime: '10:45 PM', mood_label: 'Good' },
             right: { label: 'Today', events: 2, task_counts: { priority: 2, due_today: 2, overdue: 1, total_open: 5 }, sleep_target: '10:30 PM', train: { label: 'Push day', detail: '5 lifts' } },
           }
         : {
-            left:  { label: 'Today', habits: { pct: 60, done: 3, due: 5 }, tasks_done: 1, mood_label: 'Good' },
+            left:  { label: 'Today', habits: { pct: 60, done: 3, due: 5 }, steps: 5210, tasks_done: 1, mood_label: 'Good' },
             right: { label: 'Tomorrow', events: 1, task_counts: { priority: 1, due_today: 0, overdue: 0, total_open: 4 }, sleep_target: '10:30 PM', train: { label: 'Rest', detail: '' } },
           },
     };

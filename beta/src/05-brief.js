@@ -611,13 +611,15 @@ function briefRecapHTML(recap, structured) {
   // Canonical row order. Rows are tagged with a `slot` and sorted by this so
   // shared rows line up across the two columns — Habits is first, so when both
   // Yesterday and Today have habits they land on the same (top) row.
-  const SLOT_ORDER = ['habits', 'train', 'tasks', 'sleep', 'mood', 'events'];
+  const SLOT_ORDER = ['habits', 'steps', 'train', 'tasks', 'sleep', 'mood', 'events'];
   const renderCol = (col) => {
     if (!col) return '';
     const rows = [];
     // Past-side fields (habits closed, tasks done, bedtime, mood).
     const habitsTxt = briefRecapHabitsText(col.habits);
     if (habitsTxt != null) rows.push({ slot: 'habits', icon: '🔥', name: 'Habits',     value: habitsTxt });
+    // Steps moved out of the activity callout into the Yesterday recap column.
+    if (col.steps != null) rows.push({ slot: 'steps', icon: '👟', name: 'Steps', value: Number(col.steps).toLocaleString() });
     if (col.tasks_done != null) rows.push({ slot: 'tasks', icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
     if (col.bedtime)            rows.push({ slot: 'sleep', icon: '🌙', name: 'In bed',     value: col.bedtime });
     if (col.mood_label)         rows.push({ slot: 'mood', icon: '😊', name: 'Mood',       value: col.mood_label });
@@ -711,7 +713,10 @@ function briefUpdatedStampHTML(brief) {
 function briefStructuredHTML(brief) {
   const s = brief.structured || {};
   const mode = s.mode || brief.mode || 'morning';
-  const hero = s.hero_metric || {};
+  // The hero "state circle" rotates through all available scores (readiness /
+  // sleep / activity). Fall back to the single hero_metric for cached briefs.
+  const rotation = (Array.isArray(s.rotation) && s.rotation.length) ? s.rotation : (s.hero_metric ? [s.hero_metric] : []);
+  const hero = rotation[0] || {};
   const heroHtml = briefHeroRingSVG(hero.value, hero.label, hero.delta_vs_7d, hero.key);
   // Prefer the new recap grid (Yesterday/Today or Today/Tomorrow). For old
   // briefs in the DB that still carry today_play / tomorrow_setup, fall back
@@ -771,6 +776,30 @@ function briefRender() {
   else if (_briefState.brief?.narrative)         el.innerHTML = briefLegacyHTML(_briefState.brief);
   else if (_briefState.brief)                    el.innerHTML = briefEmptyHTML();
   briefAnimateStats(el);
+  briefStartRotation();
+}
+
+// Hero "state circle" rotation — auto-cycle through readiness / sleep / activity
+// scores every few seconds. Self-stops when the brief is re-rendered or there's
+// nothing to cycle; respects reduced-motion.
+let _briefRotationTimer = null;
+function briefStopRotation() {
+  if (_briefRotationTimer) { clearInterval(_briefRotationTimer); _briefRotationTimer = null; }
+}
+function briefStartRotation() {
+  briefStopRotation();
+  const s = _briefState.brief && _briefState.brief.structured;
+  const rotation = (s && Array.isArray(s.rotation)) ? s.rotation.filter(m => m && m.value != null) : [];
+  if (rotation.length < 2) return;                         // nothing to cycle
+  if (window.GSDMotion && window.GSDMotion.reduced) return; // respect reduced-motion
+  let i = 0;
+  _briefRotationTimer = setInterval(() => {
+    const ring = document.querySelector('#homeBrief .brief-hero-ring');
+    if (!ring) { briefStopRotation(); return; }            // brief gone/re-rendered
+    i = (i + 1) % rotation.length;
+    const m = rotation[i];
+    ring.innerHTML = briefHeroRingSVG(m.value, m.label, m.delta_vs_7d, m.key);
+  }, 3800);
 }
 
 // Phase 1a — animate integer stat values once per (brief-date, mode) per session.

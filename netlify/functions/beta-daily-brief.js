@@ -51,6 +51,7 @@ const {
   buildWeatherChip,
   sanitizeScores,
   buildHeroMetric,
+  buildRotation,
   buildStats,
   computeBedtime,
   buildRecap,
@@ -1158,7 +1159,8 @@ function normalizeStructured(raw, mode, ctx) {
   // ── Server-built factual blocks ────────────────────────────────────────
   const heroKey      = HERO_METRIC_KEYS.includes(raw.hero_metric_key) ? raw.hero_metric_key : null;
   const hero_metric  = buildHeroMetric(heroKey, ctx);
-  const stats        = buildStats(hero_metric.key, ctx);
+  const rotation     = buildRotation(ctx);
+  const stats        = buildStats(ctx);
   const weatherSrc   = mode === 'evening' ? ctx.tomorrow_plan?.weather : ctx.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
   // Fully deterministic sleep target — Claude's output is no longer
@@ -1187,6 +1189,7 @@ function normalizeStructured(raw, mode, ctx) {
       subhead,
       insight: insight || null,
       hero_metric,
+      rotation,
       stats,
       evidence_pills: pills,
       recap,
@@ -1267,7 +1270,8 @@ function buildFlatNarrative(s) {
 function buildFallback({ reason, context, mode }) {
   const ctxSafe = context || { user: { timezone: DEFAULT_TIMEZONE }, yesterday: {}, today_plan: {}, tomorrow_plan: null, baselines_7d: null };
   const hero_metric  = buildHeroMetric(null, ctxSafe);
-  const stats        = buildStats(hero_metric.key, ctxSafe);
+  const rotation     = buildRotation(ctxSafe);
+  const stats        = buildStats(ctxSafe);
   const weatherSrc   = mode === 'evening' ? ctxSafe.tomorrow_plan?.weather : ctxSafe.today_plan?.weather;
   const weather_chip = buildWeatherChip(weatherSrc, mode);
   const sleepRec = recommendSleepTarget({
@@ -1286,6 +1290,7 @@ function buildFallback({ reason, context, mode }) {
     headline:       mode === 'morning' ? 'Brief unavailable.' : 'Wrap-up unavailable.',
     subhead:        'Generate again when ready.',
     hero_metric,
+    rotation,
     stats,
     evidence_pills: [],
     recap,
