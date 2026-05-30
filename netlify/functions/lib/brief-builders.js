@@ -336,7 +336,10 @@ function buildRecap(mode, ctx, sleepTargetTime) {
     label:       'Today',
     habits:      habitsPct(ctx.yesterday?.habits),    // habits don't finalize until midnight
     tasks_done:  ctx.today_recap?.tasks_completed_today ?? null,
-    steps:       sanitizeScores(ctx.yesterday?.activity || {}).steps ?? null,
+    // No steps in the evening recap: only yesterday's activity is in context,
+    // so showing it under "Today" would be misleading. (The morning Yesterday
+    // column still shows steps, which genuinely IS yesterday.)
+    steps:       null,
     bedtime:     null,           // yesterday's bedtime is stale by evening
     mood_label:  ctx.today_recap?.mood_label ?? null,
     train:       trainSummary(ctx.today_recap?.train_session_today),

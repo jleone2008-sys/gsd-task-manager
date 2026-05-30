@@ -659,7 +659,8 @@ function briefRecapHTML(recap, structured) {
     if (habitsTxt != null) rows.push({ slot: 'habits', icon: '🔥', name: 'Habits',     value: habitsTxt });
     // Steps moved out of the activity callout into the Yesterday recap column.
     if (col.steps != null) rows.push({ slot: 'steps', icon: '👟', name: 'Steps', value: Number(col.steps).toLocaleString() });
-    if (col.tasks_done != null) rows.push({ slot: 'tasks', icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
+    // Only show "Tasks done" when at least one was completed — a "0" is noise.
+    if (col.tasks_done) rows.push({ slot: 'tasks', icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
     if (col.bedtime)            rows.push({ slot: 'sleep', icon: '🌙', name: 'In bed',     value: col.bedtime });
     if (col.mood_label)         rows.push({ slot: 'mood', icon: '😊', name: 'Mood',       value: col.mood_label });
     // Forward-side fields (events, task counts, today's habits, sleep target).
@@ -1134,6 +1135,10 @@ function homeBriefRecompute() {
     // row in that case. Bug I just introduced one commit ago: was
     // passing { due, done } without pct, which read as '0%'.
     s.recap.left.habits = briefComputeHabitsToday();
+    // Drop any stale steps an older cached brief baked in — in the evening
+    // recap the only step data available was yesterday's, which is wrong
+    // under "Today" (the server now sends null here too).
+    s.recap.left.steps = null;
   }
 
   // ── Legacy shape (today_play / tomorrow_setup) ──────────────────────────
