@@ -560,7 +560,7 @@ function briefStatsHTML(stats) {
         ${noteHtml}
       </span>
     </div>`;
-  }).join('')}${hasAnyDelta ? `<div class="brief-stats-baseline">Δ vs 7-day avg</div>` : ''}</div>`;
+  }).join('')}</div>`;
 }
 
 // Fallback sentiment for LEGACY string pills (briefs cached before the server
@@ -608,29 +608,33 @@ function briefRecapHabitsText(h) {
 // the structured.recap fields in place and call briefRender again.
 function briefRecapHTML(recap, structured) {
   if (!recap || (!recap.left && !recap.right)) return '';
+  // Canonical row order. Rows are tagged with a `slot` and sorted by this so
+  // shared rows line up across the two columns — Habits is first, so when both
+  // Yesterday and Today have habits they land on the same (top) row.
+  const SLOT_ORDER = ['habits', 'train', 'tasks', 'sleep', 'mood', 'events'];
   const renderCol = (col) => {
     if (!col) return '';
     const rows = [];
     // Past-side fields (habits closed, tasks done, bedtime, mood).
     const habitsTxt = briefRecapHabitsText(col.habits);
-    if (habitsTxt != null) rows.push({ icon: '🔥', name: 'Habits',     value: habitsTxt });
-    if (col.tasks_done != null) rows.push({ icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
-    if (col.bedtime)            rows.push({ icon: '🌙', name: 'In bed',     value: col.bedtime });
-    if (col.mood_label)         rows.push({ icon: '😊', name: 'Mood',       value: col.mood_label });
+    if (habitsTxt != null) rows.push({ slot: 'habits', icon: '🔥', name: 'Habits',     value: habitsTxt });
+    if (col.tasks_done != null) rows.push({ slot: 'tasks', icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
+    if (col.bedtime)            rows.push({ slot: 'sleep', icon: '🌙', name: 'In bed',     value: col.bedtime });
+    if (col.mood_label)         rows.push({ slot: 'mood', icon: '😊', name: 'Mood',       value: col.mood_label });
     // Forward-side fields (events, task counts, today's habits, sleep target).
     if (col.events != null && (col.label === 'Today' || col.label === 'Tomorrow')) {
-      rows.push({ icon: '📅', name: 'Events', value: String(col.events) });
+      rows.push({ slot: 'events', icon: '📅', name: 'Events', value: String(col.events) });
     }
     const tcTxt = briefRecapTaskCountsText(col.task_counts);
-    if (tcTxt != null) rows.push({ icon: '☐', name: 'Tasks', value: tcTxt });
+    if (tcTxt != null) rows.push({ slot: 'tasks', icon: '☐', name: 'Tasks', value: tcTxt });
     // Morning brief: live "Tasks done today" so completions show up
     // without waiting for tonight's brief regen. Only renders when > 0
     // so the row doesn't add noise first thing in the morning.
     if (col.tasks_done_today != null && col.tasks_done_today > 0) {
-      rows.push({ icon: '✓', name: 'Done', value: String(col.tasks_done_today) });
+      rows.push({ slot: 'tasks', icon: '✓', name: 'Done', value: String(col.tasks_done_today) });
     }
     const habitsTodayTxt = briefRecapHabitsText(col.habits_today);
-    if (habitsTodayTxt != null) rows.push({ icon: '🔥', name: 'Habits', value: habitsTodayTxt });
+    if (habitsTodayTxt != null) rows.push({ slot: 'habits', icon: '🔥', name: 'Habits', value: habitsTodayTxt });
     // Train row — either today/tomorrow's planned session OR yesterday/
     // today's logged session, formatted server-side as { label, detail }.
     // Skip when null (no active plan AND no session logged).
@@ -638,19 +642,22 @@ function briefRecapHTML(recap, structured) {
       const value = col.train.detail
         ? `${col.train.label} · ${col.train.detail}`
         : col.train.label;
-      rows.push({ icon: '🏋️', name: 'Train', value });
+      rows.push({ slot: 'train', icon: '🏋️', name: 'Train', value });
     }
     // Sleep target — always labeled "Bed time" regardless of which
     // column it's on. The server now puts it on the TODAY column in
     // both morning and evening modes (it's always tonight's bedtime),
     // so column-aware labeling ("Tonight" / "Tomorrow") was misleading.
     if (col.sleep_target) {
-      rows.push({ icon: '🌙', name: 'Bed time', value: col.sleep_target });
+      rows.push({ slot: 'sleep', icon: '🌙', name: 'Bed time', value: col.sleep_target });
     }
     if (!rows.length) return '';
+    // Order rows so shared slots align across columns, then cap at 5 callouts.
+    rows.sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
+    const capped = rows.slice(0, 5);
     return `<div class="brief-recap-col">
       <div class="brief-recap-col-label">${briefEsc(col.label || '')}</div>
-      ${rows.map(r => `<div class="brief-recap-row">
+      ${capped.map(r => `<div class="brief-recap-row">
         <span class="brief-recap-icon">${briefEsc(r.icon)}</span>
         <span class="brief-recap-name">${briefEsc(r.name)}</span>
         <span class="brief-recap-value">${briefEsc(r.value)}</span>
