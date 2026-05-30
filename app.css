@@ -254,6 +254,23 @@
     background: linear-gradient(150deg, #cbddfb 0%, #e2ecfb 45%, #d2f0e9 100%);
     background-attachment: fixed;
   }
+  /* Sticky header re-uses the SAME fixed gradient as the body so it stays
+     visually seamless at the top of the page while remaining fully opaque
+     (content scrolling underneath can't show through). `background-attachment:
+     fixed` anchors the gradient to the viewport, so the header's slice matches
+     the body's slice exactly behind it. */
+  html[data-palette="paper-grad"] .topbar {
+    background: linear-gradient(150deg, #f7d3c2 0%, #fbe9d6 45%, #fbf6ee 100%);
+    background-attachment: fixed;
+  }
+  html[data-palette="sage-grad"] .topbar {
+    background: linear-gradient(150deg, #c6e6c4 0%, #ecf2da 45%, #cfece4 100%);
+    background-attachment: fixed;
+  }
+  html[data-palette="sky-grad"] .topbar {
+    background: linear-gradient(150deg, #cbddfb 0%, #e2ecfb 45%, #d2f0e9 100%);
+    background-attachment: fixed;
+  }
 
   /* ── Corners (xs = current default, no override) ── */
   html[data-corners="sharp"] { --r-sm: 0;    --r-md: 0;    --r-lg: 0; }
@@ -426,14 +443,19 @@
      HEADER — light surface, mobile (wordmark + title + avatar)
      or desktop (page title + actions). No navy bar.
   ────────────────────────────────────────────────────────────── */
-  /* Topbar wrapper — header + pill-bar scroll WITH the page (not sticky).
-     Transparent so the page's theme background (solid OR gradient) flows
-     continuously through the header instead of showing a solid seam. */
+  /* Topbar wrapper — header + pill-bar, pinned to the top of the viewport.
+     It carries the page's own background (NOT transparent) so scrolled
+     content can't bleed through and overlap the logo/avatar. Because a flat
+     palette's page background IS var(--bg), the header is seamless with the
+     body; gradient palettes get a matching fixed-gradient rule below (the
+     `background-attachment: fixed` anchors both header and body gradients to
+     the viewport, so the slice under the header lines up exactly — opaque
+     AND seamless). */
   .topbar {
-    position: sticky;       /* pinned to top; transparent so the theme bg/gradient shows through */
+    position: sticky;       /* pinned to top */
     top: 0;
     z-index: var(--z-toast);
-    background: transparent;
+    background: var(--bg);
   }
   header {
     display: flex;

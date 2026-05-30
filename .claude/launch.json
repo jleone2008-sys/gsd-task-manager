@@ -10,7 +10,7 @@
     {
       "name": "Static HTTP server (HTML only, no functions)",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["http-server", ".", "-p", "8080", "--cors"],
+      "runtimeArgs": ["http-server", ".", "-p", "8080", "--cors", "-c-1"],
       "port": 8080
     }
   ]

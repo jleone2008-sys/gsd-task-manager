@@ -206,6 +206,24 @@ function briefInjectStyles() {
       align-items: center;
     }
     .brief-hero-ring { display: flex; align-items: center; justify-content: center; }
+    /* Ring + rotation indicator stack (the circle cycles through readiness /
+       sleep / activity; the segment below fills over the dwell time so the
+       user can see the next swap coming). */
+    .brief-hero-ring-col { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+    .brief-rot-dots { display: flex; gap: 4px; }
+    .brief-rot-seg {
+      width: 16px; height: 3px; border-radius: var(--r-sm);
+      background: var(--edge-strong); position: relative; overflow: hidden;
+    }
+    .brief-rot-seg::after {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: var(--guava-500); transform-origin: left; transform: scaleX(0);
+    }
+    .brief-rot-seg.is-active::after { animation: briefRotFill 3800ms linear forwards; }
+    @keyframes briefRotFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @media (prefers-reduced-motion: reduce) {
+      .brief-rot-seg.is-active::after { animation: none; transform: scaleX(1); }
+    }
     .brief-hero-svg  { width: 120px; height: 120px; display: block; }
     .brief-hero-value { font-size: 26px; font-weight: 700; fill: var(--ink); }
     .brief-hero-label { font-size: var(--fs-nano); font-weight: 700; letter-spacing: .08em; fill: var(--ink-3); }
@@ -629,12 +647,13 @@ function briefRecapHabitsText(h) {
 // the structured.recap fields in place and call briefRender again.
 function briefRecapHTML(recap, structured) {
   if (!recap || (!recap.left && !recap.right)) return '';
-  // Canonical row order. Rows are tagged with a `slot` and sorted by this so
-  // shared rows line up across the two columns — Habits is first, so when both
-  // Yesterday and Today have habits they land on the same (top) row.
+  // Canonical row order. Rows are tagged with a `slot`; shared slots are then
+  // paired across the two columns so e.g. Habits lines up with Habits and
+  // Train lines up with Train — see the slot-pairing pass below.
   const SLOT_ORDER = ['habits', 'steps', 'train', 'tasks', 'sleep', 'mood', 'events'];
-  const renderCol = (col) => {
-    if (!col) return '';
+  // Build one column's slot-tagged rows from its data fields.
+  const buildRows = (col) => {
+    if (!col) return [];
     const rows = [];
     // Past-side fields (habits closed, tasks done, bedtime, mood).
     const habitsTxt = briefRecapHabitsText(col.habits);
@@ -675,22 +694,64 @@ function briefRecapHTML(recap, structured) {
     if (col.sleep_target) {
       rows.push({ slot: 'sleep', icon: '🌙', name: 'Bed time', value: col.sleep_target });
     }
-    if (!rows.length) return '';
-    // Order rows so shared slots align across columns, then cap at 5 callouts.
-    rows.sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot));
-    const capped = rows.slice(0, 5);
-    return `<div class="brief-recap-col">
-      <div class="brief-recap-col-label">${briefEsc(col.label || '')}</div>
-      ${capped.map(r => `<div class="brief-recap-row">
+    return rows;
+  };
+
+  // Render one row; null → an invisible placeholder of identical height (the
+  // &nbsp; icon keeps its line-box the same as a real row) so the opposite
+  // column's row stays on the same line.
+  const rowHTML = (r) => r
+    ? `<div class="brief-recap-row">
         <span class="brief-recap-icon">${briefEsc(r.icon)}</span>
         <span class="brief-recap-name">${briefEsc(r.name)}</span>
         <span class="brief-recap-value">${briefEsc(r.value)}</span>
-      </div>`).join('')}
+      </div>`
+    : `<div class="brief-recap-row brief-recap-row--empty" aria-hidden="true"><span class="brief-recap-icon">&nbsp;</span><span class="brief-recap-name"></span><span class="brief-recap-value"></span></div>`;
+  const colHTML = (label, rows) => `<div class="brief-recap-col">
+      <div class="brief-recap-col-label">${briefEsc(label || '')}</div>
+      ${rows.map(rowHTML).join('')}
     </div>`;
-  };
+
+  const leftRows  = buildRows(recap.left);
+  const rightRows = buildRows(recap.right);
+  const leftHas = leftRows.length > 0, rightHas = rightRows.length > 0;
+
+  // Only one side has data → render it plainly, ordered by slot, capped at 5.
+  if (!leftHas || !rightHas) {
+    const onlyCol  = leftHas ? recap.left : recap.right;
+    const onlyRows = (leftHas ? leftRows : rightRows)
+      .slice().sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)).slice(0, 5);
+    if (!onlyRows.length) return '';
+    return `<div class="brief-recap-grid">${colHTML(onlyCol.label, onlyRows)}</div>`;
+  }
+
+  // Both sides present. First cap EACH column to its top 5 real callouts (by
+  // slot priority) — the cap is about real rows, not the blank spacers we add
+  // for alignment, so a shared row like Mood is never crowded out by a blank.
+  const cap = 5;
+  const topN = (rows) => rows.slice()
+    .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+    .slice(0, cap);
+  const L5 = topN(leftRows), R5 = topN(rightRows);
+
+  // Then walk SLOT_ORDER and pair each column's rows of that slot by index, so
+  // shared slots (Habits, Train, Tasks, Sleep, Mood) land on the SAME line
+  // across columns. A slot only one column has (Steps→Yesterday, Events→Today)
+  // gets an invisible placeholder opposite it so everything below stays
+  // aligned. Trailing placeholders are trimmed so neither column dangles blank
+  // rows at its foot (interior placeholders stay — they hold the alignment).
+  const leftA = [], rightA = [];
+  for (const slot of SLOT_ORDER) {
+    const L = L5.filter(r => r.slot === slot);
+    const R = R5.filter(r => r.slot === slot);
+    const n = Math.max(L.length, R.length);
+    for (let i = 0; i < n; i++) { leftA.push(L[i] || null); rightA.push(R[i] || null); }
+  }
+  while (leftA.length  && leftA[leftA.length - 1]   == null) leftA.pop();
+  while (rightA.length && rightA[rightA.length - 1] == null) rightA.pop();
   return `<div class="brief-recap-grid">
-    ${renderCol(recap.left)}
-    ${renderCol(recap.right)}
+    ${colHTML(recap.left.label, leftA)}
+    ${colHTML(recap.right.label, rightA)}
   </div>`;
 }
 
@@ -740,6 +801,13 @@ function briefStructuredHTML(brief) {
   const rotation = (Array.isArray(s.rotation) && s.rotation.length) ? s.rotation : (s.hero_metric ? [s.hero_metric] : []);
   const hero = rotation[0] || {};
   const heroHtml = briefHeroRingSVG(hero.value, hero.label, hero.delta_vs_7d, hero.key);
+  // Story-style progress segments under the circle — one per rotating metric,
+  // the active one fills over the dwell time to telegraph the next swap. Only
+  // shown when there's something to cycle and motion is allowed.
+  const willRotate = rotation.length >= 2 && !(typeof window !== 'undefined' && window.GSDMotion && window.GSDMotion.reduced);
+  const rotDotsHtml = willRotate
+    ? `<div class="brief-rot-dots" role="presentation" aria-hidden="true">${rotation.map((_, i) => `<span class="brief-rot-seg${i === 0 ? ' is-active' : ''}"></span>`).join('')}</div>`
+    : '';
   // Prefer the new recap grid (Yesterday/Today or Today/Tomorrow). For old
   // briefs in the DB that still carry today_play / tomorrow_setup, fall back
   // to the legacy single-column play list so they render until the hourly
@@ -758,7 +826,10 @@ function briefStructuredHTML(brief) {
     ${s.insight ? `<div class="brief-insight"><span class="brief-insight-icon">${BRIEF_INSIGHT_ICON}</span><span>${briefEsc(s.insight)}</span></div>` : ''}
     <div class="brief-divider"></div>
     <div class="brief-hero-grid">
-      <div class="brief-hero-ring">${heroHtml}</div>
+      <div class="brief-hero-ring-col">
+        <div class="brief-hero-ring">${heroHtml}</div>
+        ${rotDotsHtml}
+      </div>
       ${briefStatsHTML(s.stats)}
     </div>
     ${briefPillsHTML(s.evidence_pills)}
@@ -822,6 +893,10 @@ function briefStartRotation() {
     i = (i + 1) % rotation.length;
     const m = rotation[i];
     ring.innerHTML = briefHeroRingSVG(m.value, m.label, m.delta_vs_7d, m.key);
+    // Advance the progress segment (the freshly-active one restarts its fill,
+    // telegraphing the next swap).
+    const segs = document.querySelectorAll('#homeBrief .brief-rot-seg');
+    if (segs.length === rotation.length) segs.forEach((sg, idx) => sg.classList.toggle('is-active', idx === i));
   }, 3800);
 }
 
@@ -1119,6 +1194,10 @@ function homeBriefRecompute() {
     }
     if (mode === 'evening' && s.recap && s.recap.left && s.recap.left.label === 'Today') {
       s.recap.left.mood_label = label;
+    } else if (mode === 'morning' && s.recap && s.recap.right && s.recap.right.label === 'Today') {
+      // Morning: 'Today' is the right column. Surface today's mood there too
+      // (the server doesn't populate it because it's logged through the day).
+      s.recap.right.mood_label = label;
     }
   }
 
