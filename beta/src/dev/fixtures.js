@@ -226,21 +226,21 @@
   // Real schema fields: actual_weight / actual_reps / is_bodyweight / completed_at.
   // Most-recent Push session (1500) seeds the progression engine; the older Push
   // session (1502) provides prior-session context for stall detection.
-  const st = (id, sid, name, idx, w, reps, t, bw) => ({ id, user_id: USER_ID, session_id: sid, exercise_name: name, set_index: idx, actual_weight: w, actual_reps: reps, is_bodyweight: !!bw, completed_at: iso(t) });
+  const st = (id, sid, name, idx, w, reps, t, bw, rir) => ({ id, user_id: USER_ID, session_id: sid, exercise_name: name, set_index: idx, actual_weight: w, actual_reps: reps, is_bodyweight: !!bw, completed_at: iso(t), rir: rir != null ? rir : null });
   const workout_sets = [
-    // Push — most recent (1 day ago)
+    // Push — most recent (1 day ago). RIR stamped on each exercise's last set.
     st(1600, 1500, 'Bench press',            0, 185, 8, 1 * DAY),
     st(1601, 1500, 'Bench press',            1, 185, 8, 1 * DAY),
-    st(1602, 1500, 'Bench press',            2, 185, 8, 1 * DAY),   // hit top of 6-8 → ↑190
+    st(1602, 1500, 'Bench press',            2, 185, 8, 1 * DAY, false, 2),   // hit top, RIR 2 → ↑190
     st(1603, 1500, 'Overhead press',         0, 95, 9, 1 * DAY),
     st(1604, 1500, 'Overhead press',         1, 95, 9, 1 * DAY),
-    st(1605, 1500, 'Overhead press',         2, 95, 8, 1 * DAY),    // in range 8-10, not top → hold
+    st(1605, 1500, 'Overhead press',         2, 95, 8, 1 * DAY, false, 1),    // in range, not top
     st(1606, 1500, 'Incline dumbbell press', 0, 60, 10, 1 * DAY),
     st(1607, 1500, 'Incline dumbbell press', 1, 60, 10, 1 * DAY),
-    st(1608, 1500, 'Incline dumbbell press', 2, 60, 10, 1 * DAY),   // DB, hit 10 → ↑65/hand
+    st(1608, 1500, 'Incline dumbbell press', 2, 60, 10, 1 * DAY, false, 0),   // hit 10 but RIR 0 (grind) → autoreg holds
     st(1609, 1500, 'Triceps pushdown',       0, 50, 12, 1 * DAY),
     st(1610, 1500, 'Triceps pushdown',       1, 50, 12, 1 * DAY),
-    st(1611, 1500, 'Triceps pushdown',       2, 50, 12, 1 * DAY),   // cable, hit 12 → ↑60
+    st(1611, 1500, 'Triceps pushdown',       2, 50, 12, 1 * DAY, false, 3),   // cable, hit 12, fresh → ↑60
     // Push — prior (8 days ago), Bench only — for stall-detection context
     st(1620, 1502, 'Bench press',            0, 185, 7, 8 * DAY),
     st(1621, 1502, 'Bench press',            1, 185, 6, 8 * DAY),
