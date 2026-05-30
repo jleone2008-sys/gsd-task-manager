@@ -256,7 +256,9 @@
 
   /* ── Insights ───────────────────────────────────────────── */
   const weekly_briefs = [
-    { id: 1800, user_id: USER_ID, week_start: daysAgo(7), narrative: 'Sleep was steadier this week; readiness tracked your earlier bedtimes.', structured: { findings: ['Earlier bedtime correlated with +6 readiness'] }, created_at: iso(2 * DAY) },
+    { id: 1800, user_id: USER_ID, week_start_date: daysAgo(7), generated_at: iso(2 * DAY), model: 'claude-opus-4-7', status: 'ready', confidence: 'medium', total_iterations: 7, patterns_discovered_ids: [1801],
+      structured: { headline: 'A steadier week.', subhead: 'Sleep and readiness moved together — earlier bedtimes paid off.', sections: [ { label: 'What worked', body: 'Earlier bedtimes lined up with your best readiness mornings.' }, { label: 'Watch', body: 'Two late nights mid-week dented HRV the next day.' } ] },
+      narrative: 'Sleep was steadier this week; readiness tracked your earlier bedtimes.', created_at: iso(2 * DAY) },
   ];
   const patterns_discovered = [
     { id: 1810, user_id: USER_ID, pattern: 'Higher activity days follow nights with 8h+ sleep.', strength: 0.62, dismissed: false, created_at: iso(2 * DAY) },

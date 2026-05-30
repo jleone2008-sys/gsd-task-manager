@@ -23,6 +23,10 @@
   let _weeklyBrief = null;
   let _weeklyLoading = false;
   let _weeklyInflight = false;   // for the "Generate now" flow
+  let _weeklyRegenFrom = null;   // generated_at of the brief being replaced — the
+                                 // background fn returns 202 before flipping the
+                                 // row to 'processing', so the poll detects the new
+                                 // run by a CHANGED generated_at, not a status flip.
 
   // Phase 8 — Ask chat state
   let _askThreadDate = null;     // YYYY-MM-DD; defaults to today
@@ -349,6 +353,9 @@
     if (_weeklyInflight) return;
     _weeklyInflight = true;
     if (btn) btn.disabled = true;
+    // Remember the brief we're replacing + the week on screen.
+    _weeklyRegenFrom = _weeklyBrief?.generated_at || null;
+    const targetWeek = _weeklyBrief?.week_start_date || null;
     try {
       const { data: { session } } = await db.auth.getSession();
       const token = session?.access_token;
@@ -357,17 +364,25 @@
       const res = await fetch('/.netlify/functions/beta-weekly-synthesis-background', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({}),
+        // Regenerate the week the user is VIEWING. Without this the manual path
+        // defaults to a different week ("last completed Monday") than what's on
+        // screen, so the on-screen brief never updates → "nothing happened".
+        body: JSON.stringify(targetWeek ? { week_start_date: targetWeek } : {}),
       });
       // 202 Accepted (background) or 200 (sync error path)
       if (res.status !== 202 && !res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.detail || body?.error || `http_${res.status}`);
       }
-      // Refresh the view so the poll picks up the processing row
-      await loadWeekly();
+      // Show a working state IMMEDIATELY (don't re-read the row — the background
+      // fn returns 202 before it flips to 'processing', so a re-read would still
+      // see the old brief). renderWeekly's processing branch starts the poll.
+      if (_weeklyBrief) _weeklyBrief.status = 'processing';
+      else _weeklyBrief = { status: 'processing', week_start_date: targetWeek };
+      renderWeekly();
     } catch (e) {
       console.error('[insights] weekly generate failed', e);
+      _weeklyRegenFrom = null;
       alert('Generation failed: ' + (e.message || e));
     } finally {
       _weeklyInflight = false;
@@ -376,9 +391,9 @@
   }
 
   async function pollWeeklyStatus() {
-    // 3-minute budget at 4s intervals
+    // ~5-minute budget at 4s intervals (synthesis can run a couple minutes).
     const start = Date.now();
-    while (Date.now() - start < 180_000) {
+    while (Date.now() - start < 300_000) {
       await new Promise(r => setTimeout(r, 4000));
       if (_activeView !== 'weekly') return;   // user navigated away
       const { data, error } = await db.from('weekly_briefs')
@@ -387,12 +402,21 @@
         .limit(1);
       if (error) continue;
       const fresh = data?.[0] || null;
-      if (fresh && fresh.status !== 'processing') {
+      // Done when a SETTLED row exists that's a NEW run (changed generated_at)
+      // or an outright failure. The generated_at check avoids the race where the
+      // row is still the old 'ready' brief before the bg fn flips it to processing.
+      if (fresh && fresh.status !== 'processing' && (fresh.generated_at !== _weeklyRegenFrom || fresh.status === 'failed')) {
         _weeklyBrief = fresh;
+        _weeklyRegenFrom = null;
         renderWeekly();
         return;
       }
     }
+    // Timed out — show whatever the real current state is rather than leaving
+    // the optimistic "working" view stuck.
+    _weeklyRegenFrom = null;
+    _weeklyLoading = false;
+    await loadWeekly();
   }
 
   // ── Helpers ─────────────────────────────────────────────────────
