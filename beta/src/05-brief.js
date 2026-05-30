@@ -1397,7 +1397,7 @@ function briefWeatherInjectStyles() {
     .bwx-metric-value { font-size: var(--fs-card); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
     .bwx-metric-note { font-size: var(--fs-meta); color: var(--ink-4); }
     .bwx-metric-value .uv-hi { color: var(--ochre-fg); }
-    .bwx-section-label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 14px 0 8px; }
+    .bwx-section-label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--section-title); margin: 14px 0 8px; }
     .bwx-hourly { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
     .bwx-hour { flex: 0 0 auto; width: 52px; background: var(--surface-2); border-radius: var(--r-md); padding: 8px 4px; text-align: center; display: flex; flex-direction: column; gap: 3px; align-items: center; }
     .bwx-hour-t { font-size: var(--fs-meta); color: var(--ink-3); }

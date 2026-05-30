@@ -5233,7 +5233,7 @@ function ensureTrainStyles() {
     }
     .progress-card-label {
       font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
-      color: var(--ink-3); text-transform: uppercase;
+      color: var(--section-title); text-transform: uppercase;   /* shared token */
     }
     .progress-card-meta { font-size: var(--fs-meta); color: var(--ink-4); margin-top: 2px; }
 

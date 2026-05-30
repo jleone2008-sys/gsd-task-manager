@@ -183,7 +183,7 @@
     const dismissed = _patterns.filter(p => p.dismissed_by_user);
     el.innerHTML = `
       ${active.map(renderPatternCard).join('')}
-      ${dismissed.length ? `<div style="font-size:var(--fs-label);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-4);margin:14px 0 8px">Dismissed</div>${dismissed.map(renderPatternCard).join('')}` : ''}
+      ${dismissed.length ? `<div style="font-size:var(--fs-label);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--section-title);margin:14px 0 8px">Dismissed</div>${dismissed.map(renderPatternCard).join('')}` : ''}
     `;
     // Wire delegated card actions
     el.onclick = onPatternClick;

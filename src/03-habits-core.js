@@ -871,7 +871,7 @@ function renderHabitAll(active) {
 
   // Archived habits section
   if (archived.length) {
-    html += `<div class="section-label" style="margin-top:24px;cursor:pointer;user-select:none" data-habit-action="toggle-archived">📦 ARCHIVED <span class="arch-arrow">▸</span> <span style="font-weight:400;color:var(--ink-3);font-size:var(--fs-meta)">${archived.length}</span></div>`;
+    html += `<div class="section-label" style="margin-top:24px;cursor:pointer;user-select:none" data-habit-action="toggle-archived">📦 ARCHIVED <span class="arch-arrow">▸</span> <span style="font-weight:400;color:var(--section-count);font-size:var(--fs-meta)">${archived.length}</span></div>`;
     html += `<div id="archivedHabitsSection" style="display:none">`;
     archived.forEach(h => {
       html += `<div class="habit-card" style="opacity:0.6">
