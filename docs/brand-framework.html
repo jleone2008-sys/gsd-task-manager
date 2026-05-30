@@ -275,6 +275,7 @@
       <li><a href="#overlays">Overlays + modals</a></li>
       <li><a href="#lists">Lists</a></li>
       <li><a href="#icons">Iconography</a></li>
+      <li><a href="#theming">Theming (Appearance)</a></li>
       <li><a href="#donts">Common don'ts</a></li>
     </ol>
   </aside>
@@ -288,7 +289,7 @@
 
     <div class="callout callout--tip"><strong>How to use this:</strong> when designing a new screen or modifying an existing one, find the relevant section here and use the documented class. If your need isn't covered, propose an addition to this file first, then implement.</div>
 
-    <p>Color palette: <code>--guava-700</code> is the single accent. Earth chips (sage/sky/clay/moss/slate/ochre/plum) carry semantic differentiation. No second accent color — if you reach for one, reach for guava with a different weight or one of the earth chips instead.</p>
+    <p>Color palette: <code>--guava-700</code> is the single accent — but its <strong>hue is now palette-driven</strong> (Appearance feature, 2026-05-30): Paper→guava red, Sage→green, Sky→blue. There is still exactly ONE accent ramp; the active palette remaps its values via <code>html[data-palette]</code>, so every accent call site follows the chosen palette with zero changes. Earth chips (sage/sky/clay/moss/slate/ochre/plum) carry semantic differentiation. <strong>Destructive / danger / overdue / error surfaces use the fixed <code>--danger-*</code> red ramp — NOT guava</strong> — so they stay red in every palette. See <a href="#theming">Theming</a>.</p>
   </section>
 
   <!-- BRAND:section:identity -->
@@ -328,7 +329,7 @@
     </div>
 
     <h3>Guava (single accent)</h3>
-    <p class="quiet">8-step ramp. <strong><code>--guava-700</code> is THE accent</strong> — primary CTAs, active state, single-emphasis moments. Don't introduce a second accent color.</p>
+    <p class="quiet">8-step ramp. <strong><code>--guava-700</code> is THE accent</strong> — primary CTAs, active state, single-emphasis moments. Don't introduce a <em>second simultaneous</em> accent. The ramp's <em>hue</em> is remapped per palette by the Appearance theme (red/green/blue) — that's still one accent, palette-driven. For anything destructive, use <code>--danger-*</code> (fixed red), never guava.</p>
     <div class="swatches">
       <div class="swatch"><div class="swatch-color" style="background:var(--guava-50)"></div><div class="swatch-meta"><span class="swatch-name">--guava-50</span><span class="swatch-hex">#fef5f6</span></div></div>
       <div class="swatch"><div class="swatch-color" style="background:var(--guava-100)"></div><div class="swatch-meta"><span class="swatch-name">--guava-100</span><span class="swatch-hex">#fde8ea</span></div></div>
@@ -699,7 +700,7 @@
       </div>
     </div>
 
-    <div class="callout callout--info"><strong>Badge dot and badge count are the one exception to "no pills."</strong> A 6px circle and an 18px-tall pill counter are semantically badges, not buttons — the pill shape is doing real work there.</div>
+    <div class="callout callout--info"><strong>Badge dot stays a 6px circle</strong> (semantic, not a button). <strong>Badge counts and all other former "pills" now follow the <a href="#theming">corner theme</a></strong> (<code>--r-md</code>) rather than a fixed <code>999px</code> — so they're square at the <code>sharp</code> setting and rounded at <code>round</code>, consistent with the rest of the UI.</div>
   </section>
 
   <!-- BRAND:section:inputs -->
@@ -797,6 +798,31 @@
     </div>
   </section>
 
+  <!-- BRAND:section:theming -->
+  <section id="theming">
+    <h2>Theming (Appearance)</h2>
+    <p>Users personalize the app in <strong>Settings → Appearance</strong>. Theming is a pure <strong>token-override layer</strong>: four independent <code>data-*</code> attributes on <code>&lt;html&gt;</code> remap existing <code>:root</code> tokens, so the whole app re-themes with <strong>zero per-component changes</strong>. Defined in the <code>THEMING</code> block of <code>app.css</code>; applied + persisted by <code>beta/src/02-settings.js</code> (<code>applyTheme</code>/<code>getTheme</code>, stored in <code>user_settings.appearance</code> jsonb, cached in <code>localStorage.gsd_theme</code> and applied pre-paint by an inline script in <code>app.html</code>).</p>
+
+    <table class="tokens">
+      <tr><th>Attribute</th><th>Values (default first)</th><th>Overrides</th></tr>
+      <tr><td><code>data-palette</code></td><td>paper · sage · sky · paper-grad · sage-grad · sky-grad</td><td>Ground (<code>--bg</code>, <code>--surface</code>, <code>--surface-2</code>, <code>--edge*</code>), ink (<code>--ink*</code>), the accent ramp (<code>--guava-*</code>), <code>--shadow-focus</code>; <code>-grad</code> adds a <code>body</code> gradient</td></tr>
+      <tr><td><code>data-corners</code></td><td>xs · sharp · soft · round</td><td><code>--r-sm</code> / <code>--r-md</code> / <code>--r-lg</code></td></tr>
+      <tr><td><code>data-type</code></td><td>geometric · friendly · modern</td><td><code>--font-sans</code> (Inter / Poppins / Sora)</td></tr>
+      <tr><td><code>data-cards</code></td><td>solid · soft</td><td><code>--surface</code>. <code>soft</code> = white at an adjustable opacity via <code>--card-alpha</code> (slider, 50–100%, set inline on <code>&lt;html&gt;</code>; default 0.9)</td></tr>
+    </table>
+    <p><strong>Pills follow the corner theme.</strong> All pill/chip/badge shapes now use <code>var(--r-md)</code> instead of a hardcoded <code>999px</code>, so they track the <code>data-corners</code> setting (fully square at <code>sharp</code>, rounded at <code>round</code>). Don't reintroduce <code>border-radius: 999px</code> — use a <code>--r-*</code> token. Truly circular elements (avatars, status dots) use <code>50%</code> and are unaffected.</p>
+
+    <h4>Rules for new UI</h4>
+    <ul>
+      <li><strong>Always use tokens, never hex.</strong> Any component built on <code>--bg</code>/<code>--surface</code>/<code>--ink*</code>/<code>--guava-*</code>/<code>--r-*</code>/<code>--font-sans</code> themes automatically. Hardcoded hex will NOT follow the palette.</li>
+      <li><strong>Accent = <code>--guava-*</code></strong> (palette-driven). <strong>Destructive/danger/overdue/error = <code>--danger-*</code></strong> (fixed red). Keeping these separate is what stops the "Delete" button turning green/blue under Sage/Sky.</li>
+      <li><strong>Semantic stays fixed.</strong> Earth chips, health-ring colors, and the today/later/done status tokens are intentionally NOT re-themed — they carry meaning.</li>
+      <li><strong>Elevation + density are not user-controllable.</strong> Shadows (<code>--shadow-*</code>) and spacing (<code>--space-*</code>) stay canonical across all themes.</li>
+      <li>Defaults (<code>paper / xs / geometric / solid</code>) reproduce the original look byte-for-byte.</li>
+    </ul>
+    <div class="callout callout--tip"><strong>Reference mockup:</strong> <code>mockup-brand-styles.html</code> at the repo root is the live explorer the palettes/corners/type values were tuned in.</div>
+  </section>
+
   <!-- BRAND:section:donts -->
   <section id="donts">
     <h2>Common don'ts</h2>
@@ -825,11 +851,11 @@
 
       <div class="dont-card is-bad">
         <div class="head">Don't</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Pick a new accent color (teal, purple, etc.) for "variety."</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Hardcode a hex accent, or use <code>--guava-*</code> for a delete/error surface (it turns green/blue under non-Paper palettes).</div>
       </div>
       <div class="dont-card is-good">
         <div class="head">Do</div>
-        <div class="text-body-sm" style="margin-bottom:10px">Use guava-700 as the one accent. Earth chips carry semantic differentiation.</div>
+        <div class="text-body-sm" style="margin-bottom:10px">Use <code>--guava-*</code> for the one accent (palette-driven) and <code>--danger-*</code> for anything destructive (fixed red). Earth chips carry semantic differentiation.</div>
       </div>
 
       <div class="dont-card is-bad">

@@ -1049,15 +1049,32 @@ function ensureJournalStyles() {
     .j-action-btn.is-on { background: var(--guava-700); border-color: var(--guava-700); color: #fff; }
     .j-action-btn svg { width: 16px; height: 16px; }
 
-    .j-search-row { position: sticky; top: var(--gsd-topbar-h, 60px); z-index: 5; display: flex; gap: 8px; align-items: center; background: var(--bg); padding: 10px 0; margin-bottom: 8px; }
-    .j-search-row .j-search-bar { flex: 1; margin-bottom: 0; min-width: 0; }
-    .j-cal-pop-slot { position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 26; width: 280px; }
-    @media (max-width: 600px) { .j-cal-pop-slot { left: 0; right: 0; width: auto; } }
+    /* ── Floating journal controls (search + calendar) — bottom-right corner,
+       matching the app's other floating buttons. Replaces the old sticky
+       search row so nothing pins/floats at the top of the page. ── */
+    .j-float-stack { position: fixed; right: var(--fab-right-mobile, 20px); bottom: var(--fab-bottom-mobile, 84px); z-index: var(--z-fab-mobile, 250); display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+    @media (min-width: 900px) { .j-float-stack { right: var(--fab-right-desktop, 24px); bottom: var(--fab-bottom-desktop, 24px); z-index: var(--z-fab-desktop, 50); } }
+    .j-fbtn { width: 44px; height: 44px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--edge); box-shadow: var(--shadow-card); color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease), background var(--dur-fast), color var(--dur-fast); }
+    .j-fbtn:hover { box-shadow: var(--shadow-card-hover); color: var(--ink); }
+    .j-fbtn.is-on { background: var(--guava-700); border-color: var(--guava-700); color: #fff; }
+    .j-fbtn svg { width: 18px; height: 18px; }
+    .j-float-cal-wrap, .j-float-search-wrap { position: relative; display: flex; justify-content: flex-end; }
+    /* Search button expands leftward into a pill that holds the input. */
+    .j-float-search { display: flex; align-items: center; width: 44px; height: 44px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--edge); box-shadow: var(--shadow-card); cursor: pointer; padding: 0; overflow: hidden; transition: width var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+    .j-float-search:hover { box-shadow: var(--shadow-card-hover); }
+    .j-float-search .j-fsearch-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--ink-3); margin: 0 13px; }
+    .j-float-search.expanded { width: min(280px, calc(100vw - 32px)); box-shadow: var(--shadow-raised); border-color: var(--edge-strong); cursor: text; }
+    .j-float-search.expanded .j-fsearch-icon { color: var(--ink); margin: 0 8px 0 12px; }
+    .j-float-search input { border: none; background: transparent; outline: none; color: var(--ink); font-family: inherit; font-size: var(--fs-search); width: 100%; min-width: 0; padding-right: 12px; display: none; }
+    .j-float-search.expanded input { display: block; }
+    .j-float-search input::placeholder { color: var(--ink-4); }
+    /* Calendar popover opens UPWARD from the bottom-right button. */
+    .j-cal-pop-slot { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(300px, calc(100vw - 32px)); z-index: 26; }
     .j-search-bar { position: relative; margin-bottom: 14px; }
     .j-search-input { width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-search); color: var(--ink); background: var(--surface); outline: none; box-sizing: border-box; }
     .j-search-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
     .j-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--ink-4); pointer-events: none; }
-    .j-search-results { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-raised); max-height: 360px; overflow-y: auto; z-index: 30; }
+    .j-search-results:not(:empty) { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(320px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-raised); max-height: 50vh; overflow-y: auto; z-index: 30; }
     .j-sr-item { width: 100%; text-align: left; background: none; border: none; padding: 10px 14px; font-family: inherit; cursor: pointer; border-bottom: 1px solid var(--edge); display: block; }
     .j-sr-item:last-child { border-bottom: none; }
     .j-sr-item:hover { background: var(--surface-2); }
@@ -1150,11 +1167,10 @@ function ensureJournalStyles() {
     .j-card-auto-row .j-check { color: var(--moss-fg); flex-shrink: 0; font-weight: 700; }
     .j-card-habit-pct { color: var(--guava-700); font-weight: 700; flex-shrink: 0; }
 
-    .j-back-to-top { position: fixed; bottom: 24px; right: 24px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-card); cursor: pointer; display: none; align-items: center; justify-content: center; transition: background var(--dur-fast), opacity var(--dur-quick); }
+    .j-back-to-top { width: 44px; height: 44px; border-radius: var(--r-lg); background: var(--guava-700); color: #fff; border: none; box-shadow: var(--shadow-card); cursor: pointer; display: none; align-items: center; justify-content: center; flex-shrink: 0; transition: background var(--dur-fast), opacity var(--dur-quick); }
     .j-back-to-top.is-visible { display: flex; }
     .j-back-to-top:hover { background: var(--guava-800); }
     .j-back-to-top svg { width: 18px; height: 18px; }
-    @media (max-width: 600px) { .j-back-to-top { bottom: 76px; right: 16px; } }
     .j-card-entry { font-size: var(--fs-search); margin-top: 4px; }
     .j-card-auto-more { font-size: var(--fs-meta); color: var(--ink-4); font-style: italic; padding-top: 2px; }
     /* "Today I learned" block on the day card. Sits under the
@@ -1210,7 +1226,7 @@ function ensureJournalStyles() {
     .j-event-tag {
       display: inline-block; flex-shrink: 0;
       font-size: var(--fs-label); font-weight: 700; letter-spacing: .03em;
-      padding: 2px 8px; border-radius: 999px;
+      padding: 2px 8px; border-radius: var(--r-md);
       background: var(--surface-2); color: var(--ink-3);
       text-transform: uppercase;
     }
@@ -1719,19 +1735,31 @@ function renderJournalHeader() {
     </div>`;
 }
 
-function renderJournalSearchRow() {
+// Floating corner controls — search (expanding pill) + calendar + back-to-top,
+// stacked bottom-right like the app's other floating buttons. Replaces the old
+// sticky search row. Keeps the same #jSearchInput / #jCalToggle / #jCalPopSlot /
+// #jSearchResults ids so the existing search + calendar handlers work unchanged.
+function renderJournalFloatControls() {
   const calOn = journalState.calendarOpen ? ' is-on' : '';
+  const searchExpanded = journalState.searchQuery ? ' expanded' : '';
   return `
-    <div class="j-search-row" id="jSearchRow">
-      <div class="j-search-bar">
-        <svg class="j-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="j-search-input" id="jSearchInput" placeholder="Search entries, events, tasks…" value="${escapeHtml(journalState.searchQuery)}" />
+    <div class="j-float-stack">
+      <button class="j-back-to-top" id="jBackToTop" type="button" title="Back to top" aria-label="Back to top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <div class="j-float-cal-wrap">
+        <button class="j-fbtn${calOn}" id="jCalToggle" title="Choose date" aria-pressed="${journalState.calendarOpen}" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+        <div id="jCalPopSlot" class="j-cal-pop-slot" style="${journalState.calendarOpen ? '' : 'display:none'}">${renderJournalCalendar()}</div>
+      </div>
+      <div class="j-float-search-wrap">
+        <div class="j-float-search${searchExpanded}" id="jFloatSearch" role="button" tabindex="0" aria-label="Search journal">
+          <svg class="j-fsearch-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="jSearchInput" placeholder="Search entries, events, tasks…" value="${escapeHtml(journalState.searchQuery)}" />
+        </div>
         <div id="jSearchResults"></div>
       </div>
-      <button class="j-action-btn${calOn}" id="jCalToggle" title="Choose date" aria-pressed="${journalState.calendarOpen}" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      </button>
-      <div id="jCalPopSlot" class="j-cal-pop-slot" style="${journalState.calendarOpen ? '' : 'display:none'}">${renderJournalCalendar()}</div>
     </div>`;
 }
 
@@ -2337,14 +2365,11 @@ async function renderJournal() {
   root.innerHTML = `
     <div class="j-shell">
       <div id="jHeaderSlot">${renderJournalHeader()}</div>
-      ${renderJournalSearchRow()}
       ${renderTimeline()}
       <input type="file" id="jCardPhotoInput" accept="image/*" multiple style="position:absolute;left:-9999px;opacity:0;" />
       <input type="file" id="jCardCameraInput" accept="image/*" capture="environment" style="position:absolute;left:-9999px;opacity:0;" />
     </div>
-    <button class="j-back-to-top" id="jBackToTop" type="button" title="Back to top" aria-label="Back to top">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-    </button>`;
+    ${renderJournalFloatControls()}`;
 
   setupScrollObserver();
   syncCalendarHistory();
@@ -2466,6 +2491,19 @@ document.addEventListener('click', async e => {
   // Toggle calendar popover
   if (e.target.closest('#jCalToggle')) {
     setCalendarOpen(!journalState.calendarOpen);
+    return;
+  }
+
+  // Floating search: tapping the icon expands the pill + focuses the input.
+  // The existing #jSearchInput input handler runs the search; the pill
+  // collapses on outside-click (see the mousedown listener below).
+  if (e.target.closest('#jFloatSearch')) {
+    const fs = document.getElementById('jFloatSearch');
+    if (fs && !fs.classList.contains('expanded')) {
+      fs.classList.add('expanded');
+      const inp = document.getElementById('jSearchInput');
+      if (inp) setTimeout(() => inp.focus(), 0);
+    }
     return;
   }
 
@@ -2696,6 +2734,15 @@ function updateTopbarHeightVar() {
 }
 
 window.addEventListener('resize', updateTopbarHeightVar);
+
+// Collapse the floating journal search pill when clicking outside it (and the
+// query is empty), mirroring the global floating-search behaviour.
+document.addEventListener('mousedown', e => {
+  const fs = document.getElementById('jFloatSearch');
+  if (!fs || !fs.classList.contains('expanded')) return;
+  if (e.target.closest('.j-float-search-wrap')) return;
+  if (!journalState.searchQuery) fs.classList.remove('expanded');
+});
 
 window.addEventListener('scroll', () => {
   const btn = document.getElementById('jBackToTop');

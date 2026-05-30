@@ -4754,7 +4754,7 @@ function ensureTrainStyles() {
     .day-detail-badge {
       display: inline-block;
       font-size: var(--fs-label); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-      padding: 3px 8px; border-radius: 999px;
+      padding: 3px 8px; border-radius: var(--r-md);
       margin-bottom: 12px;
     }
     .day-detail-badge.is-lift   { background: var(--guava-50); color: var(--guava-700); }
@@ -4949,7 +4949,7 @@ function ensureTrainStyles() {
     .ex-target {
       flex-shrink: 0;
       font-size: var(--fs-label); font-weight: 600;
-      padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+      padding: 4px 10px; border-radius: var(--r-md); white-space: nowrap;
     }
     .ex-target.target-up      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); border: 1px solid var(--moss-edge, #c2d1aa); }
     .ex-target.target-hold    { background: var(--guava-50); color: var(--guava-700); border: 1px solid var(--guava-100); }
@@ -5038,7 +5038,7 @@ function ensureTrainStyles() {
     .session-type-row { display: flex; gap: 8px; }
     .session-type-pill {
       background: var(--surface-2); color: var(--ink-3);
-      border: 1px solid var(--edge); border-radius: 999px;
+      border: 1px solid var(--edge); border-radius: var(--r-md);
       padding: 7px 14px; font-family: inherit; font-size: var(--fs-search); font-weight: 600;
       cursor: pointer;
     }
@@ -5279,7 +5279,7 @@ function ensureTrainStyles() {
     }
     .cal-deficit {
       font-size: var(--fs-meta); font-weight: 700;
-      padding: 3px 8px; border-radius: 999px;
+      padding: 3px 8px; border-radius: var(--r-md);
       background: var(--guava-50); color: var(--guava-700);
     }
     .cal-surplus { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
@@ -5305,15 +5305,15 @@ function ensureTrainStyles() {
     .goal-row-cur { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
     .goal-row-pct {
       font-size: var(--fs-meta); font-weight: 700; color: var(--guava-700);
-      padding: 2px 6px; background: var(--guava-50); border-radius: 999px;
+      padding: 2px 6px; background: var(--guava-50); border-radius: var(--r-md);
       margin-left: 6px;
     }
     .goal-bar {
-      background: var(--surface-2); border-radius: 999px; height: 8px;
+      background: var(--surface-2); border-radius: var(--r-md); height: 8px;
       margin: 8px 0 4px; overflow: hidden;
     }
     .goal-bar-fill {
-      background: var(--guava-700); height: 100%; border-radius: 999px;
+      background: var(--guava-700); height: 100%; border-radius: var(--r-md);
       transition: width var(--dur-slower) ease;
     }
     .goal-row-meta { font-size: var(--fs-meta); color: var(--ink-4); }
@@ -5321,7 +5321,7 @@ function ensureTrainStyles() {
     .trend-svg { width: 100%; height: 60px; display: block; }
     .trend-delta {
       font-size: var(--fs-pill); font-weight: 700; font-variant-numeric: tabular-nums;
-      padding: 3px 8px; border-radius: 999px; background: var(--surface-2);
+      padding: 3px 8px; border-radius: var(--r-md); background: var(--surface-2);
       color: var(--ink-2);
     }
     .trend-delta.is-down { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
@@ -5426,7 +5426,7 @@ function ensureTrainStyles() {
       font-size: var(--fs-nano); font-weight: 700; letter-spacing: .06em;
       text-transform: uppercase; color: var(--ink-4);
       background: var(--surface); border: 1px solid var(--edge);
-      padding: 2px 6px; border-radius: 999px; margin-top: 4px;
+      padding: 2px 6px; border-radius: var(--r-md); margin-top: 4px;
     }
     .progress-photo-slot.is-required.is-empty {
       border-color: var(--guava-700);
@@ -5452,7 +5452,7 @@ function ensureTrainStyles() {
     }
     .train-collapse-badge {
       font-size: var(--fs-label); font-weight: 700; color: var(--guava-700);
-      background: var(--guava-50); padding: 2px 8px; border-radius: 999px;
+      background: var(--guava-50); padding: 2px 8px; border-radius: var(--r-md);
       margin-left: auto;
     }
     .train-collapse-body { margin-top: 10px; }
@@ -5541,7 +5541,7 @@ function ensureTrainStyles() {
       align-self: flex-start;
       font-size: var(--fs-nano); font-weight: 700; letter-spacing: .02em;
       font-variant-numeric: tabular-nums;
-      padding: 2px 7px; border-radius: 999px; line-height: 1.3;
+      padding: 2px 7px; border-radius: var(--r-md); line-height: 1.3;
       white-space: nowrap;
     }
     .metric-cell-delta.up      { background: var(--moss-bg, #eaf0e3); color: var(--moss-fg, #5e8c4f); }
@@ -5595,7 +5595,7 @@ function ensureTrainStyles() {
     }
     .train-pill {
       display: inline-block; font-size: var(--fs-label); font-weight: 700;
-      letter-spacing: .05em; padding: 2px 8px; border-radius: 999px;
+      letter-spacing: .05em; padding: 2px 8px; border-radius: var(--r-md);
       background: var(--surface-2); color: var(--ink-3); text-transform: uppercase;
     }
     .coach-overview {
@@ -5620,7 +5620,7 @@ function ensureTrainStyles() {
     .coach-focus-ex { display: flex; flex-wrap: wrap; gap: 4px; }
     .coach-ex-pill {
       background: var(--surface-2); border: 1px solid var(--edge);
-      border-radius: 999px; padding: 2px 8px;
+      border-radius: var(--r-md); padding: 2px 8px;
       font-size: var(--fs-meta); color: var(--ink-2);
     }
     .coach-focus-hint {
@@ -5644,7 +5644,7 @@ function ensureTrainStyles() {
     }
     .coach-chip-group { display: inline-flex; flex-wrap: wrap; gap: 4px; }
     .coach-secondary-chip {
-      background: var(--surface-2); padding: 2px 8px; border-radius: 999px;
+      background: var(--surface-2); padding: 2px 8px; border-radius: var(--r-md);
       font-size: var(--fs-meta); color: var(--ink-2);
     }
     /* Big photo block INSIDE the coach card (Variation A spec). 2-up or
@@ -5667,7 +5667,7 @@ function ensureTrainStyles() {
       position: absolute; bottom: 6px; left: 8px;
       font-size: var(--fs-label); font-weight: 700; letter-spacing: .05em;
       color: #fff; background: rgba(20,15,10,0.55);
-      padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: var(--r-md); text-transform: uppercase;
     }
     /* Legacy-data banner — surfaces when stored ai_analysis predates the
        rich focus_areas schema. CTA upgrades on click. */
@@ -5730,11 +5730,11 @@ function ensureTrainStyles() {
     }
     .goal-section-title--empty { color: var(--ink-3); font-weight: 600; }
     .goal-big-bar {
-      background: var(--surface-2); border-radius: 999px; height: 12px;
+      background: var(--surface-2); border-radius: var(--r-md); height: 12px;
       overflow: hidden; position: relative; margin-bottom: 6px;
     }
     .goal-big-bar-fill {
-      background: var(--guava-700); height: 100%; border-radius: 999px;
+      background: var(--guava-700); height: 100%; border-radius: var(--r-md);
       transition: width var(--dur-slower) ease;
     }
     .goal-big-stats {
@@ -5773,7 +5773,7 @@ function ensureTrainStyles() {
     }
     .train-ai-tag {
       font-size: var(--fs-label); font-weight: 700; letter-spacing: .04em;
-      padding: 2px 8px; border-radius: 999px;
+      padding: 2px 8px; border-radius: var(--r-md);
       background: var(--surface); color: var(--ink-4); text-transform: uppercase;
     }
     .train-ai-tag.is-ai { background: var(--guava-50); color: var(--guava-700); }

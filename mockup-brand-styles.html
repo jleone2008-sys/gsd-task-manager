@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<!--
+  GSD — Brand Style Explorer (throwaway mockup, not wired into the app)
+
+  Four "very different" brand framework directions applied to the SAME
+  Today/Home screen content, plus the current "Refined Paper" baseline.
+  Mix-and-match: each visual axis (palette / corners / elevation / type /
+  density) is an independent control. The 5 preset chips set all axes at once.
+
+  Directions are grounded in current (2025-26) UI movements:
+   - Refined Paper  → the app today (warm paper, guava, flat, dense)
+   - Editorial Swiss → high-contrast ink-on-paper, serif display, hairlines
+   - Soft Clay      → claymorphic, pillowed surfaces, big radius, pastel
+   - Neo-Brutalist  → thick black borders, hard offset shadows, loud accent
+   - Glass Aurora   → dark gradient ground, frosted translucent cards, glow
+
+  Single self-contained file. No app code touched.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GSD — Brand Style Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ======================================================================
+   PAGE CHROME (not themed — the surrounding explorer UI stays neutral)
+   ====================================================================== */
+:root{
+  --pg-bg:#15131b; --pg-panel:#211d2a; --pg-panel-2:#2b2636;
+  --pg-edge:#3a3346; --pg-ink:#f4f1fb; --pg-ink-2:#b8b0c8; --pg-ink-3:#857d96;
+  --pg-accent:#9d7bff;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--pg-bg);color:var(--pg-ink);
+  font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+.wrap{display:grid;grid-template-columns:340px 1fr;min-height:100vh;}
+@media(max-width:860px){.wrap{grid-template-columns:1fr;}}
+
+/* ---- Control rail ---- */
+.rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  background:var(--pg-panel);border-right:1px solid var(--pg-edge);padding:22px 20px 60px;}
+.rail h1{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0 0 2px;}
+.rail .sub{font-size:12px;color:var(--pg-ink-3);margin:0 0 20px;line-height:1.5;}
+.rail h2{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--pg-ink-3);margin:22px 0 9px;}
+
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.preset{cursor:pointer;border:1px solid var(--pg-edge);background:var(--pg-panel-2);
+  color:var(--pg-ink);border-radius:11px;padding:11px 11px;text-align:left;
+  transition:border-color .15s,transform .12s,background .15s;}
+.preset:hover{border-color:var(--pg-accent);transform:translateY(-1px);}
+.preset.active{border-color:var(--pg-accent);background:#332a48;box-shadow:0 0 0 1px var(--pg-accent);}
+.preset .pname{font-size:12.5px;font-weight:700;letter-spacing:-.01em;}
+.preset .pdesc{font-size:10px;color:var(--pg-ink-3);margin-top:2px;line-height:1.35;}
+.preset .swatchstrip{display:flex;gap:3px;margin-top:8px;}
+.preset .swatchstrip i{width:14px;height:14px;border-radius:4px;display:block;border:1px solid rgba(255,255,255,.12);}
+
+.axis{margin-bottom:4px;}
+.seg{display:flex;flex-wrap:wrap;gap:5px;}
+.seg button{cursor:pointer;border:1px solid var(--pg-edge);background:var(--pg-panel-2);
+  color:var(--pg-ink-2);border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;
+  font-family:inherit;transition:all .13s;}
+.seg button:hover{color:var(--pg-ink);border-color:var(--pg-ink-3);}
+.seg button.on{background:var(--pg-accent);border-color:var(--pg-accent);color:#fff;}
+
+.railnote{font-size:10.5px;color:var(--pg-ink-3);line-height:1.55;margin-top:18px;
+  border-top:1px solid var(--pg-edge);padding-top:14px;}
+.railnote a{color:var(--pg-accent);text-decoration:none;}
+.railnote code{background:var(--pg-panel-2);padding:1px 5px;border-radius:4px;font-size:10px;}
+
+/* ---- Stage ---- */
+.stagewrap{display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding:36px 24px 80px;}
+.stagecaption{font-size:12px;color:var(--pg-ink-3);text-align:center;max-width:560px;line-height:1.5;}
+.stagecaption b{color:var(--pg-ink-2);font-weight:600;}
+
+/* The phone frame — itself unthemed; only the screen inside is themed */
+.phone{width:390px;max-width:94vw;border-radius:44px;padding:11px;
+  background:linear-gradient(150deg,#3a3540,#1c1922);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.05);}
+.notch{height:26px;display:flex;align-items:center;justify-content:center;}
+.notch i{width:120px;height:7px;border-radius:99px;background:#000;opacity:.5;display:block;}
+
+/* ======================================================================
+   THEMED SCREEN — everything below consumes CSS variables that the axis
+   classes on #stage override. This is the "brand framework" surface.
+   ====================================================================== */
+/* Base defaults use :where() so they carry ZERO specificity — every axis
+   class below (a plain class = higher specificity) can override them. */
+:where(#stage){
+  /* defaults overwritten by axis classes; this set = Refined Paper */
+  --c-bg:#fbf6ee; --c-surface:#fffdfa; --c-surface-2:#f5ece0;
+  --c-edge:#ecdfce; --c-edge-strong:#d8c6ad;
+  --c-ink:#1c1410; --c-ink-2:#4a3b30; --c-ink-3:#7a6a5a; --c-ink-4:#b3a594;
+  --c-accent:#b82d3b; --c-accent-2:#8a1d2a; --c-accent-ink:#ffffff;
+  --c-soft-bg:#fde8ea; --c-soft-ink:#b82d3b;
+  --chip1-bg:#e2efd9;--chip1-fg:#4f8a47; --chip2-bg:#d9e8f4;--chip2-fg:#3a76a6;
+  --chip3-bg:#f7e3d0;--chip3-fg:#cf6a2c; --chip4-bg:#e8def0;--chip4-fg:#744a93;
+  --ring1:#7e5fc0;--ring2:#dd9412;--ring3:#46a85a;
+  --r-card:6px; --r-sm:4px; --r-chip:4px; --r-pill:4px;
+  --bw:1px; --b-color:var(--c-edge);
+  --sh-card:0 1px 2px rgba(20,15,10,.06); --sh-raised:0 8px 20px rgba(20,15,10,.10);
+  --card-blur:none; --card-extra:none;
+  --f-display:'Inter',sans-serif; --f-body:'Inter',sans-serif; --f-num:'Inter',sans-serif;
+  --fw-display:800; --ls-display:-.02em; --display-transform:none;
+  --pad:15px; --gap:11px; --eyebrow-ls:.08em;
+
+  position:relative;overflow:hidden;border-radius:33px;height:730px;
+  background:var(--c-bg);color:var(--c-ink);font-family:var(--f-body);
+  transition:background .35s ease,color .35s ease;
+}
+#stage .scroll{height:100%;overflow-y:auto;padding:16px 14px 40px;scrollbar-width:thin;}
+#stage .scroll::-webkit-scrollbar{width:0;}
+
+/* ---------- PALETTES ---------- */
+.palette-paper{}  /* defaults above */
+
+/* Sage — spa / eucalyptus calm (wellness green) */
+.palette-sage{
+  --c-bg:#eef3ec; --c-surface:#f8faf5; --c-surface-2:#e3ebdf;
+  --c-edge:#d6e1d0; --c-edge-strong:#b9ccb2;
+  --c-ink:#23302a; --c-ink-2:#3f4f46; --c-ink-3:#6c7d70; --c-ink-4:#9bab9d;
+  --c-accent:#4f8a6b; --c-accent-2:#3d6f54; --c-accent-ink:#ffffff;
+  --c-soft-bg:#dcebe0; --c-soft-ink:#3d6f54;
+  --chip1-bg:#d6e8d4;--chip1-fg:#4f8a47; --chip2-bg:#d6e6f0;--chip2-fg:#3f7596;
+  --chip3-bg:#f1e0d2;--chip3-fg:#b9743f; --chip4-bg:#e6e0f0;--chip4-fg:#6f5aa0;
+  --ring1:#8d7ad0;--ring2:#d8a23c;--ring3:#5a9e6a;
+}
+/* Sky — airy periwinkle blue (light) */
+.palette-sky{
+  --c-bg:#eef2fb; --c-surface:#f7f9fe; --c-surface-2:#dde6f5;
+  --c-edge:#d2ddf0; --c-edge-strong:#b0c4e6;
+  --c-ink:#1f2a3d; --c-ink-2:#384a64; --c-ink-3:#61748f; --c-ink-4:#94a6c2;
+  --c-accent:#3f6fd1; --c-accent-2:#2f57ac; --c-accent-ink:#ffffff;
+  --c-soft-bg:#d9e4f8; --c-soft-ink:#2f57ac;
+  --chip1-bg:#d4e8dc;--chip1-fg:#3f8a63; --chip2-bg:#d2e2f5;--chip2-fg:#3a6cb0;
+  --chip3-bg:#f3e2cf;--chip3-fg:#bf8b3e; --chip4-bg:#e3def2;--chip4-fg:#6f5aaa;
+  --ring1:#7e80d8;--ring2:#e0a23c;--ring3:#4aa0c8;
+}
+/* === Light gradient variations: soft luminous wash ground, dark ink,
+       theme accents; cards can be solid white or light frosted glass. === */
+/* Paper Gradient — warm cream → faint lavender light wash */
+.palette-papergradient{
+  --c-bg:#fbf3ea; --c-surface:rgba(255,255,255,.72); --c-surface-2:#f3ece1;
+  --c-edge:#ecdfce; --c-edge-strong:#d8c6ad;
+  --c-ink:#1c1410; --c-ink-2:#4a3b30; --c-ink-3:#7a6a5a; --c-ink-4:#b3a594;
+  --c-accent:#b82d3b; --c-accent-2:#8a1d2a; --c-accent-ink:#ffffff;
+  --c-soft-bg:#fde8ea; --c-soft-ink:#b82d3b;
+  --chip1-bg:#e2efd9;--chip1-fg:#4f8a47; --chip2-bg:#d9e8f4;--chip2-fg:#3a76a6;
+  --chip3-bg:#f7e3d0;--chip3-fg:#cf6a2c; --chip4-bg:#e8def0;--chip4-fg:#744a93;
+  --ring1:#7e5fc0;--ring2:#dd9412;--ring3:#46a85a;
+  --card-blur:blur(10px) saturate(1.1);
+}
+.palette-papergradient{background:linear-gradient(150deg,#fbccb2 0%,#fbe9d6 42%,#e0dbf8 100%);}
+/* Sky Gradient — periwinkle → faint mint light wash */
+.palette-skygradient{
+  --c-bg:#eef2fb; --c-surface:rgba(255,255,255,.72); --c-surface-2:#dde6f5;
+  --c-edge:#d2ddf0; --c-edge-strong:#b0c4e6;
+  --c-ink:#1f2a3d; --c-ink-2:#384a64; --c-ink-3:#61748f; --c-ink-4:#94a6c2;
+  --c-accent:#3f6fd1; --c-accent-2:#2f57ac; --c-accent-ink:#ffffff;
+  --c-soft-bg:#d9e4f8; --c-soft-ink:#2f57ac;
+  --chip1-bg:#d4e8dc;--chip1-fg:#3f8a63; --chip2-bg:#d2e2f5;--chip2-fg:#3a6cb0;
+  --chip3-bg:#f3e2cf;--chip3-fg:#bf8b3e; --chip4-bg:#e3def2;--chip4-fg:#6f5aaa;
+  --ring1:#7e80d8;--ring2:#e0a23c;--ring3:#4aa0c8;
+  --card-blur:blur(10px) saturate(1.1);
+}
+.palette-skygradient{background:linear-gradient(150deg,#cbddfb 0%,#e2ecfb 45%,#d2f0e9 100%);}
+/* Sage Gradient — emerald → butter → teal light wash */
+.palette-sagegradient{
+  --c-bg:#eef3ec; --c-surface:rgba(255,255,255,.72); --c-surface-2:#e3ebdf;
+  --c-edge:#d6e1d0; --c-edge-strong:#b9ccb2;
+  --c-ink:#23302a; --c-ink-2:#3f4f46; --c-ink-3:#6c7d70; --c-ink-4:#9bab9d;
+  --c-accent:#4f8a6b; --c-accent-2:#3d6f54; --c-accent-ink:#ffffff;
+  --c-soft-bg:#dcebe0; --c-soft-ink:#3d6f54;
+  --chip1-bg:#d6e8d4;--chip1-fg:#4f8a47; --chip2-bg:#d6e6f0;--chip2-fg:#3f7596;
+  --chip3-bg:#f1e0d2;--chip3-fg:#b9743f; --chip4-bg:#e6e0f0;--chip4-fg:#6f5aa0;
+  --ring1:#8d7ad0;--ring2:#d8a23c;--ring3:#5a9e6a;
+  --card-blur:blur(10px) saturate(1.1);
+}
+.palette-sagegradient{background:linear-gradient(150deg,#c6e6c4 0%,#ecf2da 45%,#cfece4 100%);}
+
+/* ---------- CARD SURFACE (toggle) ----------
+   White card panels, either solid or slightly transparent (90% opaque) so the
+   page wash/gradient softly shows through. Aurora keeps its dark glass. */
+.cards-soft{--c-surface:rgba(255,255,255,.90);}
+.cards-white{--c-surface:#ffffff;}
+
+/* ---------- CORNERS ---------- */
+.corners-xs{--r-card:6px;--r-sm:4px;--r-chip:4px;--r-pill:4px;}
+.corners-sharp{--r-card:0px;--r-sm:0px;--r-chip:0px;--r-pill:0px;}
+.corners-soft{--r-card:12px;--r-sm:9px;--r-chip:7px;--r-pill:9px;}
+.corners-round{--r-card:22px;--r-sm:16px;--r-chip:12px;--r-pill:14px;}
+
+/* ---------- ELEVATION (locked: lifted) ---------- */
+.elev-lifted{--bw:1px;--b-color:var(--c-edge);
+  --sh-card:0 1px 2px rgba(20,15,10,.06),0 6px 16px rgba(20,15,10,.07);
+  --sh-raised:0 12px 34px rgba(20,15,10,.14);}
+
+/* ---------- TYPE ---------- */
+.type-geometric{--f-display:'Inter',sans-serif;--f-body:'Inter',sans-serif;--f-num:'Inter',sans-serif;
+  --fw-display:800;--ls-display:-.02em;--display-transform:none;--eyebrow-ls:.08em;}
+.type-friendly{--f-display:'Poppins',sans-serif;--f-body:'Poppins',sans-serif;--f-num:'Poppins',sans-serif;
+  --fw-display:700;--ls-display:-.02em;--display-transform:none;--eyebrow-ls:.06em;}
+/* Modern — Sora, open geometric with a techy-clean personality */
+.type-modern{--f-display:'Sora',sans-serif;--f-body:'Sora',sans-serif;--f-num:'Sora',sans-serif;
+  --fw-display:700;--ls-display:-.02em;--display-transform:none;--eyebrow-ls:.10em;}
+
+/* ---------- DENSITY (locked: compact) ---------- */
+.density-compact{--pad:14px;--gap:10px;}
+
+/* ======================================================================
+   COMPONENTS (all token-driven)
+   ====================================================================== */
+#stage .topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:6px 4px 14px;}
+#stage .topbar .greeting{font-size:12px;color:var(--c-ink-3);font-weight:500;}
+#stage .topbar .day{font-family:var(--f-display);font-weight:var(--fw-display);font-size:19px;
+  letter-spacing:var(--ls-display);color:var(--c-ink);text-transform:var(--display-transform);}
+#stage .avatar{width:34px;height:34px;border-radius:var(--r-pill);background:var(--c-accent);
+  color:var(--c-accent-ink);display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13px;flex-shrink:0;box-shadow:var(--card-extra);}
+
+#stage .card{background:var(--c-surface);border:var(--bw) solid var(--b-color);
+  border-radius:var(--r-card);box-shadow:var(--sh-card);padding:var(--pad);
+  margin-bottom:var(--gap);backdrop-filter:var(--card-blur);-webkit-backdrop-filter:var(--card-blur);
+  transition:background .35s ease,box-shadow .35s ease,border-color .35s ease,border-radius .3s ease;}
+
+#stage .eyebrow{font-size:10px;font-weight:700;letter-spacing:var(--eyebrow-ls);
+  text-transform:uppercase;color:var(--c-accent);font-family:var(--f-body);}
+
+#stage .headline{font-family:var(--f-display);font-weight:var(--fw-display);
+  font-size:25px;line-height:1.12;letter-spacing:var(--ls-display);color:var(--c-ink);
+  text-transform:var(--display-transform);margin:7px 0 6px;}
+#stage .subhead{font-size:13.5px;line-height:1.5;color:var(--c-ink-2);}
+
+#stage .insight{display:flex;gap:8px;align-items:flex-start;margin-top:11px;
+  padding-left:10px;border-left:2px solid var(--c-accent);}
+#stage .insight svg{width:14px;height:14px;stroke:var(--c-accent);flex-shrink:0;margin-top:2px;}
+#stage .insight span{font-size:11.5px;line-height:1.45;color:var(--c-ink-3);font-style:italic;}
+
+/* hero ring + stats */
+#stage .herorow{display:flex;align-items:center;gap:16px;margin-top:16px;
+  padding-top:15px;border-top:var(--bw) solid var(--b-color);}
+#stage .ring{position:relative;width:96px;height:96px;flex-shrink:0;}
+#stage .ring .val{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;}
+#stage .ring .num{font-family:var(--f-num);font-weight:800;font-size:26px;color:var(--c-ink);
+  line-height:1;font-variant-numeric:tabular-nums;}
+#stage .ring .cap{font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-3);margin-top:3px;}
+#stage .stats{flex:1;display:flex;flex-direction:column;gap:9px;}
+#stage .stat{display:flex;align-items:center;gap:9px;}
+#stage .stat .dot{width:9px;height:9px;border-radius:var(--r-chip);flex-shrink:0;}
+#stage .stat .lab{font-size:12px;color:var(--c-ink-2);flex:1;}
+#stage .stat .n{font-family:var(--f-num);font-weight:700;font-size:13px;color:var(--c-ink);font-variant-numeric:tabular-nums;}
+
+/* evidence pills */
+#stage .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+#stage .chip{display:inline-flex;align-items:center;gap:4px;height:21px;padding:0 8px;
+  border-radius:var(--r-chip);font-size:11px;font-weight:600;letter-spacing:.01em;
+  font-family:var(--f-body);}
+#stage .chip.c1{background:var(--chip1-bg);color:var(--chip1-fg);}
+#stage .chip.c2{background:var(--chip2-bg);color:var(--chip2-fg);}
+#stage .chip.c3{background:var(--chip3-bg);color:var(--chip3-fg);}
+#stage .chip.c4{background:var(--chip4-bg);color:var(--chip4-fg);}
+#stage .chip.acc{background:var(--c-soft-bg);color:var(--c-soft-ink);}
+
+/* section heading inside cards */
+#stage .secttitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+#stage .secttitle h3{margin:0;font-family:var(--f-display);font-weight:var(--fw-display);
+  font-size:15px;letter-spacing:var(--ls-display);color:var(--c-ink);text-transform:var(--display-transform);}
+#stage .addbtn{cursor:pointer;font-family:var(--f-body);font-weight:700;font-size:11px;
+  border:var(--bw) solid var(--c-accent);background:var(--c-accent);color:var(--c-accent-ink);
+  border-radius:var(--r-sm);padding:5px 11px;display:inline-flex;align-items:center;gap:4px;}
+
+/* task rows */
+#stage .task{display:flex;align-items:center;gap:11px;padding:9px 2px;}
+#stage .task + .task{border-top:1px solid var(--c-edge);}
+#stage .check{width:19px;height:19px;border-radius:var(--r-chip);border:2px solid var(--c-ink-4);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;}
+#stage .check.done{background:var(--c-accent);border-color:var(--c-accent);}
+#stage .check.done svg{width:11px;height:11px;stroke:var(--c-accent-ink);}
+#stage .task .tt{flex:1;font-size:13px;color:var(--c-ink);}
+#stage .task.is-done .tt{color:var(--c-ink-4);text-decoration:line-through;}
+
+/* habit heatmap */
+#stage .habitrow{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;
+  border-top:1px solid var(--c-edge);}
+#stage .heat{display:flex;gap:4px;}
+#stage .heat i{width:22px;height:22px;border-radius:var(--r-chip);background:var(--c-surface-2);display:block;
+  border:1px solid var(--c-edge);}
+#stage .heat i.f{background:var(--c-accent);border-color:var(--c-accent);}
+#stage .heat i.h{background:var(--c-soft-bg);border-color:var(--c-soft-bg);}
+#stage .heatlab{font-size:11px;color:var(--c-ink-3);margin-left:auto;}
+
+/* mini stat trio */
+#stage .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+#stage .trio .cell{text-align:center;padding:11px 6px;border-radius:var(--r-sm);
+  background:var(--c-surface-2);border:1px solid var(--c-edge);}
+#stage .trio .cell .big{font-family:var(--f-num);font-weight:800;font-size:20px;color:var(--c-ink);font-variant-numeric:tabular-nums;}
+#stage .trio .cell .cl{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-3);margin-top:3px;}
+#stage .trio .cell .dl{font-size:10px;margin-top:4px;font-weight:600;}
+#stage .up{color:var(--chip1-fg);} #stage .down{color:var(--c-accent);}
+
+#stage .fab{position:absolute;right:18px;bottom:20px;width:52px;height:52px;border-radius:var(--r-pill);
+  background:var(--c-accent);color:var(--c-accent-ink);display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:300;box-shadow:var(--sh-raised);border:var(--bw) solid var(--b-color);}
+.corners-xs #stage .fab,.corners-sharp #stage .fab,.corners-soft #stage .fab{border-radius:var(--r-card);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= CONTROL RAIL ================= -->
+  <aside class="rail">
+    <h1>Brand Style Explorer</h1>
+    <p class="sub">Reference for the in-app <b style="color:var(--pg-ink-2)">Appearance</b> settings. The user picks four things independently — <b style="color:var(--pg-ink-2)">Palette</b> (Paper / Sage / Sky, flat or gradient), <b style="color:var(--pg-ink-2)">Corners</b>, <b style="color:var(--pg-ink-2)">Typography</b>, and <b style="color:var(--pg-ink-2)">Card panels</b> opacity — and saves. Elevation is locked to <b style="color:var(--pg-ink-2)">lifted</b>, spacing to <b style="color:var(--pg-ink-2)">compact</b>.</p>
+
+    <h2>Palette</h2>
+    <div class="axis"><div class="seg" data-axis="palette">
+      <button data-v="paper">Paper</button><button data-v="papergradient">Paper Grad</button>
+      <button data-v="sage">Sage</button><button data-v="sagegradient">Sage Grad</button>
+      <button data-v="sky">Sky</button><button data-v="skygradient">Sky Grad</button>
+    </div></div>
+
+    <h2>Corners</h2>
+    <div class="axis"><div class="seg" data-axis="corners">
+      <button data-v="sharp">Sharp 0</button><button data-v="xs">XS 6</button>
+      <button data-v="soft">Soft 12</button><button data-v="round">Round 22</button>
+    </div></div>
+
+    <h2>Typography</h2>
+    <div class="axis"><div class="seg" data-axis="type">
+      <button data-v="geometric">Geometric</button><button data-v="friendly">Friendly</button>
+      <button data-v="modern">Modern</button>
+    </div></div>
+
+    <h2>Card panels</h2>
+    <div class="axis"><div class="seg" data-axis="bg">
+      <button data-v="soft">White 90%</button><button data-v="white">Solid white</button>
+    </div></div>
+
+    <p class="railnote">
+      Reference mockup for the real Appearance settings. Three palettes (Paper · Sage · Sky), each flat or gradient. The production build moves these axis classes into <code>app.css</code> as theme tokens applied on <code>&lt;html&gt;</code>.
+    </p>
+  </aside>
+
+  <!-- ================= STAGE ================= -->
+  <main class="stagewrap">
+    <p class="stagecaption">Live preview of the <b>Today</b> screen. Each control in the rail re-themes this phone in place — this is what the in-app live preview will do.</p>
+    <div class="phone">
+      <div class="notch"><i></i></div>
+      <div id="stage" class="palette-paper corners-xs elev-flat type-geometric density-compact">
+        <div class="scroll">
+
+          <!-- top bar -->
+          <div class="topbar">
+            <div>
+              <div class="greeting">Good morning, Joe</div>
+              <div class="day">Friday</div>
+            </div>
+            <div class="avatar">J</div>
+          </div>
+
+          <!-- hero brief -->
+          <div class="card">
+            <div class="eyebrow">Friday brief · 14° partly cloudy</div>
+            <div class="headline">Recover, then rebuild</div>
+            <div class="subhead">Sleep efficiency dropped 12% last night — protect tonight's bedtime and keep training light. Readiness should bounce back by Saturday.</div>
+            <div class="insight">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg>
+              <span>On low-readiness days, a short walk tends to lift your evening mood more than a hard session.</span>
+            </div>
+            <div class="herorow">
+              <div class="ring">
+                <svg width="96" height="96" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="40" fill="none" stroke="var(--c-edge)" stroke-width="9"/>
+                  <circle cx="48" cy="48" r="40" fill="none" stroke="var(--ring2)" stroke-width="9" stroke-linecap="round"
+                    stroke-dasharray="251" stroke-dashoffset="83" transform="rotate(-90 48 48)"/>
+                </svg>
+                <div class="val"><div class="num">67</div><div class="cap">Readiness</div></div>
+              </div>
+              <div class="stats">
+                <div class="stat"><span class="dot" style="background:var(--ring1)"></span><span class="lab">Sleep</span><span class="n">6h 12m · 71</span></div>
+                <div class="stat"><span class="dot" style="background:var(--ring3)"></span><span class="lab">Activity</span><span class="n">8.4 · ready</span></div>
+                <div class="stat"><span class="dot" style="background:var(--ring2)"></span><span class="lab">Resting HR</span><span class="n">54 bpm</span></div>
+              </div>
+            </div>
+            <div class="pills">
+              <span class="chip c1">↓ HRV 12%</span>
+              <span class="chip c2">Late bedtime</span>
+              <span class="chip c3">High strain Thu</span>
+              <span class="chip acc">Protect sleep</span>
+            </div>
+          </div>
+
+          <!-- tasks -->
+          <div class="card">
+            <div class="secttitle">
+              <h3>Tasks</h3>
+              <span class="addbtn">+ Add</span>
+            </div>
+            <div class="task is-done">
+              <span class="check done"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span>
+              <span class="tt">Review Q3 media buying numbers</span>
+              <span class="chip c1">Done</span>
+            </div>
+            <div class="task">
+              <span class="check"></span>
+              <span class="tt">Send Elementium contract redlines</span>
+              <span class="chip acc">Overdue</span>
+            </div>
+            <div class="task">
+              <span class="check"></span>
+              <span class="tt">Book physio — left shoulder</span>
+              <span class="chip c3">Today</span>
+            </div>
+            <div class="task">
+              <span class="check"></span>
+              <span class="tt">Draft Monday brief outline</span>
+              <span class="chip c2">Priority</span>
+            </div>
+          </div>
+
+          <!-- habits -->
+          <div class="card">
+            <div class="secttitle">
+              <h3>Habits</h3>
+              <span class="addbtn" style="background:transparent;color:var(--c-accent);border-color:var(--c-accent)">3 / 5</span>
+            </div>
+            <div class="task is-done"><span class="check done"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span><span class="tt">Morning sunlight</span></div>
+            <div class="task is-done"><span class="check done"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span><span class="tt">Read 20 min</span></div>
+            <div class="task"><span class="check"></span><span class="tt">No screens after 10pm</span></div>
+            <div class="habitrow">
+              <div class="heat"><i class="f"></i><i class="f"></i><i class="h"></i><i class="f"></i><i class="f"></i><i></i><i class="h"></i></div>
+              <span class="heatlab">7-day · 71%</span>
+            </div>
+          </div>
+
+          <!-- last 7 days -->
+          <div class="card" style="margin-bottom:6px">
+            <div class="secttitle"><h3>Last 7 days</h3></div>
+            <div class="trio">
+              <div class="cell"><div class="big">7.1</div><div class="cl">Sleep</div><div class="dl up">▲ 0.3h</div></div>
+              <div class="cell"><div class="big">72</div><div class="cl">Readiness</div><div class="dl down">▼ 4</div></div>
+              <div class="cell"><div class="big">9.2</div><div class="cl">Activity</div><div class="dl up">▲ 1.1</div></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="fab">+</div>
+      </div>
+    </div>
+    <p class="stagecaption" style="margin-top:4px"><b>Paper · Sage · Sky</b>, each as flat light or a light <b>gradient</b> wash, plus the original violet <b>Aurora</b>. Card panels are white with a slight transparency (90% by default) so the page wash bleeds through softly — toggle to solid white to compare.</p>
+  </main>
+</div>
+
+<script>
+const stage = document.getElementById('stage');
+// Elevation (lifted) + density (compact) are locked. User picks palette,
+// corners, type, and card-panel opacity independently — no presets.
+const state = {palette:'paper',corners:'xs',type:'geometric',bg:'soft'};
+
+function apply(){
+  stage.className = `palette-${state.palette} corners-${state.corners} elev-lifted type-${state.type} density-compact cards-${state.bg}`;
+  // sync segmented buttons
+  document.querySelectorAll('.seg').forEach(seg=>{
+    const axis = seg.dataset.axis;
+    seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===state[axis]));
+  });
+}
+
+document.querySelectorAll('.seg').forEach(seg=>{
+  seg.addEventListener('click',e=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    state[seg.dataset.axis] = btn.dataset.v; apply();
+  });
+});
+apply();
+</script>
+</body>
+</html>

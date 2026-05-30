@@ -19,7 +19,61 @@ const BETA_OURA_CLIENT_ID    = '718bad26-5171-4dc7-addc-ca20cd1a4f73';
 
 const SETTINGS_DEFAULTS = {
   integrations: {},
+  appearance: {},
 };
+
+// ── Appearance / theme ──────────────────────────────────────────────
+// Four independent axes applied as data-* attributes on <html>; app.css
+// (the "THEMING" block) maps them to design-token overrides, re-theming
+// the whole app with no per-component changes. Defaults reproduce today's
+// look exactly. Persisted in user_settings.appearance (jsonb). An inline
+// script in app.html applies the localStorage cache before first paint;
+// loadUserSettings() reconciles from the DB. See docs/brand-framework.html.
+const THEME_DEFAULTS = { palette: 'paper', corners: 'xs', type: 'geometric', cards: 'solid', cardAlpha: 0.9 };
+const THEME_OPTIONS = {
+  palette: [
+    { v: 'paper',      label: 'Paper',          sw: ['#fbf6ee', '#b82d3b'] },
+    { v: 'sage',       label: 'Sage',           sw: ['#eef3ec', '#4f8a6b'] },
+    { v: 'sky',        label: 'Sky',            sw: ['#eef2fb', '#3f6fd1'] },
+    { v: 'paper-grad', label: 'Paper gradient', sw: ['linear-gradient(135deg,#fbccb2,#e0dbf8)', '#b82d3b'] },
+    { v: 'sage-grad',  label: 'Sage gradient',  sw: ['linear-gradient(135deg,#c6e6c4,#cfece4)', '#4f8a6b'] },
+    { v: 'sky-grad',   label: 'Sky gradient',   sw: ['linear-gradient(135deg,#cbddfb,#d2f0e9)', '#3f6fd1'] },
+  ],
+  corners: [
+    { v: 'sharp', label: 'Sharp' },
+    { v: 'xs',    label: 'Subtle' },
+    { v: 'soft',  label: 'Soft' },
+    { v: 'round', label: 'Round' },
+  ],
+  type: [
+    { v: 'geometric', label: 'Geometric' },
+    { v: 'friendly',  label: 'Friendly' },
+    { v: 'modern',    label: 'Modern' },
+  ],
+  cards: [
+    { v: 'solid', label: 'Solid' },
+    { v: 'soft',  label: 'Translucent' },
+  ],
+};
+
+// Current theme = defaults overlaid with the user's saved appearance.
+function getTheme() {
+  return { ...THEME_DEFAULTS, ...((userSettings && userSettings.appearance) || {}) };
+}
+
+// Apply a theme to <html> + cache it in localStorage (read pre-paint by the
+// inline app.html script on the next load). Also mirrors into userSettings.
+function applyTheme(theme) {
+  const t = { ...THEME_DEFAULTS, ...(theme || {}) };
+  const d = document.documentElement;
+  d.setAttribute('data-palette', t.palette);
+  d.setAttribute('data-corners', t.corners);
+  d.setAttribute('data-type', t.type);
+  d.setAttribute('data-cards', t.cards);
+  d.style.setProperty('--card-alpha', t.cardAlpha != null ? t.cardAlpha : 0.9);
+  if (userSettings) userSettings.appearance = t;
+  try { localStorage.setItem('gsd_theme', JSON.stringify(t)); } catch (e) {}
+}
 
 const INTEGRATIONS_META = [
   { id: 'dropbox', label: 'Dropbox',   desc: 'Grant Dropbox access for AI insights functionality.' },
@@ -41,11 +95,16 @@ async function loadUserSettings() {
     if (error) throw error;
     userSettings = data ? {
       integrations: data.integrations || {},
+      appearance: data.appearance || {},
     } : { ...SETTINGS_DEFAULTS };
   } catch (e) {
     console.warn('[settings] load failed', e);
     userSettings = { ...SETTINGS_DEFAULTS };
   }
+  // Reconcile the saved theme (DB is source of truth) onto <html> + the
+  // localStorage cache. The inline app.html script already applied the
+  // cached value pre-paint; this corrects it if the DB differs.
+  applyTheme(getTheme());
   // Layer in live integration status from the server. Fire-and-forget so the
   // synchronous boot path (which awaits loadUserSettings) isn't blocked on
   // cold-startable Netlify functions (Dropbox/Whoop/Oura). The Settings page
@@ -251,6 +310,7 @@ async function saveUserSettings(patch) {
     const { error } = await db.from('user_settings').upsert({
       user_id: session.user.id,
       integrations: userSettings.integrations,
+      appearance: userSettings.appearance || {},
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' });
     if (error) throw error;
@@ -267,7 +327,7 @@ function ensureSettingsStyles() {
   style.textContent = `
     .settings-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
     .settings-section { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 22px 24px; margin-bottom: 18px; box-shadow: var(--shadow-card); }
-    .settings-section.settings-danger { border-color: var(--guava-200); background: var(--guava-50); }
+    .settings-section.settings-danger { border-color: var(--danger-200); background: var(--danger-50); }
     .settings-h { font-size: var(--fs-card); font-weight: 600; color: var(--ink); margin-bottom: 4px; letter-spacing: -0.01em; }
     .settings-sub { font-size: var(--fs-pill); color: var(--ink-3); line-height: 1.6; margin-bottom: 14px; }
     .settings-tab-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--edge); cursor: pointer; }
@@ -296,8 +356,8 @@ function ensureSettingsStyles() {
     .settings-btn-secondary { background: var(--surface); border: 1px solid var(--edge-strong); color: var(--ink-2); padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-pill); font-weight: 500; cursor: pointer; }
     .settings-btn-secondary:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
     .settings-btn-secondary[disabled] { opacity: 0.55; cursor: not-allowed; }
-    .settings-btn-danger { background: var(--guava-700); border: 1px solid var(--guava-700); color: #fff; padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-pill); font-weight: 600; cursor: pointer; }
-    .settings-btn-danger:hover { background: var(--guava-800); }
+    .settings-btn-danger { background: var(--danger-700); border: 1px solid var(--danger-700); color: #fff; padding: 7px 14px; border-radius: var(--r-md); font-family: inherit; font-size: var(--fs-pill); font-weight: 600; cursor: pointer; }
+    .settings-btn-danger:hover { background: var(--danger-800); }
     .settings-saved { display: inline-block; margin-left: 10px; font-size: var(--fs-meta); color: var(--moss-fg); opacity: 0; transition: opacity var(--dur-calm); }
     .settings-saved.visible { opacity: 1; }
     .settings-int-card--whoop { grid-column: 1 / -1; }
@@ -320,9 +380,65 @@ function ensureSettingsStyles() {
     .settings-whoop-field span { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-2); }
     .settings-whoop-field input { font-family: inherit; font-size: var(--fs-pill); padding: 7px 10px; border: 1px solid var(--edge-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
     .settings-whoop-field input:focus { outline: none; border-color: var(--guava-700); }
+    /* Appearance (theme picker) */
+    .settings-appearance { display: flex; flex-direction: column; gap: 18px; margin-top: 6px; }
+    .settings-appearance-label { font-size: var(--fs-pill); font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+    .settings-appearance-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .settings-appearance-opt { display: inline-flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--edge-strong); border-radius: var(--r-md); padding: 7px 12px; font-family: inherit; font-size: var(--fs-pill); font-weight: 500; color: var(--ink-2); cursor: pointer; transition: border-color var(--dur-quick), color var(--dur-quick), background var(--dur-quick); }
+    .settings-appearance-opt:hover { border-color: var(--ink-3); color: var(--ink); }
+    .settings-appearance-opt.is-active { border-color: var(--guava-700); color: var(--guava-700); background: var(--guava-50); font-weight: 600; }
+    .settings-appearance-sw { display: inline-flex; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgba(20,15,10,0.10); }
+    .settings-appearance-sw i { width: 14px; height: 14px; display: block; }
+    .settings-appearance-slider { display: flex; align-items: center; gap: 12px; margin-top: 10px; max-width: 360px; }
+    .settings-appearance-slider input[type=range] { flex: 1; accent-color: var(--guava-700); cursor: pointer; min-width: 0; }
+    .settings-appearance-alpha-val { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-3); min-width: 82px; text-align: right; font-variant-numeric: tabular-nums; }
+    .settings-appearance-reset { margin-top: 2px; }
     @media (max-width: 600px) { .settings-page { padding: 20px 14px 80px; } .settings-section { padding: 18px 16px; } .settings-whoop-form { grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
+}
+
+// One control group (segmented option buttons) for an appearance axis.
+function appearanceGroupHtml(label, axis, current) {
+  const opts = THEME_OPTIONS[axis].map(o => {
+    const sw = o.sw ? `<span class="settings-appearance-sw">${o.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span>` : '';
+    return `<button class="settings-appearance-opt${o.v === current ? ' is-active' : ''}" data-appearance-axis="${axis}" data-appearance-value="${o.v}">${sw}${o.label}</button>`;
+  }).join('');
+  return `<div class="settings-appearance-group"><div class="settings-appearance-label">${label}</div><div class="settings-appearance-opts">${opts}</div></div>`;
+}
+
+// Card panels group: Solid / Translucent buttons + an opacity slider. Dragging
+// the slider implies Translucent (handled live in the input listener).
+function cardPanelsGroupHtml(t) {
+  const pct = Math.round((t.cardAlpha != null ? t.cardAlpha : 0.9) * 100);
+  const opts = THEME_OPTIONS.cards.map(o =>
+    `<button class="settings-appearance-opt${o.v === t.cards ? ' is-active' : ''}" data-appearance-axis="cards" data-appearance-value="${o.v}">${o.label}</button>`).join('');
+  return `<div class="settings-appearance-group">
+            <div class="settings-appearance-label">Card panels</div>
+            <div class="settings-appearance-opts">${opts}</div>
+            <div class="settings-appearance-slider">
+              <input type="range" min="50" max="100" step="5" value="${pct}" data-appearance-alpha aria-label="Card opacity" />
+              <span class="settings-appearance-alpha-val">${pct}% opaque</span>
+            </div>
+          </div>`;
+}
+
+// The whole Appearance settings section (theme picker). Reads the current
+// theme via getTheme(); changes are handled by the global click/input listeners.
+function appearanceSectionHtml() {
+  const t = getTheme();
+  return `
+      <div class="settings-section">
+        <div class="settings-h">Appearance <span class="settings-saved" id="settingsAppearanceSaved">Saved</span></div>
+        <div class="settings-sub">Personalize the look of the app. Changes apply instantly and save automatically.</div>
+        <div class="settings-appearance">
+          ${appearanceGroupHtml('Palette', 'palette', t.palette)}
+          ${appearanceGroupHtml('Corners', 'corners', t.corners)}
+          ${appearanceGroupHtml('Typography', 'type', t.type)}
+          ${cardPanelsGroupHtml(t)}
+          <div class="settings-appearance-reset"><button class="settings-btn-linklike" data-appearance-reset>Reset to default</button></div>
+        </div>
+      </div>`;
 }
 
 function renderSettingsPage() {
@@ -376,6 +492,8 @@ function renderSettingsPage() {
         </div>
         <div class="settings-int-grid">${integrationsHtml}</div>
       </div>
+
+${appearanceSectionHtml()}
 
       <div class="settings-section">
         <div class="settings-h">Location <span class="settings-saved" id="settingsLocationSaved">Saved</span></div>
@@ -582,9 +700,52 @@ document.addEventListener('change', e => {
     saveUserSettings({ integrations: merged }).then(() => flashSettingsSaved());
     return;
   }
+  // Card opacity slider released → persist (live apply happens on 'input').
+  const alphaCommit = e.target.closest('[data-appearance-alpha]');
+  if (alphaCommit) {
+    saveUserSettings({ appearance: getTheme() }).then(() => flashSettingsSaved('settingsAppearanceSaved'));
+    return;
+  }
+});
+
+// Card opacity slider dragged → apply live (Translucent implied), no DB write
+// until release ('change', above).
+document.addEventListener('input', e => {
+  const alpha = e.target.closest('[data-appearance-alpha]');
+  if (!alpha) return;
+  const a = Math.max(0.5, Math.min(1, (+alpha.value || 90) / 100));
+  applyTheme({ ...getTheme(), cards: 'soft', cardAlpha: a });
+  const grp = alpha.closest('.settings-appearance-group');
+  if (grp) {
+    grp.querySelectorAll('.settings-appearance-opt').forEach(b => b.classList.toggle('is-active', b.dataset.appearanceValue === 'soft'));
+    const lbl = grp.querySelector('.settings-appearance-alpha-val');
+    if (lbl) lbl.textContent = Math.round(a * 100) + '% opaque';
+  }
 });
 
 document.addEventListener('click', e => {
+  // Appearance: pick a theme option → apply live + auto-save.
+  const appOpt = e.target.closest('[data-appearance-axis]');
+  if (appOpt) {
+    const axis = appOpt.dataset.appearanceAxis;
+    const value = appOpt.dataset.appearanceValue;
+    const next = { ...getTheme(), [axis]: value };
+    applyTheme(next);
+    saveUserSettings({ appearance: next }).then(() => flashSettingsSaved('settingsAppearanceSaved'));
+    // Update active state in-place (avoids a full re-render / scroll jump).
+    const group = appOpt.closest('.settings-appearance-group');
+    if (group) group.querySelectorAll('.settings-appearance-opt').forEach(b => b.classList.toggle('is-active', b === appOpt));
+    return;
+  }
+  const appReset = e.target.closest('[data-appearance-reset]');
+  if (appReset) {
+    applyTheme({ ...THEME_DEFAULTS });
+    saveUserSettings({ appearance: { ...THEME_DEFAULTS } }).then(() => {
+      flashSettingsSaved('settingsAppearanceSaved');
+      if (activeTool === 'settings') renderSettingsPage();
+    });
+    return;
+  }
   const syncBtn = e.target.closest('[data-settings-sync-now]');
   if (syncBtn) { runSyncNow(syncBtn); return; }
   const intBtn = e.target.closest('[data-settings-int-action]');

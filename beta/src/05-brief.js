@@ -136,12 +136,12 @@ function briefInjectStyles() {
     }
     .brief-eyebrow {
       font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
-      color: var(--ink-3); text-transform: uppercase;
+      color: var(--guava-700); text-transform: uppercase;
     }
     .brief-head-right { display: inline-flex; align-items: center; gap: 8px; }
     .brief-weather-chip {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border: 1px solid var(--edge); border-radius: 999px;
+      padding: 4px 10px; border: 1px solid var(--edge); border-radius: var(--r-md);
       font-size: var(--fs-meta); color: var(--ink-2); white-space: nowrap;
     }
     .brief-weather-temp { font-weight: 700; color: var(--ink); }
@@ -151,7 +151,7 @@ function briefInjectStyles() {
        so the strip reads as a single row of related affordances. */
     .brief-sleep-chip {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border: 1px solid var(--edge); border-radius: 999px;
+      padding: 4px 10px; border: 1px solid var(--edge); border-radius: var(--r-md);
       background: var(--surface); color: var(--ink-2);
       font-family: inherit; font-size: var(--fs-meta); cursor: pointer;
       white-space: nowrap; line-height: 1; -webkit-tap-highlight-color: transparent;
@@ -166,7 +166,7 @@ function briefInjectStyles() {
     .brief-sleep-chip.is-logged .brief-sleep-label { color: inherit; }
     .brief-sleep-time { font-variant-numeric: tabular-nums; }
     .brief-conf {
-      display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+      display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--r-md);
       font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
       background: var(--surface-2); color: var(--ink-3);
     }
@@ -248,7 +248,7 @@ function briefInjectStyles() {
     }
     .brief-pill {
       display: inline-flex; align-items: center;
-      padding: 3px 10px; border: 1px solid var(--guava-50); border-radius: 999px;
+      padding: 3px 10px; border: 1px solid var(--guava-50); border-radius: var(--r-md);
       background: var(--guava-50); color: var(--guava-700);
       font-size: var(--fs-meta); white-space: nowrap;
     }
