@@ -783,7 +783,9 @@
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--ink-4);
+    /* Primary ink (near-black) — these sit directly on the page/gradient
+       background, where the old light --ink-4 gray was hard to read. */
+    color: var(--ink);
     display: flex;
     align-items: center;
     gap: 8px;
