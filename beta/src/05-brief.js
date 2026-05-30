@@ -357,13 +357,6 @@ function briefInjectStyles() {
       align-items: baseline; padding: 6px 0; font-size: var(--fs-search);
     }
     .brief-recap-row + .brief-recap-row { border-top: 1px dashed var(--edge); }
-    /* Alignment spacer: a column lacking a slot the other column has still
-       reserves the row's height so the opposite column's shared callout (e.g.
-       Train) stays on the same line — but it renders NOTHING (no border, no
-       text/icon) so it never reads as a broken empty bar. On stacked phones
-       the columns aren't side-by-side, so alignment is moot and the spacer is
-       dropped entirely (see the media query below). */
-    .brief-recap-row--empty { visibility: hidden; }
     .brief-recap-icon { font-size: var(--fs-body); line-height: 1; }
     .brief-recap-name { color: var(--ink-3); white-space: nowrap; }
     .brief-recap-value {
@@ -377,7 +370,6 @@ function briefInjectStyles() {
          don't wrap to two rows each. */
       .brief-recap-grid { grid-template-columns: 1fr; gap: 4px; }
       .brief-recap-col + .brief-recap-col { margin-top: 10px; }
-      .brief-recap-row--empty { display: none; }   /* stacked: alignment moot */
     }
   `;
   document.head.appendChild(style);
@@ -655,9 +647,8 @@ function briefRecapHabitsText(h) {
 // the structured.recap fields in place and call briefRender again.
 function briefRecapHTML(recap, structured) {
   if (!recap || (!recap.left && !recap.right)) return '';
-  // Canonical row order. Rows are tagged with a `slot`; shared slots are then
-  // paired across the two columns so e.g. Habits lines up with Habits and
-  // Train lines up with Train — see the slot-pairing pass below.
+  // Canonical row order. Rows are tagged with a `slot` and each column is
+  // sorted by this order (then top-aligned — see colHTML below).
   const SLOT_ORDER = ['habits', 'steps', 'train', 'tasks', 'sleep', 'mood', 'events'];
   // Build one column's slot-tagged rows from its data fields.
   const buildRows = (col) => {
@@ -705,61 +696,46 @@ function briefRecapHTML(recap, structured) {
     return rows;
   };
 
-  // Render one row; null → an invisible placeholder of identical height (the
-  // &nbsp; icon keeps its line-box the same as a real row) so the opposite
-  // column's row stays on the same line.
-  const rowHTML = (r) => r
-    ? `<div class="brief-recap-row">
-        <span class="brief-recap-icon">${briefEsc(r.icon)}</span>
-        <span class="brief-recap-name">${briefEsc(r.name)}</span>
-        <span class="brief-recap-value">${briefEsc(r.value)}</span>
-      </div>`
-    : `<div class="brief-recap-row brief-recap-row--empty" aria-hidden="true"><span class="brief-recap-icon">&nbsp;</span><span class="brief-recap-name"></span><span class="brief-recap-value"></span></div>`;
-  const colHTML = (label, rows) => `<div class="brief-recap-col">
-      <div class="brief-recap-col-label">${briefEsc(label || '')}</div>
-      ${rows.map(rowHTML).join('')}
+  // Render one real callout row.
+  const rowHTML = (r) => `<div class="brief-recap-row">
+      <span class="brief-recap-icon">${briefEsc(r.icon)}</span>
+      <span class="brief-recap-name">${briefEsc(r.name)}</span>
+      <span class="brief-recap-value">${briefEsc(r.value)}</span>
     </div>`;
+  // Each column lists its own rows, sorted by slot priority and capped at 5,
+  // TOP-ALIGNED. We deliberately do NOT pad with blank spacer rows to force
+  // shared callouts onto the same line: the two columns are semantically
+  // different (a recap on the left, a setup on the right) and often very
+  // unbalanced, so forcing alignment floated the shorter column's rows into
+  // the middle with empty gaps. Top-aligned reads cleanly at any balance, and
+  // shared leading rows (e.g. Habits) still line up naturally when both
+  // columns start with them.
+  const colHTML = (label, rows) => {
+    const list = rows.slice()
+      .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+      .slice(0, 5);
+    if (!list.length) return '';
+    return `<div class="brief-recap-col">
+      <div class="brief-recap-col-label">${briefEsc(label || '')}</div>
+      ${list.map(rowHTML).join('')}
+    </div>`;
+  };
 
   const leftRows  = buildRows(recap.left);
   const rightRows = buildRows(recap.right);
   const leftHas = leftRows.length > 0, rightHas = rightRows.length > 0;
+  if (!leftHas && !rightHas) return '';
 
-  // Only one side has data → render it plainly, ordered by slot, capped at 5.
+  // Only one side has data → single column.
   if (!leftHas || !rightHas) {
     const onlyCol  = leftHas ? recap.left : recap.right;
-    const onlyRows = (leftHas ? leftRows : rightRows)
-      .slice().sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)).slice(0, 5);
-    if (!onlyRows.length) return '';
+    const onlyRows = leftHas ? leftRows : rightRows;
     return `<div class="brief-recap-grid">${colHTML(onlyCol.label, onlyRows)}</div>`;
   }
 
-  // Both sides present. First cap EACH column to its top 5 real callouts (by
-  // slot priority) — the cap is about real rows, not the blank spacers we add
-  // for alignment, so a shared row like Mood is never crowded out by a blank.
-  const cap = 5;
-  const topN = (rows) => rows.slice()
-    .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
-    .slice(0, cap);
-  const L5 = topN(leftRows), R5 = topN(rightRows);
-
-  // Then walk SLOT_ORDER and pair each column's rows of that slot by index, so
-  // shared slots (Habits, Train, Tasks, Sleep, Mood) land on the SAME line
-  // across columns. A slot only one column has (Steps→Yesterday, Events→Today)
-  // gets an invisible placeholder opposite it so everything below stays
-  // aligned. Trailing placeholders are trimmed so neither column dangles blank
-  // rows at its foot (interior placeholders stay — they hold the alignment).
-  const leftA = [], rightA = [];
-  for (const slot of SLOT_ORDER) {
-    const L = L5.filter(r => r.slot === slot);
-    const R = R5.filter(r => r.slot === slot);
-    const n = Math.max(L.length, R.length);
-    for (let i = 0; i < n; i++) { leftA.push(L[i] || null); rightA.push(R[i] || null); }
-  }
-  while (leftA.length  && leftA[leftA.length - 1]   == null) leftA.pop();
-  while (rightA.length && rightA[rightA.length - 1] == null) rightA.pop();
   return `<div class="brief-recap-grid">
-    ${colHTML(recap.left.label, leftA)}
-    ${colHTML(recap.right.label, rightA)}
+    ${colHTML(recap.left.label, leftRows)}
+    ${colHTML(recap.right.label, rightRows)}
   </div>`;
 }
 
