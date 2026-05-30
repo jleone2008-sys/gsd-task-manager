@@ -357,6 +357,13 @@ function briefInjectStyles() {
       align-items: baseline; padding: 6px 0; font-size: var(--fs-search);
     }
     .brief-recap-row + .brief-recap-row { border-top: 1px dashed var(--edge); }
+    /* Alignment spacer: a column lacking a slot the other column has still
+       reserves the row's height so the opposite column's shared callout (e.g.
+       Train) stays on the same line — but it renders NOTHING (no border, no
+       text/icon) so it never reads as a broken empty bar. On stacked phones
+       the columns aren't side-by-side, so alignment is moot and the spacer is
+       dropped entirely (see the media query below). */
+    .brief-recap-row--empty { visibility: hidden; }
     .brief-recap-icon { font-size: var(--fs-body); line-height: 1; }
     .brief-recap-name { color: var(--ink-3); white-space: nowrap; }
     .brief-recap-value {
@@ -370,6 +377,7 @@ function briefInjectStyles() {
          don't wrap to two rows each. */
       .brief-recap-grid { grid-template-columns: 1fr; gap: 4px; }
       .brief-recap-col + .brief-recap-col { margin-top: 10px; }
+      .brief-recap-row--empty { display: none; }   /* stacked: alignment moot */
     }
   `;
   document.head.appendChild(style);
