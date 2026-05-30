@@ -1037,8 +1037,19 @@ function briefToolSchema(mode) {
     evidence_pills: {
       type: 'array',
       maxItems: 3,
-      items: { type: 'string' },
-      description: '0-3 short context tags, each ≤4 words. No counts, no titles. Examples: "Body still cleaning up", "Late night Friday".',
+      items: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'Tag text, ≤4 words. No counts, no titles.' },
+          tone: {
+            type: 'string',
+            enum: ['positive', 'negative', 'neutral'],
+            description: 'How this reads for the user, for colour-coding: positive = a win/good signal ("Solid sleep", "On a streak"); negative = a problem/warning ("Overdue tasks", "Late night", "Low recovery"); neutral = plain context with no clear good/bad ("Body still cleaning up").',
+          },
+        },
+        required: ['text', 'tone'],
+      },
+      description: '0-3 short context tags, each with a sentiment tone. Examples: {text:"Solid sleep",tone:"positive"}, {text:"Late night Friday",tone:"negative"}, {text:"Body still cleaning up",tone:"neutral"}.',
     },
     hero_metric_key: {
       type: ['string', 'null'],
@@ -1094,10 +1105,15 @@ function normalizeStructured(raw, mode, ctx) {
   // and word-safe trimming avoids mid-word cuts).
   let subhead = softTruncate(String(raw.subhead || '').trim(), 180);
 
-  // Evidence pills: drop pills with >4 words or >30 chars; cap to 3
+  // Evidence pills: now {text, tone}. Accept legacy bare strings too. Drop
+  // pills with >4 words or >30 chars; default tone to neutral; cap to 3.
   const pills = (Array.isArray(raw.evidence_pills) ? raw.evidence_pills : [])
-    .map(p => String(p || '').trim())
-    .filter(p => p && p.split(/\s+/).length <= 4 && p.length <= 30)
+    .map(p => {
+      const text = String((p && typeof p === 'object') ? p.text : p || '').trim();
+      const tone = (p && typeof p === 'object' && ['positive', 'negative', 'neutral'].includes(p.tone)) ? p.tone : 'neutral';
+      return { text, tone };
+    })
+    .filter(p => p.text && p.text.split(/\s+/).length <= 4 && p.text.length <= 30)
     .slice(0, 3);
 
   // Insight (optional): a hedged, learned-pattern line. Validated
@@ -1117,7 +1133,7 @@ function normalizeStructured(raw, mode, ctx) {
 
   // Banned-phrase scan: only applies to Claude's text (the factual blocks
   // are server-built and trusted).
-  const claudeText = [headline, subhead, pills.join(' ')].join(' ');
+  const claudeText = [headline, subhead, pills.map(p => p.text).join(' ')].join(' ');
   if (BANNED_PROSE_REGEX.test(claudeText)) {
     console.warn('daily-brief: banned phrase in Claude output, rejecting:', claudeText.slice(0, 200));
     return null;
@@ -1214,7 +1230,7 @@ function buildActionStubs(sleepRec, mode, ctx) {
 function buildFlatNarrative(s) {
   const lines = [s.headline, s.subhead];
   if (s.insight) lines.push(s.insight);
-  if (s.evidence_pills?.length) lines.push(s.evidence_pills.join(' · '));
+  if (s.evidence_pills?.length) lines.push(s.evidence_pills.map(p => (p && typeof p === 'object') ? p.text : p).join(' · '));
   // Recap blocks: flatten left + right columns into prose for the legacy
   // narrative column. Order matches the rendered grid (left first).
   const r = s.recap;

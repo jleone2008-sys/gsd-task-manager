@@ -151,7 +151,9 @@
         { key: 'sleep_score',    label: 'Sleep',    value: 82, delta: '↑4', delta_dir: 'good' },
         { key: 'activity_score', label: 'Activity', value: 74, delta: '↓2', delta_dir: 'bad' },
       ],
-      evidence_pills: isMorning ? ['HRV steady', 'Slept 7h40m', 'Low strain'] : ['On track', '3/5 habits'],
+      evidence_pills: isMorning
+        ? [{ text: 'HRV steady', tone: 'neutral' }, { text: 'Slept 7h40m', tone: 'positive' }, { text: 'Overdue tasks', tone: 'negative' }]
+        : [{ text: 'On track', tone: 'positive' }, { text: '3/5 habits', tone: 'neutral' }],
       recap: isMorning
         ? {
             left:  { label: 'Yesterday', habits: { pct: 80, done: 4, due: 5 }, tasks_done: 3, bedtime: '10:45 PM', mood_label: 'Good' },

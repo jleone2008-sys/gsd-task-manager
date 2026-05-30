@@ -3680,9 +3680,9 @@
     .notes-layout { flex-direction: column; flex-wrap: nowrap; height: auto; min-height: calc(100vh - 160px); }
     .notes-left-col { display: contents; }
     .notes-sidebar { display: none; }
-    .notes-list { width: 100%; border-right: none; max-height: none; background: var(--bg); padding-bottom: var(--nav-clear-desktop); }
+    .notes-list { width: 100%; border-right: none; max-height: none; background: transparent; padding-bottom: var(--nav-clear-desktop); }
     .notes-editor { min-width: 0; }
-    .nl-header { padding: var(--space-3) var(--space-4) var(--space-2-5); background: var(--bg); border-bottom: none; }
+    .nl-header { padding: var(--space-3) var(--space-4) var(--space-2-5); background: transparent; border-bottom: none; }
     .nl-title { font-size: var(--fs-card); }
     .nl-scroll { padding: var(--space-1) var(--space-3) 120px; }
     .nl-item { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); box-shadow: var(--shadow-card); padding: var(--space-3) var(--space-3-5) var(--space-2-5); margin-bottom: var(--space-2); }

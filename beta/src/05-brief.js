@@ -563,8 +563,8 @@ function briefStatsHTML(stats) {
   }).join('')}${hasAnyDelta ? `<div class="brief-stats-baseline">Δ vs 7-day avg</div>` : ''}</div>`;
 }
 
-// Heuristic sentiment for an evidence pill (the server sends plain strings).
-// Positive → green, negative → red, neutral → default slate chip.
+// Fallback sentiment for LEGACY string pills (briefs cached before the server
+// started tagging tone). New briefs send {text, tone} and skip this.
 function briefPillSentiment(text) {
   const t = String(text).toLowerCase();
   if (/(overdue|\blate\b|missed|behind|drop|deficit|high strain|elevated|skip|waiting|stress|poor|restless|fragmented|under-?slept|short on sleep|↓|declin|spik(e|ing)|backed up|low recovery|low readiness|below)/.test(t)) return ' brief-pill--neg';
@@ -574,7 +574,16 @@ function briefPillSentiment(text) {
 
 function briefPillsHTML(pills) {
   if (!Array.isArray(pills) || pills.length === 0) return '';
-  return `<div class="brief-pills">${pills.map(p => `<span class="brief-pill${briefPillSentiment(p)}">${briefEsc(p)}</span>`).join('')}</div>`;
+  return `<div class="brief-pills">${pills.map(p => {
+    const isObj = p && typeof p === 'object';
+    const text = isObj ? (p.text || '') : p;
+    let cls;
+    if (isObj && p.tone === 'positive') cls = ' brief-pill--pos';
+    else if (isObj && p.tone === 'negative') cls = ' brief-pill--neg';
+    else if (isObj && p.tone === 'neutral') cls = '';
+    else cls = briefPillSentiment(text);   // legacy string pill → heuristic
+    return `<span class="brief-pill${cls}">${briefEsc(text)}</span>`;
+  }).join('')}</div>`;
 }
 
 // Format a task_counts {priority, due_today, overdue, total_open} block
@@ -1042,7 +1051,10 @@ function homeBriefRecompute() {
     if (label && Array.isArray(s.evidence_pills)) {
       s.evidence_pills = s.evidence_pills.map(p => {
         if (!p) return p;
-        if (/^mood\s*[:|-]/i.test(p)) return `Mood: ${label}`;
+        const text = (typeof p === 'object') ? p.text : p;
+        if (/^mood\s*[:|-]/i.test(text || '')) {
+          return (typeof p === 'object') ? { ...p, text: `Mood: ${label}` } : `Mood: ${label}`;
+        }
         return p;
       });
     }
