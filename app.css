@@ -11,6 +11,9 @@
     /* ── Ground (paper weight — subtle warm shift) ───────────── */
     --bg:           #fbf6ee;
     --surface:      #fffdfa;
+    /* Always-solid surface — chrome (navbar, modals, menus, floating buttons)
+       uses this so the card-translucency setting never makes them see-through. */
+    --surface-solid: #fffdfa;
     --surface-2:    #f5ece0;
     --edge:         #ecdfce;
     --edge-strong:  #d8c6ad;
@@ -220,7 +223,7 @@
 
   /* ── Palette: Sage (flat + gradient share the token set) ── */
   html[data-palette="sage"], html[data-palette="sage-grad"] {
-    --bg: #eef3ec; --surface: #f8faf5; --surface-2: #e3ebdf;
+    --bg: #eef3ec; --surface: #f8faf5; --surface-solid: #f8faf5; --surface-2: #e3ebdf;
     --edge: #d6e1d0; --edge-strong: #b9ccb2; --row-hover-bg: #f3f7f1;
     --ink: #23302a; --ink-2: #3f4f46; --ink-3: #6c7d70; --ink-4: #9bab9d; --ink-5: #bcc8bd;
     --guava-900: #234a36; --guava-800: #2f6149; --guava-700: #4f8a6b; --guava-500: #5fa37e;
@@ -229,7 +232,7 @@
   }
   /* ── Palette: Sky ── */
   html[data-palette="sky"], html[data-palette="sky-grad"] {
-    --bg: #eef2fb; --surface: #f7f9fe; --surface-2: #dde6f5;
+    --bg: #eef2fb; --surface: #f7f9fe; --surface-solid: #f7f9fe; --surface-2: #dde6f5;
     --edge: #d2ddf0; --edge-strong: #b0c4e6; --row-hover-bg: #f3f6fd;
     --ink: #1f2a3d; --ink-2: #384a64; --ink-3: #61748f; --ink-4: #94a6c2; --ink-5: #b6c4dc;
     --guava-900: #1d3a78; --guava-800: #2f57ac; --guava-700: #3f6fd1; --guava-500: #6189db;
@@ -265,6 +268,20 @@
        soft = 90%-opaque white so the wash/gradient shows through.
        Placed after palettes so it wins for --surface (equal specificity). ── */
   html[data-cards="soft"] { --surface: rgba(255,255,255, var(--card-alpha, 0.90)); }
+  /* Translucency is for CONTENT CARDS only (they sit directly on the page bg
+     and use --surface). Chrome — navbar, dropdowns/menus, modals/popups, and
+     floating buttons — must stay 100% opaque, so force them to --surface-solid.
+     High specificity (html[data-cards] :is(...)) wins over per-module styles. */
+  html[data-cards="soft"] :is(
+    .mobile-bottom-nav, .user-dropdown, .dropdown-menu, .note-ctx-menu, .mobile-nb-drawer, .sort-dropdown,
+    .modal, .overlay-card, .create-panel-inner, .confirm-card, .home-modal,
+    .habit-edit-modal, .habit-drill-panel, .habit-create-inner,
+    .bwx-card, .j-edit-card, .j-edit-footer, .j-photo-modal-card,
+    .floating-search, .floating-scratch, .floating-stats, .j-fbtn, .j-float-search,
+    /* interactive controls / toolbars (not cards) — keep crisp + solid */
+    .pill, .insights-search-input, .insights-action-btn, .home-pill-btn,
+    .btn--secondary, .btn-sm, .freq-btn, .settings-appearance-opt
+  ) { background: var(--surface-solid); }
 
   /* ──────────────────────────────────────────────────────────────
      APP SHELL — sidebar (desktop) + main column
@@ -413,7 +430,9 @@
      Transparent so the page's theme background (solid OR gradient) flows
      continuously through the header instead of showing a solid seam. */
   .topbar {
-    position: static;       /* explicitly NOT sticky — scrolls with the page */
+    position: sticky;       /* pinned to top; transparent so the theme bg/gradient shows through */
+    top: 0;
+    z-index: var(--z-toast);
     background: transparent;
   }
   header {
@@ -704,12 +723,17 @@
     /* Scratch mirrors the Notes footprint on desktop — full main-column
        width so the writing surface breathes edge-to-edge. */
     .content.scratch-view { max-width: none; padding: 0 25px 20px; }
-    /* Notes is the sole exception: full main-column width so the 3-pane
-       (notebooks | list | editor) layout spans edge-to-edge. */
+    /* Insights (knowledgebase timeline) matches every other tab: capped to
+       --content-max with 25px padding so it lines up with the pill-bar +
+       Home + the rest of the app. Only the open-note EDITOR keeps full
+       main-column width (the 3-pane writing surface). */
     .content[data-tool-view="notes"] {
-      max-width: none;
-      padding: 0 25px 20px;
+      max-width: var(--content-max, 810px);
+      padding: 0 25px 40px;
       margin: 0;
+    }
+    .content[data-tool-view="notes"]:has(.notes-layout.has-active-note) {
+      max-width: none;
     }
   }
   /* Mobile full-width tools — both Notes and Scratch keep the same 20px
@@ -717,7 +741,8 @@
      (with --r-md radius + --shadow-card) reads as a proper card with side
      gutters instead of stretching edge-to-edge. */
   @media (max-width: 899.98px) {
-    .content[data-tool-view="notes"] { max-width: none; padding: 0 20px 100px; }
+    .content[data-tool-view="notes"] { max-width: 720px; margin: 0 auto; padding: 0 20px 100px; }
+    .content[data-tool-view="notes"]:has(.notes-layout.has-active-note) { max-width: none; }
     .content.scratch-view { max-width: none; padding: 0 20px 100px; }
   }
 
@@ -3171,7 +3196,7 @@
   /* Inline search bar (replaces the floating-search FAB on Insights). */
   .insights-tools {
     display: flex; flex-direction: column; gap: 10px;
-    padding: 14px var(--space-3) 10px;
+    padding: 14px 0 10px;   /* no side inset — aligns with the content's 25px gutter + the cards */
   }
   .insights-search { position: relative; }
   .insights-search-icon {

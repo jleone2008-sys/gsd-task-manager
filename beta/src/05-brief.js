@@ -248,10 +248,13 @@ function briefInjectStyles() {
     }
     .brief-pill {
       display: inline-flex; align-items: center;
-      padding: 3px 10px; border: 1px solid var(--guava-50); border-radius: var(--r-md);
-      background: var(--guava-50); color: var(--guava-700);
+      padding: 3px 10px; border: 1px solid var(--slate-bg); border-radius: var(--r-md);
+      background: var(--slate-bg); color: var(--slate-fg);
       font-size: var(--fs-meta); white-space: nowrap;
     }
+    /* Sentiment colouring: positive = green (moss), negative = red (danger). */
+    .brief-pill--pos { background: var(--moss-bg); color: var(--moss-fg); border-color: var(--moss-bg); }
+    .brief-pill--neg { background: var(--danger-100); color: var(--danger-700); border-color: var(--danger-100); }
 
     .brief-play-label {
       font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em;
@@ -560,9 +563,18 @@ function briefStatsHTML(stats) {
   }).join('')}${hasAnyDelta ? `<div class="brief-stats-baseline">Δ vs 7-day avg</div>` : ''}</div>`;
 }
 
+// Heuristic sentiment for an evidence pill (the server sends plain strings).
+// Positive → green, negative → red, neutral → default slate chip.
+function briefPillSentiment(text) {
+  const t = String(text).toLowerCase();
+  if (/(overdue|\blate\b|missed|behind|drop|deficit|high strain|elevated|skip|waiting|stress|poor|restless|fragmented|under-?slept|short on sleep|↓|declin|spik(e|ing)|backed up|low recovery|low readiness|below)/.test(t)) return ' brief-pill--neg';
+  if (/(solid|strong|good|great|ready|recover|on track|improv|rested|consistent|streak|complete|done|optimal|steady|calm|stable|deep sleep|efficient|high recovery|high readiness|fresh|↑|crushed|ahead|on top|above)/.test(t)) return ' brief-pill--pos';
+  return '';
+}
+
 function briefPillsHTML(pills) {
   if (!Array.isArray(pills) || pills.length === 0) return '';
-  return `<div class="brief-pills">${pills.map(p => `<span class="brief-pill">${briefEsc(p)}</span>`).join('')}</div>`;
+  return `<div class="brief-pills">${pills.map(p => `<span class="brief-pill${briefPillSentiment(p)}">${briefEsc(p)}</span>`).join('')}</div>`;
 }
 
 // Format a task_counts {priority, due_today, overdue, total_open} block
@@ -1337,6 +1349,16 @@ function briefRenderWeather(d) {
   }
 
   const c = d.current || {}, t = d.today || {}, tm = d.tomorrow || {};
+
+  // Refresh the brief's top-right weather chip with the freshly-fetched
+  // conditions (tapping the chip opens this modal → keep the chip current).
+  try {
+    const chipEl = document.querySelector('.brief-weather-chip');
+    if (chipEl && t.high_f != null && t.low_f != null) {
+      const emoji = c.emoji || t.emoji || '';
+      chipEl.textContent = `${emoji ? emoji + ' ' : ''}${Math.round(t.high_f)}°/${Math.round(t.low_f)}°`;
+    }
+  } catch (e) { /* non-fatal */ }
   const uvNote = t.uv_max == null ? '' : (t.uv_max >= 8 ? 'very high' : t.uv_max >= 6 ? 'high · cover up' : t.uv_max >= 3 ? 'moderate' : 'low');
   const uvClass = (t.uv_max != null && t.uv_max >= 6) ? ' class="uv-hi"' : '';
   const hours = (d.hourly || []).map(h => `<div class="bwx-hour"><span class="bwx-hour-t">${briefEsc(h.label || '')}</span><span class="bwx-hour-e">${h.emoji || ''}</span><span class="bwx-hour-temp">${h.temp_f != null ? h.temp_f + '°' : '—'}</span><span class="bwx-hour-p">${h.precip_pct ? h.precip_pct + '%' : ''}</span></div>`).join('');

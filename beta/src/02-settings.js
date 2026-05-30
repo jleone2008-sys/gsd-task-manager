@@ -326,7 +326,7 @@ function ensureSettingsStyles() {
   style.id = 'settingsStyles';
   style.textContent = `
     .settings-page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
-    .settings-section { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: 22px 24px; margin-bottom: 18px; box-shadow: var(--shadow-card); }
+    .settings-section { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-md); padding: 22px 24px; margin-bottom: 18px; box-shadow: var(--shadow-card); }
     .settings-section.settings-danger { border-color: var(--danger-200); background: var(--danger-50); }
     .settings-h { font-size: var(--fs-card); font-weight: 600; color: var(--ink); margin-bottom: 4px; letter-spacing: -0.01em; }
     .settings-sub { font-size: var(--fs-pill); color: var(--ink-3); line-height: 1.6; margin-bottom: 14px; }
