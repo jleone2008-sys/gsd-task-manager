@@ -61,8 +61,144 @@ function dayHeadlineCode(hourlyTimes, hourlyCodes, dateStr, lowF, fallback) {
   return Math.max(...sel);
 }
 
+// Enriched Open-Meteo fetch → modal shape. Throws on transport failure so the
+// provider wrapper can fall through (or the handler can surface a 502).
+async function openMeteoEnriched(lat, lng, tz, label) {
+  const params = new URLSearchParams({
+    latitude:         String(lat),
+    longitude:        String(lng),
+    current:          'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m',
+    hourly:           'temperature_2m,precipitation_probability,weather_code',
+    daily:            'temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,uv_index_max,weather_code,sunrise,sunset',
+    temperature_unit: 'fahrenheit',
+    wind_speed_unit:  'mph',
+    timezone:         tz || 'auto',
+    forecast_days:    '2',
+  });
+  const wr = await fetch(`${OPEN_METEO_URL}?${params}`);
+  if (!wr.ok) throw new Error(`open_meteo_HTTP_${wr.status}`);
+  const j = await wr.json();
+
+  const cur = j.current || {};
+  const d   = j.daily   || {};
+  const h   = j.hourly  || {};
+
+  const hourly = [];
+  if (Array.isArray(h.time) && h.time.length) {
+    const nowIso = (cur.time || '').slice(0, 13);
+    let start = h.time.findIndex(t => String(t).slice(0, 13) >= nowIso);
+    if (start < 0) start = 0;
+    for (let i = start; i < Math.min(start + 12, h.time.length); i++) {
+      const code = h.weather_code?.[i] ?? null;
+      hourly.push({
+        label:      i === start ? 'Now' : hourLabel(h.time[i]),
+        temp_f:     r0(h.temperature_2m?.[i]),
+        precip_pct: r0(h.precipitation_probability?.[i]),
+        emoji:      weatherCodeToEmoji(code),
+        code,
+      });
+    }
+  }
+
+  const todayCode = dayHeadlineCode(h.time, h.weather_code, d.time?.[0], d.temperature_2m_min?.[0], d.weather_code?.[0] ?? null);
+  const tmrwCode  = dayHeadlineCode(h.time, h.weather_code, d.time?.[1], d.temperature_2m_min?.[1], d.weather_code?.[1] ?? null);
+  const sunrise   = d.sunrise?.[0] ?? null;
+  const sunset    = d.sunset?.[0]  ?? null;
+
+  return {
+    ok: true,
+    has_location: true,
+    location_label: label || null,
+    updated_at: cur.time || null,
+    current: {
+      temp_f:    r0(cur.temperature_2m),
+      feels_f:   r0(cur.apparent_temperature),
+      humidity:  r0(cur.relative_humidity_2m),
+      wind_mph:  r0(cur.wind_speed_10m),
+      gust_mph:  r0(cur.wind_gusts_10m),
+      condition: weatherCodeToText(cur.weather_code),
+      emoji:     weatherCodeToEmoji(cur.weather_code),
+      code:      cur.weather_code ?? null,
+    },
+    today: {
+      high_f:        r0(d.temperature_2m_max?.[0]),
+      low_f:         r0(d.temperature_2m_min?.[0]),
+      feels_high_f:  r0(d.apparent_temperature_max?.[0]),
+      precip_pct:    r0(d.precipitation_probability_max?.[0]),
+      uv_max:        r0(d.uv_index_max?.[0]),
+      condition:     weatherCodeToText(todayCode),
+      emoji:         weatherCodeToEmoji(todayCode),
+      code:          todayCode,
+      sunrise_label: clockLabel(sunrise),
+      sunset_label:  clockLabel(sunset),
+      daylight_min:  computeDaylightMin(sunrise, sunset),
+    },
+    tomorrow: {
+      high_f:     r0(d.temperature_2m_max?.[1]),
+      low_f:      r0(d.temperature_2m_min?.[1]),
+      precip_pct: r0(d.precipitation_probability_max?.[1]),
+      condition:  weatherCodeToText(tmrwCode),
+      emoji:      weatherCodeToEmoji(tmrwCode),
+      code:       tmrwCode,
+    },
+    hourly,
+    provider: 'openmeteo',
+  };
+}
+
+// Provider-aware enriched fetch. WEATHER_PROVIDER=google (default) tries Google
+// first and falls back to Open-Meteo on any error or empty result. Set
+// WEATHER_PROVIDER=openmeteo for an instant kill-switch (no redeploy).
+async function getEnriched(lat, lng, tz, label) {
+  const provider = (process.env.WEATHER_PROVIDER || 'google').toLowerCase();
+  if (provider === 'google') {
+    try {
+      const { googleEnriched } = require('./lib/google-weather');
+      const g = await googleEnriched(lat, lng, tz, label);
+      if (g && g.current && g.current.temp_f != null) return g;
+      console.warn('google enriched returned empty; falling back to open-meteo');
+    } catch (err) {
+      console.warn('google enriched failed; falling back to open-meteo:', err.message);
+    }
+  }
+  return openMeteoEnriched(lat, lng, tz, label);
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return cors({ statusCode: 204, body: '' });
+
+  // Unauthenticated health probe: tests the live provider chain against a fixed
+  // public location (no user data, no secrets). Used by the scheduled
+  // self-diagnosis check-in to confirm Google is actually serving (vs silently
+  // falling back to Open-Meteo). ?healthcheck=1
+  if ((event.queryStringParameters || {}).healthcheck === '1') {
+    const provider = (process.env.WEATHER_PROVIDER || 'google').toLowerCase();
+    const hasKey = !!process.env.GOOGLE_WEATHER_API_KEY;
+    // NYC — stable reference point.
+    try {
+      let googleOk = false, googleErr = null, sample = null;
+      if (hasKey) {
+        try {
+          const { googleEnriched } = require('./lib/google-weather');
+          const g = await googleEnriched(40.7128, -74.006, 'America/New_York', 'NYC');
+          googleOk = !!(g && g.current && g.current.temp_f != null);
+          sample = g && g.current ? { temp_f: g.current.temp_f, condition: g.current.condition, today_high: g.today && g.today.high_f } : null;
+        } catch (e) { googleErr = e.message; }
+      }
+      return cors(json(200, {
+        ok: true,
+        configured_provider: provider,
+        google_key_present: hasKey,
+        google_ok: googleOk,
+        google_error: googleErr,
+        effective_provider: googleOk ? 'google' : 'openmeteo',
+        sample,
+      }));
+    } catch (err) {
+      return cors(json(200, { ok: false, error: err.message }));
+    }
+  }
+
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return cors(json(405, { error: 'method_not_allowed' }));
   }
@@ -105,93 +241,11 @@ exports.handler = async (event) => {
   }
   const tz = prefs?.timezone || 'auto';
 
-  // Enriched Open-Meteo fetch.
-  let j;
+  // Provider-aware enriched fetch (Google → Open-Meteo fallback).
   try {
-    const params = new URLSearchParams({
-      latitude:         String(lat),
-      longitude:        String(lng),
-      current:          'temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m',
-      hourly:           'temperature_2m,precipitation_probability,weather_code',
-      daily:            'temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_probability_max,uv_index_max,weather_code,sunrise,sunset',
-      temperature_unit: 'fahrenheit',
-      wind_speed_unit:  'mph',
-      timezone:         tz,
-      forecast_days:    '2',
-    });
-    const wr = await fetch(`${OPEN_METEO_URL}?${params}`);
-    if (!wr.ok) return cors(json(502, { error: 'weather_fetch_failed', detail: `HTTP ${wr.status}` }));
-    j = await wr.json();
+    const out = await getEnriched(lat, lng, tz, prefs.weather_label || null);
+    return cors(json(200, out));
   } catch (err) {
     return cors(json(502, { error: 'weather_unreachable', detail: err.message }));
   }
-
-  const cur = j.current || {};
-  const d   = j.daily   || {};
-  const h   = j.hourly  || {};
-
-  // Build the 12-hour strip starting at the current hour.
-  const hourly = [];
-  if (Array.isArray(h.time) && h.time.length) {
-    const nowIso = (cur.time || '').slice(0, 13);   // 'YYYY-MM-DDTHH'
-    let start = h.time.findIndex(t => String(t).slice(0, 13) >= nowIso);
-    if (start < 0) start = 0;
-    for (let i = start; i < Math.min(start + 12, h.time.length); i++) {
-      const code = h.weather_code?.[i] ?? null;
-      hourly.push({
-        label:      i === start ? 'Now' : hourLabel(h.time[i]),
-        temp_f:     r0(h.temperature_2m?.[i]),
-        precip_pct: r0(h.precipitation_probability?.[i]),
-        emoji:      weatherCodeToEmoji(code),
-        code,
-      });
-    }
-  }
-
-  // Headline codes derived from hourly (not the over-severe daily aggregate),
-  // temperature-guarded so warm-day "snow" artifacts read as rain.
-  const todayCode = dayHeadlineCode(h.time, h.weather_code, d.time?.[0], d.temperature_2m_min?.[0], d.weather_code?.[0] ?? null);
-  const tmrwCode  = dayHeadlineCode(h.time, h.weather_code, d.time?.[1], d.temperature_2m_min?.[1], d.weather_code?.[1] ?? null);
-  const sunrise   = d.sunrise?.[0] ?? null;
-  const sunset    = d.sunset?.[0]  ?? null;
-
-  const out = {
-    ok: true,
-    has_location: true,
-    location_label: prefs.weather_label || null,
-    updated_at: cur.time || null,
-    current: {
-      temp_f:    r0(cur.temperature_2m),
-      feels_f:   r0(cur.apparent_temperature),
-      humidity:  r0(cur.relative_humidity_2m),
-      wind_mph:  r0(cur.wind_speed_10m),
-      gust_mph:  r0(cur.wind_gusts_10m),
-      condition: weatherCodeToText(cur.weather_code),
-      emoji:     weatherCodeToEmoji(cur.weather_code),
-      code:      cur.weather_code ?? null,
-    },
-    today: {
-      high_f:        r0(d.temperature_2m_max?.[0]),
-      low_f:         r0(d.temperature_2m_min?.[0]),
-      feels_high_f:  r0(d.apparent_temperature_max?.[0]),
-      precip_pct:    r0(d.precipitation_probability_max?.[0]),
-      uv_max:        r0(d.uv_index_max?.[0]),
-      condition:     weatherCodeToText(todayCode),
-      emoji:         weatherCodeToEmoji(todayCode),
-      code:          todayCode,
-      sunrise_label: clockLabel(sunrise),
-      sunset_label:  clockLabel(sunset),
-      daylight_min:  computeDaylightMin(sunrise, sunset),
-    },
-    tomorrow: {
-      high_f:     r0(d.temperature_2m_max?.[1]),
-      low_f:      r0(d.temperature_2m_min?.[1]),
-      precip_pct: r0(d.precipitation_probability_max?.[1]),
-      condition:  weatherCodeToText(tmrwCode),
-      emoji:      weatherCodeToEmoji(tmrwCode),
-      code:       tmrwCode,
-    },
-    hourly,
-  };
-  return cors(json(200, out));
 };

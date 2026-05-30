@@ -146,13 +146,33 @@ async function writeWeatherSnapshot({ supabaseUrl, serviceKey, userId, date, sna
   }
 }
 
+// Provider-aware daily fetch. WEATHER_PROVIDER=google (default) tries Google
+// first and silently falls back to Open-Meteo on any error or empty result, so
+// users never lose weather even if the Preview API shifts. Set
+// WEATHER_PROVIDER=openmeteo to disable Google entirely (instant kill-switch,
+// no redeploy needed — just flip the Netlify env var).
+async function fetchDailyWeather(lat, lng, dateLocal, tz, label) {
+  const provider = (process.env.WEATHER_PROVIDER || 'google').toLowerCase();
+  if (provider === 'google') {
+    try {
+      const { googleDaily } = require('./google-weather');
+      const g = await googleDaily(lat, lng, dateLocal, tz, label);
+      if (g && g.temp_high_f != null) return g;
+      console.warn('google weather returned empty; falling back to open-meteo');
+    } catch (err) {
+      console.warn('google weather failed; falling back to open-meteo:', err.message);
+    }
+  }
+  return fetchOpenMeteo(lat, lng, dateLocal, tz, label);
+}
+
 // Read-through: cache hit → return cached. Miss → live fetch → opportunistic
 // upsert (best-effort; failures don't block the return) → return live data.
 async function getWeather({ supabaseUrl, serviceKey, userId, lat, lng, date, tz, label }) {
   const cached = await readCachedWeather({ supabaseUrl, serviceKey, userId, date });
   if (cached) return cached;
 
-  const live = await fetchOpenMeteo(lat, lng, date, tz, label);
+  const live = await fetchDailyWeather(lat, lng, date, tz, label);
   if (live) {
     // Fire-and-forget. The await is intentional so a slow Supabase
     // doesn't leak into ongoing requests, but we don't propagate
@@ -210,6 +230,7 @@ function computeDaylightMin(sunriseLocal, sunsetLocal) {
 
 module.exports = {
   fetchOpenMeteo,
+  fetchDailyWeather,
   readCachedWeather,
   writeWeatherSnapshot,
   getWeather,

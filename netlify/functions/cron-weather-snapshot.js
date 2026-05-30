@@ -18,7 +18,7 @@
 // evening brief gets a cache hit instead of paying a live fetch.
 
 const { SUPABASE_URL } = require('./lib/supabase');
-const { fetchOpenMeteo, writeWeatherSnapshot } = require('./lib/weather');
+const { fetchDailyWeather, writeWeatherSnapshot } = require('./lib/weather');
 
 // Snapshot fires once per user per day, at this local hour.
 const SNAPSHOT_LOCAL_HOUR = 5;
@@ -93,16 +93,17 @@ exports.handler = async () => {
       // Live fetch + write for both today and tomorrow. 05:00 local is
       // the canonical daily-refresh window; we want fresh data, not
       // whatever the read-through cache might be carrying from
-      // yesterday. Failures are tolerated — Open-Meteo can be flaky
-      // and we don't want a single bad request to skip the other day.
-      const todayLive = await fetchOpenMeteo(
+      // yesterday. fetchDailyWeather is provider-aware (Google →
+      // Open-Meteo fallback). Failures are tolerated — we don't want a
+      // single bad request to skip the other day.
+      const todayLive = await fetchDailyWeather(
         u.weather_lat, u.weather_lng, today, tz, u.weather_label,
       );
       const wroteToday = todayLive && await writeWeatherSnapshot({
         supabaseUrl: SUPABASE_URL, serviceKey, userId: u.user_id, date: today, snapshot: todayLive,
       });
 
-      const tomorrowLive = await fetchOpenMeteo(
+      const tomorrowLive = await fetchDailyWeather(
         u.weather_lat, u.weather_lng, tomorrow, tz, u.weather_label,
       );
       const wroteTomorrow = tomorrowLive && await writeWeatherSnapshot({
