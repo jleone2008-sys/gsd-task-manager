@@ -694,6 +694,9 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     scales: { mood: MOOD_SCALE_NOTE },
     mode,
     brief_date: brief_date,
+    // Weekend brief copy stays task-free — no nagging about tasks on Sat/Sun.
+    // weekdayName is the brief's local "today" (computed above).
+    is_weekend: weekdayName === 'Saturday' || weekdayName === 'Sunday',
     yesterday: {
       recovery: recoveryRow ? {
         as_of_date: today, source: 'last_night_sleep',

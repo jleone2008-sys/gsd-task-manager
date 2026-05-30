@@ -111,16 +111,19 @@ function buildClaimSet(mode, ctx) {
     if (planned && !todaySessions.length) add('today', 'plan', `Today's plan is ${planLabel(planned)}.`, 6);
   }
 
-  // Tasks.
-  const tc = (mode === 'evening' ? ctx.tomorrow_plan : ctx.today_plan)?.task_counts;
-  const taskDay = mode === 'evening' ? 'tomorrow' : 'today';
-  if (tc) {
-    if (tc.overdue)  add(taskDay, 'tasks', `${tc.overdue} task${tc.overdue === 1 ? '' : 's'} overdue.`, 6);
-    if (tc.priority) add(taskDay, 'tasks', `${tc.priority} priority task${tc.priority === 1 ? '' : 's'} on deck.`, 5);
-  }
-  if (mode === 'evening' && ctx.today_recap?.tasks_completed_today != null) {
-    const n = ctx.today_recap.tasks_completed_today;
-    add('today', 'tasks', `You finished ${n} task${n === 1 ? '' : 's'} today.`, 4);
+  // Tasks. Suppressed on weekends — the brief copy stays task-free on Sat/Sun
+  // so the model has no task facts to reference (no weekend task-nagging).
+  if (!ctx.is_weekend) {
+    const tc = (mode === 'evening' ? ctx.tomorrow_plan : ctx.today_plan)?.task_counts;
+    const taskDay = mode === 'evening' ? 'tomorrow' : 'today';
+    if (tc) {
+      if (tc.overdue)  add(taskDay, 'tasks', `${tc.overdue} task${tc.overdue === 1 ? '' : 's'} overdue.`, 6);
+      if (tc.priority) add(taskDay, 'tasks', `${tc.priority} priority task${tc.priority === 1 ? '' : 's'} on deck.`, 5);
+    }
+    if (mode === 'evening' && ctx.today_recap?.tasks_completed_today != null) {
+      const n = ctx.today_recap.tasks_completed_today;
+      add('today', 'tasks', `You finished ${n} task${n === 1 ? '' : 's'} today.`, 4);
+    }
   }
 
   // Habits (morning only — today's count isn't finalized at evening).
