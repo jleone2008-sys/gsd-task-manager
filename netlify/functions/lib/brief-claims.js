@@ -102,7 +102,16 @@ function buildClaimSet(mode, ctx) {
   if (todaySessions.length) {
     add('today', 'training', `Today you did ${describeSessions(todaySessions)}.`, 7);
   } else if (mode === 'evening') {
-    add('today', 'training', `No workout logged today.`, 5);
+    // No session logged today. Only call it "no workout logged" when one was
+    // actually SCHEDULED — a planned rest day (or no plan at all) must NOT read
+    // as a skipped workout.
+    const plannedType = ctx.today_plan?.workout?.planned?.type;
+    if (plannedType === 'rest') {
+      add('today', 'training', `Today was a scheduled rest day.`, 4);
+    } else if (ctx.today_plan?.workout?.planned) {
+      add('today', 'training', `No workout logged today.`, 5);
+    }
+    // else: no active plan / nothing scheduled → say nothing about training.
   }
   if (mode === 'morning') {
     const yWk = ctx.yesterday?.workout_all || (ctx.yesterday?.workout ? [ctx.yesterday.workout] : []);
