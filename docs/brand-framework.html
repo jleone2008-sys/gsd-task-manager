@@ -745,6 +745,7 @@
       <li><code>.overlay</code> — fixed full-viewport backdrop. Add <code>.is-open</code> to show. Subsumes the legacy <code>.modal-overlay</code>.</li>
       <li><code>.overlay-card</code> — the centered card. Uses <code>--r-lg</code> for the card itself (overlays are the one place the larger radius reads right).</li>
       <li><code>--scrim</code> / <code>--scrim-blur</code> — the one backdrop tint + blur. Any new full-screen overlay sets <code>background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);</code>.</li>
+      <li><strong>Stacking + nav clearance (shared contract).</strong> Every modal overlay — anywhere in the app — uses <code>z-index: var(--z-modal)</code> (800: above the bottom nav at 300 and dropdowns at 400; a confirm dialog at <code>--z-confirm</code> 900 still stacks above), and reserves <code>padding-bottom: var(--modal-safe-bottom)</code> (= <code>calc(80px + env(safe-area-inset-bottom))</code>) with <code>overflow-y: auto</code> so a tall, scrolled modal's footer/buttons clear the fixed mobile nav + home-indicator. <strong>Don't hardcode modal z-indexes</strong> — use the token so all modals stay consistent. (A photo lightbox that must sit above an open modal uses <code>calc(var(--z-modal) + 1)</code>.)</li>
     </ul>
   </section>
 
