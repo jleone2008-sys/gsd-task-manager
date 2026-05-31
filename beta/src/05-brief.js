@@ -681,6 +681,8 @@ function briefRecapHTML(recap, structured) {
     // Only show "Tasks done" when at least one was completed — a "0" is noise.
     if (col.tasks_done) rows.push({ slot: 'tasks', icon: '✓', name: 'Tasks done', value: String(col.tasks_done) });
     if (col.bedtime)            rows.push({ slot: 'sleep', icon: '🌙', name: 'In bed',     value: col.bedtime });
+    // Yesterday column shows sleep DURATION (e.g. "7h 40m"), not bedtime.
+    if (col.sleep_duration)     rows.push({ slot: 'sleep', icon: '🌙', name: 'Sleep',      value: col.sleep_duration });
     if (col.mood_label)         rows.push({ slot: 'mood', icon: '😊', name: 'Mood',       value: col.mood_label });
     // Forward-side fields (events, task counts, today's habits, sleep target).
     // Only surface Events when there's at least one — a "0" callout is just noise.

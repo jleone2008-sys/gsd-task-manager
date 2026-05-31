@@ -165,7 +165,7 @@
         : [{ text: 'On track', tone: 'positive' }, { text: '3/5 habits', tone: 'neutral' }],
       recap: isMorning
         ? {
-            left:  { label: 'Yesterday', habits: { pct: 80, done: 4, due: 5 }, steps: 8432, tasks_done: 3, mood_label: 'Good', train: { label: 'Pull day', detail: '6 lifts' } },
+            left:  { label: 'Yesterday', habits: { pct: 80, done: 4, due: 5 }, steps: 8432, tasks_done: 3, sleep_duration: '7h 40m', mood_label: 'Good' },
             right: { label: 'Today', events: 2, task_counts: { priority: 2, due_today: 2, overdue: 1, total_open: 5 }, sleep_target: '10:30 PM', train: { label: 'Push day', detail: '5 lifts' } },
           }
         : {

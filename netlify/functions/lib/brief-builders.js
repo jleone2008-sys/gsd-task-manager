@@ -311,14 +311,15 @@ function buildRecap(mode, ctx, sleepTargetTime) {
   // Morning: left = yesterday, right = today.
   // Evening: left = today (recap), right = tomorrow.
   if (mode === 'morning') {
+    // Yesterday's canonical 5 stats: habits, steps, tasks (hidden when 0 on the
+    // client), sleep DURATION, mood. (No bedtime / train here.)
     const left = {
-      label:       'Yesterday',
-      habits:      habitsPct(ctx.yesterday?.habits),
-      tasks_done:  ctx.yesterday?.tasks_completed_count ?? null,
-      steps:       sanitizeScores(ctx.yesterday?.activity || {}).steps ?? null,
-      bedtime:     computeBedtime(ctx.yesterday?.recovery),
-      mood_label:  ctx.yesterday?.mood?.value_label ?? null,
-      train:       trainSummary(ctx.yesterday?.workout),
+      label:          'Yesterday',
+      habits:         habitsPct(ctx.yesterday?.habits),
+      tasks_done:     ctx.yesterday?.tasks_completed_count ?? null,
+      steps:          sanitizeScores(ctx.yesterday?.activity || {}).steps ?? null,
+      sleep_duration: formatMinutes(ctx.yesterday?.recovery?.total_sleep_min),
+      mood_label:     ctx.yesterday?.mood?.value_label ?? null,
     };
     const right = {
       label:        'Today',
