@@ -4777,7 +4777,11 @@ function ensureTrainStyles() {
       position: fixed; inset: 0; background: var(--scrim);
       backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
       display: flex; align-items: flex-start; justify-content: center;
-      z-index: 1100; padding: 60px 16px 16px;
+      z-index: 1100;
+      /* Bottom pad clears the fixed mobile nav (~64px) + the device safe-area,
+         so a tall, scrolled modal's footer/buttons never land under the navbar
+         or home indicator. */
+      padding: 60px 16px calc(80px + env(safe-area-inset-bottom, 0px));
       overflow-y: auto;
       animation: fadeIn var(--dur-quick) ease both;
     }
