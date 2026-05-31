@@ -263,7 +263,34 @@
   const body_comp_goals = [
     { id: 1710, user_id: USER_ID, kind: 'weight', start_date: daysAgo(40), end_date: daysAgo(-44), start_value: 182, target_value: 175, is_active: true, created_at: iso(40 * DAY) },
   ];
-  const progress_pics = [];
+  // Two photo entries (newest first). The latest carries a full AI body-comp
+  // analysis so the Coach card + body-fat / lean-mass tiles render in mock.
+  // Storage paths are null (no real Supabase storage in mock) so the coach
+  // skips the photo thumbnails rather than showing broken images.
+  const progress_pics = [
+    { id: 1730, user_id: USER_ID, captured_date: daysAgo(2), weight_lbs: 178.9, waist_in: null, notes: null,
+      body_fat_pct: 18.2, body_fat_method: 'ai_estimate', body_fat_confidence: 'medium',
+      front_storage_path: null, side_storage_path: null, back_storage_path: null,
+      ai_analysis: {
+        body_type: 'Mesomorph', stage: 'Lean bulk', v_taper: 'moderate',
+        headline: 'Solid base — chase the upper chest',
+        overview: 'Good overall symmetry and a clear waist taper. The gap holding back your physique is upper-chest and rear-delt development — both read slightly behind your arms and lats.',
+        focus_areas: [
+          { title: 'Upper chest', rationale: 'Clavicular head lags the sternal — add an incline emphasis early in the week.', exercises: ['Incline DB press', 'Low-to-high cable fly'], programming_hint: '2×/week · 8–12 reps · leave 1–2 RIR' },
+          { title: 'Rear delts', rationale: 'Shoulders read front-dominant; rear delts round out the 3D look.', exercises: ['Reverse pec-deck', 'Face pull'], programming_hint: 'High frequency · 15–20 reps' },
+          { title: 'Calves', rationale: 'Underdeveloped relative to thigh mass.', exercises: ['Standing calf raise'], programming_hint: 'Slow eccentric · daily if recoverable' },
+        ],
+        needs_work: ['Upper chest', 'Rear delts', 'Calves'],
+        balanced: ['Back', 'Arms'],
+        posture: 'Slight anterior pelvic tilt', symmetry: 'balanced L/R',
+        limitations: ['Photos taken in inconsistent lighting'],
+      },
+      ai_compared_to: null, created_at: iso(2 * DAY) },
+    { id: 1731, user_id: USER_ID, captured_date: daysAgo(16), weight_lbs: 181.0, waist_in: null, notes: null,
+      body_fat_pct: 19.1, body_fat_method: 'ai_estimate', body_fat_confidence: 'medium',
+      front_storage_path: null, side_storage_path: null, back_storage_path: null,
+      ai_analysis: null, ai_compared_to: null, created_at: iso(16 * DAY) },
+  ];
   // Weight timeline — decoupled from progress_pics. Descending by measured_date.
   const body_weight = [
     { id: 1720, user_id: USER_ID, measured_date: today,       weight_lbs: 178.2, source: 'manual' },

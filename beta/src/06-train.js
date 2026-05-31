@@ -3391,7 +3391,7 @@ function renderProgressDashboard() {
     ${hasData ? renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight) : renderDashboardEmptyCard()}
     ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight)}
     ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
-    ${latest ? renderProgressAIAnalysis(latest) : ''}
+    ${renderProgressCoach(latest)}
     ${renderDashboardEntriesList(entries, weights)}
   `;
 }
@@ -3411,6 +3411,19 @@ function renderProgressActions(p) {
       <button class="progress-action is-primary" data-train-action="weight-log-open"><span class="progress-action-ic">${icScale}</span>Log weight</button>
       <button class="progress-action is-primary" data-train-action="progress-new-entry"><span class="progress-action-ic">${icCamera}</span>Analyze photo</button>
     </div>`;
+}
+
+// Coach card wrapper — always renders the section. Shows the full AI analysis
+// when a photo entry has one; otherwise an empty-state prompt to analyze a
+// photo (so the Coach section is never missing).
+function renderProgressCoach(latest) {
+  const html = latest ? renderProgressAIAnalysis(latest) : '';
+  if (html) return html;
+  return `<div class="train-ai-block coach-card" style="margin-top:14px">
+    <div class="train-ai-head"><div class="train-ai-label">Coach insight</div></div>
+    <div class="train-ai-msg">Analyze a progress photo to get an AI read on your body composition — focus areas, posture, and a recomposition plan.</div>
+    <button class="train-btn-primary" data-train-action="progress-new-entry" style="margin-top:12px">Analyze progress photo</button>
+  </div>`;
 }
 
 function renderProgressSection(label, meta) {
