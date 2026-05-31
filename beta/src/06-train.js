@@ -450,6 +450,18 @@ function trainWireOnce() {
       runProgressPicAnalysis(id);
       return;
     }
+    if (action === 'weight-log-open') {
+      _trainProgressState.weightModalOpen = true;
+      renderTrain();
+      // Focus the input so the user can type immediately.
+      setTimeout(() => { const i = document.getElementById('weightLogInput'); if (i) { i.focus(); i.select(); } }, 0);
+      return;
+    }
+    if (action === 'weight-log-close') {
+      _trainProgressState.weightModalOpen = false;
+      renderTrain();
+      return;
+    }
     if (action === 'weight-log-save') {
       const input = document.getElementById('weightLogInput');
       saveBodyWeight(input ? input.value : '');
@@ -3210,7 +3222,8 @@ function renderTrainProgress(root) {
     return;
   }
 
-  root.innerHTML = `<div class="train-shell">${renderProgressDashboard()}</div>`;
+  root.innerHTML = `<div class="train-shell">${renderProgressDashboard()}</div>`
+    + (_trainProgressState.weightModalOpen ? renderWeightLogModal() : '');
 }
 
 /* ── Setup wizard ─────────────────────────────────────────────────── */
@@ -3368,17 +3381,73 @@ function renderProgressDashboard() {
   // the giant Coach Card; promoting them right under the metrics strip
   // keeps the user's North Star above the fold.
   const hasData = latest || latestWeight != null;
+  const refDate = latest?.captured_date || weights[0]?.measured_date || trainTodayLocalDate();
+  const ageDays = Math.round((new Date(trainTodayLocalDate()) - new Date(refDate)) / DAY_MS);
+  const metricAge = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
+  // Order (per redesign): action row → Body metrics → Goals → Nutrition →
+  // Coach → History. Each section gets a shared divider label. The quick
+  // weight logger is now a modal opened from the action row.
   return `
-    ${renderDashboardHeader(p)}
-    ${renderWeightLogCard(weights)}
-    ${hasData ? renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight) : renderDashboardEmptyCard()}
+    ${renderProgressActions(p)}
+    ${hasData
+      ? `${renderProgressSection('Body metrics', metricAge)}${renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight)}`
+      : renderDashboardEmptyCard()}
+    ${renderProgressSection('Goals')}
     ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight)}
-    ${latest ? renderProgressAIAnalysis(latest) : ''}
-    ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
+    ${tdee != null ? `${renderProgressSection('Nutrition')}${renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath)}` : ''}
+    ${latest ? `${renderProgressSection('Coach')}${renderProgressAIAnalysis(latest)}` : ''}
+    ${renderProgressSection('History')}
     ${weights.length > 1 ? renderDashboardTrendCard(weights) : ''}
     ${renderDashboardEntriesList(entries)}
   `;
+}
+
+// ── Redesign helpers: top action row, section dividers, weight modal ──
+function renderProgressActions(p) {
+  const age = trainAgeYears(p.dob);
+  const heightTxt = p.height_in ? `${Math.floor(p.height_in / 12)}'${Math.round(p.height_in % 12)}"` : '—';
+  const actLabel = TRAIN_ACTIVITY[p.activity_level]?.label || '—';
+  const statsLine = `${trainEsc(String(p.sex || '—'))} · ${age ? age + 'y' : '—'} · ${trainEsc(heightTxt)} · ${trainEsc(actLabel)}`;
+  const icProfile = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg>';
+  const icScale   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M12 14.5l2.4-3.8"/></svg>';
+  const icCamera  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5A1.5 1.5 0 0 1 5 7h2L8.4 5h7.2L17 7h2a1.5 1.5 0 0 1 1.5 1.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><circle cx="12" cy="13" r="3.1"/></svg>';
+  return `<div class="progress-stats-line">${statsLine}</div>
+    <div class="progress-actions">
+      <button class="progress-action" data-train-action="progress-edit-profile"><span class="progress-action-ic">${icProfile}</span>Edit profile</button>
+      <button class="progress-action is-primary" data-train-action="weight-log-open"><span class="progress-action-ic">${icScale}</span>Log weight</button>
+      <button class="progress-action is-primary" data-train-action="progress-new-entry"><span class="progress-action-ic">${icCamera}</span>Analyze photo</button>
+    </div>`;
+}
+
+function renderProgressSection(label, meta) {
+  return `<div class="progress-section">
+    <span class="progress-section-label">${trainEsc(label)}</span>
+    <span class="progress-section-rule"></span>
+    ${meta ? `<span class="progress-section-meta">${trainEsc(meta)}</span>` : ''}
+  </div>`;
+}
+
+// Quick weight logger as a modal (opened from the action row). Reuses the
+// existing #weightLogInput id + weight-log-save action, so saveBodyWeight is
+// unchanged; it just closes the modal on success.
+function renderWeightLogModal() {
+  const today = trainTodayLocalDate();
+  const todayRow = (_trainProgressState.weights || []).find(w => w.measured_date === today) || null;
+  const val = todayRow?.weight_lbs != null ? Number(todayRow.weight_lbs).toFixed(1) : '';
+  return `<div class="weight-modal-overlay">
+    <div class="weight-modal-card">
+      <div class="weight-modal-title">Log today's weight</div>
+      <div class="weight-modal-sub">${todayRow ? "Updates today's weigh-in." : 'One weigh-in per day.'}</div>
+      <div class="weight-modal-row">
+        <input id="weightLogInput" class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="lbs" value="${val}" autofocus>
+        <button class="train-btn-primary" data-train-action="weight-log-save">Save</button>
+      </div>
+      <div class="weight-modal-actions">
+        <button class="train-btn-secondary" data-train-action="weight-log-close">Cancel</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 // Quick weight logger — one tap on the Progress dashboard, decoupled from the
@@ -3537,26 +3606,13 @@ function renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight
       <div class="metric-cell-num">${bfNum}</div>
       ${spark(points('bf'), 'var(--guava-700)')}
     </div>
-    <div class="metric-cell">
-      ${pill(deltaWaist, '"', d => d < 0, compWinLabel)}
-      <div class="metric-cell-label">Waist</div>
-      <div class="metric-cell-num">${waistNow != null ? waistNow.toFixed(1) : '—'}<span class="metric-cell-unit">in</span></div>
-      ${spark(points('waist'), 'var(--ink-3)')}
-    </div>
   </div>`;
 
   // Latest-entry eyebrow row (slim — just date + log-entry CTA) + the
   // 4-cell metrics strip. The Coach Card (renderProgressAIAnalysis) is
   // now rendered separately by renderProgressDashboard so Goals can
   // slot between this block and the AI read.
-  return `<div class="progress-latest-eyebrow">
-    <div>
-      <span class="progress-card-label">Latest entry</span>
-      <span class="progress-card-meta" style="margin-left:8px">Logged ${trainEsc(ageTxt)}</span>
-    </div>
-    <button class="train-btn-primary" data-train-action="progress-new-entry">+ Log entry</button>
-  </div>
-  ${metricsStrip}`;
+  return metricsStrip;
 }
 
 // Coach Card — Body Comp Report v2 (Variation A "narrative-first").
@@ -3729,10 +3785,15 @@ function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, cal
       ? `<span class="cal-deficit cal-surplus">+${Math.abs(deficit)} cal/day surplus</span>`
       : `<span class="cal-deficit cal-maintain">Maintenance</span>`;
 
-  const macroRow = macros ? `<div class="cal-macros">
-    <div class="cal-macro"><div class="cal-macro-g">${macros.protein.g}g</div><div class="cal-macro-l">Protein · ${macros.protein.pct}%</div></div>
-    <div class="cal-macro"><div class="cal-macro-g">${macros.carbs.g}g</div><div class="cal-macro-l">Carbs · ${macros.carbs.pct}%</div></div>
-    <div class="cal-macro"><div class="cal-macro-g">${macros.fat.g}g</div><div class="cal-macro-l">Fat · ${macros.fat.pct}%</div></div>
+  const macroRow = macros ? `<div class="cal-macrobar">
+    <i style="width:${macros.protein.pct}%;background:var(--guava-500)"></i>
+    <i style="width:${macros.carbs.pct}%;background:var(--ochre-fg,#a9791f)"></i>
+    <i style="width:${macros.fat.pct}%;background:var(--sky-fg,#3f6fa6)"></i>
+  </div>
+  <div class="cal-maclegend">
+    <span><i style="background:var(--guava-500)"></i>Protein ${macros.protein.g}g</span>
+    <span><i style="background:var(--ochre-fg,#a9791f)"></i>Carbs ${macros.carbs.g}g</span>
+    <span><i style="background:var(--sky-fg,#3f6fa6)"></i>Fat ${macros.fat.g}g</span>
   </div>` : '';
 
   return `<div class="progress-card">
@@ -3758,12 +3819,6 @@ function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, cal
 // from the mockup, separated by a hairline divider.
 function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight) {
   return `<div class="goal-combined-card">
-    <div class="progress-card-head" style="margin-bottom:10px">
-      <div>
-        <div class="progress-card-label">Goals</div>
-        <div class="progress-card-meta">Progress vs. start value</div>
-      </div>
-    </div>
     <div class="goal-section ${weightGoal ? '' : 'is-empty'}">
       ${weightGoal
         ? renderGoalSection(weightGoal, latestWeight, 'weight')
@@ -3940,6 +3995,7 @@ async function saveBodyWeight(rawValue) {
     if (idx >= 0) _trainProgressState.weights[idx] = rec;
     else _trainProgressState.weights.unshift(rec);
     _trainProgressState.weights.sort((a, b) => b.measured_date.localeCompare(a.measured_date));
+    _trainProgressState.weightModalOpen = false;   // close the modal on success
     showTrainToast(`Logged ${weight.toFixed(1)} lbs`);
     renderTrain();
   } catch (e) {
@@ -3996,11 +4052,6 @@ function renderProgressNewEntry() {
       </div>
 
       <div class="train-form-section">
-        <div class="train-form-label">Weight</div>
-        <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="lbs" value="${trainEsc(d.weight_lbs || '')}" data-train-action="entry-input" data-key="weight_lbs">
-      </div>
-
-      <div class="train-form-section">
         <div class="train-form-label">Photos</div>
         <div class="train-form-hint" style="margin-bottom:8px">Claude Vision will analyze your body composition and give your personalized actionable insights to improve.</div>
         <div class="progress-photo-grid">
@@ -4008,12 +4059,6 @@ function renderProgressNewEntry() {
           ${renderProgressPhotoSlot(d.photos.side,  'side',  'Side',  true)}
           ${renderProgressPhotoSlot(d.photos.back,  'back',  'Back',  false)}
         </div>
-      </div>
-
-      <div class="train-form-section">
-        <div class="train-form-label">Waist (optional)</div>
-        <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="inches" value="${trainEsc(d.waist_in || '')}" data-train-action="entry-input" data-key="waist_in">
-        <div class="train-form-hint">A single tape-measure number for the Waist metric tile. Body fat % comes from the photos via AI.</div>
       </div>
 
       <div class="train-form-actions">
@@ -4196,13 +4241,12 @@ async function saveProgressEntry() {
     // path has been retired.
     _trainProgressState.savingStep = 'Saving…';
     renderTrain();
-    const waist = d.waist_in ? Number(d.waist_in) : null;
 
     const row = {
       user_id:       currentUser.id,
       captured_date: d.captured_date,
       weight_lbs:    d.weight_lbs ? Number(d.weight_lbs) : null,
-      waist_in:      waist,
+      waist_in:      null,   // waist tracking removed
       notes:         d.notes || null,
       // body_fat_pct / body_fat_method / body_fat_confidence intentionally
       // omitted — the AI vision call writes them. (The columns stay
@@ -5796,6 +5840,51 @@ function ensureTrainStyles() {
       0%, 100% { opacity: 0.55; }
       50%      { opacity: 0.85; }
     }
+
+    /* ── Progress dashboard redesign ──────────────────────────────
+       Top action row, section dividers, 3-up metrics, nutrition macro
+       bar, and the Log-weight modal. */
+    .progress-stats-line { font-size: var(--fs-meta); color: var(--ink-3); margin: 0 2px 8px; }
+    .progress-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
+    .progress-action {
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      padding: 12px 6px; border-radius: var(--r-md); border: 1px solid var(--edge);
+      background: var(--surface); box-shadow: var(--shadow-card);
+      font-size: var(--fs-nano); font-weight: 700; color: var(--ink-2);
+      font-family: inherit; text-align: center; line-height: 1.15; cursor: pointer;
+      transition: transform var(--dur-fast, .12s) ease, border-color var(--dur-fast, .12s) ease;
+    }
+    .progress-action:active { transform: scale(.97); }
+    .progress-action-ic { width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--ink-3); }
+    .progress-action-ic svg { width: 17px; height: 17px; }
+    .progress-action.is-primary { color: var(--ink); }
+    .progress-action.is-primary .progress-action-ic { background: var(--guava-100); color: var(--guava-700); }
+
+    .progress-section { display: flex; align-items: center; gap: 8px; margin: 16px 2px 8px; }
+    .progress-section-label { font-size: var(--fs-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--section-title); flex: 0 0 auto; }
+    .progress-section-rule { flex: 1; height: 1px; background: var(--edge); }
+    .progress-section-meta { font-size: var(--fs-meta); color: var(--ink-3); flex: 0 0 auto; }
+    .progress-section-action { font-size: var(--fs-label); font-weight: 700; color: var(--guava-700); background: none; border: none; cursor: pointer; font-family: inherit; flex: 0 0 auto; padding: 0; }
+
+    /* metrics → 3-up now that waist is gone (overrides the 4-col rule above) */
+    .metrics-strip { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+    /* nutrition macro bar */
+    .cal-macrobar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 12px 0 8px; }
+    .cal-macrobar i { height: 100%; }
+    .cal-maclegend { display: flex; gap: 14px; font-size: var(--fs-meta); color: var(--ink-2); flex-wrap: wrap; }
+    .cal-maclegend span { display: inline-flex; align-items: center; gap: 5px; }
+    .cal-maclegend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+    /* Log-weight modal */
+    .weight-modal-overlay { position: fixed; inset: 0; z-index: 1000; background: var(--scrim, rgba(20,15,10,.5)); display: flex; align-items: center; justify-content: center; padding: 24px; animation: trainModalFade var(--dur-fast, .15s) ease; }
+    .weight-modal-card { width: 100%; max-width: 340px; background: var(--surface-solid, var(--surface)); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); padding: 20px; }
+    .weight-modal-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; color: var(--ink); }
+    .weight-modal-sub { font-size: var(--fs-meta); color: var(--ink-3); margin: 0 0 14px; }
+    .weight-modal-row { display: flex; gap: 8px; align-items: center; }
+    .weight-modal-row .form-input { flex: 1; }
+    .weight-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    @keyframes trainModalFade { from { opacity: 0; } to { opacity: 1; } }
   `;
   document.head.appendChild(s);
 }
