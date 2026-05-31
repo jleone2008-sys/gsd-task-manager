@@ -4775,11 +4775,9 @@ function ensureTrainStyles() {
       position: fixed; inset: 0; background: var(--scrim);
       backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
       display: flex; align-items: flex-start; justify-content: center;
-      z-index: 1100;
-      /* Bottom pad clears the fixed mobile nav (~64px) + the device safe-area,
-         so a tall, scrolled modal's footer/buttons never land under the navbar
-         or home indicator. */
-      padding: 60px 16px calc(80px + env(safe-area-inset-bottom, 0px));
+      /* Shared modal contract (app.css): above the nav, bottom clearance. */
+      z-index: var(--z-modal);
+      padding: 60px 16px var(--modal-safe-bottom);
       overflow-y: auto;
       animation: fadeIn var(--dur-quick) ease both;
     }
@@ -5947,15 +5945,11 @@ function ensureTrainStyles() {
     .cal-maclegend span { display: inline-flex; align-items: center; gap: 5px; }
     .cal-maclegend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 
-    /* Log-weight modal */
-    .weight-modal-overlay { position: fixed; inset: 0; z-index: 1000; background: var(--scrim, rgba(20,15,10,.5)); display: flex; align-items: center; justify-content: center; padding: 24px; animation: trainModalFade var(--dur-fast, .15s) ease; }
-    .weight-modal-card { width: 100%; max-width: 340px; background: var(--surface-solid, var(--surface)); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); padding: 20px; }
+    /* Log-weight modal content (rendered inside the shared .train-modal). */
     .weight-modal-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; color: var(--ink); }
     .weight-modal-sub { font-size: var(--fs-meta); color: var(--ink-3); margin: 0 0 14px; }
     .weight-modal-row { display: flex; gap: 8px; align-items: center; }
     .weight-modal-row .form-input { flex: 1; }
-    .weight-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-    @keyframes trainModalFade { from { opacity: 0; } to { opacity: 1; } }
     /* Progress modals (Log weight / Edit profile / Analyze photo) reuse the
        shared .train-modal chrome, appended to <body> so fixed positioning is
        viewport-relative. Narrower for the weight modal, scrollable for forms. */

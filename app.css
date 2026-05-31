@@ -179,13 +179,21 @@
     --z-fab-desktop:   50;
     --z-toast:         100;
     --z-editor-mobile: 150;
-    --z-modal:         200;
     --z-fab-mobile:    250;
     --z-mobile-nav:    300;
     --z-dropdown:      400;
     --z-auth:          500;
     --z-legal:         600;
+    /* Modals sit ABOVE the bottom nav (300) + dropdowns (400) so they cover
+       the whole screen; a confirm dialog (900) still stacks above a modal.
+       Single source of truth — every modal overlay uses var(--z-modal). */
+    --z-modal:         800;
     --z-confirm:       900;
+
+    /* Shared modal contract: bottom padding every modal overlay reserves so a
+       tall, scrolled modal's content clears the fixed mobile nav (~64px) + the
+       device safe-area. Change here to retune all modals at once. */
+    --modal-safe-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 
     /* ── Transitions + easing ─────────────────────────────────── */
     --dur-instant: 0.1s;
@@ -1498,7 +1506,8 @@
     -webkit-backdrop-filter: var(--scrim-blur);
     align-items: center;
     justify-content: center;
-    padding: var(--space-4);
+    overflow-y: auto;
+    padding: var(--space-4) var(--space-4) var(--modal-safe-bottom);
   }
   .create-panel.open { display: flex; }
 
@@ -1606,7 +1615,7 @@
   .repeat-end-input:focus { border-color: var(--guava-500); box-shadow: var(--shadow-focus); }
 
   /* MODAL */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); z-index: var(--z-modal); align-items: center; justify-content: center; overflow-y: auto; padding: var(--space-4) var(--space-4) var(--modal-safe-bottom); }
   #legalModal { z-index: var(--z-legal); }
   .modal-overlay.open { display: flex; animation: fadeIn var(--dur-quick) ease both; }
   .modal { background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); padding: var(--space-5); width: 100%; max-width: var(--max-modal); box-shadow: var(--shadow-raised); position: relative; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
@@ -1708,7 +1717,7 @@
     /* Mobile create panel — anchored near the top so the on-screen keyboard
        doesn't hide the input, and Add button stretches full-width for thumb
        reach. Tag/field rows wrap onto multiple lines as needed. */
-    .create-panel { align-items: flex-start; padding: 80px 16px 16px; }
+    .create-panel { align-items: flex-start; padding: 80px 16px var(--modal-safe-bottom); }
     .create-panel-inner { padding: var(--space-4); }
     .create-panel-submit { justify-content: stretch; }
     .btn-add { width: 100%; height: 44px; }
@@ -1895,7 +1904,7 @@
      the overlay reserves that much bottom padding so the centered card
      never slides under the nav. */
   :root { --mobile-nav-h: calc(53px + env(safe-area-inset-bottom, 0px)); }
-  .overlay.stats-overlay { z-index: 350; }
+  .overlay.stats-overlay { z-index: var(--z-modal); }
   .stats-overlay-card {
     max-width: 720px;
     max-height: calc(100vh - 32px);
@@ -2864,7 +2873,7 @@
   .habit-stat-num .l { font-size: var(--fs-nano); color: var(--ink-3); }
 
   /* Habit create panel */
-  .habit-create-panel { display: none; position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); align-items: center; justify-content: center; padding: var(--space-4); }
+  .habit-create-panel { display: none; position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); align-items: center; justify-content: center; overflow-y: auto; padding: var(--space-4) var(--space-4) var(--modal-safe-bottom); }
   .habit-create-panel.open { display: flex; }
   .habit-create-inner { width: 100%; max-width: var(--max-create); background: var(--surface); border: 1px solid var(--edge-strong); border-radius: var(--r-md); box-shadow: var(--shadow-raised); padding: var(--space-4-5); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
   .habit-create-row { display: flex; gap: var(--space-2); margin-bottom: var(--space-2-5); align-items: center; }
@@ -2885,7 +2894,7 @@
   .habit-create-actions .btn-save { background: var(--guava-700); color: #fff; }
 
   /* Habit edit modal */
-  .habit-edit-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); z-index: var(--z-dropdown); align-items: center; justify-content: center; }
+  .habit-edit-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); z-index: var(--z-modal); align-items: center; justify-content: center; overflow-y: auto; padding: 16px 16px var(--modal-safe-bottom); }
   .habit-edit-overlay.open { display: flex; }
   .habit-edit-modal { background: var(--surface); border-radius: var(--r-md); padding: var(--space-6); width: 90%; max-width: 420px; box-shadow: var(--shadow-raised); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
   .habit-edit-modal h3 { font-size: var(--fs-body); font-weight: var(--fw-bold); margin: 0 0 var(--space-4); }
@@ -2900,7 +2909,7 @@
   .habit-edit-save { display: flex; gap: var(--space-2); }
 
   /* ══════ HABIT DRILL-IN ══════ */
-  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: var(--z-dropdown); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); align-items: center; justify-content: center; }
+  .habit-drill-overlay { display: none; position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); align-items: center; justify-content: center; overflow-y: auto; padding: 16px 16px var(--modal-safe-bottom); }
   .habit-drill-overlay.open { display: flex; }
   .habit-drill-panel { width: 90%; max-width: var(--max-modal-lg); max-height: 85vh; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--shadow-raised); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-slow) var(--ease-spring) both; }
   .habit-drill-header { display: flex; align-items: center; gap: var(--space-2-5); padding: var(--space-3-5) var(--space-4); border-bottom: 1px solid var(--edge); }
@@ -3939,7 +3948,8 @@
     background: var(--scrim);
     backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
     align-items: center; justify-content: center;
-    padding: var(--space-4); z-index: var(--z-modal);
+    overflow-y: auto;
+    padding: var(--space-4) var(--space-4) var(--modal-safe-bottom); z-index: var(--z-modal);
   }
   .overlay.is-open { display: flex; }
   .overlay-card {

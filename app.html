@@ -78,8 +78,9 @@
     background: var(--scrim);
     backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur);
     display: flex; align-items: center; justify-content: center;
-    z-index: 1100;
-    padding: 16px;
+    z-index: var(--z-modal);
+    overflow-y: auto;
+    padding: 16px 16px var(--modal-safe-bottom);
     animation: fadeIn 0.16s ease both;
   }
   .mood-reflect-overlay[hidden] { display: none; }
@@ -277,7 +278,7 @@
   .home-skeleton { color: var(--ink-4); font-size: var(--fs-search); padding: 10px 2px; }
 
   /* In-page modals (note editor + Quick Notes) — fade in + blur backdrop */
-  .home-modal-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); opacity: 0; transition: opacity .22s ease; }
+  .home-modal-overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 24px 24px var(--modal-safe-bottom); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); opacity: 0; transition: opacity .22s ease; }
   .home-modal-overlay.open { opacity: 1; }
   .home-modal { width: 100%; max-width: 640px; max-height: 82vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--edge); border-radius: var(--r-lg); box-shadow: var(--shadow-raised); transform: translateY(8px); transition: transform .22s ease; overflow: hidden; }
   .home-modal-overlay.open .home-modal { transform: translateY(0); }

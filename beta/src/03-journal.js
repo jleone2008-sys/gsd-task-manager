@@ -1186,7 +1186,7 @@ function ensureJournalStyles() {
     .j-load-sentinel { padding: 24px 0; text-align: center; font-size: var(--fs-pill); color: var(--ink-4); }
 
     /* Edit modal */
-    .j-edit-modal { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: flex; align-items: flex-start; justify-content: center; z-index: 1100; overflow-y: auto; padding: 40px 16px; animation: fadeIn var(--dur-quick) ease both; }
+    .j-edit-modal { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: flex; align-items: flex-start; justify-content: center; z-index: var(--z-modal); overflow-y: auto; padding: 40px 16px var(--modal-safe-bottom); animation: fadeIn var(--dur-quick) ease both; }
     @media (max-width: 600px) { .j-edit-modal { padding: 24px 14px; align-items: center; } }
     .j-edit-card { background: var(--surface); border-radius: var(--r-md); max-width: 680px; width: 100%; box-shadow: var(--shadow-raised); margin-bottom: 40px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; overflow: hidden; animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
     @media (max-width: 600px) { .j-edit-card { max-height: calc(100vh - 48px); margin-bottom: 0; } }
@@ -1305,7 +1305,7 @@ function ensureJournalStyles() {
     .j-mood-hint { font-size: var(--fs-meta); color: var(--ink-4); margin-top: 8px; line-height: 1.4; }
 
     /* Photo source modal */
-    .j-photo-modal { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 20px; animation: fadeIn var(--dur-quick) ease both; }
+    .j-photo-modal { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: flex; align-items: center; justify-content: center; z-index: calc(var(--z-modal) + 1); padding: 20px 20px var(--modal-safe-bottom); animation: fadeIn var(--dur-quick) ease both; }
     .j-photo-modal-card { background: var(--surface); border-radius: var(--r-lg); padding: 22px; max-width: 360px; width: 100%; box-shadow: var(--shadow-raised); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
     .j-photo-modal-h { font-size: var(--fs-item); font-weight: 600; color: var(--ink); margin-bottom: 14px; }
     .j-photo-modal-opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: var(--r-md); background: var(--surface); cursor: pointer; width: 100%; font-family: inherit; text-align: left; margin-bottom: 8px; transition: background var(--dur-fast); }
@@ -1318,7 +1318,7 @@ function ensureJournalStyles() {
     .j-photo-modal-cancel:hover { color: var(--ink); }
 
     /* Lightbox */
-    .j-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; z-index: 1300; cursor: zoom-out; }
+    .j-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center; z-index: calc(var(--z-modal) + 2); cursor: zoom-out; }
     .j-lightbox-img { max-width: 95vw; max-height: 92vh; object-fit: contain; box-shadow: 0 4px 30px rgba(0,0,0,0.5); border-radius: 4px; }
     .j-lightbox-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.12); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: var(--fs-title-mobile); line-height: 1; display: flex; align-items: center; justify-content: center; }
     .j-lightbox-close:hover { background: rgba(255,255,255,0.22); }

@@ -1376,7 +1376,7 @@ function briefWeatherInjectStyles() {
   st.textContent = `
     .brief-weather-chip.is-tappable { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease; }
     .brief-weather-chip.is-tappable:hover { background: var(--surface-2); border-color: var(--edge-strong); color: var(--ink); }
-    .bwx-overlay { position: fixed; inset: 0; z-index: 400; background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: none; align-items: flex-end; justify-content: center; }
+    .bwx-overlay { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--scrim); backdrop-filter: var(--scrim-blur); -webkit-backdrop-filter: var(--scrim-blur); display: none; align-items: flex-end; justify-content: center; padding-bottom: var(--modal-safe-bottom); }
     .bwx-overlay.is-open { display: flex; animation: fadeIn var(--dur) var(--ease); }
     .bwx-card { width: 100%; max-width: 480px; background: var(--surface); border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: var(--shadow-raised); max-height: 92vh; overflow-y: auto; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); animation: fadeUp var(--dur-mid) var(--ease-spring) both; }
     @media (min-width: 600px) { .bwx-overlay { align-items: center; } .bwx-card { border-radius: var(--r-lg); max-height: 86vh; } }
