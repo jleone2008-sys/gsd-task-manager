@@ -3392,8 +3392,7 @@ function renderProgressDashboard() {
     ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight)}
     ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
     ${latest ? renderProgressAIAnalysis(latest) : ''}
-    ${weights.length > 1 ? renderDashboardTrendCard(weights) : ''}
-    ${renderDashboardEntriesList(entries)}
+    ${renderDashboardEntriesList(entries, weights)}
   `;
 }
 
@@ -3947,21 +3946,38 @@ function renderDashboardTrendCard(weights) {
   </div>`;
 }
 
-function renderDashboardEntriesList(entries) {
-  if (!entries.length) return '';
-  const rows = entries.slice(0, 6).map(e => `<div class="entry-row" data-train-action="progress-detail" data-id="${e.id}">
-    <div class="entry-row-date">${trainEsc(e.captured_date)}</div>
-    <div class="entry-row-stats">
-      ${e.weight_lbs != null ? `<span><strong>${Number(e.weight_lbs).toFixed(1)}</strong> lbs</span>` : ''}
-      ${e.waist_in != null ? `<span>${Number(e.waist_in).toFixed(1)}" waist</span>` : ''}
-      ${e.body_fat_pct != null ? `<span>${Number(e.body_fat_pct).toFixed(1)}% BF</span>` : ''}
-    </div>
-  </div>`).join('');
+// History card. Photo entries (tappable → detail) when they exist; otherwise
+// falls back to recent weigh-ins so weight-only users still have a history.
+// The standalone Weight-trend card was removed — the Weight metric tile
+// already carries a sparkline.
+function renderDashboardEntriesList(entries, weights) {
+  weights = weights || [];
+  const fmtDate = (s) => { try { return new Date(s + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (_) { return s; } };
+  let rows = '';
+  let meta = '';
+  if (entries.length) {
+    meta = 'Tap to view details';
+    rows = entries.slice(0, 6).map(e => `<div class="entry-row" data-train-action="progress-detail" data-id="${e.id}">
+      <div class="entry-row-date">${trainEsc(fmtDate(e.captured_date))}</div>
+      <div class="entry-row-stats">
+        ${e.weight_lbs != null ? `<span><strong>${Number(e.weight_lbs).toFixed(1)}</strong> lbs</span>` : ''}
+        ${e.body_fat_pct != null ? `<span>${Number(e.body_fat_pct).toFixed(1)}% BF</span>` : ''}
+      </div>
+    </div>`).join('');
+  } else if (weights.length) {
+    meta = 'Recent weigh-ins';
+    rows = weights.slice(0, 6).map(w => `<div class="entry-row entry-row--static">
+      <div class="entry-row-date">${trainEsc(fmtDate(w.measured_date))}</div>
+      <div class="entry-row-stats"><span><strong>${Number(w.weight_lbs).toFixed(1)}</strong> lbs</span></div>
+    </div>`).join('');
+  } else {
+    return '';
+  }
   return `<div class="progress-card">
     <div class="progress-card-head">
       <div>
-        <div class="progress-card-label">Recent entries</div>
-        <div class="progress-card-meta">Tap to view details</div>
+        <div class="progress-card-label">History</div>
+        <div class="progress-card-meta">${meta}</div>
       </div>
     </div>
     <div class="entries-list">${rows}</div>
@@ -5877,6 +5893,7 @@ function ensureTrainStyles() {
     .progress-card .metric-cell:first-child { padding-left: 0; }
     .progress-card .metric-cell:last-child { padding-right: 0; }
     .progress-card .metric-cell + .metric-cell { border-left: 1px solid var(--edge); }
+    .entry-row--static { cursor: default; }
 
     /* nutrition macro bar */
     .cal-macrobar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 12px 0 8px; }
