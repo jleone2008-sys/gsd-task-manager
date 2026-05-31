@@ -362,13 +362,13 @@ function trainWireOnce() {
     }
     if (action === 'progress-edit-profile') {
       _trainProgressState.wizardDraft = null;
-      _trainProgressState.view = 'wizard';
+      _trainProgressState.modal = 'profile';
       renderTrain();
       return;
     }
     if (action === 'progress-new-entry') {
       _trainProgressState.entryDraft = null;
-      _trainProgressState.view = 'new-entry';
+      _trainProgressState.modal = 'entry';
       renderTrain();
       return;
     }
@@ -382,6 +382,7 @@ function trainWireOnce() {
     }
     if (action === 'progress-back') {
       _trainProgressState.view = 'dashboard';
+      _trainProgressState.modal = null;
       _trainProgressState.entryDraft = null;
       _trainProgressState.goalDraft  = null;
       renderTrain();
@@ -405,7 +406,7 @@ function trainWireOnce() {
           },
           _existing_id: entry.id,
         };
-        _trainProgressState.view = 'new-entry';
+        _trainProgressState.modal = 'entry';
         renderTrain();
       }
       return;
@@ -427,6 +428,7 @@ function trainWireOnce() {
     if (action === 'wizard-save')   { saveWizardProfile(); return; }
     if (action === 'wizard-cancel') {
       _trainProgressState.wizardDraft = null;
+      _trainProgressState.modal = null;
       _trainProgressState.view = 'dashboard';
       renderTrain();
       return;
@@ -451,15 +453,14 @@ function trainWireOnce() {
       return;
     }
     if (action === 'weight-log-open') {
-      _trainProgressState.weightModalOpen = true;
+      _trainProgressState.modal = 'weight';
       renderTrain();
       // Focus the input so the user can type immediately.
       setTimeout(() => { const i = document.getElementById('weightLogInput'); if (i) { i.focus(); i.select(); } }, 0);
       return;
     }
     if (action === 'weight-log-close') {
-      _trainProgressState.weightModalOpen = false;
-      renderTrain();
+      closeTrainProgressModal();
       return;
     }
     if (action === 'weight-log-save') {
@@ -3206,24 +3207,23 @@ function renderTrainProgress(root) {
     return;
   }
 
-  // Wizard takes priority over other views when the profile is incomplete.
-  if (trainProgressNeedsSetup() || _trainProgressState.view === 'wizard') {
+  // Forced full-page setup wizard when the profile is incomplete (can't be
+  // dismissed). The "Edit profile" action instead opens the wizard as a modal.
+  if (trainProgressNeedsSetup()) {
     root.innerHTML = `<div class="train-shell">${renderProgressWizard()}</div>`;
-    return;
-  }
-
-  if (_trainProgressState.view === 'new-entry') {
-    root.innerHTML = `<div class="train-shell">${renderProgressNewEntry()}</div>`;
+    renderTrainProgressModal();   // none, but keeps any stale host cleared
     return;
   }
 
   if (_trainProgressState.view === 'goal') {
     root.innerHTML = `<div class="train-shell">${renderProgressGoalEditor()}</div>`;
+    renderTrainProgressModal();
     return;
   }
 
-  root.innerHTML = `<div class="train-shell">${renderProgressDashboard()}</div>`
-    + (_trainProgressState.weightModalOpen ? renderWeightLogModal() : '');
+  // Dashboard + (Log weight / Edit profile / Analyze photo) modal, if open.
+  root.innerHTML = `<div class="train-shell">${renderProgressDashboard()}</div>`;
+  renderTrainProgressModal();
 }
 
 /* ── Setup wizard ─────────────────────────────────────────────────── */
@@ -3329,6 +3329,7 @@ async function saveWizardProfile() {
     }
     _trainProgressState.profile = { ...(_trainProgressState.profile || {}), ...patch };
     _trainProgressState.wizardDraft = null;
+    _trainProgressState.modal = null;
     _trainProgressState.view = 'dashboard';
   } catch (e) {
     console.warn('[train] wizard save failed', e);
@@ -3437,23 +3438,51 @@ function renderProgressSection(label, meta) {
 // Quick weight logger as a modal (opened from the action row). Reuses the
 // existing #weightLogInput id + weight-log-save action, so saveBodyWeight is
 // unchanged; it just closes the modal on success.
-function renderWeightLogModal() {
+// Weight modal CONTENT (the .train-modal chrome comes from the host below).
+function renderWeightLogModalCard() {
   const today = trainTodayLocalDate();
   const todayRow = (_trainProgressState.weights || []).find(w => w.measured_date === today) || null;
   const val = todayRow?.weight_lbs != null ? Number(todayRow.weight_lbs).toFixed(1) : '';
-  return `<div class="weight-modal-overlay">
-    <div class="weight-modal-card">
+  return `<div class="train-modal-head">
       <div class="weight-modal-title">Log today's weight</div>
-      <div class="weight-modal-sub">${todayRow ? "Updates today's weigh-in." : 'One weigh-in per day.'}</div>
-      <div class="weight-modal-row">
-        <input id="weightLogInput" class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="lbs" value="${val}" autofocus>
-        <button class="train-btn-primary" data-train-action="weight-log-save">Save</button>
-      </div>
-      <div class="weight-modal-actions">
-        <button class="train-btn-secondary" data-train-action="weight-log-close">Cancel</button>
-      </div>
+      <button class="train-modal-close" data-train-action="weight-log-close" title="Close">×</button>
     </div>
-  </div>`;
+    <div class="weight-modal-sub">${todayRow ? "Updates today's weigh-in." : 'One weigh-in per day.'}</div>
+    <div class="weight-modal-row">
+      <input id="weightLogInput" class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="lbs" value="${val}">
+      <button class="train-btn-primary" data-train-action="weight-log-save">Save</button>
+    </div>`;
+}
+
+// Body-level host for the three Progress modals (weight / profile / entry).
+// Appended to <body> (NOT the train root) so position:fixed is viewport-
+// relative — fixes the modal centering inside the tall, scrolled dashboard.
+// Backdrop click closes via e.target === host (inner clicks don't match).
+function renderTrainProgressModal() {
+  const modal = _trainProgressState.modal;
+  const existing = document.getElementById('trainProgressModalHost');
+  if (!modal) { existing?.remove(); return; }
+  const content = modal === 'weight'  ? renderWeightLogModalCard()
+                : modal === 'profile' ? renderProgressWizard()
+                : modal === 'entry'   ? renderProgressNewEntry()
+                :                       '';
+  const cardCls = modal === 'weight' ? 'train-modal train-modal--weight' : 'train-modal train-modal--progress';
+  let host = existing;
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'trainProgressModalHost';
+    host.className = 'train-modal-overlay';
+    document.body.appendChild(host);
+    host.addEventListener('click', e => { if (e.target === host) closeTrainProgressModal(); });
+  }
+  host.innerHTML = `<div class="${cardCls}">${content}</div>`;
+}
+
+function closeTrainProgressModal() {
+  _trainProgressState.modal = null;
+  _trainProgressState.entryDraft = null;
+  _trainProgressState.wizardDraft = null;
+  renderTrain();
 }
 
 // Quick weight logger — one tap on the Progress dashboard, decoupled from the
@@ -4027,7 +4056,7 @@ async function saveBodyWeight(rawValue) {
     if (idx >= 0) _trainProgressState.weights[idx] = rec;
     else _trainProgressState.weights.unshift(rec);
     _trainProgressState.weights.sort((a, b) => b.measured_date.localeCompare(a.measured_date));
-    _trainProgressState.weightModalOpen = false;   // close the modal on success
+    _trainProgressState.modal = null;   // close the modal on success
     showTrainToast(`Logged ${weight.toFixed(1)} lbs`);
     renderTrain();
   } catch (e) {
@@ -4341,6 +4370,7 @@ async function saveProgressEntry() {
     }
 
     _trainProgressState.entryDraft = null;
+    _trainProgressState.modal = null;
     _trainProgressState.view = 'dashboard';
   } catch (e) {
     console.warn('[train] save progress entry failed', e);
@@ -5879,16 +5909,16 @@ function ensureTrainStyles() {
     .progress-stats-line { font-size: var(--fs-meta); color: var(--ink-3); margin: 0 2px 8px; }
     .progress-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
     .progress-action {
-      display: flex; flex-direction: column; align-items: center; gap: 7px;
-      padding: 12px 6px; border-radius: var(--r-md); border: 1px solid var(--edge);
+      display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 7px;
+      padding: 9px 8px; border-radius: var(--r-md); border: 1px solid var(--edge);
       background: var(--surface); box-shadow: var(--shadow-card);
       font-size: var(--fs-nano); font-weight: 700; color: var(--ink-2);
-      font-family: inherit; text-align: center; line-height: 1.15; cursor: pointer;
+      font-family: inherit; text-align: left; line-height: 1.1; cursor: pointer;
       transition: transform var(--dur-fast, .12s) ease, border-color var(--dur-fast, .12s) ease;
     }
     .progress-action:active { transform: scale(.97); }
-    .progress-action-ic { width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--ink-3); }
-    .progress-action-ic svg { width: 17px; height: 17px; }
+    .progress-action-ic { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--ink-3); }
+    .progress-action-ic svg { width: 15px; height: 15px; }
     .progress-action.is-primary { color: var(--ink); }
     .progress-action.is-primary .progress-action-ic { background: var(--guava-100); color: var(--guava-700); }
 
@@ -5924,6 +5954,11 @@ function ensureTrainStyles() {
     .weight-modal-row .form-input { flex: 1; }
     .weight-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
     @keyframes trainModalFade { from { opacity: 0; } to { opacity: 1; } }
+    /* Progress modals (Log weight / Edit profile / Analyze photo) reuse the
+       shared .train-modal chrome, appended to <body> so fixed positioning is
+       viewport-relative. Narrower for the weight modal, scrollable for forms. */
+    .train-modal--progress { max-width: 420px; max-height: calc(100dvh - 76px); overflow-y: auto; padding: 16px; }
+    .train-modal--weight { max-width: 340px; }
   `;
   document.head.appendChild(s);
 }
