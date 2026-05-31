@@ -3381,23 +3381,17 @@ function renderProgressDashboard() {
   // the giant Coach Card; promoting them right under the metrics strip
   // keeps the user's North Star above the fold.
   const hasData = latest || latestWeight != null;
-  const refDate = latest?.captured_date || weights[0]?.measured_date || trainTodayLocalDate();
-  const ageDays = Math.round((new Date(trainTodayLocalDate()) - new Date(refDate)) / DAY_MS);
-  const metricAge = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
 
-  // Order (per redesign): action row → Body metrics → Goals → Nutrition →
-  // Coach → History. Each section gets a shared divider label. The quick
-  // weight logger is now a modal opened from the action row.
+  // Order: action row → Body metrics → Goals → Nutrition → Coach → History.
+  // Each card carries its OWN title in its header (no separate section-divider
+  // labels floating above the cards). The quick weight logger is a modal
+  // opened from the action row.
   return `
     ${renderProgressActions(p)}
-    ${hasData
-      ? `${renderProgressSection('Body metrics', metricAge)}${renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight)}`
-      : renderDashboardEmptyCard()}
-    ${renderProgressSection('Goals')}
+    ${hasData ? renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight) : renderDashboardEmptyCard()}
     ${renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight)}
-    ${tdee != null ? `${renderProgressSection('Nutrition')}${renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath)}` : ''}
-    ${latest ? `${renderProgressSection('Coach')}${renderProgressAIAnalysis(latest)}` : ''}
-    ${renderProgressSection('History')}
+    ${tdee != null ? renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, calMath) : ''}
+    ${latest ? renderProgressAIAnalysis(latest) : ''}
     ${weights.length > 1 ? renderDashboardTrendCard(weights) : ''}
     ${renderDashboardEntriesList(entries)}
   `;
@@ -3612,7 +3606,13 @@ function renderDashboardLatestCard(latest, bfPct, entries, weights, latestWeight
   // 4-cell metrics strip. The Coach Card (renderProgressAIAnalysis) is
   // now rendered separately by renderProgressDashboard so Goals can
   // slot between this block and the AI read.
-  return metricsStrip;
+  return `<div class="progress-card">
+    <div class="progress-card-head">
+      <div class="progress-card-label">Body metrics</div>
+      <div class="progress-card-meta">Logged ${trainEsc(ageTxt)}</div>
+    </div>
+    ${metricsStrip}
+  </div>`;
 }
 
 // Coach Card — Body Comp Report v2 (Variation A "narrative-first").
@@ -3819,6 +3819,9 @@ function renderDashboardCalorieCard(bmr, tdee, dailyCal, macros, weightGoal, cal
 // from the mockup, separated by a hairline divider.
 function renderDashboardGoalsCard(weightGoal, fatGoal, latest, bfPct, latestWeight) {
   return `<div class="goal-combined-card">
+    <div class="progress-card-head" style="margin-bottom:10px">
+      <div class="progress-card-label">Goals</div>
+    </div>
     <div class="goal-section ${weightGoal ? '' : 'is-empty'}">
       ${weightGoal
         ? renderGoalSection(weightGoal, latestWeight, 'weight')
@@ -5866,8 +5869,14 @@ function ensureTrainStyles() {
     .progress-section-meta { font-size: var(--fs-meta); color: var(--ink-3); flex: 0 0 auto; }
     .progress-section-action { font-size: var(--fs-label); font-weight: 700; color: var(--guava-700); background: none; border: none; cursor: pointer; font-family: inherit; flex: 0 0 auto; padding: 0; }
 
-    /* metrics → 3-up now that waist is gone (overrides the 4-col rule above) */
-    .metrics-strip { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    /* metrics → 3-up now that waist is gone (overrides the 4-col rule above).
+       The cells live INSIDE one "Body metrics" card, so they drop their own
+       card chrome and get hairline column dividers instead. */
+    .metrics-strip { grid-template-columns: repeat(3, 1fr); gap: 0; }
+    .progress-card .metric-cell { background: transparent; border: none; box-shadow: none; padding: 0 10px; }
+    .progress-card .metric-cell:first-child { padding-left: 0; }
+    .progress-card .metric-cell:last-child { padding-right: 0; }
+    .progress-card .metric-cell + .metric-cell { border-left: 1px solid var(--edge); }
 
     /* nutrition macro bar */
     .cal-macrobar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 12px 0 8px; }
