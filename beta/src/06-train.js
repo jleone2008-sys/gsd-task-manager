@@ -539,6 +539,11 @@ function trainWireOnce() {
       _trainProgressState.wizardDraft.height_in = v;
       return;
     }
+    if (action === 'wizard-weight') {
+      ensureWizardDraft();
+      _trainProgressState.wizardDraft.weight_lbs = v;
+      return;
+    }
     if (action === 'entry-input') {
       ensureEntryDraft();
       const key = el.dataset.key;
@@ -3225,10 +3230,14 @@ function renderTrainProgress(root) {
 function ensureWizardDraft() {
   if (_trainProgressState.wizardDraft) return;
   const p = _trainProgressState.profile || {};
+  // Prefill weight from the latest body_weight row so the profile modal shows
+  // the user's current weight and edits sync back to that timeline.
+  const wPrefill = _trainProgressState.weights?.[0]?.weight_lbs ?? null;
   _trainProgressState.wizardDraft = {
     sex:             p.sex || '',
     dob:             p.dob || '',
     height_in:       p.height_in != null ? String(p.height_in) : '',
+    weight_lbs:      wPrefill != null ? String(wPrefill) : '',
     activity_level:  p.activity_level || '',
     units:           p.units || 'imperial',
   };
@@ -3273,10 +3282,15 @@ function renderProgressWizard() {
         <div class="train-form-hint">Used to compute your current age (re-derived every BMR call, so it stays accurate).</div>
       </div>
 
-      <div class="train-form-section">
-        <div class="train-form-label">Height (inches)</div>
-        <input class="form-input" type="number" inputmode="decimal" step="0.1" min="36" max="96" placeholder="70" value="${trainEsc(d.height_in)}" data-train-action="wizard-height">
-        <div class="train-form-hint">1 ft = 12 in. e.g. 5'10" = 70 in. Metric support comes in commit 6.</div>
+      <div class="train-form-row2">
+        <div class="train-form-section">
+          <div class="train-form-label">Height (in)</div>
+          <input class="form-input" type="number" inputmode="decimal" step="0.1" min="36" max="96" placeholder="70" value="${trainEsc(d.height_in)}" data-train-action="wizard-height">
+        </div>
+        <div class="train-form-section">
+          <div class="train-form-label">Weight (lbs)</div>
+          <input class="form-input" type="number" inputmode="decimal" step="0.1" min="0" placeholder="lbs" value="${trainEsc(d.weight_lbs || '')}" data-train-action="wizard-weight">
+        </div>
       </div>
 
       <div class="train-form-section">
@@ -3322,6 +3336,26 @@ async function saveWizardProfile() {
       throw new Error('user_preferences row not written for ' + currentUser.id);
     }
     _trainProgressState.profile = { ...(_trainProgressState.profile || {}), ...patch };
+
+    // Weight entered in the profile modal logs to the body_weight timeline
+    // (today) so it shows as the most-recent weigh-in and syncs with Log
+    // weight + the metrics — same upsert path as saveBodyWeight.
+    const wNum = parseFloat(String(d.weight_lbs || '').trim());
+    if (Number.isFinite(wNum) && wNum > 0) {
+      try {
+        const measured_date = trainTodayLocalDate();
+        const weight = Math.round(wNum * 10) / 10;
+        const { data: bw } = await db.from('body_weight')
+          .upsert({ user_id: currentUser.id, measured_date, weight_lbs: weight, source: 'manual', updated_at: new Date().toISOString() }, { onConflict: 'user_id,measured_date' })
+          .select().single();
+        const rec = bw || { user_id: currentUser.id, measured_date, weight_lbs: weight, source: 'manual' };
+        const idx = _trainProgressState.weights.findIndex(w => w.measured_date === measured_date);
+        if (idx >= 0) _trainProgressState.weights[idx] = rec;
+        else _trainProgressState.weights.unshift(rec);
+        _trainProgressState.weights.sort((a, b) => b.measured_date.localeCompare(a.measured_date));
+      } catch (bwErr) { console.warn('[train] wizard weight save failed', bwErr); }
+    }
+
     _trainProgressState.wizardDraft = null;
     _trainProgressState.modal = null;
     _trainProgressState.view = 'dashboard';
@@ -3393,15 +3427,10 @@ function renderProgressDashboard() {
 
 // ── Redesign helpers: top action row, section dividers, weight modal ──
 function renderProgressActions(p) {
-  const age = trainAgeYears(p.dob);
-  const heightTxt = p.height_in ? `${Math.floor(p.height_in / 12)}'${Math.round(p.height_in % 12)}"` : '—';
-  const actLabel = TRAIN_ACTIVITY[p.activity_level]?.label || '—';
-  const statsLine = `${trainEsc(String(p.sex || '—'))} · ${age ? age + 'y' : '—'} · ${trainEsc(heightTxt)} · ${trainEsc(actLabel)}`;
   const icProfile = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg>';
   const icScale   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M12 14.5l2.4-3.8"/></svg>';
   const icCamera  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5A1.5 1.5 0 0 1 5 7h2L8.4 5h7.2L17 7h2a1.5 1.5 0 0 1 1.5 1.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/><circle cx="12" cy="13" r="3.1"/></svg>';
-  return `<div class="progress-stats-line">${statsLine}</div>
-    <div class="progress-actions">
+  return `<div class="progress-actions">
       <button class="progress-action" data-train-action="progress-edit-profile"><span class="progress-action-ic">${icProfile}</span>Edit profile</button>
       <button class="progress-action is-primary" data-train-action="weight-log-open"><span class="progress-action-ic">${icScale}</span>Log weight</button>
       <button class="progress-action is-primary" data-train-action="progress-new-entry"><span class="progress-action-ic">${icCamera}</span>Analyze photo</button>
@@ -5483,7 +5512,8 @@ function ensureTrainStyles() {
       background: var(--guava-50); border-color: var(--guava-700); color: var(--guava-700);
       font-weight: 700;
     }
-    .train-choice-stack { display: flex; flex-direction: column; gap: 6px; }
+    .train-choice-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .train-form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .train-choice-card {
       background: var(--surface); border: 1px solid var(--edge-strong);
       border-radius: var(--r-md); padding: 10px 12px; cursor: pointer;

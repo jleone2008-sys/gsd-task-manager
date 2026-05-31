@@ -104,8 +104,8 @@
        these tokens — never hardcode a per-feature tint/blur, which is
        exactly how the backdrops drifted before. Works in JS-injected
        <style> blocks too since they resolve against this :root. */
-    --scrim:      rgba(20,30,80,0.45);
-    --scrim-blur: blur(6px);
+    --scrim:      rgba(255,255,255,0.6);   /* white frosted backdrop (was blue) */
+    --scrim-blur: blur(8px);
 
     /* ── Type families ──────────────────────────────────────── */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -312,7 +312,7 @@
     .mobile-bottom-nav, .user-dropdown, .dropdown-menu, .note-ctx-menu, .mobile-nb-drawer, .sort-dropdown,
     .modal, .overlay-card, .create-panel-inner, .confirm-card, .home-modal,
     .habit-edit-modal, .habit-drill-panel, .habit-create-inner,
-    .bwx-card, .j-edit-card, .j-edit-footer, .j-photo-modal-card,
+    .train-modal, .bwx-card, .j-edit-card, .j-edit-footer, .j-photo-modal-card,
     .floating-search, .floating-scratch, .floating-stats, .j-fbtn, .j-float-search,
     /* interactive controls / toolbars (not cards) — keep crisp + solid */
     .insights-search-input, .insights-action-btn, .home-pill-btn,
