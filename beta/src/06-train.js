@@ -376,7 +376,7 @@ function trainWireOnce() {
       const kind = actionEl.dataset.kind;
       _trainProgressState.goalDraft = null;
       ensureGoalDraft(kind);
-      _trainProgressState.view = 'goal';
+      _trainProgressState.modal = 'goal';
       renderTrain();
       return;
     }
@@ -3215,13 +3215,7 @@ function renderTrainProgress(root) {
     return;
   }
 
-  if (_trainProgressState.view === 'goal') {
-    root.innerHTML = `<div class="train-shell">${renderProgressGoalEditor()}</div>`;
-    renderTrainProgressModal();
-    return;
-  }
-
-  // Dashboard + (Log weight / Edit profile / Analyze photo) modal, if open.
+  // Dashboard + (Log weight / Edit profile / Analyze photo / Goal) modal, if open.
   root.innerHTML = `<div class="train-shell">${renderProgressDashboard()}</div>`;
   renderTrainProgressModal();
 }
@@ -3465,6 +3459,7 @@ function renderTrainProgressModal() {
   const content = modal === 'weight'  ? renderWeightLogModalCard()
                 : modal === 'profile' ? renderProgressWizard()
                 : modal === 'entry'   ? renderProgressNewEntry()
+                : modal === 'goal'    ? renderProgressGoalEditor()
                 :                       '';
   const cardCls = modal === 'weight' ? 'train-modal train-modal--weight' : 'train-modal train-modal--progress';
   let host = existing;
@@ -3482,6 +3477,7 @@ function closeTrainProgressModal() {
   _trainProgressState.modal = null;
   _trainProgressState.entryDraft = null;
   _trainProgressState.wizardDraft = null;
+  _trainProgressState.goalDraft = null;
   renderTrain();
 }
 
@@ -4506,6 +4502,7 @@ async function saveProgressGoal() {
     _trainProgressState.goals = _trainProgressState.goals.filter(x => x.kind !== g.kind);
     _trainProgressState.goals.push(data);
     _trainProgressState.goalDraft = null;
+    _trainProgressState.modal = null;
     _trainProgressState.view = 'dashboard';
   } catch (e) {
     console.warn('[train] save goal failed', e);
@@ -4527,6 +4524,7 @@ async function deleteProgressGoal() {
     if (error) throw error;
     _trainProgressState.goals = _trainProgressState.goals.filter(x => x.id !== g.existing_id);
     _trainProgressState.goalDraft = null;
+    _trainProgressState.modal = null;
     _trainProgressState.view = 'dashboard';
   } catch (e) {
     console.warn('[train] remove goal failed', e);
