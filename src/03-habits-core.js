@@ -552,6 +552,27 @@ function completionsForHabit(habitClientId) {
   return habitCompletions.filter(c => c.habitId === sid);
 }
 
+// Count distinct days carrying a completion inside the trailing `windowDays`
+// window ending on (and including) endDateStr. One completion row per
+// (habit, date), so distinct-days == completion-count. O(windowDays), driven
+// off a pre-built Set of "YYYY-MM-DD" strings so streak loops stay cheap.
+function rollingCountInSet(compsSet, endDateStr, windowDays) {
+  let count = 0;
+  const d = new Date(endDateStr + 'T12:00:00');
+  for (let i = 0; i < windowDays; i++) {
+    if (compsSet.has(d.toISOString().slice(0, 10))) count++;
+    d.setDate(d.getDate() - 1);
+  }
+  return count;
+}
+
+// Rolling window length for a quota cadence: a "week" is the trailing 7 days,
+// a "month" the trailing 30. Used by both current- and best-streak so the two
+// always speak the same unit (days).
+function quotaWindowDays(habit) {
+  return habit.frequency === 'x_per_month' ? 30 : 7;
+}
+
 function computeStreak(habitClientId) {
   const habit = habitsArr.find(x => x.id === habitClientId);
   if (!habit) return 0;
@@ -559,32 +580,23 @@ function computeStreak(habitClientId) {
   if (!comps.size) return 0;
   const today = todayStr();
 
-  // Quota-based: streak = consecutive weeks/months where quota met
-  if (habit.frequency === 'x_per_week') {
+  // Quota-based (x_per_week / x_per_month): ROLLING streak.
+  // Counts consecutive days (ending today) on which the trailing window still
+  // holds at least `quota` completions. This is anchored to a moving window,
+  // not a fixed Mon–Sun / calendar-month bucket, so workouts that straddle a
+  // week boundary no longer reset the streak — only an actual dip below quota
+  // does. Off-days don't break it. Grace: if today's window isn't met yet
+  // (mid-period), start from yesterday so "not done today" doesn't zero a
+  // streak that's still on pace.
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') {
+    const quota = habit.frequencyCount || 1;
+    const windowDays = quotaWindowDays(habit);
     let streak = 0;
     const d = new Date(today + 'T12:00:00');
-    const dow = d.getDay();
-    const thisMon = new Date(d); thisMon.setDate(d.getDate() - ((dow + 6) % 7));
-    // Check current week — if not met yet, start from previous week
-    let checkDate = thisMon;
-    const thisWeekMet = isQuotaMet(habit, today);
-    if (!thisWeekMet) { checkDate = new Date(thisMon); checkDate.setDate(thisMon.getDate() - 7); }
-    for (let i = 0; i < 52; i++) {
-      const ds = checkDate.toISOString().slice(0, 10);
-      if (isQuotaMet(habit, ds)) { streak++; checkDate.setDate(checkDate.getDate() - 7); }
-      else break;
-    }
-    return streak;
-  }
-  if (habit.frequency === 'x_per_month') {
-    let streak = 0;
-    const d = new Date(today + 'T12:00:00');
-    let y = d.getFullYear(), m = d.getMonth();
-    const thisMonthMet = isQuotaMet(habit, today);
-    if (!thisMonthMet) { m--; if (m < 0) { m = 11; y--; } }
-    for (let i = 0; i < 24; i++) {
-      const ds = `${y}-${String(m + 1).padStart(2, '0')}-15`;
-      if (isQuotaMet(habit, ds)) { streak++; m--; if (m < 0) { m = 11; y--; } }
+    if (rollingCountInSet(comps, today, windowDays) < quota) d.setDate(d.getDate() - 1);
+    for (let safety = 0; safety < 366; safety++) {
+      const ds = d.toISOString().slice(0, 10);
+      if (rollingCountInSet(comps, ds, windowDays) >= quota) { streak++; d.setDate(d.getDate() - 1); }
       else break;
     }
     return streak;
@@ -610,28 +622,20 @@ function computeBestStreak(habitClientId) {
   const comps = new Set(completionsForHabit(habitClientId).map(c => c.completedDate));
   if (!comps.size) return 0;
 
-  // Quota-based: best consecutive weeks/months
-  if (habit.frequency === 'x_per_week') {
-    const d = new Date(todayStr() + 'T12:00:00');
-    const dow = d.getDay();
-    const thisMon = new Date(d); thisMon.setDate(d.getDate() - ((dow + 6) % 7));
+  // Quota-based (x_per_week / x_per_month): best ROLLING streak — the longest
+  // run of consecutive days whose trailing window held the quota. Same model
+  // and unit (days) as computeStreak above, walked oldest→newest across the
+  // loaded completion window (~365d; Stats lazy-loads more when needed).
+  if (habit.frequency === 'x_per_week' || habit.frequency === 'x_per_month') {
+    const quota = habit.frequencyCount || 1;
+    const windowDays = quotaWindowDays(habit);
+    const today = new Date(todayStr() + 'T12:00:00');
     let best = 0, cur = 0;
-    for (let i = 0; i < 52; i++) {
-      const checkDate = new Date(thisMon); checkDate.setDate(thisMon.getDate() - i * 7);
-      if (isQuotaMet(habit, checkDate.toISOString().slice(0, 10))) { cur++; if (cur > best) best = cur; }
+    for (let i = 364; i >= 0; i--) {
+      const d = new Date(today); d.setDate(today.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      if (rollingCountInSet(comps, ds, windowDays) >= quota) { cur++; if (cur > best) best = cur; }
       else cur = 0;
-    }
-    return best;
-  }
-  if (habit.frequency === 'x_per_month') {
-    const d = new Date(todayStr() + 'T12:00:00');
-    let y = d.getFullYear(), m = d.getMonth();
-    let best = 0, cur = 0;
-    for (let i = 0; i < 24; i++) {
-      const ds = `${y}-${String(m + 1).padStart(2, '0')}-15`;
-      if (isQuotaMet(habit, ds)) { cur++; if (cur > best) best = cur; }
-      else cur = 0;
-      m--; if (m < 0) { m = 11; y--; }
     }
     return best;
   }
