@@ -351,16 +351,6 @@ function trainWireOnce() {
       renderTrain();
       return;
     }
-    if (action === 'set-rir') {
-      const ex = actionEl.dataset.ex; const v = Number(actionEl.dataset.rir);
-      if (!_trainTodayState.rirByExercise) _trainTodayState.rirByExercise = {};
-      _trainTodayState.rirByExercise[ex] = (_trainTodayState.rirByExercise[ex] === v) ? null : v;  // tap again to clear
-      // Inline highlight — no full re-render (keeps the logging flow / scroll).
-      const group = actionEl.closest('.ex-rir-chips');
-      if (group) group.querySelectorAll('.rir-chip').forEach(c => c.classList.toggle('is-sel', Number(c.dataset.rir) === _trainTodayState.rirByExercise[ex]));
-      trainScheduleDraftSave();
-      return;
-    }
 
     // ── Progress subtab actions ────────────────────────────────────
     if (action === 'progress-reload') {
@@ -2026,14 +2016,6 @@ function renderTodayLiftCard(ex, st) {
     </div>`;
   }).join('');
 
-  // Last-set RIR (reps in reserve) — one tap, feeds next session's autoreg.
-  // 0 = went to failure, 4 = very easy. Bodyweight-only exercises skip it.
-  const curRir = (st && st.rirByExercise) ? st.rirByExercise[ex.name] : null;
-  const rirChips = [0, 1, 2, 3, 4].map(v =>
-    `<button type="button" class="rir-chip ${curRir === v ? 'is-sel' : ''}" data-train-action="set-rir" data-ex="${trainEsc(ex.name)}" data-rir="${v}" title="${v === 0 ? 'to failure' : v + ' rep' + (v === 1 ? '' : 's') + ' in reserve'}">${v}</button>`
-  ).join('');
-  const rirRow = `<div class="ex-rir-row"><span class="ex-rir-label">Last set effort · reps left</span><div class="ex-rir-chips">${rirChips}</div></div>`;
-
   return `<div class="ex-card">
     <div class="ex-card-head">
       <div>
@@ -2047,7 +2029,6 @@ function renderTodayLiftCard(ex, st) {
       <span class="col-today"><span>Today · ${ex.sets} × ${trainEsc(String(ex.reps || ''))}</span></span>
     </div>
     ${rows}
-    ${rirRow}
   </div>`;
 }
 
@@ -5132,14 +5113,6 @@ function ensureTrainStyles() {
     .ex-target.target-warning { background: var(--amber-bg, #faf1dc); color: var(--amber-fg, #a87622); border: 1px solid var(--amber-edge, #e2c98c); }
     /* Calibration (new/swapped exercise, no history yet) — neutral, no number. */
     .ex-target.target-calibrate { background: var(--surface-2); color: var(--ink-3); border: 1px solid var(--edge); font-weight: 500; }
-    /* Last-set RIR capture — one-tap effort, feeds next session's autoreg. */
-    .ex-rir-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--edge); }
-    .ex-rir-label { font-size: var(--fs-meta); color: var(--ink-3); }
-    .ex-rir-chips { display: inline-flex; gap: 4px; }
-    .rir-chip { width: 26px; height: 26px; border-radius: var(--r-md); border: 1px solid var(--edge-strong); background: var(--surface); color: var(--ink-3); font-size: var(--fs-pill); font-weight: 600; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease; }
-    .rir-chip:hover { border-color: var(--ink-3); }
-    .rir-chip.is-sel { background: var(--guava-700); color: #fff; border-color: var(--guava-700); }
-
     .ex-table-head {
       /* Grid dropped from 4 → 3 columns: the trailing 28px completion
          circle column is gone. Set · Last session · Today (lbs+reps). */
