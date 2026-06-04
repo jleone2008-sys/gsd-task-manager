@@ -195,22 +195,27 @@ async function loadConnectedCalendars() {
       const k = `${row.google_account_email || ''}${row.google_calendar_id}`;
       enabledMap[k] = !!row.enabled;
     }
-    const hasAnyRow = (synced || []).length > 0;
 
     const items = live.map(c => {
       const k = `${c.account_email}${c.id}`;
+      // Saved toggle wins. For a calendar the user has NEVER toggled (no row),
+      // default ON if it's an account's primary calendar OR belongs to a
+      // linked account — linked accounts are meant to feed in once added. The
+      // old logic flipped rowless calendars OFF as soon as the user had touched
+      // ANY toggle, which silently unchecked freshly-linked calendars.
       const enabled = enabledMap[k] != null
         ? enabledMap[k]
-        // First-time defaults: primary's primary calendar = true; everything
-        // else for a fresh user = true too (we want linked accounts to feed
-        // in by default once linked — user can opt out of specific ones).
-        // If the user has already touched ANY toggle, new calendars are
-        // opt-in (false) to preserve the configure-once feel.
-        : (!hasAnyRow ? !!c.primary || c.account_email !== '' : false);
+        : (!!c.primary || c.account_email !== '');
       return { ...c, enabled };
     });
 
-    userSettings.calendars = { items, accounts: sources, loading: false, error: null };
+    // Per-account load status so the UI can show a "Reconnect" affordance for an
+    // account whose token expired (its calendar list returns empty/errored — in
+    // Testing mode Google refresh tokens lapse every ~7 days).
+    const accountStatus = {};
+    for (const r of results) accountStatus[r.src.email || ''] = r.error || null;
+
+    userSettings.calendars = { items, accounts: sources, accountStatus, loading: false, error: null };
   } catch (e) {
     console.warn('[settings] calendars load failed', e);
     userSettings.calendars = { items: [], accounts: [], loading: false, error: 'fetch_failed' };
@@ -773,6 +778,17 @@ document.addEventListener('click', e => {
   else if (action === 'save-location') saveLocationFromInput(e.target.closest('[data-settings-action]'));
   else if (action === 'link-google') {
     if (typeof linkGoogleAccount === 'function') linkGoogleAccount();
+  } else if (action === 'reconnect-google') {
+    // Re-grant Google access for one account whose token expired (Testing-mode
+    // refresh tokens lapse ~every 7 days). Primary ('') re-runs the full Google
+    // sign-in; a linked account re-runs the link flow (chooser lets the user
+    // re-pick that same account to refresh its stored refresh token).
+    const email = e.target.closest('[data-settings-action="reconnect-google"]')?.dataset.accountEmail || '';
+    if (email) {
+      if (typeof linkGoogleAccount === 'function') linkGoogleAccount();
+    } else {
+      if (typeof signInWithGoogle === 'function') signInWithGoogle();
+    }
   } else if (action === 'unlink-google') {
     const email = e.target.closest('[data-settings-action="unlink-google"]')?.dataset.accountEmail;
     if (email) unlinkGoogleAccount(email);
@@ -985,39 +1001,54 @@ function renderConnectedCalendarsList() {
   if (state.loading)        return `<div class="settings-sub">Loading your calendars…</div>`;
   if (state.error === 'no_token') return `<div class="settings-sub">Sign in with Google to manage connected calendars.</div>`;
   if (state.error)          return `<div class="settings-sub">Couldn't load calendars (${escapeHtml(state.error)}). Refresh to retry.</div>`;
-  if (!state.items.length)  return `<div class="settings-sub">No calendars found.</div>`;
-
-  // Group items by account_email. Primary ('') goes first.
+  // Group enabled/visible calendars by account_email.
   const groups = new Map();
   for (const c of state.items) {
     const key = c.account_email || '';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(c);
   }
-  const orderedKeys = ['', ...[...groups.keys()].filter(k => k !== '').sort()];
+  // Render a group per KNOWN account (from sources), not just per account that
+  // returned calendars — so an account whose token expired (zero calendars
+  // back) still shows up with a Reconnect button instead of silently vanishing.
+  const accountKeys = (state.accounts || [{ email: '' }]).map(a => a.email || '');
+  const orderedKeys = ['', ...[...new Set(accountKeys)].filter(k => k !== '').sort()];
+  const accountStatus = state.accountStatus || {};
+
+  if (!state.items.length && !orderedKeys.some(k => k !== '')) {
+    // Only the primary account, and it returned nothing.
+    if (!accountStatus['']) return `<div class="settings-sub">No calendars found.</div>`;
+  }
 
   const groupHtml = orderedKeys.map(key => {
     const items = groups.get(key) || [];
-    if (!items.length) return '';
     const isPrimary = key === '';
+    // A truthy status = the calendar-list fetch failed for this account
+    // (no_token / api_* / fetch_failed) → almost always an expired token.
+    const failed = !!accountStatus[key] || (items.length === 0);
     const headerLabel = isPrimary ? 'Primary account' : escapeHtml(key);
+    const reconnectBtn = failed ? `
+      <button class="settings-btn-secondary" data-settings-action="reconnect-google" data-account-email="${escapeHtml(key)}" style="font-size:var(--fs-meta);padding:4px 8px;">Reconnect</button>
+    ` : '';
     const disconnectBtn = isPrimary ? '' : `
       <button class="settings-btn-secondary" data-settings-action="unlink-google" data-account-email="${escapeHtml(key)}" style="font-size:var(--fs-meta);padding:4px 8px;">Disconnect</button>
     `;
-    const rows = items.map(c => `
-      <label class="settings-tab-row" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
-        <input type="checkbox" data-settings-action="toggle-calendar" data-cal-id="${escapeHtml(c.id)}" data-account-email="${escapeHtml(c.account_email || '')}" ${c.enabled ? 'checked' : ''}>
-        ${c.color_hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(c.color_hex)};flex-shrink:0;"></span>` : ''}
-        <span class="settings-tab-label" style="flex:1;min-width:0;">${escapeHtml(c.summary)}${c.primary ? ' <span class="settings-sub" style="display:inline">(primary)</span>' : ''}</span>
-      </label>
-    `).join('');
+    const body = items.length
+      ? items.map(c => `
+        <label class="settings-tab-row" style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+          <input type="checkbox" data-settings-action="toggle-calendar" data-cal-id="${escapeHtml(c.id)}" data-account-email="${escapeHtml(c.account_email || '')}" ${c.enabled ? 'checked' : ''}>
+          ${c.color_hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(c.color_hex)};flex-shrink:0;"></span>` : ''}
+          <span class="settings-tab-label" style="flex:1;min-width:0;">${escapeHtml(c.summary)}${c.primary ? ' <span class="settings-sub" style="display:inline">(primary)</span>' : ''}</span>
+        </label>
+      `).join('')
+      : `<div class="settings-sub" style="margin:6px 0 2px;">Calendar access expired — reconnect to restore this account's calendars.</div>`;
     return `
       <div class="settings-cal-group" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--edge);">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
           <div class="settings-sub" style="margin:0;font-weight:600;color:var(--ink-2);">${headerLabel}</div>
-          ${disconnectBtn}
+          <div style="display:flex;gap:6px;">${reconnectBtn}${disconnectBtn}</div>
         </div>
-        ${rows}
+        ${body}
       </div>
     `;
   }).join('');

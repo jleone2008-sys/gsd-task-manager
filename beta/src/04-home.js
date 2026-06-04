@@ -538,18 +538,28 @@ function _fmtEventTime(ev) {
   return isNaN(d) ? '' : d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 function homeCalendarInnerHTML(events, expired) {
-  if (expired) {
-    return `<div class="home-empty">Connect Google Calendar to see today's events.</div>
-      <button class="home-cta" data-home-cta="settings">Connect Google Calendar →</button>`;
+  const hasEvents = events && events.length;
+  // `expired` means the Google grant lapsed (the app's OAuth screen is in
+  // Testing mode, so Google expires refresh tokens every ~7 days). The
+  // calendars ARE still connected — the token just needs a refresh — so we
+  // say "Reconnect", never "Connect", and we NEVER hide already-cached events
+  // behind the banner (the old bug). One-tap reconnect re-runs Google sign-in.
+  const reconnectBanner = expired
+    ? `<div class="home-empty">Google Calendar access expired — reconnect to refresh today's events.</div>
+       <button class="home-cta" data-home-cta="reconnect-google">Reconnect Google Calendar →</button>`
+    : '';
+  if (!hasEvents) {
+    return expired ? reconnectBanner : `<div class="home-empty">Nothing on the calendar today.</div>`;
   }
-  if (!events || !events.length) return `<div class="home-empty">Nothing on the calendar today.</div>`;
+  // Have events (possibly from cache): show them, with the reconnect banner
+  // above when the live refresh failed so the user knows they may be stale.
   // Mirror the journal's event-row affordance — tap to open the same
   // event metadata editor (relationship_tag, energy_after, notes).
   // Older synced events may lack `id`; those render non-clickable.
   // Tag + energy badges show when meta is on file (loaded by
   // hydrateHomeCalendar via loadCalendarEventMetaForEvents).
   const MOOD = ['😢','😔','😐','😊','🤩'];
-  return `<div class="home-item-list">${events.map(ev => {
+  return reconnectBanner + `<div class="home-item-list">${events.map(ev => {
     const meta = (ev.id && typeof journalState !== 'undefined')
       ? journalState.eventMeta?.get(ev.id)
       : null;
@@ -1172,6 +1182,14 @@ function homeWireOnce() {
       return;
     }
 
+    if (e.target.closest('[data-home-cta="reconnect-google"]')) {
+      // Re-run Google sign-in to re-capture a fresh refresh token for the
+      // primary account (resets the 7-day Testing-mode expiry). Linked
+      // accounts reconnect per-account from Settings → Connected calendars.
+      if (typeof signInWithGoogle === 'function') signInWithGoogle();
+      else switchTool('settings');
+      return;
+    }
     if (e.target.closest('[data-home-cta="settings"]')) { switchTool('settings'); return; }
     const go = e.target.closest('[data-home-go]');
     if (go) { switchTool(go.dataset.homeGo); return; }

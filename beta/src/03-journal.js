@@ -561,7 +561,20 @@ function jEventDeclined(e) {
 }
 
 async function fetchLiveCalendarEvents(dateStr) {
-  const pairs = await getEnabledCalendarIds();
+  const allPairs = await getEnabledCalendarIds();
+  // De-dup the same calendar enrolled under multiple accounts. A personal
+  // calendar subscribed into a work account shows up under BOTH accounts
+  // (same global calendar id), so without this it gets fetched twice and
+  // every event renders doubled. Fetch each calendar id once, preferring the
+  // primary account ('') as the source.
+  const chosenByCal = new Map();   // calendar_id -> pair
+  for (const p of allPairs) {
+    const prev = chosenByCal.get(p.id);
+    if (!prev || ((p.account_email || '') === '' && (prev.account_email || '') !== '')) {
+      chosenByCal.set(p.id, p);
+    }
+  }
+  const pairs = [...chosenByCal.values()];
   // Group by account_email so we fetch one access_token per account.
   const byAccount = new Map();
   for (const p of pairs) {
@@ -617,7 +630,15 @@ async function fetchLiveCalendarEvents(dateStr) {
     ));
     const allExpired = results.length > 0 && results.every(r => r.expired);
     const anyExpired = results.some(r => r.expired);
-    const events = results.flatMap(r => r.events);
+    const merged = results.flatMap(r => r.events);
+    // Drop duplicate event ids (same event surfaced from a shared calendar).
+    const _seenEv = new Set();
+    const events = merged.filter(ev => {
+      if (!ev.id) return true;
+      if (_seenEv.has(ev.id)) return false;
+      _seenEv.add(ev.id);
+      return true;
+    });
 
     if (allExpired && events.length === 0) {
       journalState.eventsError.set(dateStr, 'expired');
