@@ -27,6 +27,7 @@
 const { json, cors, preflight } = require('./lib/http');
 const { SUPABASE_URL }          = require('./lib/supabase');
 const { CLAUDE_MODEL }          = require('./lib/models');
+const crypto                    = require('crypto');
 const { HOUR_MS, DAY_MS }       = require('./lib/time');
 const { RECOVERY_STALE_HOURS }  = require('./lib/health');
 const {
@@ -90,7 +91,11 @@ const BANNED_PROSE_REGEX = new RegExp([
 const GREETING_PREFIX_REGEX = /^(Your\s+\w+\s+Brief\.?\s*|Good\s+(morning|afternoon|evening)\.?\s*|Brief:\s*)/i;
 
 // Defaults — overridable via env vars.
-const DEFAULT_MODEL       = CLAUDE_MODEL;
+// The brief intentionally uses the BEST model (Opus 4.8); now that the hourly
+// cron only regenerates on real input changes (fingerprint gate below), the
+// per-call quality matters more than raw call volume. BRIEF_MODEL env still
+// wins if set in Netlify — update it there too if it pins an older model.
+const DEFAULT_MODEL       = 'claude-opus-4-8';
 const DEFAULT_MAX_TOKENS  = 1500;
 const DEFAULT_TIMEZONE    = 'America/New_York';
 
@@ -160,22 +165,52 @@ exports.handler = async (event) => {
     // ── POST: generate (or regenerate) ────────────────────────────────────
     const body  = event.body ? JSON.parse(event.body) : {};
     const force = !!body.force;
+    // refresh_if_stale (used by the hourly cron): rebuild context — cheap, no
+    // API — and only call Claude when the brief's input claim set actually
+    // changed since the last generation. This is what collapses ~17 redundant
+    // hourly Claude calls/user/day down to the ~2–5 that say something new.
+    const refreshIfStale = !!body.refresh_if_stale;
     const date  = body.date || yesterdayLocal(user.timezone);
     const mode  = normalizeMode(body.mode, user.timezone);
 
-    // Idempotency: existing row (same date + mode) wins unless force=true
-    if (!force) {
-      const existing = await fetchBrief(user.user_id, date, mode, serviceKey);
-      if (existing) return cors(json(200, { ...existing, _from_cache: true }));
+    // One lookup of the existing (date, mode) row. force always regenerates, so
+    // it skips the read entirely.
+    const existing = force ? null : await fetchBrief(user.user_id, date, mode, serviceKey);
+
+    // Pure cache read (normal client load): an existing row wins outright — no
+    // context build, no API call.
+    if (!force && !refreshIfStale && existing) {
+      return cors(json(200, { ...existing, _from_cache: true }));
     }
 
     if (!anthropic) {
       const fallback = buildFallback({ reason: 'no_anthropic_key', mode });
-      const stored   = await storeBrief(user, date, mode, fallback, serviceKey);
+      const stored   = await storeBrief(user, date, mode, fallback, serviceKey, null);
       return cors(json(200, stored));
     }
 
     const ctx = await buildContext(user, date, mode, serviceKey);
+
+    // Fingerprint the model's inputs (the verified claim set + mode / cold-start
+    // / hero hint — exactly what callClaude feeds the model). Identical
+    // fingerprint ⇒ the brief would say the same thing.
+    let fingerprint = null;
+    try {
+      const claims = buildClaimSet(mode, ctx);
+      const n_sleep = ctx.baselines_30d?.n_days_sleep || 0;
+      const n_mood  = ctx.baselines_30d?.n_days_mood || 0;
+      const coldStart = Math.max(n_sleep, n_mood) < 14;
+      fingerprint = computeBriefFingerprint(mode, claims, coldStart, ctx.hero_hint);
+    } catch (e) {
+      console.warn('[daily-brief] fingerprint compute failed:', e.message);
+    }
+
+    // Staleness gate (cron path): inputs unchanged since last generation → serve
+    // the cached brief, no Claude call.
+    if (refreshIfStale && !force && existing && fingerprint
+        && existing.input_fingerprint && existing.input_fingerprint === fingerprint) {
+      return cors(json(200, { ...existing, _from_cache: true, _skipped_regen: true }));
+    }
 
     let result;
     try {
@@ -196,7 +231,11 @@ exports.handler = async (event) => {
         : 'oura_data_stale_at_generation';
     }
 
-    const stored = await storeBrief(user, date, mode, result, serviceKey);
+    // Only persist the fingerprint on a genuine AI generation. A fallback row
+    // (no key / Claude error) keeps a null fingerprint so the next tick always
+    // retries instead of getting stuck on the fallback.
+    const fpToStore = (result.status === 'fallback') ? null : fingerprint;
+    const stored = await storeBrief(user, date, mode, result, serviceKey, fpToStore);
     // Phase 10 — record action outcome stubs for any recognized
     // recommendations in this brief. Fire-and-forget so a stub-insert
     // hiccup doesn't fail the brief response. cron-evaluate-actions.js
@@ -326,7 +365,7 @@ async function resolveUser({ email, user_id }, serviceKey) {
 async function fetchBrief(user_id, brief_date, mode, serviceKey) {
   const url = `${SUPABASE_URL}/rest/v1/daily_briefs`
     + `?user_id=eq.${user_id}&brief_date=eq.${brief_date}&mode=eq.${mode}`
-    + `&select=id,brief_date,generated_at,model,mode,structured,tldr,narrative,highlights,actions,confidence,status,fallback_reason`;
+    + `&select=id,brief_date,generated_at,model,mode,structured,tldr,narrative,highlights,actions,confidence,status,fallback_reason,input_fingerprint`;
   const r = await fetch(url, { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } });
   const rows = await r.json();
   return Array.isArray(rows) && rows.length ? rows[0] : null;
@@ -1318,8 +1357,23 @@ function buildFallback({ reason, context, mode }) {
   };
 }
 
+// Stable hash of the model's inputs. The brief's prose is written ONLY from the
+// verified claim set (lib/brief-claims.js), so identical claims (+ mode /
+// cold-start / hero hint) ⇒ an identical brief. Weather/stat blocks are built
+// deterministically server-side and aren't part of the claims, so volatile
+// noise (temperatures, the clock) can't churn the fingerprint.
+function computeBriefFingerprint(mode, claims, coldStart, heroHint) {
+  const payload = JSON.stringify({
+    mode,
+    coldStart: !!coldStart,
+    heroHint:  heroHint || null,
+    claims,
+  });
+  return crypto.createHash('sha256').update(payload).digest('hex');
+}
+
 // ── Store ─────────────────────────────────────────────────────────────────
-async function storeBrief(user, brief_date, mode, result, serviceKey) {
+async function storeBrief(user, brief_date, mode, result, serviceKey, fingerprint) {
   const row = {
     user_id:           user.user_id,
     brief_date:        brief_date,
@@ -1337,6 +1391,7 @@ async function storeBrief(user, brief_date, mode, result, serviceKey) {
     status:            result.status,
     fallback_reason:   result.fallback_reason,
     input_snapshot:    result.input_snapshot,
+    input_fingerprint: fingerprint || null,
   };
   // on_conflict targets the (user_id, brief_date, mode) UNIQUE introduced in
   // daily_briefs_structured.sql (Phase 1.7).

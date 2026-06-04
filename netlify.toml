@@ -64,10 +64,15 @@
 #   INTERNAL_FN_SECRET      Shared secret for function-to-function auth
 #                           (already set; reused from cron-health-sync)
 # Optional env vars:
-#   BRIEF_MODEL             Model ID (default: claude-opus-4-7).
+#   BRIEF_MODEL             Model ID (default: claude-opus-4-8 — best model;
+#                           the hourly tick now only calls Claude when the
+#                           brief's inputs actually changed, so quality per
+#                           call matters more than volume).
 #                           Set to claude-sonnet-4-6 for ~5x cheaper briefs
 #                           if quality holds for your use case.
 #   BRIEF_MAX_TOKENS        Max output tokens for each brief (default: 1500).
+# NOTE: the tick stays hourly, but each call sends refresh_if_stale — Claude
+# runs only when the input claim-set fingerprint changed (≈2-5 gens/user/day).
 [functions."cron-daily-brief"]
   schedule = "0 * * * *"
 

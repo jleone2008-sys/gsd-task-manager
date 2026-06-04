@@ -16,10 +16,13 @@
 // filters per user by local hour, so a user in PT sees their first tick at
 // ~06:00 local and their last at ~22:00 local.
 //
-// Cost: ~16 ticks/day × ~$0.02 Opus ≈ $0.32/user/day. Acceptable for the
-// private circle. If user count grows, gate regen on "underlying data
-// changed enough to warrant it" (new Oura row, journal write, >2 tasks
-// completed since last tick).
+// Cost: the cron still TICKS hourly (06-22 local), but each tick now sends
+// refresh_if_stale — beta-daily-brief.js fingerprints the input claim set and
+// only calls Claude when those inputs actually changed. So a day costs ~2-5
+// Claude generations/user (morning gen + evening gen + a regen when recovery
+// lands or tasks/mood move), not ~17. Unchanged ticks return _from_cache with
+// no API call. The "underlying data changed enough to warrant it" gate this
+// header used to flag as future work is now implemented.
 //
 // Gating: today this iterates user_profiles rows. Phase 3 of the master
 // plan adds user_profiles.access_status; this function will then filter to
@@ -111,13 +114,16 @@ exports.handler = async () => {
         // evening), matching the client-side detection used in the UI so
         // cron and on-demand always land on the same row per mode.
         //
-        // force=true overrides the per-row idempotency cache so each hourly
-        // tick refreshes the AI text fields against the latest data. The
-        // (user_id, brief_date, mode) row is upserted in place — no growth.
+        // refresh_if_stale (NOT force): the generator rebuilds context cheaply
+        // and only calls Claude when the brief's input claim-set fingerprint
+        // changed since the last generation. Identical inputs → cache hit, no
+        // API call. This is what kills the redundant hourly regenerations — a
+        // tick now costs an API call only when the day's facts actually moved
+        // (recovery synced, tasks/mood/calendar changed, mode flipped).
         body: JSON.stringify({
-          user_email: u.email,
-          user_id:    u.supabase_user_id,
-          force:      true,
+          user_email:      u.email,
+          user_id:         u.supabase_user_id,
+          refresh_if_stale: true,
         }),
       });
       const j = await r.json().catch(() => ({}));
