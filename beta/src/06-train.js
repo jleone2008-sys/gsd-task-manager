@@ -295,6 +295,14 @@ function trainWireOnce() {
       trainSaveDraft();
       return;
     }
+    if (action === 'log-date') {
+      // Planned (non-bonus) session: choose the date it records under, so a
+      // make-up workout tracks on the day actually performed.
+      _trainTodayState.logDate = actionEl.dataset.date;
+      renderTrain();
+      trainSaveDraft();
+      return;
+    }
     if (action === 'bonus-modality') {
       _trainTodayState.bonusModality = actionEl.dataset.modality;
       renderTrain();
@@ -1317,6 +1325,12 @@ const _trainTodayState = {
                               //   being logged for (defaults to today; the
                               //   date picker allows the last 7 days for
                               //   backfilling a missed entry)
+  logDate:     null,          // for PLANNED (non-bonus) sessions: the date the
+                              //   session is recorded under. Defaults to today
+                              //   so a make-up workout (e.g. Thursday's lift
+                              //   done Friday) tracks on the day it was actually
+                              //   performed. User-overridable via the "Logging
+                              //   for" picker (today + last 6 days).
   day:         null,          // plan.day_template entry for selectedDow (or null for bonus)
   // Per-exercise set entries: { [exerciseName]: [{ weight: '', reps: '', done: false }, ...] }
   liftSets:    {},
@@ -1369,6 +1383,7 @@ function trainSaveDraft() {
       selectedDow:    st.selectedDow,
       isBonus:        st.isBonus,
       bonusDate:      st.bonusDate,
+      logDate:        st.logDate,
       liftSets:       st.liftSets,
       cardio:         st.cardio,
       bonusModality:  st.bonusModality,
@@ -1432,6 +1447,7 @@ function ensureTrainTodayInit() {
   _trainTodayState.initialized = true;
   _trainTodayState.date = today;
   _trainTodayState.bonusDate = today;
+  _trainTodayState.logDate = today;
   _trainTodayState.selectedDow = dow;
   _trainTodayState.isBonus = false;
   _trainTodayState.day = trainFindDay(dow);
@@ -1454,6 +1470,7 @@ function ensureTrainTodayInit() {
     _trainTodayState.selectedDow   = draft.selectedDow   || dow;
     _trainTodayState.isBonus       = !!draft.isBonus;
     _trainTodayState.bonusDate     = draft.bonusDate || today;
+    _trainTodayState.logDate       = draft.logDate || today;
     _trainTodayState.day           = trainFindDay(_trainTodayState.selectedDow);
     // Re-seed sets from the selected day's plan first so a renamed /
     // re-ordered template doesn't strand legacy exercise names, then
@@ -2142,7 +2159,28 @@ function renderTodayFooter(st) {
     </button>`).join('');
   // Live totals
   const totals = trainComputeLiveTotals(st);
+
+  // "Logging for" date picker — PLANNED sessions only (bonus has its own date
+  // row in its body). Defaults to today; lets the user record a make-up workout
+  // under the day they actually did it (today + last 6 days). Only shown for a
+  // real prescribed session (not rest / no-day).
+  let logDateHtml = '';
+  if (!st.isBonus && st.day && st.day.type !== 'rest') {
+    const today   = st.date;
+    const logDate = st.logDate || today;
+    const pills = [];
+    for (let i = 0; i < 7; i++) {
+      const d = trainShiftDate(today, -i);
+      pills.push(`<button class="bonus-date-pill ${logDate === d ? 'is-active' : ''}" data-train-action="log-date" data-date="${d}">${trainEsc(trainDateLabel(d, today))}</button>`);
+    }
+    logDateHtml = `<div class="when-what-card" style="margin-bottom:12px">
+      <div class="when-what-label">Logging for</div>
+      <div class="bonus-date-row">${pills.join('')}</div>
+    </div>`;
+  }
+
   return `<div class="train-session-footer">
+    ${logDateHtml}
     <div class="train-footer-label">Session notes</div>
     <textarea class="train-notes-input" placeholder="How did it go? PRs, anything felt off?" data-train-action="notes">${trainEsc(st.notes)}</textarea>
     <div class="train-feel-block">
@@ -2426,9 +2464,10 @@ async function trainSubmitTodaySession() {
       : (st.day?.name || '');
     const dayType = st.isBonus ? 'bonus' : (st.day?.type || 'lift');
 
-    // Bonus sessions can backfill the last 7 days; planned-day sessions
-    // always use today's date.
-    const sessionDate = st.isBonus ? (st.bonusDate || st.date) : st.date;
+    // Bonus sessions backfill via bonusDate; planned sessions use the "Logging
+    // for" date (logDate, default today) so a make-up workout records under the
+    // day it was actually performed rather than the prescribed day.
+    const sessionDate = st.isBonus ? (st.bonusDate || st.date) : (st.logDate || st.date);
     const sessionInsert = {
       user_id:       currentUser.id,
       plan_id:       _trainState.activePlan?.id || null,
@@ -2540,6 +2579,8 @@ async function trainSubmitTodaySession() {
     // call don't create duplicates or overwrite anything.
     autoMarkLinkedHabitsForSession(session)
       .catch(err => console.warn('[train] auto-mark habits failed', err));
+    // Reset the make-up log date so the next session defaults back to today.
+    st.logDate = st.date;
     st.submitting = false;
     renderTrain();
     // Refresh the last-session cache so the next session's render uses
