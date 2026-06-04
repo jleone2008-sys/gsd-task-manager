@@ -779,16 +779,13 @@ document.addEventListener('click', e => {
   else if (action === 'link-google') {
     if (typeof linkGoogleAccount === 'function') linkGoogleAccount();
   } else if (action === 'reconnect-google') {
-    // Re-grant Google access for one account whose token expired (Testing-mode
-    // refresh tokens lapse ~every 7 days). Primary ('') re-runs the full Google
-    // sign-in; a linked account re-runs the link flow (chooser lets the user
-    // re-pick that same account to refresh its stored refresh token).
+    // Re-grant Google access for ONE account whose token expired (Testing-mode
+    // refresh tokens lapse ~weekly). Routes through reconnectGoogleAccount,
+    // which only refreshes the stored token and never mints a session — so the
+    // primary/logged-in account can't be switched. Empty email = the primary
+    // group → reconnectGoogleAccount pins to the signed-in account's email.
     const email = e.target.closest('[data-settings-action="reconnect-google"]')?.dataset.accountEmail || '';
-    if (email) {
-      if (typeof linkGoogleAccount === 'function') linkGoogleAccount();
-    } else {
-      if (typeof signInWithGoogle === 'function') signInWithGoogle();
-    }
+    if (typeof reconnectGoogleAccount === 'function') reconnectGoogleAccount(email);
   } else if (action === 'unlink-google') {
     const email = e.target.closest('[data-settings-action="unlink-google"]')?.dataset.accountEmail;
     if (email) unlinkGoogleAccount(email);

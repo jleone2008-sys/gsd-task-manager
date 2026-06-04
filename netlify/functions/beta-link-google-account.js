@@ -84,21 +84,50 @@ exports.handler = async (event) => {
   const displayName = payload?.name || null;
   if (!linkedEmail) return redirect('/app#link_error=no_email_in_id_token');
 
-  // Block linking a user's primary signed-in account — that account
-  // already has its refresh_token stored on user_profiles.
+  // Determine the user's PRIMARY signed-in email so we can route this consent:
+  //   - consented email == primary  → refresh the primary's Google token on
+  //     user_profiles (a RECONNECT). This branch NEVER mints a Supabase
+  //     session, so the logged-in/primary account can never be switched.
+  //   - consented email != primary  → store as a secondary linked account.
+  let primaryEmail = null;
   try {
     const primRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${state}`, apikey: serviceKey },
     });
     const primData = await primRes.json();
-    if (primData?.email && primData.email.toLowerCase() === linkedEmail.toLowerCase()) {
-      return redirect(`/app#link_error=${encodeURIComponent('same_as_primary')}`);
-    }
+    primaryEmail = primData?.email || null;
   } catch (_) { /* non-fatal */ }
 
   const encrypted = encryptToken(tokens.refresh_token, encKey);
+  const isPrimaryReconnect = primaryEmail
+    && primaryEmail.toLowerCase() === linkedEmail.toLowerCase();
 
-  // Upsert into linked_google_accounts (service role bypasses RLS).
+  if (isPrimaryReconnect) {
+    // Refresh ONLY the primary's stored Google refresh token. No session is
+    // created — the user stays signed in as exactly who they already are.
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/user_profiles`, {
+        method: 'POST',
+        headers: upsertHeaders(serviceKey),
+        body: JSON.stringify({
+          email:                    primaryEmail,
+          google_refresh_token_enc: encrypted,
+          updated_at:               new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('beta-link-google-account: primary reconnect upsert failed', res.status, text);
+        return redirect('/app#link_error=storage_failed');
+      }
+    } catch (err) {
+      console.error('beta-link-google-account: primary reconnect exception', err);
+      return redirect('/app#link_error=storage_failed');
+    }
+    return redirect(`/app#reconnected=${encodeURIComponent(primaryEmail)}`);
+  }
+
+  // Secondary account → linked_google_accounts (service role bypasses RLS).
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/linked_google_accounts`, {
       method: 'POST',

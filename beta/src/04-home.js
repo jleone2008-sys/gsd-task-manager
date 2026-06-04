@@ -1183,10 +1183,11 @@ function homeWireOnce() {
     }
 
     if (e.target.closest('[data-home-cta="reconnect-google"]')) {
-      // Re-run Google sign-in to re-capture a fresh refresh token for the
-      // primary account (resets the 7-day Testing-mode expiry). Linked
-      // accounts reconnect per-account from Settings → Connected calendars.
-      if (typeof signInWithGoogle === 'function') signInWithGoogle();
+      // Refresh the PRIMARY (signed-in) account's Google token. Routes through
+      // reconnectGoogleAccount (link proxy, no session minted) so it can NEVER
+      // switch the logged-in account. Empty arg → pins to the session email.
+      // Per-account reconnect for linked accounts lives in Settings.
+      if (typeof reconnectGoogleAccount === 'function') reconnectGoogleAccount('');
       else switchTool('settings');
       return;
     }

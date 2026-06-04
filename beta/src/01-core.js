@@ -295,6 +295,45 @@ async function linkGoogleAccount() {
   }
 }
 
+/* ── BETA: RECONNECT a Google account whose token expired (Testing-mode
+   refresh tokens lapse ~weekly). CRITICAL: this routes through the LINK
+   proxy (beta-link-google-account), NOT signInWithGoogle — so it only
+   refreshes the stored refresh token and NEVER mints a Supabase session.
+   That makes it impossible to switch/lose the logged-in account.
+   `login_hint` pins the Google account chooser to `targetEmail` so the
+   user can't accidentally consent with a different account. If the
+   consented email == the primary signed-in email, the server refreshes
+   user_profiles (primary reconnect); otherwise it refreshes the linked
+   account row. ── */
+async function reconnectGoogleAccount(targetEmail) {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.access_token) {
+      if (typeof showToast === 'function') showToast('Sign in first', 'offline');
+      return;
+    }
+    const params = new URLSearchParams({
+      client_id:     BETA_GOOGLE_CLIENT_ID,
+      redirect_uri:  window.location.origin + '/.netlify/functions/beta-link-google-account',
+      response_type: 'code',
+      scope: [
+        'openid', 'email', 'profile',
+        'https://www.googleapis.com/auth/calendar.readonly',
+      ].join(' '),
+      access_type:    'offline',
+      prompt:         'consent',          // re-grant offline access (no select_account → no accidental switch)
+      include_granted_scopes: 'false',
+      state:          session.access_token,
+    });
+    const hint = targetEmail || session.user?.email || '';
+    if (hint) params.set('login_hint', hint);
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+  } catch (e) {
+    console.warn('[reconnect-google] failed to initiate', e);
+    if (typeof showToast === 'function') showToast('Could not start reconnect', 'offline');
+  }
+}
+
 /* ── BETA: Handle the post-link redirect (#linked=email or
    #link_error=...). Shows a toast and re-renders the settings page
    so the new account appears. ── */
@@ -302,8 +341,9 @@ function handleLinkGoogleCallback() {
   if (!location.hash) return false;
   const params = new URLSearchParams(location.hash.slice(1));
   const linked = params.get('linked');
+  const reconnected = params.get('reconnected');
   const err    = params.get('link_error');
-  if (!linked && !err) return false;
+  if (!linked && !reconnected && !err) return false;
   history.replaceState(null, '', location.pathname);
   if (err) {
     const friendly = err === 'same_as_primary'
@@ -312,8 +352,17 @@ function handleLinkGoogleCallback() {
     if (typeof showToast === 'function') showToast(friendly, 'offline');
     return true;
   }
-  if (typeof showToast === 'function') showToast(`Linked ${linked}`, 'ok');
-  // Refresh settings panel + journal calendar cache so toggles appear.
+  const who = linked || reconnected;
+  if (typeof showToast === 'function') {
+    showToast(reconnected ? `Reconnected ${who}` : `Linked ${who}`, 'ok');
+  }
+  // Drop cached calendar state so the refreshed token is used on next fetch.
+  if (typeof journalState !== 'undefined' && journalState?.calendarEvents) {
+    journalState.calendarEvents.clear();
+    journalState.enabledCalendarIds = null;
+    if (journalState.eventsError) journalState.eventsError.clear();
+  }
+  // Refresh settings panel + connected-calendars list so toggles/status update.
   if (typeof loadConnectedCalendars === 'function') {
     loadConnectedCalendars().then(() => {
       if (typeof renderSettingsPage === 'function' && typeof activeTool !== 'undefined' && activeTool === 'settings') {
@@ -321,9 +370,9 @@ function handleLinkGoogleCallback() {
       }
     });
   }
-  if (typeof journalState !== 'undefined' && journalState?.calendarEvents) {
-    journalState.calendarEvents.clear();
-    journalState.enabledCalendarIds = null;
+  // If we're on Home, re-pull today's events now that the token is fresh.
+  if (typeof hydrateHomeCalendar === 'function' && typeof activeTool !== 'undefined' && activeTool === 'home') {
+    hydrateHomeCalendar();
   }
   return true;
 }
