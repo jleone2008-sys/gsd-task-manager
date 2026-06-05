@@ -130,6 +130,7 @@ Resolved:
 - Phase 2 gates: **n≥12, |r|≥0.4, p≤0.01** (p tightened from 0.05 to limit false positives across ~60 pairwise tests).
 - Brief prefers **actionable** patterns (involves a behavior signal) over stronger pure-physiology ones; fetch limit **12**.
 - Sweep coexists with the AI synthesis (tagged `metadata.source='sweep'`, keyed by `sweep_key`); no detection logic handed to AI.
+- **Sweep is behavioral-only** (2026-06-05 adjustment): every swept pair involves a behavior signal — pure within-physiology couplings (body-temp ↔ HRV/RHR, sleep ↔ readiness/HRV) were REMOVED because the AI synthesis already finds/narrates those and the sweep was duplicating them (Joe spotted 3-of-6 patterns were body-temp variants). This guarantees no AI overlap by construction. The 2 duplicate orphan rows from the audit were deleted.
 
 Remaining open (non-blocking, future):
 - Repetition control: the brief surfaces the single best pattern (may repeat day-to-day). Add rotation / "don't repeat within K days" if it feels stale.

@@ -119,13 +119,13 @@ function buildPairList() {
   for (const b of beh) for (const p of phys) push(b, p, 0);
   // same-day behavior × behavior, but only vs mood (the outcome that matters)
   for (const b of beh) push(b, 'mood', 0);
-  // curated within-physiology (the clinically real couplings)
-  push('body_temp', 'hrv', 0);
-  push('body_temp', 'rhr', 0);
+  // NOTE: pure within-physiology couplings (e.g. body-temp ↔ HRV/RHR) are
+  // DELIBERATELY NOT swept — the AI weekly synthesis already finds and narrates
+  // those, and sweeping them duplicated its patterns. The sweep's lane is
+  // ACTIONABLE behavioral patterns the AI misses (every pair below involves a
+  // behavior signal, so it can't collide with the AI's physiology patterns).
   // directional lagged (today → tomorrow)
   push('sleep_dur', 'mood', 1);
-  push('sleep_dur', 'readiness', 1);
-  push('sleep_dur', 'hrv', 1);
   push('workout', 'hrv', 1);
   push('workout', 'rhr', 1);
   push('workout', 'readiness', 1);
