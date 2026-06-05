@@ -560,21 +560,36 @@ function jEventDeclined(e) {
   return atts.some(a => a && a.self && a.responseStatus === 'declined');
 }
 
-async function fetchLiveCalendarEvents(dateStr) {
-  const allPairs = await getEnabledCalendarIds();
-  // De-dup the same calendar enrolled under multiple accounts. A personal
-  // calendar subscribed into a work account shows up under BOTH accounts
-  // (same global calendar id), so without this it gets fetched twice and
-  // every event renders doubled. Fetch each calendar id once, preferring the
-  // primary account ('') as the source.
-  const chosenByCal = new Map();   // calendar_id -> pair
-  for (const p of allPairs) {
-    const prev = chosenByCal.get(p.id);
+// De-dup enabled (calendar, account) pairs so a calendar enrolled under
+// multiple accounts (e.g. a personal calendar subscribed into a work account —
+// same global calendar id) is fetched ONCE, preferring the primary account
+// ('') as the source. Without this every event on that calendar renders twice.
+// Shared by BOTH calendar fetch paths (single-date live + history sync).
+function dedupCalendarPairs(pairs) {
+  const chosen = new Map();   // calendar_id -> pair
+  for (const p of (pairs || [])) {
+    const prev = chosen.get(p.id);
     if (!prev || ((p.account_email || '') === '' && (prev.account_email || '') !== '')) {
-      chosenByCal.set(p.id, p);
+      chosen.set(p.id, p);
     }
   }
-  const pairs = [...chosenByCal.values()];
+  return [...chosen.values()];
+}
+
+// Backstop: drop duplicate event ids from a merged list (same event surfaced
+// from a calendar shared across accounts). Events without an id pass through.
+function dedupEventsById(events) {
+  const seen = new Set();
+  return (events || []).filter(ev => {
+    if (!ev || !ev.id) return true;
+    if (seen.has(ev.id)) return false;
+    seen.add(ev.id);
+    return true;
+  });
+}
+
+async function fetchLiveCalendarEvents(dateStr) {
+  const pairs = dedupCalendarPairs(await getEnabledCalendarIds());
   // Group by account_email so we fetch one access_token per account.
   const byAccount = new Map();
   for (const p of pairs) {
@@ -630,15 +645,7 @@ async function fetchLiveCalendarEvents(dateStr) {
     ));
     const allExpired = results.length > 0 && results.every(r => r.expired);
     const anyExpired = results.some(r => r.expired);
-    const merged = results.flatMap(r => r.events);
-    // Drop duplicate event ids (same event surfaced from a shared calendar).
-    const _seenEv = new Set();
-    const events = merged.filter(ev => {
-      if (!ev.id) return true;
-      if (_seenEv.has(ev.id)) return false;
-      _seenEv.add(ev.id);
-      return true;
-    });
+    const events = dedupEventsById(results.flatMap(r => r.events));
 
     if (allExpired && events.length === 0) {
       journalState.eventsError.set(dateStr, 'expired');
@@ -726,7 +733,10 @@ async function syncCalendarHistory() {
       const signupAt = currentUser?.created_at ? new Date(currentUser.created_at) : oneYearAgo;
       start = signupAt > oneYearAgo ? signupAt : oneYearAgo;
     }
-    const pairs = await getEnabledCalendarIds();
+    // De-dup so a calendar enrolled under multiple accounts is pulled once
+    // (preferring primary) — otherwise its events get written to the cache
+    // twice and render doubled. Mirrors fetchLiveCalendarEvents.
+    const pairs = dedupCalendarPairs(await getEnabledCalendarIds());
 
     // Iterate enabled (calendar, account) pairs; merge events from each
     // into a single by-date map. One failure is logged and skipped so
@@ -796,8 +806,10 @@ async function syncCalendarHistory() {
         accountEmail: ev._accountEmail || '',
       });
     }
-    // Stable chronological sort within each date (timed first, all-day after).
+    // De-dup by event id (backstop) + stable chronological sort within each
+    // date (timed first, all-day after).
     for (const k of Object.keys(byDate)) {
+      byDate[k] = dedupEventsById(byDate[k]);
       byDate[k].sort((a, b) => {
         if (a.isAllDay && !b.isAllDay) return 1;
         if (!a.isAllDay && b.isAllDay) return -1;
