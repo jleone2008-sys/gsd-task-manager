@@ -112,12 +112,27 @@ Pattern *detection* is an agentic Opus loop (`beta-weekly-synthesis-background.j
 
 **Phase 1 acceptance criteria — audited:** ✅ non-null deterministic insight for a ≥0.5 pattern with zero AI (tool has no `insight` field) · ✅ null when nothing qualifies · ✅ pure standalone-tested selector · ✅ verified vs real data · ✅ fingerprint includes pattern sig · ✅ insight exempt from no-numbers/claim validation. ⏳ live brief still generates correctly = post-deploy check (insight not in tool `required`, syntax clean — high confidence).
 
-**Phase 2 — deterministic sweep** — [ ] (not started)
-**Phase 3 — template library** — [ ] (not started)
+**Phase 2 — deterministic sweep** — DONE
+- [x] `lib/pattern-sweep.js` — Pearson + proper Student-t p-value (incomplete-beta; verified r=0.5,n=20→p=0.0248), pairing with lag, curated cross-domain + lagged pair list, `sweep()` gated by n≥12 / |r|≥0.4 / **p≤0.01** (tightened from 0.05 to control multiple-comparisons across ~60 tests), tags each pattern `actionable` (involves a behavior signal).
+- [x] `lib/pattern-templates.js` — signal phrasing library + `renderPattern()` → clean number-free line ("On days you {cond}, your {next-day }{outcome} tends to be {higher|lower}.").
+- [x] `beta-pattern-sweep.js` — function: pulls 60d of 15 signals (Oura by user_email; mood/habits/workout/weight/calendar by user_id; binary/count signals filled with 0), runs `sweep()`, upserts to `patterns_discovered` (source='sweep', deduped by `metadata.sweep_key`, respects dismissals).
+- [x] `cron-weekly-synthesis.js` — fires the sweep per user alongside the AI synthesis (X-Internal-Auth). No new cron / netlify.toml change.
+- [x] Selector improvement: prefer **actionable** patterns then strength; `MIN_STRENGTH` 0.5→0.4 (aligned to sweep gate; p≤0.01 already guarantees significance); brief fetch limit 6→12.
+- [x] **Self-audit vs real data** (`scripts/pattern-sweep-audit.mjs`): on jleone2008's 60d it discovered the body-temp↔HRV/RHR couplings AND a behavioral one — *"On days you complete more habits, your step count tends to be higher"* (r=0.42, n=45, p≤0.01) — the AI synthesis had missed it. Wrote the 3 sweep patterns; confirmed the real stored patterns → selector → brief line = the actionable habits→steps sentence.
+
+**Phase 3 — template library** — DONE (built with Phase 2 as `lib/pattern-templates.js`; sweep writes `metadata.brief_line`, which the Phase-1 selector already prefers).
 
 ---
 
-## Part F — Open decisions
-- `MIN_STRENGTH` = 0.5 for Phase 1 (tune later).
-- Repetition control: Phase 1 surfaces the single strongest pattern (may repeat day-to-day). If it feels stale, add rotation/"don't repeat within K days" — deferred, noted here.
-- Phase 2 `N_MIN` / p-value exact values — TBD when building Phase 2.
+## Part F — decisions (resolved) + remaining open items
+Resolved:
+- `MIN_STRENGTH` = **0.4** (was 0.5) — aligned to the sweep's |r| gate; p≤0.01 already guarantees significance.
+- Phase 2 gates: **n≥12, |r|≥0.4, p≤0.01** (p tightened from 0.05 to limit false positives across ~60 pairwise tests).
+- Brief prefers **actionable** patterns (involves a behavior signal) over stronger pure-physiology ones; fetch limit **12**.
+- Sweep coexists with the AI synthesis (tagged `metadata.source='sweep'`, keyed by `sweep_key`); no detection logic handed to AI.
+
+Remaining open (non-blocking, future):
+- Repetition control: the brief surfaces the single best pattern (may repeat day-to-day). Add rotation / "don't repeat within K days" if it feels stale.
+- Crowd-out at scale: if a user accrues >12 strong patterns, a weak-but-actionable one could fall outside the fetch. Mitigation if needed: a dedicated "best actionable" fetch alongside the strongest-N.
+- Stale sweep patterns: the sweep upserts found patterns but doesn't fade ones that drop below threshold. Add a decay/cleanup pass later.
+- Phase 4 candidate: audit other AI surfaces (train feedback, brief recap, weekly-synthesis gating) for the same "AI gating a deterministic decision" anti-pattern.

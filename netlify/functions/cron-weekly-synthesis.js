@@ -15,6 +15,7 @@ const { SUPABASE_URL } = require('./lib/supabase');
 exports.handler = async (event) => {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   const cronSecret = process.env.CRON_SECRET;
+  const internalSecret = process.env.INTERNAL_FN_SECRET;   // for the deterministic pattern sweep
   if (!serviceKey) return json(500, { error: 'server_misconfigured', detail: 'SUPABASE_SERVICE_KEY' });
   if (!cronSecret) return json(500, { error: 'server_misconfigured', detail: 'CRON_SECRET' });
 
@@ -62,7 +63,24 @@ exports.handler = async (event) => {
           week_start_date: weekStart,
         }),
       });
-      results.push({ user: u.supabase_user_id, status: res.status });
+      // Also run the DETERMINISTIC pattern sweep (Phase 2 — formulaic, no AI,
+      // cheap). Complements the agentic synthesis: it systematically tests
+      // signal-pairs and upserts gated, templated patterns. Best-effort.
+      let sweepStatus = null;
+      if (internalSecret) {
+        try {
+          const sres = await fetch(`${siteUrl}/.netlify/functions/beta-pattern-sweep`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': internalSecret },
+            body: JSON.stringify({ user_id: u.supabase_user_id, user_email: u.email }),
+          });
+          sweepStatus = sres.status;
+        } catch (e) {
+          console.warn(`[cron-weekly] sweep ${u.supabase_user_id} failed:`, e.message);
+          sweepStatus = 'error';
+        }
+      }
+      results.push({ user: u.supabase_user_id, status: res.status, sweep: sweepStatus });
     } catch (e) {
       console.warn(`[cron-weekly] user ${u.supabase_user_id} trigger failed:`, e.message);
       results.push({ user: u.supabase_user_id, error: e.message });

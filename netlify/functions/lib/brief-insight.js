@@ -13,7 +13,10 @@
 
 'use strict';
 
-const MIN_STRENGTH = 0.5;   // surface only reasonably-confident patterns
+// Aligned with the sweep's |r| gate. The sweep also enforces p ≤ 0.01, so a
+// stored pattern at |r| ≥ 0.4 is already statistically real (a moderate, honest
+// "tends to be" effect) — no need for a higher second bar here.
+const MIN_STRENGTH = 0.4;
 const MAX_LEN      = 140;
 
 function softTruncate(s, n) {
@@ -28,12 +31,19 @@ function selectPatternInsight(ctx) {
   const patterns = (ctx && Array.isArray(ctx.recent_patterns)) ? ctx.recent_patterns : [];
   if (!patterns.length) return null;
 
-  // recent_patterns is already non-dismissed + strength-desc (nulls last), so
-  // the first one clearing the bar is the strongest. A null strength is allowed
-  // (binary/streak patterns may omit it); we just require a renderable string.
-  const pick = patterns.find(p =>
-    p && (p.strength == null || Number(p.strength) >= MIN_STRENGTH) && (p.label || (p.metadata && p.metadata.brief_line))
-  );
+  // Qualify (≥ MIN_STRENGTH, or null strength for binary/streak patterns) +
+  // renderable. Then rank: ACTIONABLE patterns first (they involve a behavior
+  // the user can change — more useful than a pure-physiology observation),
+  // then strongest. Pure-physiology couplings are the fallback, not the lead.
+  const qualifies = p => p &&
+    (p.strength == null || Number(p.strength) >= MIN_STRENGTH) &&
+    (p.label || (p.metadata && p.metadata.brief_line));
+  const pick = patterns.filter(qualifies).slice().sort((a, b) => {
+    const aAct = (a.metadata && a.metadata.actionable) ? 1 : 0;
+    const bAct = (b.metadata && b.metadata.actionable) ? 1 : 0;
+    if (aAct !== bAct) return bAct - aAct;
+    return (Number(b.strength) || 0) - (Number(a.strength) || 0);
+  })[0];
   if (!pick) return null;
 
   // Prefer a clean templated line written at detection time (Phase 3), else the

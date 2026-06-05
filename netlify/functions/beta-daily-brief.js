@@ -723,7 +723,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   // insight line. Non-dismissed only, strongest first, capped to 3. Empty
   // during cold-start (no weekly run yet) — the insight line simply omits.
   const patternRowsRaw = await fetchJson(
-    `${SUPABASE_URL}/rest/v1/patterns_discovered?user_id=eq.${user.user_id}&dismissed_by_user=eq.false&select=label,description,strength_score,n,metadata&order=strength_score.desc.nullslast&limit=3`,
+    `${SUPABASE_URL}/rest/v1/patterns_discovered?user_id=eq.${user.user_id}&dismissed_by_user=eq.false&select=label,description,strength_score,n,metadata&order=strength_score.desc.nullslast&limit=12`,
     hdr,
   );
   const recent_patterns = (patternRowsRaw || []).map(p => ({
