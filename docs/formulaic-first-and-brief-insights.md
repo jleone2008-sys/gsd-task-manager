@@ -108,7 +108,7 @@ Pattern *detection* is an agentic Opus loop (`beta-weekly-synthesis-background.j
 - [x] `beta-daily-brief.js` — fetch `metadata`; set `insight` from selector; removed AI-insight parse/validate; removed `insight` from tool schema; added `patternSig` to fingerprint.
 - [x] `lib/brief-claims.js` — removed insight instruction + `[trend]` claim; excluded insight from `validateAgainstClaims`; fixed wording.
 - [x] Verify: standalone test of `selectPatternInsight` passed (real jleone2008 pattern → body-temp label non-null; weak/empty → null; `brief_line` override works; null-strength binary allowed). Render side already confirmed in mock. **Live full-generation verification is post-deploy** (next regen; fingerprint changed so all briefs regen once).
-- [ ] Update knowledge-bank changelog; commit; (ask before push).
+- [x] Update knowledge-bank changelog; commit (`6081f01`). ⏳ push pending user yes.
 
 **Phase 1 acceptance criteria — audited:** ✅ non-null deterministic insight for a ≥0.5 pattern with zero AI (tool has no `insight` field) · ✅ null when nothing qualifies · ✅ pure standalone-tested selector · ✅ verified vs real data · ✅ fingerprint includes pattern sig · ✅ insight exempt from no-numbers/claim validation. ⏳ live brief still generates correctly = post-deploy check (insight not in tool `required`, syntax clean — high confidence).
 
