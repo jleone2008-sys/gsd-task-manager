@@ -30,6 +30,14 @@ This doc folds the feature into GSD using what already exists (Oura → readines
 ### One UX guardrail — the Spent/Flat disambiguation
 Because Spent and Flat both read as "low" at tap-time, when the user taps either (or the predictor is torn between them), ask **one** follow-up: *"Did you just push hard / exert yourself?"* → Yes = **Spent** (rest), No = **Flat** (activate). This single question protects the most dangerous mis-route in the tool.
 
+### Flow — how it's actually captured (the honest answer)
+"Not selectable" was misleading. The real constraint: **the app cannot reliably distinguish "in flow" from "ignoring the tool" from "phone away, living life."** A long gap between check-ins is indistinguishable from a meeting, a nap, or disengagement — so we **never infer flow from silence**, and absence is **always neutral, never a failure** (no "you missed a check-in"). Flow is captured three honest ways instead:
+1. **Objective signal = a completed focus block.** The two-mode timer is the instrument: deliberately starting a focus block and riding it to completion *is* a logged deep-work/flow period. Behavior records it — no self-report needed.
+2. **Optional retro tag — only AFTER a block, never during.** On focus-block completion, a one-tap "Was that flow? what made it work?" logs the trigger ("no phone," "clear task," "morning"). This is the brief's "protect it + log what's working," moved to the non-interrupting moment.
+3. **A quiet "Locked in — log it" affordance** in the modal *if the user happens to open it* — log-only, **never offers an intervention**, effectively says "get back to it."
+
+So Flow is "selectable but log-only," and primarily *inferred from completed focus blocks*. The blind spot (flow with no timer running) stays a blind spot by design — that's the anti-engagement promise.
+
 **Frameworks behind this:** Russell's circumplex (arousal×valence), Yerkes–Dodson (both over- and under-arousal dysfunctional, opposite fixes), triple-network model (Salience switches DMN↔CEN), flow channel model (apathy quadrant = Flat), behavioral activation (evidence-based fix for low-reward states).
 
 ---
@@ -129,6 +137,27 @@ All mirror the existing mood-checkin pattern (same RLS, same Home wiring).
 - **Mode as a tracked chip** alongside sleep/protein/mood/alcohol (`🧠 mostly executive`).
 
 ---
+
+## 6b. Learning, insights & personalization (the long-term value)
+
+The raw loop is useful on day one, but the payoff compounds — and it plugs into machinery GSD already has: the **Insights/Patterns tab**, the **weekly-synthesis agent** (`beta-weekly-synthesis-background`, already does correlation/pattern detection with an n≥5 or |r|≥0.4 gate), and the **Phase-10 action-outcome evaluator** (`cron-evaluate-actions`, already scores whether brief recommendations worked over the following days). Mode efficacy reuses that same outcome-scoring spine.
+
+**What it learns**
+- **State clustering by time/day** — "Spent after 3pm (3rd time this week)," "Scattered every afternoon," and the #1 output "no real diffuse block before noon in 4 days."
+- **Personal intervention efficacy** — the Useful/OK/Didn't-help signal per (state × intervention) → learns *your* best tool per state (e.g. "sigh fixes your Wired ~80%; 5-4-3-2-1 ~30%").
+- **Predictor calibration** — predicted vs. confirmed state over time tunes the soft-prediction weights to you (maybe low readiness → Flat for you, not Spent).
+- **Flow triggers** — from the retro tags on completed focus blocks ("mornings, no phone, one clear task").
+- **Lever correlations** — tie mode to what GSD already tracks: "Wired mornings follow <6h sleep," "Flat days follow alcohol the night before," "Scattered drops on days you walked."
+
+**What it adjusts**
+1. **Re-ranks interventions** — surfaces your most-effective tool per state first (still within the context filter).
+2. **Tunes the predictor** to your actual confirmations.
+3. **Learns anchor times** — surfaces the check-in card when you actually tend to need it, not fixed 11/3/7.
+4. **Feeds one line into the brief** — via the existing insight pipeline.
+
+**Guardrails:** with one user's data, stay conservative — counts with a threshold before claiming a pattern (mirror the weekly-synthesis n≥5 / |r|≥0.4 gate). Every insight is **observational, never a score or a nag**. Personalization is transparent and overridable (you can always see + ignore the suggested tool).
+
+**Where it lands in phasing:** raw logging + outcome signal in Phase 1 → rule-based clustering insights in Phase 2 (brief + Insights tab) → personalization (intervention re-rank, predictor calibration, anchor learning, lever correlations) in Phase 3+ once there's enough data to be honest.
 
 ## 7. Phasing (all same-day-buildable)
 
