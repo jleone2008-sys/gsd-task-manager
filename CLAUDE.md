@@ -43,3 +43,14 @@ Before planning, exploring, or building ANY feature in this repo:
 - Do not write scratch files under `.git/`; use repo-root dot-prefixed files for `gh --body-file`.
 - All UI changes must use the documented brand framework classes (see `docs/brand-framework.html`). Don't introduce new button/card/chip/overlay variants — extend the framework first if needed.
 - Backend Netlify Functions: use the shared lib in `netlify/functions/lib/` (http, encryption, auth, supabase) — don't redefine `cors`/`json`/`encryptToken`/`decryptToken`/JWT validation inline.
+
+## AI usage — formulaic-first (anything rule-based must be code)
+
+**Rule:** Anything that can be decided by a clear rule MUST be code, not AI. Reserve AI for genuinely open-ended phrasing/synthesis. **Never let AI make a deterministic decision** — AI has an omission/brevity bias, so "mention X only if it matters" reliably degrades to "never mentions X," and the feature silently dies even when the data warrants it. (This is exactly why the brief's pattern-insight line never fired — a deterministic "strong pattern exists → show it" was handed to the AI prompt.)
+
+- **Gate / threshold / selection with a clear rule → code.** Choosing *whether* to surface something is never an AI judgment buried in a prompt.
+- **Known slots in a known shape → template** (backend content library), slots filled from data.
+- **Repeated themes the AI keeps generating → templatize.** That repetition is the signal it's formulaic; pick from a backend library keyed to the detected condition.
+- **AI only for genuine novelty** (novel cross-domain narrative, nuanced phrasing where templates read robotic) — and even then it fills slots / picks among options, it doesn't gate.
+
+Why: deterministic = cheaper, testable, reproducible, faster, and **can't silently fail** (same direction as the brief fingerprint-gating cost work). When unsure, default to formulaic. Full spec + the brief-insight rebuild: `docs/formulaic-first-and-brief-insights.md`.

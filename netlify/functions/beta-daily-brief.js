@@ -67,6 +67,7 @@ const { recommendSleepTarget } = require('./lib/recommendations');
 const { MOOD_LABELS, MOOD_SCALE_NOTE, moodLabel } = require('./lib/mood-scale');
 const { getWeather } = require('./lib/weather');
 const { buildClaimSet, buildSystemPromptV2, validateAgainstClaims } = require('./lib/brief-claims');
+const { selectPatternInsight } = require('./lib/brief-insight');
 
 // Phase 1.6 banned statistics jargon + Phase 1.7 banned recap filler.
 // If any of these surface in headline/subhead/pills/play content, the
@@ -191,16 +192,20 @@ exports.handler = async (event) => {
 
     const ctx = await buildContext(user, date, mode, serviceKey);
 
-    // Fingerprint the model's inputs (the verified claim set + mode / cold-start
-    // / hero hint — exactly what callClaude feeds the model). Identical
-    // fingerprint ⇒ the brief would say the same thing.
+    // Fingerprint the brief's inputs (the verified claim set + mode / cold-start
+    // / hero hint + the deterministic pattern-insight signature). Identical
+    // fingerprint ⇒ the brief would say the same thing. The pattern signature is
+    // included so a newly-discovered pattern forces a regen even when nothing
+    // else changed (the pattern line is now built outside the claim set).
     let fingerprint = null;
     try {
       const claims = buildClaimSet(mode, ctx);
       const n_sleep = ctx.baselines_30d?.n_days_sleep || 0;
       const n_mood  = ctx.baselines_30d?.n_days_mood || 0;
       const coldStart = Math.max(n_sleep, n_mood) < 14;
-      fingerprint = computeBriefFingerprint(mode, claims, coldStart, ctx.hero_hint);
+      const insightPick = selectPatternInsight(ctx);
+      const patternSig = insightPick ? `${insightPick.text}|${insightPick.strength}` : null;
+      fingerprint = computeBriefFingerprint(mode, claims, coldStart, ctx.hero_hint, patternSig);
     } catch (e) {
       console.warn('[daily-brief] fingerprint compute failed:', e.message);
     }
@@ -718,7 +723,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   // insight line. Non-dismissed only, strongest first, capped to 3. Empty
   // during cold-start (no weekly run yet) — the insight line simply omits.
   const patternRowsRaw = await fetchJson(
-    `${SUPABASE_URL}/rest/v1/patterns_discovered?user_id=eq.${user.user_id}&dismissed_by_user=eq.false&select=label,description,strength_score,n&order=strength_score.desc.nullslast&limit=3`,
+    `${SUPABASE_URL}/rest/v1/patterns_discovered?user_id=eq.${user.user_id}&dismissed_by_user=eq.false&select=label,description,strength_score,n,metadata&order=strength_score.desc.nullslast&limit=3`,
     hdr,
   );
   const recent_patterns = (patternRowsRaw || []).map(p => ({
@@ -726,6 +731,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     description: p.description || null,
     strength:    p.strength_score != null ? Number(p.strength_score) : null,
     n:           p.n != null ? Number(p.n) : null,
+    metadata:    p.metadata || null,
   }));
 
   const ctx = {
@@ -1073,10 +1079,10 @@ function briefToolSchema(mode) {
       type: 'string',
       description: 'ONE or TWO sentences, ≤180 chars total: the play, plus the "why" connecting 2+ signals when there is a real reason. No specific numbers or task/event names.',
     },
-    insight: {
-      type: ['string', 'null'],
-      description: 'OPTIONAL ≤140-char single sentence surfacing ONE learned pattern (from recent_patterns, or a high-confidence "helps" efficacy entry), hedged and number-free. Null/omit when no strong, confident pattern applies — most days will be null.',
-    },
+    // NOTE: the pattern-insight line is NO LONGER an AI field. It is selected +
+    // rendered deterministically server-side (lib/brief-insight.selectPatternInsight)
+    // so it actually fires when a stored pattern exists, instead of being gated
+    // away by the model's omission bias. See docs/formulaic-first-and-brief-insights.md.
     evidence_pills: {
       type: 'array',
       maxItems: 3,
@@ -1106,7 +1112,7 @@ function briefToolSchema(mode) {
     used_claim_ids: {
       type: 'array',
       items: { type: 'string' },
-      description: 'The exact claim ids (e.g. ["c1","c4"]) the headline/subhead/insight draw on. Used to verify no fact or number was invented.',
+      description: 'The exact claim ids (e.g. ["c1","c4"]) the headline/subhead draw on. Used to verify no fact or number was invented.',
     },
   };
   return {
@@ -1159,20 +1165,11 @@ function normalizeStructured(raw, mode, ctx) {
     .filter(p => p.text && p.text.split(/\s+/).length <= 4 && p.text.length <= 30)
     .slice(0, 3);
 
-  // Insight (optional): a hedged, learned-pattern line. Validated
-  // INDEPENDENTLY — a bad insight is dropped to null rather than failing the
-  // whole brief (the field is optional, so graceful degradation beats a
-  // deterministic fallback). Rejected when: empty, contains a metric-looking
-  // number (2-3 digit run — the model is told no numbers; "three weeks" in
-  // words is fine), or trips the banned-prose scan.
-  let insight = softTruncate(String(raw.insight || '').trim(), 140);
-  if (insight) {
-    const hasMetricNumber = /\b\d{2,3}\b/.test(insight);
-    if (hasMetricNumber || BANNED_PROSE_REGEX.test(insight)) {
-      console.warn('daily-brief: dropping insight (number or banned phrase):', insight.slice(0, 120));
-      insight = '';
-    }
-  }
+  // Pattern-insight line: selected + rendered DETERMINISTICALLY from stored
+  // patterns (lib/brief-insight). NOT an AI field anymore — it fires whenever a
+  // qualifying pattern exists, and numbers/stats are allowed here (it's a data
+  // fact, exempt from the brief's no-numbers prose voice). null = no pattern.
+  const insight = (selectPatternInsight(ctx) || {}).text || null;
 
   // Banned-phrase scan: only applies to Claude's text (the factual blocks
   // are server-built and trusted).
@@ -1362,11 +1359,12 @@ function buildFallback({ reason, context, mode }) {
 // cold-start / hero hint) ⇒ an identical brief. Weather/stat blocks are built
 // deterministically server-side and aren't part of the claims, so volatile
 // noise (temperatures, the clock) can't churn the fingerprint.
-function computeBriefFingerprint(mode, claims, coldStart, heroHint) {
+function computeBriefFingerprint(mode, claims, coldStart, heroHint, patternSig) {
   const payload = JSON.stringify({
     mode,
-    coldStart: !!coldStart,
-    heroHint:  heroHint || null,
+    coldStart:  !!coldStart,
+    heroHint:   heroHint || null,
+    patternSig: patternSig || null,
     claims,
   });
   return crypto.createHash('sha256').update(payload).digest('hex');

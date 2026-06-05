@@ -162,15 +162,10 @@ function buildClaimSet(mode, ctx) {
     add('tomorrow', 'plan', `Tomorrow's plan is ${planLabel(ctx.tomorrow_plan.workout)}.`, 4);
   }
 
-  // Learned pattern (for the optional insight line) — patterns first, then a
-  // high-confidence "helps" efficacy entry.
-  const pat = (ctx.recent_patterns || [])[0];
-  if (pat && (pat.description || pat.label)) {
-    add('trend', 'pattern', pat.description || pat.label, 5);
-  } else {
-    const eff = (ctx.efficacy_profile || []).find(e => e.direction === 'helps' && e.confidence === 'high');
-    if (eff) add('trend', 'pattern', `${humanizeSignature(eff.signature)} has tended to help you lately.`, 4);
-  }
+  // (The "learned pattern" insight line is no longer a claim/AI field — it's
+  //  selected + rendered deterministically in lib/brief-insight.js from the
+  //  stored patterns. Formulaic-first: AI doesn't gate whether a pattern shows.
+  //  See docs/formulaic-first-and-brief-insights.md.)
 
   claims.sort((a, b) => b.weight - a.weight);
   return claims;
@@ -200,11 +195,11 @@ function buildSystemPromptV2(mode, claims, { coldStart } = {}) {
     'FIELDS (call record_daily_brief exactly once):',
     '- headline: ≤30 chars, a friendly call ("Ease into it today.", "You\'re good to go today."). No greeting prefix.',
     '- subhead: 1-2 sentences, ≤180 chars. The play + the brief "why", drawn from the claims. A sharp one-sentence brief beats a padded two-sentence one.',
-    '- insight: OPTIONAL ≤140 chars. Surface the single [trend] pattern claim, hedged, ONLY if one exists and it connects to today. Otherwise null. Most days: null.',
+    // (No insight field — the pattern-insight line is built deterministically server-side.)
     '- evidence_pills: 0-3 tags ≤4 words, each tracing to a claim. Skip if nothing adds beyond the subhead.',
     '- hero_metric_key: null to accept the server pick, or one of sleep_score/readiness_score/activity_score.',
     '- confidence: ' + (coldStart ? '"low" (cold start — limited baseline).' : '"high"/"medium"/"low" by how complete the data is.'),
-    '- used_claim_ids: the exact claim ids (e.g. ["c1","c4"]) you drew on for headline+subhead+insight. Required.',
+    '- used_claim_ids: the exact claim ids (e.g. ["c1","c4"]) you drew on for headline+subhead. Required.',
     '',
     'NUMBERS: you may include a number ONLY if it appears in a claim you list in used_claim_ids. Never invent or estimate a number.',
     'MEDICAL: no diagnoses or medical claims; lab/illness signals stay qualitative and hedged ("usually a sign you\'re run down").',
@@ -218,7 +213,10 @@ function validateAgainstClaims(out, claims) {
   const byId = new Map(claims.map(c => [c.id, c]));
   const used = Array.isArray(out.used_claim_ids) ? out.used_claim_ids.filter(id => byId.has(id)) : [];
   const usedText = used.map(id => byId.get(id).text).join(' ');
-  const prose = [out.headline, out.subhead, out.insight].filter(Boolean).join(' ');
+  // NOTE: insight is intentionally excluded — it's built deterministically from
+  // stored patterns (lib/brief-insight), not drawn from claims, and may carry
+  // data numbers the claim set won't have. It must NOT be claim-validated.
+  const prose = [out.headline, out.subhead].filter(Boolean).join(' ');
   // Numbers in prose (ignore a leading clock-less check — times like 10:30 are
   // matched as their digit groups). Each numeric run must appear in used claims.
   const nums = prose.match(/\d+/g) || [];
