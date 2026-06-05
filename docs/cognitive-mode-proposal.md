@@ -10,7 +10,7 @@ This doc folds the feature into GSD using what already exists (Oura → readines
 
 ## 1. The states — final set (research-backed)
 
-**5 selectable states + a non-selectable Flow confirmation + a "Something else" escape hatch.** This is the floor *and* the ceiling: there are exactly 5 distinct intervention classes, and a state only earns a slot if its fix differs from every other state's.
+**6 grid cells: 5 actionable states + a "Locked in" (Flow) cell that's log-only.** No "Something else" escape hatch to start (Joe's call, 2026-06-05) — these six should cover the vast majority; if a real gap shows up in use we'll test adding it then, rather than carry an open-ended catch-all from day one. The five actionable states are the floor *and* ceiling: exactly 5 distinct intervention classes, and a state only earns a slot if its fix differs from every other state's.
 
 | State | Feels like | Arousal × valence | Underlying mechanism | Intervention class |
 |---|---|---|---|---|
@@ -19,11 +19,10 @@ This doc folds the feature into GSD using what already exists (Oura → readines
 | **Stuck** | ruminating, frozen, looping | mid / negative-internal | DMN lock — won't release to executive | **pattern interrupt** (movement + environment) |
 | **Spent** | exhausted, depleted, *after* pushing | low / negative | genuine resource depletion | **recover** (rest, permission to stop) |
 | **Flat** | foggy, blank, unmotivated, *no* prior exertion | low / low engagement | reward-system under-activation | **activate** (tiny momentum action) — opposite of rest |
-| *Flow* (not selectable) | locked in, going well | high / high (challenge≈skill) | none — functional | **protect + log the trigger** |
-| *Something else* | catch-all | — | — | browse library |
+| *Flow* ("Locked in", log-only) | locked in, going well | high / high (challenge≈skill) | none — functional | **protect + log the trigger** (no intervention) |
 
 ### Key change vs the original brief
-- The brief had **Locked in** as a tappable state. Research says **drop it from the chooser** (flow has no intervention; it just adds decision friction at the one moment you shouldn't be in the app) — keep it as a *positive confirmation outcome* only.
+- **Locked in (Flow)** stays a grid cell but is **log-only** — tapping it logs "I'm in flow / what's working" and offers **no intervention** (flow has no fix; the app just says "protect it, get back to it"). It's never *asked of you* mid-flow, and flow is mainly captured passively via completed focus blocks (see "Flow — how it's actually captured").
 - **Add "Flat"** (low-arousal, low-engagement, no prior exertion). This is the under-arousal half of Yerkes–Dodson the original set was missing. Its fix is **behavioral activation** (a tiny activating act), the *opposite* of Spent's rest. Both feel "low," so they must be separate — resting a Flat person worsens them; activating a Spent person worsens them.
 - **Scattered and Stuck stay separate** — same surface complaint ("not getting anything done"), opposite fixes: Scattered → *get into one thing and stop moving*; Stuck → *get out of your head and move*.
 
@@ -102,7 +101,7 @@ Output: a **soft** predicted state (pre-highlighted in the chooser) + a one-line
 A single **card** lives in/above the daily brief and moves through a lifecycle:
 
 1. **Ask** — `How's your head right now?` with a soft predicted hint ("might be Spent") and a button. Calm, one line, ignorable.
-2. **Tap → Modal** (Variation B): the 5-state grid (Wired · Scattered · Stuck · Spent · Flat) with the predicted state softly ringed + "Something else." Spent/Flat tap triggers the one disambiguation question.
+2. **Tap → Modal** (Variation B): the 6-cell grid — Wired · Scattered · Stuck · Spent · Flat + a log-only "Locked in" — with the predicted state softly ringed. No "Something else" cell. Spent/Flat tap triggers the one disambiguation question.
 3. **Select → modal closes → card becomes the Activity**: the context-filtered best-fit tool (e.g. "Meeting in 8 min — seated options. Physiological sigh ×3.") with `Start` and `Useful / OK / Didn't help`.
 4. **Done → card clears**; a quiet line appears in the brief: `Last: Wired · 2:40pm — shift logged.`
 
@@ -172,7 +171,8 @@ The predictor can start dumb in Phase 1 (Oura baseline + time-of-day) and gain t
 ## 8. Open decisions to confirm before building
 - Exact anchor times for the soft emphasis (proposed: ~11am / ~3pm / ~7pm local) — or derive from the user's own check-in history.
 - Whether Phase 1 ships the two-mode timer or defers it to Phase 3 (currently deferred).
-- Whether "Flow" gets a tiny "protect this / log trigger" affordance in Phase 1 or later.
+- ~~Whether "Flow" gets a log affordance~~ → **Decided:** "Locked in" is a log-only grid cell + passive capture via focus blocks.
+- ~~Whether to keep a "Something else" escape hatch~~ → **Decided (2026-06-05):** no, start with the 6 cells; revisit only if a real gap appears.
 - Final curated list of ~12–15 interventions + their copy (honest evidence framing).
 
 ## Research sources
