@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cognitive Mode — Check-in flow (B as modal)</title>
+<style>
+  :root {
+    --bg:#fbf6ee; --surface:#fffdfa; --surface-2:#f5ece0;
+    --edge:#ecdfce; --edge-strong:#d8c6ad;
+    --ink:#1c1410; --ink-2:#4a3b30; --ink-3:#7a6a5a; --ink-4:#b3a594; --ink-5:#c9bca8;
+    --guava-900:#6b1320; --guava-800:#8a1d2a; --guava-700:#b82d3b; --guava-500:#d94a55;
+    --guava-300:#f3a8ae; --guava-200:#fad4d7; --guava-100:#fde8ea; --guava-50:#fef5f6;
+    --sky-fg:#3a76a6; --sky-bg:#d9e8f4;
+    --moss-fg:#469a55; --moss-bg:#dcefd6;
+    --r-sm:3px; --r-md:4px; --r-lg:10px;
+    --shadow-card:0 1px 0 rgba(20,15,10,0.03),0 1px 2px rgba(20,15,10,0.06);
+    --shadow-raised:0 2px 4px rgba(20,15,10,0.06),0 8px 20px rgba(20,15,10,0.08);
+    --scrim:rgba(255,255,255,0.6);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;padding:36px 16px 90px;background:var(--bg);font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .page{max-width:840px;margin:0 auto;display:flex;flex-direction:column;gap:50px;}
+  .intro{font-size:13px;color:var(--ink-3);line-height:1.65;background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:20px 24px;}
+  .intro h1{font-size:22px;font-weight:700;color:var(--ink);margin:0 0 8px;letter-spacing:-0.02em;}
+  .intro b{color:var(--ink-2);} .intro code{background:var(--surface-2);padding:1px 5px;border-radius:3px;font-size:12px;}
+  .intro ol{margin:10px 0 0;padding-left:20px;} .intro li{margin-bottom:5px;}
+  .row{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;}
+  .step{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .step-cap{font-size:12px;color:var(--ink-3);max-width:300px;text-align:center;line-height:1.5;}
+  .step-cap .n{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--guava-700);margin-bottom:2px;}
+  .step-cap b{color:var(--ink-2);}
+
+  .frame{position:relative;width:330px;background:var(--bg);border:1px solid var(--edge-strong);border-radius:24px;padding:14px;box-shadow:var(--shadow-raised);overflow:hidden;}
+  .frame-inner{display:flex;flex-direction:column;gap:11px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px;}
+  .tb-greet{font-size:18px;font-weight:700;letter-spacing:-0.02em;}
+  .tb-greet small{display:block;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--guava-700);margin-bottom:1px;}
+  .tb-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#9fb6cf,#6e89a8);}
+  .bottom-nav{margin-top:10px;padding-top:10px;border-top:1px solid var(--edge);display:grid;grid-template-columns:repeat(5,1fr);gap:4px;font-size:9px;color:var(--ink-4);}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;}
+  .nav-item.is-active{color:var(--guava-700);font-weight:600;}
+  .nav-icon{font-size:15px;line-height:1;}
+  .card{background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:13px 14px;}
+  .sec-label{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin:1px 0 7px;}
+  .tiny{font-size:11px;} .muted{color:var(--ink-3);}
+
+  /* brief block (context) */
+  .brief{background:linear-gradient(180deg,#fff9f2,var(--surface));border:1px solid var(--edge);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:13px 14px;}
+  .brief .eye{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--guava-700);}
+  .brief h3{font-size:14.5px;font-weight:700;margin:4px 0 5px;letter-spacing:-0.01em;}
+  .brief p{font-size:11.5px;color:var(--ink-3);margin:0;line-height:1.5;}
+
+  /* ===== the mode CARD — 4 lifecycle states ===== */
+  .mode{border:1px solid var(--edge);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:14px;background:var(--surface);}
+  .mode.ask{background:linear-gradient(180deg,var(--surface),#fff9f2);}
+  .mode .q{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .mode .hint{font-size:11.5px;color:var(--ink-3);margin-top:5px;display:flex;gap:6px;align-items:flex-start;line-height:1.45;}
+  .mode .hint b{color:var(--ink-2);font-weight:600;}
+  .mode .cta{margin-top:12px;display:flex;gap:8px;align-items:center;}
+  .mode .cta .btn{background:var(--guava-700);color:#fff;border:none;border-radius:var(--r-md);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .mode .cta .later{font-size:11px;color:var(--ink-4);}
+
+  /* activity state */
+  .mode.act{border-left:3px solid var(--sky-fg);}
+  .mode .ctx{font-size:10.5px;color:var(--sky-fg);background:var(--sky-bg);border-radius:var(--r-md);padding:6px 9px;margin-bottom:9px;display:flex;gap:6px;align-items:center;font-weight:600;}
+  .mode .act-h{font-size:14px;font-weight:700;color:var(--ink);}
+  .mode .act-h .e{margin-right:5px;}
+  .mode .act-tag{font-size:10px;color:var(--ink-4);font-weight:600;margin-top:1px;}
+  .mode .act-b{font-size:11.5px;color:var(--ink-3);line-height:1.5;margin-top:7px;}
+  .mode .act-act{display:flex;gap:8px;align-items:center;margin-top:11px;}
+  .mode .act-go{background:var(--sky-fg);color:#fff;border:none;border-radius:var(--r-md);padding:8px 15px;font-size:12px;font-weight:600;}
+  .mode .act-alt{font-size:10.5px;color:var(--ink-4);}
+  .mode .close-row{display:flex;gap:6px;margin-top:10px;}
+  .mode .close-row button{flex:1;border:1px solid var(--edge);background:var(--surface);border-radius:var(--r-md);padding:7px;font-size:11px;font-weight:600;color:var(--ink-2);cursor:pointer;}
+  .mode .close-row button.good{border-color:var(--moss-fg);color:var(--moss-fg);}
+
+  /* logged state (collapsed line) */
+  .mode.logged{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface);}
+  .mode.logged .e{font-size:17px;}
+  .mode.logged .l{flex:1;font-size:12px;color:var(--ink-2);} .mode.logged .l b{color:var(--ink);}
+  .mode.logged .again{font-size:11px;font-weight:600;color:var(--guava-700);}
+
+  /* tracked chips */
+  .chips{display:flex;gap:5px;flex-wrap:wrap;font-size:10.5px;}
+  .chips span{background:var(--surface-2);border-radius:999px;padding:3px 9px;color:var(--ink-2);}
+  .chips .mode-chip{background:var(--guava-50);border:1px solid var(--guava-200);color:var(--guava-700);font-weight:600;}
+
+  /* ===== MODAL overlay (Variation B grid) ===== */
+  .modal-scrim{position:absolute;inset:0;background:var(--scrim);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:14px;border-radius:24px;z-index:5;}
+  .modal{width:100%;background:var(--surface);border:1px solid var(--edge);border-radius:14px;box-shadow:var(--shadow-raised);padding:16px;}
+  .modal .mq{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .modal .msub{font-size:11px;color:var(--ink-4);margin:3px 0 12px;}
+  .b-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+  .b-state{position:relative;background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-lg);padding:11px 6px 9px;text-align:center;cursor:pointer;}
+  .b-state .e{font-size:21px;line-height:1;display:block;margin-bottom:5px;}
+  .b-state .l{font-size:11.5px;font-weight:600;color:var(--ink-2);}
+  .b-state .d{font-size:9px;color:var(--ink-4);margin-top:1px;line-height:1.2;}
+  .b-state.pred{border-color:var(--guava-300);box-shadow:0 0 0 2px var(--guava-100);}
+  .b-state.pred .badge{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--guava-700);background:var(--guava-50);border:1px solid var(--guava-200);border-radius:999px;padding:1px 7px;white-space:nowrap;}
+  .b-else{grid-column:span 3;text-align:center;font-size:11px;color:var(--ink-4);padding:7px;border:1px dashed var(--edge-strong);border-radius:var(--r-md);cursor:pointer;}
+  .disambig{margin-top:10px;background:var(--surface-2);border-radius:var(--r-md);padding:9px 11px;font-size:11px;color:var(--ink-2);}
+  .disambig .qq{font-weight:600;color:var(--ink);margin-bottom:6px;}
+  .disambig .opts{display:flex;gap:6px;}
+  .disambig .opts button{flex:1;border:1px solid var(--edge-strong);background:var(--surface);border-radius:var(--r-md);padding:6px;font-size:10.5px;font-weight:600;cursor:pointer;color:var(--ink-2);}
+  .disambig .opts button b{display:block;font-size:9px;font-weight:500;color:var(--ink-4);}
+</style></head>
+<body>
+<div class="page">
+  <div class="intro">
+    <h1>Cognitive Mode — the check-in flow</h1>
+    <p>Chosen direction: <b>Variation B (the 5-state grid) as a modal</b>, fronted by one calm card in the daily brief. The card moves through a lifecycle; the modal only opens on a deliberate tap. <b>You choose</b> the state — Oura + context just <i>softly predict</i> (pre-ring), never auto-lock.</p>
+    <ol>
+      <li><b>Ask</b> — a quiet card in the brief: <i>"How's your head right now?"</i> + a soft predicted hint.</li>
+      <li><b>Modal</b> — tap opens the 5-state grid (predicted state softly ringed). Spent/Flat asks one disambiguation question.</li>
+      <li><b>Activity</b> — modal closes, the card becomes the <b>context-filtered</b> tool (meeting soon → seated/silent only). Close with Useful/OK/Didn't help.</li>
+      <li><b>Logged</b> — card clears to a quiet <code>Last: Wired · 2:40pm</code> line; mode becomes a tracked chip. The ask-door stays available for the next notice.</li>
+    </ol>
+    <p><b>States (final, research-backed):</b> Wired · Scattered · Stuck · Spent · Flat — plus "Something else." Flow is a passive "you're good, protect it" outcome, not a chooser slot. <b>Cadence:</b> always tappable, gently raised at ~2–3 daily anchors or after a big event, <b>never</b> an auto-popup or push.</p>
+  </div>
+
+  <div class="row">
+
+    <!-- STEP 1 — ASK -->
+    <div class="step">
+      <div class="frame"><div class="frame-inner">
+        <div class="topbar"><div class="tb-greet"><small>Thursday · 2:40pm</small>Good afternoon, Joe</div><div class="tb-av"></div></div>
+        <div class="brief">
+          <div class="eye">Afternoon read</div>
+          <h3>Running hot — make the next switch on purpose.</h3>
+          <p>Readiness's middling and HRV is down. Executive mode since 9am with no real break.</p>
+        </div>
+        <div class="mode ask">
+          <div class="q">How's your head right now?</div>
+          <div class="hint">🪫 <span>Oura + your afternoon suggest <b>Spent</b> — but you decide.</span></div>
+          <div class="cta"><button class="btn">Check in · 1 tap</button><span class="later">or later</span></div>
+        </div>
+        <div class="card" style="padding:11px 14px"><div class="tiny muted">🧠 <b style="color:var(--ink-2)">Yesterday</b>: ~6h executive, ~0 true diffuse · <b style="color:var(--ink-2)">block a diffuse window before noon</b>.</div></div>
+        <div class="bottom-nav"><div class="nav-item is-active"><span class="nav-icon">◐</span>Home</div><div class="nav-item"><span class="nav-icon">☑</span>Tasks</div><div class="nav-item"><span class="nav-icon">✦</span>Habits</div><div class="nav-item"><span class="nav-icon">⊿</span>Train</div><div class="nav-item"><span class="nav-icon">✎</span>Reflect</div></div>
+      </div></div>
+      <div class="step-cap"><span class="n">1 · Ask</span><br>A calm, ignorable card in the brief. Soft prediction shown, not forced.</div>
+    </div>
+
+    <!-- STEP 2 — MODAL -->
+    <div class="step">
+      <div class="frame"><div class="frame-inner">
+        <div class="topbar"><div class="tb-greet"><small>Thursday · 2:40pm</small>Good afternoon, Joe</div><div class="tb-av"></div></div>
+        <div class="brief"><div class="eye">Afternoon read</div><h3>Running hot — make the next switch on purpose.</h3><p>Readiness's middling and HRV is down.</p></div>
+        <div class="card" style="height:80px;opacity:.5"></div>
+        <!-- modal overlay -->
+        <div class="modal-scrim"><div class="modal">
+          <div class="mq">What mode are you in?</div>
+          <div class="msub">Pick what fits. Predicted from Oura + your day.</div>
+          <div class="b-grid">
+            <div class="b-state"><span class="e">⚡</span><span class="l">Wired</span><span class="d">tense, racing</span></div>
+            <div class="b-state"><span class="e">🌀</span><span class="l">Scattered</span><span class="d">can't focus</span></div>
+            <div class="b-state"><span class="e">🧱</span><span class="l">Stuck</span><span class="d">looping</span></div>
+            <div class="b-state pred"><span class="badge">likely</span><span class="e">🪫</span><span class="l">Spent</span><span class="d">depleted</span></div>
+            <div class="b-state"><span class="e">🌫️</span><span class="l">Flat</span><span class="d">blank, no push</span></div>
+            <div class="b-state"><span class="e">🎯</span><span class="l">Locked in</span><span class="d">protect it</span></div>
+            <div class="b-else">⋯ Something else</div>
+          </div>
+          <div class="disambig">
+            <div class="qq">Quick check — did you just push hard / exert yourself?</div>
+            <div class="opts"><button>Yes <b>→ Spent · rest</b></button><button>No <b>→ Flat · activate</b></button></div>
+          </div>
+        </div></div>
+        <div class="bottom-nav" style="opacity:.5"><div class="nav-item is-active"><span class="nav-icon">◐</span>Home</div><div class="nav-item"><span class="nav-icon">☑</span>Tasks</div><div class="nav-item"><span class="nav-icon">✦</span>Habits</div><div class="nav-item"><span class="nav-icon">⊿</span>Train</div><div class="nav-item"><span class="nav-icon">✎</span>Reflect</div></div>
+      </div></div>
+      <div class="step-cap"><span class="n">2 · Modal (Variation B)</span><br>5 states, predicted one softly ringed. <b>Spent vs Flat</b> disambiguated with one question — protects rest-vs-activate.</div>
+    </div>
+
+    <!-- STEP 3 — ACTIVITY -->
+    <div class="step">
+      <div class="frame"><div class="frame-inner">
+        <div class="topbar"><div class="tb-greet"><small>Thursday · 2:40pm</small>Good afternoon, Joe</div><div class="tb-av"></div></div>
+        <div class="mode act">
+          <div class="ctx">📅 Meeting in 8 min · seated, silent options only</div>
+          <div class="act-h"><span class="e">⚡</span>Wired — let's downshift</div>
+          <div class="act-tag">Breath · physiological sigh · ~40s · <span style="color:var(--moss-fg)">strong evidence</span></div>
+          <div class="act-b">Two short inhales through the nose, then one long, slow exhale through the mouth. Repeat ×3. Fastest known drop in arousal — and no one will notice.</div>
+          <div class="act-act"><button class="act-go">Start ×3</button><span class="act-alt">or 5-4-3-2-1 · park it</span></div>
+          <div class="close-row"><button class="good">Useful</button><button>OK</button><button>Didn't help</button></div>
+        </div>
+        <div class="card"><div class="sec-label">Up next</div><div class="tiny" style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--edge-strong);flex-shrink:0"></span><span style="flex:1">Sync — Q2 planning</span><span style="font-size:10px;font-weight:600;color:var(--sky-fg);background:var(--sky-bg);border-radius:999px;padding:3px 8px">2:48</span></div></div>
+        <div class="bottom-nav"><div class="nav-item is-active"><span class="nav-icon">◐</span>Home</div><div class="nav-item"><span class="nav-icon">☑</span>Tasks</div><div class="nav-item"><span class="nav-icon">✦</span>Habits</div><div class="nav-item"><span class="nav-icon">⊿</span>Train</div><div class="nav-item"><span class="nav-icon">✎</span>Reflect</div></div>
+      </div></div>
+      <div class="step-cap"><span class="n">3 · Activity</span><br>Card becomes the matched tool, <b>context-filtered</b>: meeting in 8 min → no walk, only seated/silent. Honest evidence label.</div>
+    </div>
+
+    <!-- STEP 4 — LOGGED -->
+    <div class="step">
+      <div class="frame"><div class="frame-inner">
+        <div class="topbar"><div class="tb-greet"><small>Thursday · 2:41pm</small>Good afternoon, Joe</div><div class="tb-av"></div></div>
+        <div class="brief"><div class="eye">Afternoon read</div><h3>Nice — you made the switch.</h3><p>One clean downshift before the sync. That's the whole game.</p></div>
+        <div class="mode logged"><span class="e">⚡</span><span class="l">Last: <b>Wired → sigh</b> · 2:40pm · helped</span><span class="again">Check in</span></div>
+        <div class="card">
+          <div class="sec-label">Tracked today</div>
+          <div class="chips"><span>😴 6h02</span><span>💪 0 lifts</span><span>🥩 142g</span><span>🍷 0</span><span class="mode-chip">🧠 mostly executive · 1 shift</span></div>
+        </div>
+        <div class="card" style="padding:11px 14px"><div class="tiny muted">🧠 <b style="color:var(--ink-2)">Pattern</b>: no real diffuse block before noon in 4 days — try one tomorrow.</div></div>
+        <div class="bottom-nav"><div class="nav-item is-active"><span class="nav-icon">◐</span>Home</div><div class="nav-item"><span class="nav-icon">☑</span>Tasks</div><div class="nav-item"><span class="nav-icon">✦</span>Habits</div><div class="nav-item"><span class="nav-icon">⊿</span>Train</div><div class="nav-item"><span class="nav-icon">✎</span>Reflect</div></div>
+      </div></div>
+      <div class="step-cap"><span class="n">4 · Logged</span><br>Card clears to a quiet line; mode becomes a tracked chip + one brief insight. Door stays open for the next notice.</div>
+    </div>
+
+  </div>
+</div>
+</body></html>
