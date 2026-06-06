@@ -308,7 +308,10 @@
       narrative: 'Sleep was steadier this week; readiness tracked your earlier bedtimes.', created_at: iso(2 * DAY) },
   ];
   const patterns_discovered = [
-    { id: 1810, user_id: USER_ID, pattern: 'Higher activity days follow nights with 8h+ sleep.', strength: 0.62, dismissed: false, created_at: iso(2 * DAY) },
+    // 2 unread + 1 read → Insights nav badge shows 2 (unread patterns).
+    { id: 1810, user_id: USER_ID, label: 'On days you complete more habits, your step count tends to be higher.', description: 'On days you complete more habits, your step count tends to be higher. (r=0.44 over 30 days)', strength_score: 0.44, n: 30, evidence_window: { start_date: daysAgo(30), end_date: daysAgo(0), n_days: 30 }, dismissed_by_user: false, read_at: null, first_seen_at: iso(9 * DAY), last_seen_at: iso(2 * DAY), metadata: { source: 'sweep', actionable: true, brief_line: 'On days you complete more habits, your step count tends to be higher.' }, created_at: iso(2 * DAY) },
+    { id: 1811, user_id: USER_ID, label: 'Higher activity days follow nights with 8h+ sleep.', description: 'Across the last 30 days, activity score tracks the previous-night sleep duration.', strength_score: 0.62, n: 28, evidence_window: { start_date: daysAgo(30), end_date: daysAgo(0), n_days: 28 }, dismissed_by_user: false, read_at: null, first_seen_at: iso(9 * DAY), last_seen_at: iso(2 * DAY), metadata: {}, created_at: iso(2 * DAY) },
+    { id: 1812, user_id: USER_ID, label: 'Mood dips on days with no morning sunlight.', description: 'Mood tends to run lower on days without logged morning outdoor time.', strength_score: 0.41, n: 22, evidence_window: { start_date: daysAgo(30), end_date: daysAgo(0), n_days: 22 }, dismissed_by_user: false, read_at: iso(1 * DAY), first_seen_at: iso(9 * DAY), last_seen_at: iso(3 * DAY), metadata: {}, created_at: iso(3 * DAY) },
   ];
   const knowledge_documents = [
     { id: 1820, user_id: USER_ID, title: 'Bloodwork — Spring panel.pdf', kind: 'lab_results', status: 'ready', created_at: iso(20 * DAY) },

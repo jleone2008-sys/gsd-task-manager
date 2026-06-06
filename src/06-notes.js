@@ -754,9 +754,11 @@ function renderNoteEditor() {
   }
 }
 function updateNotesBadge() {
+  // The Insights nav badge (notesBadgeMobile / sidebarNotesCount) is now driven
+  // by the count of UNREAD discovered patterns — NOT the note count — see
+  // refreshInsightsNavBadge() in beta/src/06-insights.js. Here we only keep the
+  // in-view note pill counts (All / Pinned).
   const count = notesArr.filter(n => !n.trashed).length;
-  paintBadge('notesBadgeMobile', count);
-  const sbc = document.getElementById('sidebarNotesCount'); if (sbc) sbc.textContent = count;
   const pcAll = document.getElementById('pc-notes-all'); if (pcAll) pcAll.textContent = count;
   const pinned = notesArr.filter(n => !n.trashed && n.pinned).length;
   const pcPin = document.getElementById('pc-notes-pinned'); if (pcPin) pcPin.textContent = pinned;

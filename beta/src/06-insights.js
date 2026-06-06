@@ -141,7 +141,7 @@
     _patternsLoading = true;
     try {
       const { data, error } = await db.from('patterns_discovered')
-        .select('id, label, description, evidence_window, n, strength_score, first_seen_at, last_seen_at, dismissed_by_user, metadata')
+        .select('id, label, description, evidence_window, n, strength_score, first_seen_at, last_seen_at, dismissed_by_user, read_at, metadata')
         .order('last_seen_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -166,6 +166,49 @@
       const el = document.getElementById('insightsPatternsCount');
       if (el) el.textContent = String(count || 0);
     } catch (_) { /* ignore */ }
+    refreshInsightsNavBadge();
+  }
+
+  // The Insights bottom-nav / sidebar badge now shows the count of UNREAD
+  // patterns (not the note count) — non-dismissed AND not yet clicked into.
+  // Once patterns are loaded locally, count from _patterns so optimistic
+  // read/dismiss changes reflect INSTANTLY; before that (app cold-start, before
+  // the Insights tab is opened) fall back to an exact DB count.
+  async function refreshInsightsNavBadge() {
+    let n;
+    if (_patternsLoaded && Array.isArray(_patterns)) {
+      n = _patterns.filter(p => !p.dismissed_by_user && !p.read_at).length;
+    } else {
+      try {
+        const { count, error } = await db.from('patterns_discovered')
+          .select('id', { count: 'exact', head: true })
+          .eq('dismissed_by_user', false)
+          .is('read_at', null);
+        if (error) return;
+        n = count || 0;
+      } catch (_) { return; }
+    }
+    if (typeof paintBadge === 'function') paintBadge('notesBadgeMobile', n);
+    const sb = document.getElementById('sidebarNotesCount');
+    if (sb) { sb.textContent = String(n); sb.dataset.empty = n ? 'false' : 'true'; }
+  }
+
+  // Mark a pattern read (clicked into) → clears its unread state + decrements
+  // the Insights nav badge. Idempotent; only acts on still-unread patterns.
+  async function markPatternRead(id) {
+    const p = _patterns.find(x => String(x.id) === String(id));   // ids are UUID strings in prod
+    if (!p || p.read_at) return;            // already read → no-op
+    const now = new Date().toISOString();
+    p.read_at = now;                        // optimistic
+    renderPatterns();
+    refreshInsightsNavBadge();
+    try {
+      const { error } = await db.from('patterns_discovered').update({ read_at: now }).eq('id', id);
+      if (error) throw error;
+    } catch (e) {
+      console.warn('[insights] mark-read failed', e);
+      p.read_at = null; renderPatterns(); refreshInsightsNavBadge();   // revert
+    }
   }
 
   function renderPatterns() {
@@ -202,10 +245,11 @@
     const nText = p.n ? `${p.n} obs` : '';
     const winText = (ew.start_date && ew.end_date) ? `${ew.start_date} → ${ew.end_date}` : '';
     const dismissed = p.dismissed_by_user;
+    const unread = !p.read_at && !dismissed;
 
-    return `<div class="pattern-card" data-pattern-id="${escapeHtml(p.id)}"${dismissed ? ' style="opacity:0.5"' : ''}>
+    return `<div class="pattern-card${unread ? ' is-unread' : ''}" data-pattern-id="${escapeHtml(p.id)}"${dismissed ? ' style="opacity:0.5"' : ''}>
       <div class="pattern-card-head">
-        <div class="pattern-card-label">${escapeHtml(p.label || '')}</div>
+        <div class="pattern-card-label">${unread ? '<span class="pattern-unread-dot" aria-label="unread"></span>' : ''}${escapeHtml(p.label || '')}</div>
         <span class="pattern-card-strength${strengthCls}">${strengthLabel}</span>
       </div>
       <div class="pattern-card-description">${escapeHtml(p.description || '')}</div>
@@ -223,13 +267,18 @@
   }
 
   function onPatternClick(e) {
-    const actionBtn = e.target.closest('[data-pattern-action]');
     const card = e.target.closest('[data-pattern-id]');
-    if (!actionBtn || !card) return;
+    if (!card) return;
     const id = card.dataset.patternId;
-    const action = actionBtn.dataset.patternAction;
-    if (action === 'dismiss') dismissPattern(id);
-    if (action === 'restore') restorePattern(id);
+    const actionBtn = e.target.closest('[data-pattern-action]');
+    if (actionBtn) {
+      const action = actionBtn.dataset.patternAction;
+      if (action === 'dismiss') dismissPattern(id);
+      if (action === 'restore') restorePattern(id);
+      return;
+    }
+    // Click into the card body → mark read (clears it from the Insights badge).
+    markPatternRead(id);
   }
 
   async function dismissPattern(id) {
