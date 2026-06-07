@@ -3605,8 +3605,16 @@
   .ne-quill { display: flex; flex-direction: column; min-height: 0; flex: 1; }
   .ne-toolbar {
     display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1-5) 0;
-    background: transparent; border: none; flex-wrap: wrap;
+    background: var(--surface); border: none; flex-wrap: wrap;
     margin-bottom: var(--space-3-5);
+    /* Stay reachable while the note body scrolls. The toolbar lives inside
+       the scrolling .ne-body, so without this it disappears once you write
+       past the first screen and you'd have to scroll back up to hit Bold.
+       Pin it to the top of the scroll area instead. Needs an opaque bg +
+       z-index so the note text scrolls underneath cleanly, and a divider
+       so the pinned bar reads as a bar. */
+    position: sticky; top: 0; z-index: 5;
+    border-bottom: 1px solid var(--edge);
   }
   .tb-group { display: flex; align-items: center; gap: var(--space-0-5); padding-right: var(--space-2); border-right: 1px solid var(--edge); margin-right: var(--space-1-5); }
   .tb-group:last-child { border-right: none; margin-right: 0; padding-right: 0; }
