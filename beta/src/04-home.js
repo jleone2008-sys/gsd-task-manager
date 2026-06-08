@@ -387,7 +387,7 @@ function homeMoodCheckinsHTML(checkins, entry) {
     return `<span class="home-mood-chip"${titleAttr}>
       <span class="home-mood-chip-time">${hEsc(t)}</span>
       <span class="home-mood-chip-emoji">${em}</span>
-      ${noteText ? `<span class="home-mood-chip-note">“${hEsc(noteText)}”</span>` : ''}
+      ${noteText ? `<span class="home-mood-chip-note">“${typeof linkify === 'function' ? linkify(noteText) : hEsc(noteText)}”</span>` : ''}
       <button class="home-mood-chip-del" data-home-mood-checkin-delete="${hEsc(c.id)}" title="Remove this check-in">×</button>
     </span>`;
   }).join('');

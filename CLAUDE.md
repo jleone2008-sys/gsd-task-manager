@@ -39,7 +39,7 @@ Before planning, exploring, or building ANY feature in this repo:
 - **Deploy sparingly — batch, don't push per change (cost control).** Every push to `main` triggers a Netlify build that costs money, so deploy **only after a big phase completes**, not after each small change. Mechanics: commit locally as you go (commits are free), **verify via mock-mode (`?mock=1`) instead of deploying to check things**, accumulate multiple commits, then push **once** per phase to deploy them together. Deploy to `main` only — **never `dev`**. Avoid empty-commit re-triggers unless a build is genuinely stuck. Still ask before pushing (never push without an explicit yes), and prompt at the end of a big phase if there's unpushed work — but the goal is significantly fewer deploys, so don't prompt to push after every small unit.
 - Surgical edits: one change at a time during execution, read before write.
 - Do not Co-Author Claude on commits.
-- App features go in `app.html` (not `index.html` — that's the marketing page).
+- App features go in `app.html` (not `index.html` — that's the login/sign-in page: a single "Continue with Google" auth card, `noindex`, no marketing content. We no longer host a marketing page).
 - Do not write scratch files under `.git/`; use repo-root dot-prefixed files for `gh --body-file`.
 - All UI changes must use the documented brand framework classes (see `docs/brand-framework.html`). Don't introduce new button/card/chip/overlay variants — extend the framework first if needed.
 - Backend Netlify Functions: use the shared lib in `netlify/functions/lib/` (http, encryption, auth, supabase) — don't redefine `cors`/`json`/`encryptToken`/`decryptToken`/JWT validation inline.

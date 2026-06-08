@@ -53,7 +53,63 @@ function createQuillEditor(editorContainer, opts = {}) {
   quill.root.addEventListener('mousedown', e => {
     if (e.button === 2) e.stopImmediatePropagation();
   }, true);
+
+  wireQuillAutolink(quill);
   return quill;
+}
+
+// Auto-link bare URLs in the Quill editors (Notes + Scratch) so a pasted — or
+// typed — URL becomes a real, clickable link without using the link toolbar
+// button. Two paths:
+//   1. PASTE: a clipboard text-node matcher splits pasted plain text on URLs
+//      and applies Quill's `link` format to each.
+//   2. TYPING: when the user types a space/newline right after a URL, the
+//      just-completed word is formatted as a link.
+function wireQuillAutolink(quill) {
+  const Delta = Quill.import('delta');
+  const URL_G = /https?:\/\/[^\s<>"]+/g;
+
+  // 1) Paste — linkify URLs inside pasted plain-text nodes.
+  quill.clipboard.addMatcher(Node.TEXT_NODE, (node, delta) => {
+    const text = node.data;
+    if (!text || !/https?:\/\//.test(text)) return delta;
+    const ops = [];
+    let last = 0, m;
+    URL_G.lastIndex = 0;
+    while ((m = URL_G.exec(text))) {
+      if (m.index > last) ops.push({ insert: text.slice(last, m.index) });
+      ops.push({ insert: m[0], attributes: { link: m[0] } });
+      last = m.index + m[0].length;
+    }
+    if (!ops.length) return delta;
+    if (last < text.length) ops.push({ insert: text.slice(last) });
+    return new Delta(ops);
+  });
+
+  // 2) Typing — when whitespace is typed just after a URL, link that URL.
+  // Derive the insert position from the delta (a leading `retain` + the
+  // whitespace `insert`) rather than getSelection(), which isn't settled
+  // during the text-change event.
+  quill.on('text-change', (chg, _old, source) => {
+    if (source !== 'user') return;
+    const ops = chg.ops || [];
+    const lastOp = ops[ops.length - 1];
+    if (!lastOp || typeof lastOp.insert !== 'string' || !/\s/.test(lastOp.insert)) return;
+    let idx = 0; // position where the whitespace was inserted
+    for (let i = 0; i < ops.length - 1; i++) {
+      const o = ops[i];
+      if (typeof o.retain === 'number') idx += o.retain;
+      else if (typeof o.insert === 'string') idx += o.insert.length;
+    }
+    const before = quill.getText(0, idx); // text up to (not incl.) the whitespace
+    const m = /(^|\s)(https?:\/\/[^\s<>"]+)$/.exec(before);
+    if (!m) return;
+    const url = m[2];
+    const start = idx - url.length;
+    if (start < 0) return;
+    if (quill.getFormat(start, url.length).link) return; // already a link
+    quill.formatText(start, url.length, 'link', url, 'user');
+  });
 }
 
 function renderCustomToolbar(toolbarId) {

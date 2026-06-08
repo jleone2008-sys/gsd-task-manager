@@ -42,7 +42,7 @@ const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 
 const EMBEDDING_DIMS  = 1536;
 
-// claude-opus-4-7 is what beta-daily-brief defaults to and is known to
+// claude-opus-4-8 is what beta-daily-brief defaults to and is known to
 // work in this user's account. claude-sonnet-4-7 returned 404 on first
 // attempt. Configurable via env var (KNOWLEDGE_MODEL) for future tuning.
 const KNOWLEDGE_MODEL  = process.env.KNOWLEDGE_MODEL || CLAUDE_MODEL;

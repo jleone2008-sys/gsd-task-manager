@@ -6,9 +6,45 @@ function linkify(t) {
   const escaped = escHTML(String(t ?? ''));
   return escaped.replace(/(\bhttps?:\/\/[^\s<>"]+)/gi, u => {
     const d = u.length > 55 ? u.slice(0,52)+'...' : u;
-    return `<a href="${u}" target="_blank" rel="noopener">${d}</a>`;
+    return `<a href="${u}" target="_blank" rel="noopener noreferrer">${d}</a>`;
   });
 }
+
+// ── Open a URL in the OS default browser ──
+// Synthesizes a real, user-activated anchor click. In an installed PWA / app
+// window (Edge/Chrome "Install site as app"), `window.open(url,'_blank')`
+// spawns a NEW IN-APP WINDOW, whereas a genuine anchor click to a cross-origin
+// URL is routed by Chromium to the user's DEFAULT BROWSER. So we never use
+// window.open for external links — we click a throwaway anchor instead.
+function openExternalLink(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// ── Global external-link router (capture phase) ──
+// One delegated handler for EVERY external link rendered anywhere in the app
+// (linkified task titles/notes, Quill note links, journal/mood notes, settings
+// links, etc.). Runs in the capture phase so it beats row/card click handlers:
+// for a cross-origin http(s) link it (a) stops the event so the parent card
+// doesn't also open, and (b) hands the URL to the default browser via
+// openExternalLink. Same-origin links and non-http schemes (mailto:, tel:) are
+// left to behave natively.
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (!a) return;
+  let url;
+  try { url = new URL(a.getAttribute('href'), location.href); } catch (_) { return; }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return; // mailto:/tel:/etc → native
+  if (url.origin === location.origin) return;                         // in-app link → navigate normally
+  e.preventDefault();
+  e.stopPropagation();
+  openExternalLink(url.href);
+}, true);
 
 // ── Error / offline toast system ──
 let toastTimer = null;

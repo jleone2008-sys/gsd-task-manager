@@ -1553,7 +1553,7 @@ function renderDayCard(dateStr) {
   } else if (title || body) {
     manualHtml = `
       ${title ? `<div class="j-card-title">${escapeHtml(title)}</div>` : ''}
-      ${body ? `<div class="j-card-text j-card-text--clamped">${escapeHtml(body)}</div>` : ''}`;
+      ${body ? `<div class="j-card-text j-card-text--clamped">${typeof linkify === 'function' ? linkify(body) : escapeHtml(body)}</div>` : ''}`;
   }
   // "Today I learned" — its own labeled block on the card, shown
   // whenever the entry has learning text. Sits under the reflection /
@@ -1561,7 +1561,7 @@ function renderDayCard(dateStr) {
   if (hasLearning) {
     manualHtml += `<div class="j-card-learning">
       <div class="j-card-learning-label">Today I learned</div>
-      <div class="j-card-text j-card-text--clamped">${escapeHtml(entry.learning.trim())}</div>
+      <div class="j-card-text j-card-text--clamped">${typeof linkify === 'function' ? linkify(entry.learning.trim()) : escapeHtml(entry.learning.trim())}</div>
     </div>`;
   }
 
@@ -2172,7 +2172,7 @@ function renderViewModalBody(dateStr) {
   const moodTitle = entry.mood
     ? `<div class="j-view-mood-title"><span class="j-card-mood-inline">${MOOD_EMOJI[entry.mood-1]}</span>Feeling ${MOOD_LABEL[entry.mood-1]}</div>`
     : '';
-  const reflectionHtml = reflection ? `<div class="j-view-text">${escapeHtml(reflection)}</div>` : '';
+  const reflectionHtml = reflection ? `<div class="j-view-text">${typeof linkify === 'function' ? linkify(reflection) : escapeHtml(reflection)}</div>` : '';
   // Combined photo list (legacy + Storage). resolveEntryPhotoSrcs
   // handles signed-URL resolution and async rerender.
   const allSrcs = resolveEntryPhotoSrcs(dateStr, entry);
@@ -2195,7 +2195,7 @@ function renderViewModalBody(dateStr) {
   const learningBlock = learning
     ? `<div class="j-section">
          <div class="j-section-h">Today I learned</div>
-         <div class="j-view-text">${escapeHtml(learning)}</div>
+         <div class="j-view-text">${typeof linkify === 'function' ? linkify(learning) : escapeHtml(learning)}</div>
        </div>`
     : '';
   return `

@@ -745,11 +745,9 @@ function renderNoteEditor() {
       _noteQuill.on('text-change', (_delta, _old, source) => {
         if (source === 'user') onNoteContentChange();
       });
-      // Quill renders <a> tags but doesn't navigate when clicked in editor mode.
-      _noteQuill.root.addEventListener('click', e => {
-        const a = e.target.closest('a');
-        if (a && a.href) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
-      });
+      // Link clicks inside the editor are handled by the global external-link
+      // router (capture-phase handler in 02-tasks-sync.js), which preventDefaults
+      // the in-editor navigation and opens the URL in the OS default browser.
     }
   }
 }

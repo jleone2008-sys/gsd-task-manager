@@ -1,6 +1,6 @@
 // Single source of truth for AI model identifiers.
 //
-// Why this exists: the base Claude model string ('claude-opus-4-7') was
+// Why this exists: the base Claude model string ('claude-opus-4-8') was
 // hardcoded in ~8 functions. A base-model bump (or a known-bad model id like
 // the sonnet 404 we hit) meant editing every file and hoping none were missed.
 // Centralizing the NAME makes that a one-line change.
@@ -11,7 +11,7 @@
 // its own max_tokens next to the prompt it belongs to. Per-function model env
 // overrides (BRIEF_MODEL, TRAIN_FEEDBACK_MODEL, KNOWLEDGE_MODEL, …) also still
 // win; they fall back to these shared defaults instead of a hardcoded literal.
-const CLAUDE_MODEL    = process.env.CLAUDE_MODEL    || 'claude-opus-4-7';
+const CLAUDE_MODEL    = process.env.CLAUDE_MODEL    || 'claude-opus-4-8';
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
 
 module.exports = { CLAUDE_MODEL, EMBEDDING_MODEL };

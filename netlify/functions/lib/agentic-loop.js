@@ -34,7 +34,7 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 //
 // runAgenticLoop({
 //   anthropicKey,    string  - required
-//   model,           string  - 'claude-opus-4-7' typical
+//   model,           string  - 'claude-opus-4-8' typical
 //   max_tokens,      number  - per-call output cap
 //   system_prompt,   string  - persistent system message
 //   initial_user_message, string - what kicks the conversation off
