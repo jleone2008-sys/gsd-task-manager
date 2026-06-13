@@ -327,7 +327,8 @@
       sex: 'male', dob: '1990-05-12', height_in: 70, activity_level: 'moderate', activity_level_override: false, units: 'imperial', body_comp_profile_set_at: iso(60 * DAY) },
   ];
   const user_settings = [
-    { user_id: USER_ID, integrations: { oura: { connected: true }, whoop: { connected: false }, dropbox: { connected: false }, health_source: 'oura' } },
+    { user_id: USER_ID, integrations: { oura: { connected: true }, whoop: { connected: false }, dropbox: { connected: false }, health_source: 'oura' },
+      appearance: { palette: 'paper', corners: 'xs', type: 'geometric', cards: 'solid', cardAlpha: 0.9, wallpaper: null, wallpaperOpacity: 0.45 } },
   ];
   const linked_google_accounts = [];
   const google_calendars_synced = [];

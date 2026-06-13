@@ -29,7 +29,7 @@ const SETTINGS_DEFAULTS = {
 // look exactly. Persisted in user_settings.appearance (jsonb). An inline
 // script in app.html applies the localStorage cache before first paint;
 // loadUserSettings() reconciles from the DB. See docs/brand-framework.html.
-const THEME_DEFAULTS = { palette: 'paper', corners: 'xs', type: 'geometric', cards: 'solid', cardAlpha: 0.9 };
+const THEME_DEFAULTS = { palette: 'paper', corners: 'xs', type: 'geometric', cards: 'solid', cardAlpha: 0.9, wallpaper: null, wallpaperOpacity: 0.45 };
 const THEME_OPTIONS = {
   palette: [
     { v: 'paper',      label: 'Paper',          sw: ['#fbf6ee', '#b82d3b'] },
@@ -71,8 +71,96 @@ function applyTheme(theme) {
   d.setAttribute('data-type', t.type);
   d.setAttribute('data-cards', t.cards);
   d.style.setProperty('--card-alpha', t.cardAlpha != null ? t.cardAlpha : 0.9);
+  // Wallpaper: data-wallpaper toggles the body/topbar image layer; --wallpaper-wash
+  // is the theme-colour wash alpha (1 − image opacity). The image URL itself is a
+  // signed URL set asynchronously (refreshWallpaperImage); here we apply the
+  // localStorage-cached URL synchronously so re-applies don't drop the image.
+  d.setAttribute('data-wallpaper', t.wallpaper ? 'on' : 'off');
+  const op = t.wallpaperOpacity != null ? t.wallpaperOpacity : 0.45;
+  d.style.setProperty('--wallpaper-wash', String(Math.max(0, Math.min(1, 1 - op))));
+  if (t.wallpaper) {
+    const cached = wallpaperCachedUrl();
+    if (cached) d.style.setProperty('--wallpaper-img', `url("${cached}")`);
+  } else {
+    d.style.removeProperty('--wallpaper-img');
+  }
   if (userSettings) userSettings.appearance = t;
   try { localStorage.setItem('gsd_theme', JSON.stringify(t)); } catch (e) {}
+}
+
+// ── Wallpaper image: signed-URL cache + upload/remove ──────────────────────
+// The image lives in the private `user-wallpapers` bucket at {uid}/wallpaper.jpg;
+// reads require a signed URL (expires), so we cache the last signed URL in
+// localStorage for flash-free pre-paint and refresh it at boot.
+const WALLPAPER_BUCKET = 'user-wallpapers';
+const WALLPAPER_PATH_SUFFIX = '/wallpaper.jpg';
+
+function wallpaperCachedUrl() {
+  try {
+    const o = JSON.parse(localStorage.getItem('gsd_wallpaper_url') || 'null');
+    if (o && o.url && o.exp && o.exp > Date.now()) return o.url;
+  } catch (e) {}
+  return null;
+}
+function cacheWallpaperUrl(url) {
+  // 23h, just under the 24h signed-URL TTL.
+  try { localStorage.setItem('gsd_wallpaper_url', JSON.stringify({ url, exp: Date.now() + 23 * 60 * 60 * 1000 })); } catch (e) {}
+}
+function clearWallpaperUrlCache() {
+  try { localStorage.removeItem('gsd_wallpaper_url'); } catch (e) {}
+}
+
+// Sign the user's wallpaper and paint it. `force` bypasses the URL cache (used
+// right after an upload, where the cached URL would point at the old image).
+async function refreshWallpaperImage(force) {
+  try {
+    if (!force) {
+      const cached = wallpaperCachedUrl();
+      if (cached) { document.documentElement.style.setProperty('--wallpaper-img', `url("${cached}")`); return; }
+    }
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const path = session.user.id + WALLPAPER_PATH_SUFFIX;
+    const { data, error } = await db.storage.from(WALLPAPER_BUCKET).createSignedUrl(path, 86400);
+    if (error || !data?.signedUrl) return;
+    cacheWallpaperUrl(data.signedUrl);
+    document.documentElement.style.setProperty('--wallpaper-img', `url("${data.signedUrl}")`);
+  } catch (e) { console.warn('[wallpaper] sign failed', e); }
+}
+
+async function uploadWallpaper(file) {
+  if (!file) return;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { if (typeof showToast === 'function') showToast('Sign in required', 'offline'); return; }
+    // Reuse the journal resizer if loaded; wallpapers want a higher cap (2560px).
+    let blob = file;
+    try { if (typeof resizeImageToBlob === 'function') blob = await resizeImageToBlob(file, 2560, 0.82); } catch (e) {}
+    const path = session.user.id + WALLPAPER_PATH_SUFFIX;
+    const { error } = await db.storage.from(WALLPAPER_BUCKET)
+      .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '86400', upsert: true });
+    if (error) { console.error('[wallpaper] upload', error); if (typeof showToast === 'function') showToast('Upload failed', 'offline'); return; }
+    const next = { ...getTheme(), wallpaper: 'on' };
+    applyTheme(next);
+    await saveUserSettings({ appearance: next });
+    await refreshWallpaperImage(true); // force re-sign — the cached URL is the old image
+    flashSettingsSaved('settingsAppearanceSaved');
+    if (typeof activeTool !== 'undefined' && activeTool === 'settings') renderSettingsPage();
+  } catch (e) { console.error('[wallpaper] upload failed', e); if (typeof showToast === 'function') showToast('Upload failed', 'offline'); }
+}
+
+async function removeWallpaper() {
+  const next = { ...getTheme(), wallpaper: null };
+  applyTheme(next);
+  document.documentElement.style.removeProperty('--wallpaper-img');
+  clearWallpaperUrlCache();
+  await saveUserSettings({ appearance: next });
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) await db.storage.from(WALLPAPER_BUCKET).remove([session.user.id + WALLPAPER_PATH_SUFFIX]);
+  } catch (e) { /* best-effort delete */ }
+  flashSettingsSaved('settingsAppearanceSaved');
+  if (typeof activeTool !== 'undefined' && activeTool === 'settings') renderSettingsPage();
 }
 
 const INTEGRATIONS_META = [
@@ -105,6 +193,9 @@ async function loadUserSettings() {
   // localStorage cache. The inline app.html script already applied the
   // cached value pre-paint; this corrects it if the DB differs.
   applyTheme(getTheme());
+  // If a wallpaper is set, refresh its signed URL (the pre-paint cache may be
+  // stale/expired). Fire-and-forget so boot isn't blocked on Storage.
+  if (getTheme().wallpaper) refreshWallpaperImage(false);
   // Layer in live integration status from the server. Fire-and-forget so the
   // synchronous boot path (which awaits loadUserSettings) isn't blocked on
   // cold-startable Netlify functions (Dropbox/Whoop/Oura). The Settings page
@@ -398,6 +489,9 @@ function ensureSettingsStyles() {
     .settings-appearance-slider input[type=range] { flex: 1; accent-color: var(--guava-700); cursor: pointer; min-width: 0; }
     .settings-appearance-alpha-val { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-3); min-width: 82px; text-align: right; font-variant-numeric: tabular-nums; }
     .settings-appearance-reset { margin-top: 2px; }
+    .settings-appearance-wallpaper { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .settings-wallpaper-upload { cursor: pointer; }
+    .settings-wallpaper-upload input[type=file] { display: none; }
     @media (max-width: 600px) { .settings-page { padding: 20px 14px 80px; } .settings-section { padding: 18px 16px; } .settings-whoop-form { grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
@@ -428,6 +522,29 @@ function cardPanelsGroupHtml(t) {
           </div>`;
 }
 
+// Background-image (wallpaper) group: upload/replace + remove + a blend slider
+// (image opacity vs the theme-colour wash). Shown only with the slider once an
+// image is set.
+function wallpaperGroupHtml(t) {
+  const on = !!t.wallpaper;
+  const pct = Math.round((t.wallpaperOpacity != null ? t.wallpaperOpacity : 0.45) * 100);
+  return `<div class="settings-appearance-group">
+            <div class="settings-appearance-label">Background image</div>
+            <div class="settings-appearance-wallpaper">
+              <label class="btn btn--secondary btn-sm settings-wallpaper-upload">
+                ${on ? 'Replace image' : 'Upload image'}
+                <input type="file" accept="image/*" data-appearance-wallpaper-file />
+              </label>
+              ${on ? `<button class="settings-btn-linklike" data-appearance-wallpaper-remove>Remove</button>` : ''}
+            </div>
+            ${on ? `<div class="settings-appearance-slider">
+              <input type="range" min="10" max="100" step="5" value="${pct}" data-appearance-wallpaper-opacity aria-label="Background image opacity" />
+              <span class="settings-appearance-alpha-val">${pct}% image</span>
+            </div>
+            <div class="settings-sub" style="margin-top:8px">Blends with your theme colour — drag toward 100% for a bolder image, lower to blend it into the palette. Looks best with translucent card panels.</div>` : ''}
+          </div>`;
+}
+
 // The whole Appearance settings section (theme picker). Reads the current
 // theme via getTheme(); changes are handled by the global click/input listeners.
 function appearanceSectionHtml() {
@@ -441,6 +558,7 @@ function appearanceSectionHtml() {
           ${appearanceGroupHtml('Corners', 'corners', t.corners)}
           ${appearanceGroupHtml('Typography', 'type', t.type)}
           ${cardPanelsGroupHtml(t)}
+          ${wallpaperGroupHtml(t)}
           <div class="settings-appearance-reset"><button class="settings-btn-linklike" data-appearance-reset>Reset to default</button></div>
         </div>
       </div>`;
@@ -711,20 +829,45 @@ document.addEventListener('change', e => {
     saveUserSettings({ appearance: getTheme() }).then(() => flashSettingsSaved('settingsAppearanceSaved'));
     return;
   }
+  // Wallpaper blend slider released → persist.
+  const wopCommit = e.target.closest('[data-appearance-wallpaper-opacity]');
+  if (wopCommit) {
+    saveUserSettings({ appearance: getTheme() }).then(() => flashSettingsSaved('settingsAppearanceSaved'));
+    return;
+  }
+  // Wallpaper image chosen → upload + turn on.
+  const wallFile = e.target.closest('[data-appearance-wallpaper-file]');
+  if (wallFile) {
+    const file = wallFile.files && wallFile.files[0];
+    wallFile.value = ''; // allow re-selecting the same file later
+    if (file) uploadWallpaper(file);
+    return;
+  }
 });
 
 // Card opacity slider dragged → apply live (Translucent implied), no DB write
 // until release ('change', above).
 document.addEventListener('input', e => {
   const alpha = e.target.closest('[data-appearance-alpha]');
-  if (!alpha) return;
-  const a = Math.max(0.5, Math.min(1, (+alpha.value || 90) / 100));
-  applyTheme({ ...getTheme(), cards: 'soft', cardAlpha: a });
-  const grp = alpha.closest('.settings-appearance-group');
-  if (grp) {
-    grp.querySelectorAll('.settings-appearance-opt').forEach(b => b.classList.toggle('is-active', b.dataset.appearanceValue === 'soft'));
-    const lbl = grp.querySelector('.settings-appearance-alpha-val');
-    if (lbl) lbl.textContent = Math.round(a * 100) + '% opaque';
+  if (alpha) {
+    const a = Math.max(0.5, Math.min(1, (+alpha.value || 90) / 100));
+    applyTheme({ ...getTheme(), cards: 'soft', cardAlpha: a });
+    const grp = alpha.closest('.settings-appearance-group');
+    if (grp) {
+      grp.querySelectorAll('.settings-appearance-opt').forEach(b => b.classList.toggle('is-active', b.dataset.appearanceValue === 'soft'));
+      const lbl = grp.querySelector('.settings-appearance-alpha-val');
+      if (lbl) lbl.textContent = Math.round(a * 100) + '% opaque';
+    }
+    return;
+  }
+  // Wallpaper blend slider dragged → apply live (no DB write until release).
+  const wop = e.target.closest('[data-appearance-wallpaper-opacity]');
+  if (wop) {
+    const o = Math.max(0.1, Math.min(1, (+wop.value || 45) / 100));
+    applyTheme({ ...getTheme(), wallpaperOpacity: o });
+    const lbl = wop.closest('.settings-appearance-group')?.querySelector('.settings-appearance-alpha-val');
+    if (lbl) lbl.textContent = Math.round(o * 100) + '% image';
+    return;
   }
 });
 
@@ -742,9 +885,13 @@ document.addEventListener('click', e => {
     if (group) group.querySelectorAll('.settings-appearance-opt').forEach(b => b.classList.toggle('is-active', b === appOpt));
     return;
   }
+  const wallRemove = e.target.closest('[data-appearance-wallpaper-remove]');
+  if (wallRemove) { removeWallpaper(); return; }
   const appReset = e.target.closest('[data-appearance-reset]');
   if (appReset) {
     applyTheme({ ...THEME_DEFAULTS });
+    clearWallpaperUrlCache();
+    document.documentElement.style.removeProperty('--wallpaper-img');
     saveUserSettings({ appearance: { ...THEME_DEFAULTS } }).then(() => {
       flashSettingsSaved('settingsAppearanceSaved');
       if (activeTool === 'settings') renderSettingsPage();

@@ -10,6 +10,8 @@
   :root {
     /* ── Ground (paper weight — subtle warm shift) ───────────── */
     --bg:           #fbf6ee;
+    /* RGB triplet of --bg, for the wallpaper wash (rgba(var(--bg-rgb), a)). */
+    --bg-rgb:       251,246,238;
     --surface:      #fffdfa;
     /* Always-solid surface — chrome (navbar, modals, menus, floating buttons)
        uses this so the card-translucency setting never makes them see-through. */
@@ -242,7 +244,7 @@
 
   /* ── Palette: Sage (flat + gradient share the token set) ── */
   html[data-palette="sage"], html[data-palette="sage-grad"] {
-    --bg: #eef3ec; --surface: #f8faf5; --surface-solid: #f8faf5; --surface-2: #e3ebdf;
+    --bg: #eef3ec; --bg-rgb: 238,243,236; --surface: #f8faf5; --surface-solid: #f8faf5; --surface-2: #e3ebdf;
     --edge: #d6e1d0; --edge-strong: #b9ccb2; --row-hover-bg: #f3f7f1;
     --ink: #23302a; --ink-2: #3f4f46; --ink-3: #6c7d70; --ink-4: #9bab9d; --ink-5: #bcc8bd;
     --guava-900: #234a36; --guava-800: #2f6149; --guava-700: #4f8a6b; --guava-500: #5fa37e;
@@ -251,7 +253,7 @@
   }
   /* ── Palette: Sky ── */
   html[data-palette="sky"], html[data-palette="sky-grad"] {
-    --bg: #eef2fb; --surface: #f7f9fe; --surface-solid: #f7f9fe; --surface-2: #dde6f5;
+    --bg: #eef2fb; --bg-rgb: 238,242,251; --surface: #f7f9fe; --surface-solid: #f7f9fe; --surface-2: #dde6f5;
     --edge: #d2ddf0; --edge-strong: #b0c4e6; --row-hover-bg: #f3f6fd;
     --ink: #1f2a3d; --ink-2: #384a64; --ink-3: #61748f; --ink-4: #94a6c2; --ink-5: #b6c4dc;
     --guava-900: #1d3a78; --guava-800: #2f57ac; --guava-700: #3f6fd1; --guava-500: #6189db;
@@ -288,6 +290,26 @@
   }
   html[data-palette="sky-grad"] .topbar {
     background: linear-gradient(150deg, #cbddfb 0%, #e2ecfb 45%, #d2f0e9 100%);
+    background-attachment: fixed;
+  }
+
+  /* ── Background wallpaper (user upload, blended with the theme) ──
+     When data-wallpaper="on", <body> paints the user's image (--wallpaper-img,
+     a signed-URL set from JS) UNDER a flat wash of the active palette's base
+     colour (rgba(var(--bg-rgb), --wallpaper-wash)). The wash is the top layer,
+     so the image is tinted toward the current theme and re-tints when the
+     palette changes — hence it "blends with the theme colours". --wallpaper-wash
+     = 1 − (image opacity), driven by the Background-image slider. Both layers
+     are fixed + cover; the sticky .topbar mirrors the same fixed slice so the
+     header stays seamless. Translucent cards (data-cards="soft") let the
+     blended wallpaper show through; chrome stays opaque. Comes after the
+     gradient palettes (equal specificity) so a wallpaper wins over a gradient. */
+  html[data-wallpaper="on"] body,
+  html[data-wallpaper="on"] .topbar {
+    background:
+      linear-gradient(rgba(var(--bg-rgb, 251,246,238), var(--wallpaper-wash, 0.55)),
+                      rgba(var(--bg-rgb, 251,246,238), var(--wallpaper-wash, 0.55))),
+      var(--wallpaper-img, none) center center / cover no-repeat;
     background-attachment: fixed;
   }
 

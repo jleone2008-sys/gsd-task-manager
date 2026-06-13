@@ -11,7 +11,7 @@
 <script>
 (function(){
   var d = document.documentElement;
-  var def = { palette:'paper', corners:'xs', type:'geometric', cards:'solid', cardAlpha:0.9 };
+  var def = { palette:'paper', corners:'xs', type:'geometric', cards:'solid', cardAlpha:0.9, wallpaper:null, wallpaperOpacity:0.45 };
   var t = def;
   try { t = Object.assign({}, def, JSON.parse(localStorage.getItem('gsd_theme') || '{}')); } catch(e){}
   d.setAttribute('data-palette', t.palette);
@@ -19,6 +19,17 @@
   d.setAttribute('data-type',    t.type);
   d.setAttribute('data-cards',   t.cards);
   d.style.setProperty('--card-alpha', t.cardAlpha != null ? t.cardAlpha : 0.9);
+  // Wallpaper: paint the cached signed URL pre-paint so there's no flash; the
+  // Settings module re-signs at boot if the cache is stale.
+  d.setAttribute('data-wallpaper', t.wallpaper ? 'on' : 'off');
+  var op = t.wallpaperOpacity != null ? t.wallpaperOpacity : 0.45;
+  d.style.setProperty('--wallpaper-wash', String(Math.max(0, Math.min(1, 1 - op))));
+  if (t.wallpaper) {
+    try {
+      var w = JSON.parse(localStorage.getItem('gsd_wallpaper_url') || 'null');
+      if (w && w.url && w.exp && w.exp > Date.now()) d.style.setProperty('--wallpaper-img', 'url("' + w.url + '")');
+    } catch(e){}
+  }
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
