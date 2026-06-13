@@ -178,11 +178,14 @@ async function tuneOne(userId, progressPicId, serviceKey, anthropicKey) {
       .map(c => c.exercise?.name)
       .filter(Boolean);
     if (addedNames.length === 0) return { ...t, _outcome: { reason: 'no_adds' } };
-    // Check workout_sets for any session of any added exercise in window.
+    // Check THIS user's workout_sets for any of the added exercises trained in
+    // the post-tune window. Must be scoped by user_id (service key bypasses RLS,
+    // so an unscoped read would count every user's sets) AND by completed_at to
+    // the window (else it counts all-time history, not adherence to this tune).
     // PostgREST `in.()` with names quoted; conservative URL length.
     const namesIn = addedNames.map(n => `"${String(n).replace(/"/g, '')}"`).join(',');
     const trainedRows = await fetchJson(
-      `${SUPABASE_URL}/rest/v1/workout_sets?exercise_name=in.(${encodeURIComponent(namesIn)})&select=session_id,exercise_name`,
+      `${SUPABASE_URL}/rest/v1/workout_sets?user_id=eq.${userId}&exercise_name=in.(${encodeURIComponent(namesIn)})&completed_at=gte.${encodeURIComponent(windowStart)}&completed_at=lte.${encodeURIComponent(windowEnd)}&select=session_id,exercise_name&limit=500`,
       hdr,
     );
     const trainedCount = Array.isArray(trainedRows) ? trainedRows.length : 0;

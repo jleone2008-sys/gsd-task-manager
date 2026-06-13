@@ -298,7 +298,11 @@ async function loadHabits() {
       db.from('habit_completions')
         .select('*')
         .eq('user_id', currentUser.id)
-        .gte('completed_date', since),
+        .gte('completed_date', since)
+        // ~3 habits/day over the lookback window approaches PostgREST's 1000-row
+        // default cap; raise it so completions (and thus streaks) aren't silently
+        // truncated for users with many habits.
+        .limit(5000),
     ]);
 
     if (hRes.error) { console.error('loadHabits:', hRes.error.message); return; }

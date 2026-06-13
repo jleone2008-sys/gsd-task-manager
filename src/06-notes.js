@@ -184,7 +184,10 @@ async function loadNotes() {
     db.from('notebooks')
       .select('*').eq('user_id', currentUser.id).order('order', { ascending: true }),
     db.from('notes')
-      .select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false }),
+      .select('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false })
+      // PostgREST caps at 1000 rows by default; cap explicitly so a heavy note
+      // user doesn't silently lose the oldest notes off the end of the list.
+      .limit(2000),
   ]);
   const nbData = nbRes.data;
   const nbErr  = nbRes.error;

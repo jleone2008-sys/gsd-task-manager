@@ -195,7 +195,10 @@ exports.handler = async (event) => {
     }
 
     // ── Step i: finalize document row ────────────────────────────
-    await dbPatch(`${SUPABASE_URL}/rest/v1/knowledge_documents?id=eq.${documentId}`, {
+    // Scope by user_id as well as id: document_id is client-supplied and the
+    // service key bypasses RLS, so match on ownership too (don't rely on the
+    // insert's PK-collision as the only cross-user guard).
+    await dbPatch(`${SUPABASE_URL}/rest/v1/knowledge_documents?id=eq.${documentId}&user_id=eq.${userId}`, {
       source_text:   extractedText,
       ai_summary:    summaryResult.summary,
       ai_key_facts:  summaryResult.key_facts,
@@ -212,7 +215,7 @@ exports.handler = async (event) => {
     }));
   } catch (err) {
     console.error('[knowledge-ingest] pipeline failed:', err.message);
-    await dbPatch(`${SUPABASE_URL}/rest/v1/knowledge_documents?id=eq.${documentId}`, {
+    await dbPatch(`${SUPABASE_URL}/rest/v1/knowledge_documents?id=eq.${documentId}&user_id=eq.${userId}`, {
       status: 'failed',
       failure_reason: String(err.message || err).slice(0, 500),
     }, serviceKey).catch(() => { /* best-effort */ });

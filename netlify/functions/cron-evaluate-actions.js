@@ -166,16 +166,33 @@ async function evaluateSleepIntentsForUser(user, serviceKey) {
   let filled = 0;
   const tz = user.timezone || 'America/New_York';
 
+  // The date each intent's sleep "ends on" — Oura's date convention. Add 12h to
+  // intent_at and take the local date; handles both pre-midnight taps
+  // (10pm → next day) and post-midnight taps (1am → same day).
+  const sleepEndDateById = new Map();
+  const dateSet = new Set();
   for (const row of pending) {
-    // The date the sleep "ends on" — Oura's date convention. Add 12h to
-    // intent_at and take the local date; handles both pre-midnight taps
-    // (10pm → next day) and post-midnight taps (1am → same day).
-    const sleepEndsLocalDate = localDate(new Date(new Date(row.intent_at).getTime() + 12 * HOUR_MS), tz);
+    const d = localDate(new Date(new Date(row.intent_at).getTime() + 12 * HOUR_MS), tz);
+    sleepEndDateById.set(row.id, d);
+    dateSet.add(d);
+  }
+  // Batch ALL the pending intents' sleep-end dates into ONE oura_daily read.
+  // This pass runs on every hourly tick for every user, so the old per-intent
+  // query was an N+1 multiplier (users × intents × 24/day round-trips); resolve
+  // from a date→row map in memory instead.
+  const ouraByDate = new Map();
+  if (dateSet.size) {
+    const inList = [...dateSet].map(d => `"${d}"`).join(',');
     const ouraRows = await fetchJson(
-      `${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=eq.${sleepEndsLocalDate}&select=date,sleep_midpoint_offset_min,total_sleep_min,sleep_score`,
+      `${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=in.(${encodeURIComponent(inList)})&select=date,sleep_midpoint_offset_min,total_sleep_min,sleep_score`,
       hdr,
     );
-    const ora = ouraRows?.[0];
+    for (const r of (ouraRows || [])) ouraByDate.set(r.date, r);
+  }
+
+  for (const row of pending) {
+    const sleepEndsLocalDate = sleepEndDateById.get(row.id);
+    const ora = ouraByDate.get(sleepEndsLocalDate);
     // Skip silently when Oura hasn't landed yet — next tick will retry.
     if (!ora || ora.sleep_score == null
         || ora.sleep_midpoint_offset_min == null

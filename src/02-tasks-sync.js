@@ -241,7 +241,10 @@ async function load() {
   const { data, error } = await db.from('tasks')
     .select('*')
     .eq('user_id', currentUser.id)
-    .order('order', { ascending: true });
+    .order('order', { ascending: true })
+    // PostgREST silently caps at 1000 rows; completed tasks are retained, so a
+    // long-time user would silently lose older tasks without an explicit cap.
+    .limit(5000);
 
   if (error) {
     console.error('load:', error.message);
