@@ -10,6 +10,10 @@
 # Node / scripts
 node_modules/
 
+# Per-machine ledger for scripts/apply-pending-migrations.mjs (tracks which
+# migrations this machine has applied to prod; not shared state).
+scripts/.migrations-applied.json
+
 # Claude Code per-machine local settings (the .local suffix = don't share).
 # launch.json (preview-server config) is intentionally NOT ignored so it can
 # be committed if we want it shared.
