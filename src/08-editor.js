@@ -95,7 +95,13 @@ function addTask() {
   const noteEl = document.getElementById('newNoteRich');
   let note = noteEl ? noteEl.innerHTML.trim() : '';
   if (note === '<br>' || note === '<div><br></div>') note = '';
-  const due = document.getElementById('newDueDate').value || null;
+  let due = document.getElementById('newDueDate').value || null;
+  // A recurring task needs an anchor date to compute its cadence; default to
+  // today when the user turned on Repeat but didn't pick a due date (Bug 3 —
+  // it used to be created with no due and then silently never recur).
+  if (newRecur && !due) {
+    due = (typeof todayStr === 'function') ? todayStr() : new Date().toISOString().slice(0, 10);
+  }
   const newTask = {
     id: Date.now(), text,
     tags: [...newTags].filter(t=>t!=='top3'&&t!=='someday'),
@@ -265,6 +271,11 @@ function saveEdit() {
   t.tags=sel.filter(s=>s==='biz'||s==='personal');
   t.top3=sel.includes('top3'); t.someday=sel.includes('someday');
   t.recur = editRecur;
+  // Same anchor-date guarantee as create (Bug 3): a recurring task must have a
+  // due date to compute its cadence.
+  if (t.recur && !t.due) {
+    t.due = (typeof todayStr === 'function') ? todayStr() : new Date().toISOString().slice(0, 10);
+  }
   closeModal(); render(); saveTask(t);
 }
 function closeModal() { document.getElementById('editModal').classList.remove('open'); editId=null; }
@@ -471,31 +482,70 @@ function initRepeatListeners(wrapEl, isEdit) {
 // at app init below). The internal toggle switch in repeatSectionHTML
 // drives whether the task is recurring; toggleRepeatField is gone.
 
+// Format a Date as LOCAL YYYY-MM-DD. Using toISOString() here would convert to
+// UTC and shift the date back a day for users east of UTC (Bug 6); reading the
+// local Y/M/D components keeps the calendar date the user actually picked.
+function _ymdLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Add `n` months, keeping the day-of-month but CLAMPING to the target month's
+// last day so Jan 31 + 1mo → Feb 28/29 (not Mar 3) and Feb 29 + 12mo → Feb 28
+// on a non-leap year (Bug 5). Mutates `d`.
+function _addMonthsClamped(d, n) {
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+}
+
+const _DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+// One recurrence step after `due` (YYYY-MM-DD), computed in LOCAL time.
+// Weekly honours the selected weekdays (recur.days) — landing on the NEXT
+// selected day within a week (Bug 1); with no days selected it falls back to
+// +7. Monthly/yearly clamp overflow days (Bug 5).
 function nextDueDate(due, recur) {
   if (!due) return null;
   const d = new Date(due + 'T00:00:00');
-  if (recur.freq === 'daily')   d.setDate(d.getDate() + 1);
-  if (recur.freq === 'weekly')  d.setDate(d.getDate() + 7);
-  if (recur.freq === 'monthly') d.setMonth(d.getMonth() + 1);
-  if (recur.freq === 'yearly')  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0, 10);
+  if (recur.freq === 'weekly') {
+    const targets = (recur.days || []).map(x => _DOW[x]).filter(n => n != null);
+    if (targets.length) {
+      for (let i = 0; i < 7; i++) {
+        d.setDate(d.getDate() + 1);
+        if (targets.includes(d.getDay())) return _ymdLocal(d);
+      }
+      return _ymdLocal(d); // a selected weekday is always hit within 7 steps
+    }
+    d.setDate(d.getDate() + 7);
+  } else if (recur.freq === 'daily') {
+    d.setDate(d.getDate() + 1);
+  } else if (recur.freq === 'monthly') {
+    _addMonthsClamped(d, 1);
+  } else if (recur.freq === 'yearly') {
+    _addMonthsClamped(d, 12);
+  }
+  return _ymdLocal(d);
 }
 
 /**
- * Lazy spawning for recurring tasks. Replaces the old eager spawn that
- * fired inside toggleDone — that approach made completion feel
- * unacknowledged because an identical row reappeared in the same spot.
+ * Spawn the next instance of a completed recurring task.
+ *
+ * Runs on completion (toggleDone), at load, and on day-change — idempotent via
+ * the per-task `spawned` flag, so the extra passes are harmless backstops.
  *
  * Rules:
- *   - Skip unless the task is done + recurring + recur.end === 'never'
- *     + not yet spawned.
- *   - Compute the next due date from the parent's due date.
- *   - If the next due date is in the future → leave alone, wait for the
- *     next load / day-change pass to revisit.
- *   - If the next due date has arrived (today) or is in the past
- *     (overdue parent), create one new instance dated max(nextDue, today)
- *     and mark the parent as spawned. We deliberately do NOT spawn one
- *     row per missed period — it'd be noise.
+ *   - Skip unless the task is done + recurring + not yet spawned.
+ *   - Always create exactly ONE next instance on completion, dated at its true
+ *     next due date (which may be in the future) — so behaviour is consistent
+ *     whether you complete on time or late (previously on-time completions
+ *     spawned nothing until the next day, while overdue ones spawned instantly).
+ *   - Honour end conditions: `never` (forever), `after` N occurrences, and
+ *     `date` (stop once the next slot passes endDate).
+ *   - Collapse fully-missed periods: an overdue parent yields one next slot
+ *     (advanced to the first non-past date), not a stack of backdated copies.
+ *   - The completed parent stays done and is marked `spawned`.
  */
 function ensureRecurringSpawns() {
   if (typeof tasks === 'undefined' || !Array.isArray(tasks)) return;
@@ -506,19 +556,44 @@ function ensureRecurringSpawns() {
   // Snapshot to avoid iterating into newly-pushed spawns
   for (const t of tasks.slice()) {
     if (!t.done || !t.recur || t.spawned) continue;
-    if (t.recur.end !== 'never') continue;
-    const next = nextDueDate(t.due, t.recur);
+
+    // Anchor date: fall back to today for legacy recurring rows that were
+    // created without a due date (they used to silently never spawn — Bug 3).
+    const baseDue = t.due || today;
+
+    // Per-instance occurrence counter (1-based), stored on the recur object.
+    const occ = t.recur._n || 1;
+
+    // End: "after N times" — stop once N occurrences have happened (Bug 2).
+    if (t.recur.end === 'after') {
+      const cap = parseInt(t.recur.afterCount) || 0;
+      if (cap > 0 && occ >= cap) { t.spawned = true; saveTask(t); continue; }
+    }
+
+    // Compute the next due date, collapsing any fully-missed periods so an
+    // overdue recurring task yields ONE next instance (not a pile of backdated
+    // copies) — advance until the slot is no longer in the past.
+    let next = nextDueDate(baseDue, t.recur);
+    let guard = 0;
+    while (next && next < today && guard++ < 1000) next = nextDueDate(next, t.recur);
     if (!next) continue;
-    if (next > today) continue; // future — wait
-    const dueStr = next < today ? today : next;
+
+    // End: "on date" — stop once the next slot would fall past endDate (Bug 2).
+    if (t.recur.end === 'date' && t.recur.endDate && next > t.recur.endDate) {
+      t.spawned = true; saveTask(t); continue;
+    }
+
     const spawn = {
       ...t,
       id: Date.now() + Math.floor(Math.random() * 1000),
       done: false,
       completedAt: null,
       spawned: false,
-      due: dueStr,
+      due: next,
       order: -1,
+      // Deep-copy recur so instances don't share one object (Bug 7); bump the
+      // occurrence counter for end-after tracking.
+      recur: { ...t.recur, days: [...(t.recur.days || [])], _n: occ + 1 },
     };
     tasks.unshift(spawn);
     saveTask(spawn);
