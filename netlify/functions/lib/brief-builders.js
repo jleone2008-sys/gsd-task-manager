@@ -156,6 +156,85 @@ function buildRotation(ctx) {
   }));
 }
 
+// ── Sleep Debt (formulaic, research-grounded) ──────────────────────────────
+// A deterministic sleep-debt estimate, since Oura's own Sleep Debt is app-only
+// and not exposed by the API. Design (see docs/sleep-debt.md):
+//   • Personal sleep NEED from the 85th percentile of the user's own nights
+//     over ~90 days — optimal sleep duration is revealed by rebound/extended
+//     sleep, not the (debt-suppressed) mean (Kitamura 2016, Sci Reports).
+//     Clamped to the physiological adult range 6.5h–9.5h.
+//   • Recency-weighted cumulative deficit over the last 14 nights with an
+//     exponential 4-day half-life — sleep pressure (Process S) dissipates
+//     exponentially (Borbély two-process model); recent loss dominates.
+//   • Catch-up sleep REPAYS debt (signed nightly deficit), but capped at
+//     90 min/night because recovery is slow & partial (~1h debt ≈ 4 days).
+//   • Gated entirely in CODE (no AI): needs ≥21 baseline nights, ≥5 of the last
+//     14 nights, and ≥30 effective minutes — else returns null (hidden).
+// Returns { minutes, need, tier } or null. Pure + deterministic.
+const SLEEP_DEBT = {
+  BASELINE_NIGHTS:   90,   // window for estimating personal need
+  MIN_BASELINE:      21,   // need this many valid nights before we estimate need
+  NEED_PCTL:         85,   // upper percentile ≈ optimal sleep duration
+  NEED_MIN:          390,  // clamp floor (6.5h)
+  NEED_MAX:          570,  // clamp ceil (9.5h)
+  WINDOW_NIGHTS:     14,   // acute debt window (sleep-science standard)
+  HALF_LIFE_DAYS:    4,    // Process-S decay; recency weight
+  SURPLUS_CAP:       90,   // one long night repays at most 90 min of debt
+  MIN_WINDOW_NIGHTS: 5,    // need ≥5 valid nights within the 14-night window
+  SHOW_THRESHOLD:    30,   // hide under 30 effective minutes ("None")
+};
+
+// Linear-interpolated percentile of an ascending-sorted numeric array.
+function _percentile(sortedAsc, p) {
+  if (!sortedAsc.length) return null;
+  const idx = (p / 100) * (sortedAsc.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return sortedAsc[lo];
+  return sortedAsc[lo] + (sortedAsc[hi] - sortedAsc[lo]) * (idx - lo);
+}
+
+// history: [{ date:'YYYY-MM-DD', total_sleep_min:Number }] (any order).
+// todayStr: the brief's local "today" (the date last night's sleep is filed under).
+function computeSleepDebt(history, todayStr) {
+  if (!Array.isArray(history) || !todayStr) return null;
+  // Dedupe by date; keep only valid (positive) sleep nights.
+  const byDate = new Map();
+  for (const h of history) {
+    const v = Number(h && h.total_sleep_min);
+    if (h && h.date && Number.isFinite(v) && v > 0) byDate.set(h.date, v);
+  }
+  if (byDate.size < SLEEP_DEBT.MIN_BASELINE) return null; // cold-start gate
+
+  // Personal sleep need = P85 of the last ~90 valid nights, clamped.
+  const datesAsc = [...byDate.keys()].sort();
+  const baseVals = datesAsc.slice(-SLEEP_DEBT.BASELINE_NIGHTS)
+    .map(d => byDate.get(d)).sort((a, b) => a - b);
+  let need = _percentile(baseVals, SLEEP_DEBT.NEED_PCTL);
+  if (need == null) return null;
+  need = Math.max(SLEEP_DEBT.NEED_MIN, Math.min(SLEEP_DEBT.NEED_MAX, need));
+
+  // Recency-weighted cumulative deficit over the last WINDOW_NIGHTS nights.
+  const todayMs = Date.parse(todayStr + 'T00:00:00Z');
+  if (!Number.isFinite(todayMs)) return null;
+  let sum = 0, windowNights = 0;
+  for (const [d, sleep] of byDate) {
+    const ms = Date.parse(d + 'T00:00:00Z');
+    if (!Number.isFinite(ms)) continue;
+    const age = Math.round((todayMs - ms) / 86400000); // nights ago (0 = last night)
+    if (age < 0 || age >= SLEEP_DEBT.WINDOW_NIGHTS) continue;
+    windowNights++;
+    const w = Math.pow(0.5, age / SLEEP_DEBT.HALF_LIFE_DAYS);
+    const delta = Math.max(need - sleep, -SLEEP_DEBT.SURPLUS_CAP); // surplus repays, capped
+    sum += w * delta;
+  }
+  if (windowNights < SLEEP_DEBT.MIN_WINDOW_NIGHTS) return null; // not enough recent signal
+
+  const minutes = Math.max(0, Math.round(sum));
+  if (minutes < SLEEP_DEBT.SHOW_THRESHOLD) return null;         // below the floor → hide
+  const tier = minutes >= 180 ? 'high' : minutes >= 90 ? 'moderate' : 'mild';
+  return { minutes, need: Math.round(need), tier };
+}
+
 // Build the stats list shown beside the rotating circle. The three Oura SCORES
 // (sleep / readiness / activity) now live in the rotating circle, so they're
 // NOT repeated here: only Sleep DURATION (with its difference vs baseline),
@@ -205,6 +284,20 @@ function buildStats(ctx) {
   // Activity + Readiness score rows removed — both scores now live in the
   // rotating circle, and steps moved to the recap "Yesterday" column.
 
+  // Sleep Debt: formulaic (computeSleepDebt) — only renders when there's enough
+  // history AND ≥30 effective minutes of debt. h/m value like the Sleep row; no
+  // delta (it's already a cumulative figure). Sits directly below Sleep.
+  const sd = computeSleepDebt(ctx.sleep_history, ctx.today);
+  if (sd) {
+    rows.push({
+      label:     'Sleep Debt',
+      value:     formatMinutes(sd.minutes) || '—',
+      delta:     null,
+      delta_dir: null,
+      note:      sd.tier === 'mild' ? null : sd.tier, // surface moderate/high
+    });
+  }
+
   // Resting HR: lower is better — negative delta renders green, positive red.
   if (r.resting_hr != null) {
     const diff = b7.resting_hr_median != null ? Math.round(r.resting_hr - Number(b7.resting_hr_median)) : null;
@@ -240,7 +333,7 @@ function buildStats(ctx) {
     });
   }
 
-  return rows.slice(0, 4);
+  return rows.slice(0, 5); // Sleep, Sleep Debt (conditional), Resting HR, HRV
 }
 
 // Compute the time the user got into bed from Oura's sleep midpoint and total
@@ -479,6 +572,7 @@ module.exports = {
   buildHeroMetric,
   buildRotation,
   buildStats,
+  computeSleepDebt,
   computeBedtime,
   buildRecap,
   buildPlayRows,
