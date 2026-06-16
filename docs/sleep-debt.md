@@ -61,6 +61,33 @@ Oura's app tiers. "moderate"/"high" surface as the stat-row note; "mild" shows n
 | Min window nights | 5 | enough recent signal |
 | Show threshold | 30 min | hide noise / "None" |
 
+## Calibration loop (learning from Oura)
+Because our estimate is an approximation of Oura's proprietary number, the user
+can **tap the Sleep Debt row in the brief** and enter what the Oura app shows.
+Each entry stores a pair in `sleep_debt_log` — `(log_date, estimate_min,
+need_min, actual_min)` where `estimate_min` is our **raw** (pre-calibration)
+estimate so the correction stays stable. Over time, `sleepDebtCalibration()`
+computes a **deterministic** multiplier and nudges the displayed estimate toward
+Oura:
+```
+k = clamp( median( actual_i / raw_estimate_i ) , 0.5 , 2.0 )   // pairs with estimate ≥ 30
+SleepDebt_shown = round( raw_estimate × k )
+```
+- Median (not mean) → one odd night can't swing it; clamped to ±2× to reject
+  noise from sparse data.
+- Gated: until **≥7 logged pairs** exist, `k = 1` (no correction) — we don't
+  calibrate on thin evidence.
+- The displayed value converges toward Oura as more days are logged; the row
+  shows "Oura Xh" once a day is logged. Fully deterministic (no AI), per the
+  formulaic-first principle.
+- *Limitation:* we only learn on days we showed a guess (the row is hidden when
+  our estimate is "None"), so Oura-shows-debt-but-we-don't days aren't captured
+  yet — a possible follow-up.
+
+Client: `beta/src/05-brief.js` (tappable row + bottom-sheet input + optimistic
+upsert). Server calibration: `lib/brief-builders.js` `sleepDebtCalibration()`,
+fed by `sleep_debt_log` pairs pulled in `beta-daily-brief.js`.
+
 ## Data source & scope
 - Reads `oura_daily.total_sleep_min` (keyed by `user_email`). **Oura-only** for
   now — Whoop-only users have no `oura_daily` history, so the metric simply gates

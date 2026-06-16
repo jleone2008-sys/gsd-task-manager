@@ -492,7 +492,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
   const moodCheckinsYesterday = moodCheckinForDate(yday);
   const moodCheckinsToday     = moodCheckinForDate(today);
 
-  const [oura7, journal7, habits7, tags7, sleepHistory90] = await Promise.all([
+  const [oura7, journal7, habits7, tags7, sleepHistory90, sleepDebtPairs] = await Promise.all([
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=gte.${win7}&date=lte.${yday}&select=date,sleep_score,readiness_score,activity_score,total_sleep_min,hrv_ms&order=date.asc`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_entries?user_id=eq.${user.user_id}&entry_date=gte.${win7}&entry_date=lte.${yday}&select=entry_date,mood&order=entry_date.asc`, hdr),
     fetchJson(`${SUPABASE_URL}/rest/v1/journal_habit_summary?user_id=eq.${user.user_id}&entry_date=gte.${win7}&entry_date=lte.${yday}&select=entry_date,due_count,done_count&order=entry_date.asc`, hdr),
@@ -500,6 +500,8 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     // ~90 nights of sleep duration for the Sleep Debt personal-need baseline +
     // the 14-night debt window (through today = last night's sleep).
     fetchJson(`${SUPABASE_URL}/rest/v1/oura_daily?user_email=eq.${encodeURIComponent(user.email)}&date=gte.${win90}&date=lte.${today}&select=date,total_sleep_min&order=date.asc&limit=120`, hdr),
+    // Logged (estimate, Oura-actual) pairs that calibrate the Sleep Debt guess.
+    fetchJson(`${SUPABASE_URL}/rest/v1/sleep_debt_log?user_id=eq.${user.user_id}&actual_min=not.is.null&select=estimate_min,actual_min&limit=400`, hdr),
   ]);
 
   // Morning brief shows today's weather; evening brief shows tomorrow's
@@ -745,6 +747,7 @@ async function buildContext(user, brief_date, mode, serviceKey) {
     brief_date: brief_date,
     today,                                   // brief's local "today" (last night's sleep date)
     sleep_history: sleepHistory90 || [],     // ~90 nights {date,total_sleep_min} for Sleep Debt
+    sleep_debt_pairs: sleepDebtPairs || [],  // logged (estimate, Oura actual) pairs → calibration
     // Weekend brief copy stays task-free — no nagging about tasks on Sat/Sun.
     // weekdayName is the brief's local "today" (computed above).
     is_weekend: weekdayName === 'Saturday' || weekdayName === 'Sunday',

@@ -40,6 +40,10 @@ let _briefWired = false;
 // logged yet; { id, intent_at } = logged.
 let _briefSleepIntent = null;
 let _briefSleepIntentLoaded = false;
+// Logged Oura Sleep Debt actuals, keyed by date → { actual_min }. Lets the
+// Sleep Debt row show "Oura Xh" and skip re-prompting an already-logged day.
+let _briefSleepDebtByDate = {};
+let _briefSleepDebtLoaded = false;
 
 // "Yesterday" in the user's local timezone, as YYYY-MM-DD.
 function briefYesterdayLocal() {
@@ -387,6 +391,7 @@ function homeBriefMount() {
   // wasted then, but it's a single cheap RLS read and avoids a "button
   // pops in" beat once the user reopens the app after 8 PM.
   briefLoadSleepIntent();
+  briefLoadSleepDebtLog();
 }
 
 function briefHeadHTML(weatherChipHtml, badgeHtml) {
@@ -463,6 +468,34 @@ async function briefLoadSleepIntent() {
   }
 }
 
+// Load recently-logged Oura Sleep Debt actuals so the Sleep Debt row can show
+// "Oura Xh" and an already-logged day pre-fills the input. Cheap RLS read.
+async function briefLoadSleepDebtLog() {
+  if (_briefSleepDebtLoaded) return;
+  _briefSleepDebtLoaded = true;
+  try {
+    const { data, error } = await db.from('sleep_debt_log')
+      .select('log_date, actual_min')
+      .order('log_date', { ascending: false })
+      .limit(14);
+    if (error) throw error;
+    const map = {};
+    for (const r of (data || [])) map[r.log_date] = { actual_min: r.actual_min };
+    _briefSleepDebtByDate = map;
+    if (_briefState.status === 'ok') briefRender();
+  } catch (e) {
+    console.warn('[brief] sleep_debt_log load failed', e);
+  }
+}
+
+// Format minutes as "6h 10m" / "45m" for the brief client (server uses its own
+// formatMinutes; this mirrors it for client-side Oura-actual display).
+function briefFmtHM(min) {
+  const m = Math.max(0, Math.round(Number(min) || 0));
+  const h = Math.floor(m / 60), mm = m % 60;
+  return h > 0 ? (mm > 0 ? `${h}h ${mm}m` : `${h}h`) : `${mm}m`;
+}
+
 // Insert a new sleep_intent row (intent_at defaults to now). Optimistic
 // local update so the button flips immediately; rolls back if the insert
 // fails. db is the global Supabase client; auth.uid() enforces user_id
@@ -508,6 +541,97 @@ async function briefClearSleepIntent() {
     _briefSleepIntent = prior;
     briefRender();
     if (typeof showToast === 'function') showToast('Could not clear bedtime', 'offline');
+  }
+}
+
+// ── Sleep Debt manual log (tap the Sleep Debt stat row) ────────────────────
+// Opens a small bottom-sheet to enter what the Oura app shows. We store the
+// pair (our RAW estimate, Oura actual); the server's deterministic calibration
+// then nudges future estimates toward Oura. Reuses the weather sheet's chrome.
+function briefSleepDebtInjectStyles() {
+  if (document.getElementById('sdxStyles')) return;
+  const st = document.createElement('style');
+  st.id = 'sdxStyles';
+  st.textContent = `
+    .brief-stat-row.is-loggable { cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: var(--r-sm); transition: background var(--dur-fast) ease; }
+    .brief-stat-row.is-loggable:hover { background: var(--surface-2); }
+    .brief-stat-taphint { font-size: var(--fs-meta); color: var(--ink-4); }
+    .sdx-inputs { display: flex; gap: 12px; padding: 8px 2px 4px; }
+    .sdx-field { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink-2); }
+    .sdx-field input { font-family: inherit; font-size: var(--fs-section); font-weight: 700; padding: 10px 12px; border: 1px solid var(--edge-strong); border-radius: var(--r-md); background: var(--surface); color: var(--ink); width: 100%; }
+    .sdx-field input:focus { outline: none; border-color: var(--guava-700); box-shadow: var(--shadow-focus); }
+    .sdx-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+    .sdx-ours { margin-top: 10px; font-size: var(--fs-meta); color: var(--ink-3); text-align: center; }
+  `;
+  document.head.appendChild(st);
+}
+
+function briefOpenSleepDebt(rowEl) {
+  if (typeof briefWeatherInjectStyles === 'function') briefWeatherInjectStyles(); // ensure .bwx-* chrome
+  briefSleepDebtInjectStyles();
+  const raw  = Number(rowEl.dataset.debtRaw)  || 0;
+  const need = Number(rowEl.dataset.debtNeed) || 0;
+  const date = rowEl.dataset.debtDate || '';
+  if (!date) return;
+  const existing = rowEl.dataset.debtActual !== '' ? Number(rowEl.dataset.debtActual) : null;
+  const ex = existing != null ? { h: Math.floor(existing / 60), m: existing % 60 } : { h: '', m: '' };
+
+  const ov = document.createElement('div');
+  ov.className = 'bwx-overlay';
+  ov.innerHTML = `
+    <div class="bwx-card">
+      <div class="bwx-head">
+        <div>
+          <div class="bwx-loc">Log Oura Sleep Debt</div>
+          <div class="bwx-loc-sub">What does the Oura app show today? We calibrate our estimate to it.</div>
+        </div>
+        <button class="bwx-close" data-sdx="close" aria-label="Close">×</button>
+      </div>
+      <div class="sdx-inputs">
+        <label class="sdx-field"><span>Hours</span><input type="number" inputmode="numeric" min="0" max="14" id="sdxH" value="${ex.h}" placeholder="0"></label>
+        <label class="sdx-field"><span>Minutes</span><input type="number" inputmode="numeric" min="0" max="59" id="sdxM" value="${ex.m}" placeholder="0"></label>
+      </div>
+      <div class="sdx-actions">
+        <button class="btn btn--secondary btn-sm" data-sdx="cancel">Cancel</button>
+        <button class="btn btn--primary btn-sm" data-sdx="save">Save</button>
+      </div>
+      <div class="sdx-ours">Our estimate today: ${briefEsc(briefFmtHM(raw))}</div>
+    </div>`;
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => ov.classList.add('is-open'));
+  const close = () => { ov.classList.remove('is-open'); setTimeout(() => ov.remove(), 200); };
+  ov.addEventListener('click', (e) => {
+    if (e.target === ov || e.target.closest('[data-sdx="close"]') || e.target.closest('[data-sdx="cancel"]')) { close(); return; }
+    if (e.target.closest('[data-sdx="save"]')) {
+      const h = Math.max(0, Math.min(14, parseInt(document.getElementById('sdxH').value, 10) || 0));
+      const m = Math.max(0, Math.min(59, parseInt(document.getElementById('sdxM').value, 10) || 0));
+      briefSaveSleepDebt(date, raw, need, h * 60 + m);
+      close();
+    }
+  });
+  const hEl = document.getElementById('sdxH'); if (hEl) hEl.focus();
+}
+
+// Upsert the (estimate, Oura-actual) pair. Optimistic: the row flips to show
+// "Oura Xh" immediately. RLS scopes by auth.uid(); onConflict updates a re-log.
+async function briefSaveSleepDebt(date, rawEst, need, actualMin) {
+  const prior = _briefSleepDebtByDate[date];
+  _briefSleepDebtByDate[date] = { actual_min: actualMin };
+  if (_briefState.status === 'ok') briefRender();
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) throw new Error('not_authenticated');
+    const { error } = await db.from('sleep_debt_log').upsert({
+      user_id: user.id, log_date: date,
+      estimate_min: rawEst, need_min: need, actual_min: actualMin,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,log_date' });
+    if (error) throw error;
+  } catch (e) {
+    console.warn('[brief] sleep_debt_log save failed', e);
+    if (prior) _briefSleepDebtByDate[date] = prior; else delete _briefSleepDebtByDate[date];
+    if (_briefState.status === 'ok') briefRender();
+    if (typeof showToast === 'function') showToast('Could not save Sleep Debt', 'offline');
   }
 }
 
@@ -595,7 +719,7 @@ async function briefRefreshWeatherChip() {
   } catch (e) { /* non-fatal — keep the cached chip */ }
 }
 
-function briefStatsHTML(stats) {
+function briefStatsHTML(stats, briefDate) {
   if (!Array.isArray(stats) || stats.length === 0) return '';
   const hasAnyDelta = stats.some(s => !!s.delta);
   return `<div class="brief-stats">${stats.map(s => {
@@ -609,9 +733,24 @@ function briefStatsHTML(stats) {
     else if (String(s.delta || '').startsWith('↑')) deltaCls = 'is-good';
     else if (String(s.delta || '').startsWith('↓')) deltaCls = 'is-bad';
     const deltaHtml = s.delta ? `<span class="brief-stat-delta ${deltaCls}">${briefEsc(s.delta)}</span>` : '';
-    const noteHtml  = s.note  ? `<span class="brief-stat-note">${briefEsc(s.note)}</span>` : '';
-    return `<div class="brief-stat-row">
-      <span class="brief-stat-label">${briefEsc(s.label || '')}</span>
+    // Sleep Debt (loggable) row: tappable to record what Oura shows; once
+    // logged for this date, the note becomes "Oura Xh" so both numbers are
+    // visible and the day isn't re-prompted.
+    const logged = (s.loggable && briefDate) ? _briefSleepDebtByDate[briefDate] : null;
+    const noteText = (logged && logged.actual_min != null)
+      ? 'Oura ' + briefFmtHM(logged.actual_min)
+      : (s.note || '');
+    const noteHtml = noteText ? `<span class="brief-stat-note">${briefEsc(noteText)}</span>` : '';
+    const labelHtml = briefEsc(s.label || '') + (s.loggable ? ' <span class="brief-stat-taphint">✎</span>' : '');
+    const rowAttrs = s.loggable
+      ? `class="brief-stat-row is-loggable" data-brief-action="sleep-debt-log"`
+        + ` data-debt-raw="${Number(s.debt_min) || 0}" data-debt-need="${Number(s.need_min) || 0}"`
+        + ` data-debt-date="${briefEsc(briefDate || '')}"`
+        + ` data-debt-actual="${logged && logged.actual_min != null ? logged.actual_min : ''}"`
+        + ` title="Tap to log what Oura shows — we calibrate our estimate to it"`
+      : `class="brief-stat-row"`;
+    return `<div ${rowAttrs}>
+      <span class="brief-stat-label">${labelHtml}</span>
       <span class="brief-stat-value">
         <span class="brief-stat-num">${briefEsc(value)}</span>
         ${deltaHtml}
@@ -836,7 +975,7 @@ function briefStructuredHTML(brief) {
         <div class="brief-hero-ring">${heroHtml}</div>
         ${rotDotsHtml}
       </div>
-      ${briefStatsHTML(s.stats)}
+      ${briefStatsHTML(s.stats, brief.brief_date || brief.date)}
     </div>
     ${briefPillsHTML(s.evidence_pills)}
     <div class="brief-divider"></div>
@@ -1381,6 +1520,8 @@ function briefWireOnce() {
       briefClearSleepIntent();
     } else if (action === 'open-weather') {
       briefOpenWeather();
+    } else if (action === 'sleep-debt-log') {
+      briefOpenSleepDebt(btn);
     }
   });
 }

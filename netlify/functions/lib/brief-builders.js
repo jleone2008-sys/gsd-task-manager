@@ -182,6 +182,7 @@ const SLEEP_DEBT = {
   SURPLUS_CAP:       90,   // one long night repays at most 90 min of debt
   MIN_WINDOW_NIGHTS: 5,    // need ≥5 valid nights within the 14-night window
   SHOW_THRESHOLD:    30,   // hide under 30 effective minutes ("None")
+  MIN_CALIBRATION_PAIRS: 7, // logged Oura actuals needed before calibrating
 };
 
 // Linear-interpolated percentile of an ascending-sorted numeric array.
@@ -195,7 +196,9 @@ function _percentile(sortedAsc, p) {
 
 // history: [{ date:'YYYY-MM-DD', total_sleep_min:Number }] (any order).
 // todayStr: the brief's local "today" (the date last night's sleep is filed under).
-function computeSleepDebt(history, todayStr) {
+// calibration: optional multiplier (from sleepDebtCalibration) nudging the
+//   estimate toward the user's logged Oura actuals; defaults to 1 (no change).
+function computeSleepDebt(history, todayStr, calibration) {
   if (!Array.isArray(history) || !todayStr) return null;
   // Dedupe by date; keep only valid (positive) sleep nights.
   const byDate = new Map();
@@ -229,10 +232,29 @@ function computeSleepDebt(history, todayStr) {
   }
   if (windowNights < SLEEP_DEBT.MIN_WINDOW_NIGHTS) return null; // not enough recent signal
 
-  const minutes = Math.max(0, Math.round(sum));
+  const rawMin = Math.max(0, Math.round(sum));
+  const k = (Number.isFinite(calibration) && calibration > 0) ? calibration : 1;
+  const minutes = Math.max(0, Math.round(rawMin * k));          // calibrated toward Oura
   if (minutes < SLEEP_DEBT.SHOW_THRESHOLD) return null;         // below the floor → hide
   const tier = minutes >= 180 ? 'high' : minutes >= 90 ? 'moderate' : 'mild';
-  return { minutes, need: Math.round(need), tier };
+  return { minutes, raw_min: rawMin, need: Math.round(need), tier, calibrated: k !== 1 };
+}
+
+// Deterministic calibration: nudge the raw estimate toward the user's logged
+// Oura actuals. Factor = median(actual / raw-estimate) over paired observations
+// (estimate ≥ 30 min to avoid divide-by-noise), clamped to [0.5, 2.0]. Until
+// MIN_CALIBRATION_PAIRS pairs exist it returns 1 (no correction). Median (not
+// mean) so a single odd night can't swing it. Pure + deterministic.
+function sleepDebtCalibration(pairs) {
+  if (!Array.isArray(pairs)) return 1;
+  const ratios = pairs
+    .filter(p => p && Number(p.estimate_min) >= 30 && Number.isFinite(Number(p.actual_min)))
+    .map(p => Number(p.actual_min) / Number(p.estimate_min))
+    .sort((a, b) => a - b);
+  if (ratios.length < SLEEP_DEBT.MIN_CALIBRATION_PAIRS) return 1;
+  const n = ratios.length;
+  const med = n % 2 ? ratios[(n - 1) / 2] : (ratios[n / 2 - 1] + ratios[n / 2]) / 2;
+  return Math.max(0.5, Math.min(2.0, med));
 }
 
 // Build the stats list shown beside the rotating circle. The three Oura SCORES
@@ -287,7 +309,8 @@ function buildStats(ctx) {
   // Sleep Debt: formulaic (computeSleepDebt) — only renders when there's enough
   // history AND ≥30 effective minutes of debt. h/m value like the Sleep row; no
   // delta (it's already a cumulative figure). Sits directly below Sleep.
-  const sd = computeSleepDebt(ctx.sleep_history, ctx.today);
+  const sdCal = sleepDebtCalibration(ctx.sleep_debt_pairs);
+  const sd = computeSleepDebt(ctx.sleep_history, ctx.today, sdCal);
   if (sd) {
     rows.push({
       label:     'Sleep Debt',
@@ -295,6 +318,12 @@ function buildStats(ctx) {
       delta:     null,
       delta_dir: null,
       note:      sd.tier === 'mild' ? null : sd.tier, // surface moderate/high
+      // Fields the brief client uses for the tap-to-log + calibration loop
+      // (ignored by the generic stat renderer except on this Sleep Debt row).
+      loggable:  true,
+      debt_min:  sd.raw_min,   // RAW (pre-calibration) estimate — what we store to learn from
+      need_min:  sd.need,
+      calibrated: sd.calibrated,
     });
   }
 
@@ -573,6 +602,7 @@ module.exports = {
   buildRotation,
   buildStats,
   computeSleepDebt,
+  sleepDebtCalibration,
   computeBedtime,
   buildRecap,
   buildPlayRows,
