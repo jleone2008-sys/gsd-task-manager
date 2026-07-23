@@ -280,6 +280,18 @@ let dropboxFolderStack = [{ path: '', name: 'Dropbox' }];
 let dropboxImageList = [];    // {path, name}[] — image files in current Dropbox folder
 let dropboxSharedSet = new Set(); // folder_path values currently shared for the selected user
 let dropboxSelected  = new Map(); // path → { tag, name, path } selected in current folder
+// Column sort for the Dropbox browser. Defaults to most-recently-modified
+// first. Folders always group above files (they have no server_modified), so
+// the chosen sort applies WITHIN each group and navigation stays predictable.
+let dropboxSort = { key: 'modified', dir: 'desc' };
+// Complete folder listing is fetched ONCE (following Dropbox's cursor) and
+// cached, so sorting/paging is instant and never re-hits the API. Only the
+// current page of rows is rendered, so the DOM stays small on huge folders.
+let dropboxEntriesCache = null;   // { path, entries[], truncated }
+let dropboxSharesCache  = null;   // { email, shares[] }
+let dropboxPage = 0;
+const DROPBOX_PAGE_SIZE   = 200;    // rows rendered at a time
+const DROPBOX_MAX_ENTRIES = 10000;  // safety cap on a single folder listing
 
 /* ════════════════════════════════════════
    INIT
@@ -888,15 +900,39 @@ async function dropboxApi(path, accessToken, body) {
   return data;
 }
 
+// Fetch EVERY entry in a folder by following Dropbox's cursor
+// (list_folder → list_folder/continue). This is METADATA ONLY — no file bytes,
+// no thumbnails — so even a folder with thousands of files is a light payload
+// and nothing is previewed until the user clicks into a file. Capped at
+// DROPBOX_MAX_ENTRIES; `truncated` tells the UI when we stopped early.
+async function listDropboxFolderAll(token, path) {
+  const entries = [];
+  let res = await dropboxApi('/2/files/list_folder', token, { path, limit: 2000 });
+  entries.push(...(res.entries || []));
+  while (res.has_more && entries.length < DROPBOX_MAX_ENTRIES) {
+    res = await dropboxApi('/2/files/list_folder/continue', token, { cursor: res.cursor });
+    entries.push(...(res.entries || []));
+  }
+  return {
+    path,
+    entries: entries.slice(0, DROPBOX_MAX_ENTRIES),
+    truncated: !!res.has_more && entries.length >= DROPBOX_MAX_ENTRIES,
+  };
+}
+
 async function loadDropbox(area) {
   // Always render the shared-folders sub-section first (works without user's OAuth)
   let sharesHtml = '';
   let sharesErr  = null;
   try {
-    const sharesRes  = await adminFetch('POST', { action: 'list-dropbox-shares', target_email: selectedUser.email });
-    const shares     = sharesRes.ok ? await sharesRes.json() : [];
-    dropboxSharedSet = new Set((shares || []).map(s => s.folder_path));
-    sharesHtml = renderDropboxShares(shares || []);
+    // Cached per user so re-sorting / paging doesn't re-hit the API.
+    if (!dropboxSharesCache || dropboxSharesCache.email !== selectedUser.email) {
+      const sharesRes = await adminFetch('POST', { action: 'list-dropbox-shares', target_email: selectedUser.email });
+      const shares    = sharesRes.ok ? await sharesRes.json() : [];
+      dropboxSharesCache = { email: selectedUser.email, shares: shares || [] };
+    }
+    dropboxSharedSet = new Set(dropboxSharesCache.shares.map(s => s.folder_path));
+    sharesHtml = renderDropboxShares(dropboxSharesCache.shares);
   } catch (err) {
     sharesErr = err.message;
   }
@@ -906,9 +942,23 @@ async function loadDropbox(area) {
   try {
     const token  = await getDropboxTokenForUser(selectedUser.email);
     const folder = dropboxFolderStack[dropboxFolderStack.length - 1];
-    const data   = await dropboxApi('/2/files/list_folder', token, { path: folder.path, limit: 500 });
-    const entries = data.entries || [];
 
+    // Fetch the COMPLETE listing once per folder, then serve sorting/paging
+    // from cache. Without this, only the first 500 entries ever loaded — so
+    // sorting silently sorted an arbitrary slice instead of the whole folder.
+    if (!dropboxEntriesCache
+        || dropboxEntriesCache.path  !== folder.path
+        || dropboxEntriesCache.email !== selectedUser.email) {   // keyed by user too
+      area.innerHTML = `<div class="loading-msg">Loading folder…</div>`;
+      dropboxEntriesCache = await listDropboxFolderAll(token, folder.path);
+      dropboxEntriesCache.email = selectedUser.email;
+      dropboxPage = 0;
+    }
+    const entries   = dropboxEntriesCache.entries;
+    const truncated = dropboxEntriesCache.truncated;
+
+    // Preview navigation spans every image in the folder. Metadata only — no
+    // bytes are fetched until a preview is actually opened.
     dropboxImageList = entries
       .filter(e => e['.tag'] === 'file' && isDropboxImage(e.name))
       .map(e => ({ path: e.path_lower, name: e.name }));
@@ -924,14 +974,24 @@ async function loadDropbox(area) {
     if (!entries.length) {
       browseHtml = `${header}<div class="loading-msg">Folder is empty</div>`;
     } else {
-      // Folders first, then files; alphabetical within each
-      const sorted = entries.slice().sort((a, b) => {
-        const aFold = a['.tag'] === 'folder' ? 0 : 1;
-        const bFold = b['.tag'] === 'folder' ? 0 : 1;
-        if (aFold !== bFold) return aFold - bFold;
-        return (a.name || '').localeCompare(b.name || '');
-      });
-      const rows = sorted.map(e => renderDropboxEntryRow(e)).join('');
+      // Sort across ALL entries (folders grouped first), then render only the
+      // current page so the DOM stays small no matter how large the folder is.
+      const sorted    = sortDropboxEntries(entries);
+      const total     = sorted.length;
+      const pageCount = Math.max(1, Math.ceil(total / DROPBOX_PAGE_SIZE));
+      if (dropboxPage >= pageCount) dropboxPage = pageCount - 1;
+      if (dropboxPage < 0) dropboxPage = 0;
+      const start = dropboxPage * DROPBOX_PAGE_SIZE;
+      const rows  = sorted.slice(start, start + DROPBOX_PAGE_SIZE)
+        .map(e => renderDropboxEntryRow(e)).join('');
+      const pager = `<div style="display:flex;align-items:center;gap:.6rem;margin:.5rem 0;font-size:.75rem;color:#9aaabb">
+        <span>Showing <strong style="color:#e6ecf5">${start + 1}–${Math.min(start + DROPBOX_PAGE_SIZE, total)}</strong> of <strong style="color:#e6ecf5">${total}</strong>${truncated ? ` <span title="Listing capped for safety">(capped at ${DROPBOX_MAX_ENTRIES})</span>` : ''} · sorted across all</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:.4rem">
+          <button class="btn-icon" data-dbx-page="prev" ${dropboxPage === 0 ? 'disabled' : ''} style="font-size:.75rem">‹ Prev</button>
+          <span>Page ${dropboxPage + 1} / ${pageCount}</span>
+          <button class="btn-icon" data-dbx-page="next" ${dropboxPage >= pageCount - 1 ? 'disabled' : ''} style="font-size:.75rem">Next ›</button>
+        </span>
+      </div>`;
       const selectedCount = dropboxSelected.size;
       const toolbar = `<div id="dbxBulkBar" style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;padding:.4rem .6rem;background:#1a1f2c;border:1px solid #2a3245;border-radius:.4rem;font-size:.8rem">
         <span><strong id="dbxSelCount">${selectedCount}</strong> selected</span>
@@ -939,13 +999,13 @@ async function loadDropbox(area) {
         <button class="btn-icon" id="dbxBulkClear" ${selectedCount ? '' : 'disabled'} style="font-size:.75rem">Clear</button>
         <span style="color:#9aaabb;font-size:.7rem;margin-left:auto">Tip: select folders to download recursively. Best on Chrome/Edge.</span>
       </div>`;
-      browseHtml = `${header}${toolbar}<table class="google-data-table">
+      browseHtml = `${header}${toolbar}${pager}<table class="google-data-table">
         <thead><tr>
           <th style="width:1.5rem;padding-right:.25rem"><input type="checkbox" id="dbxSelectAll" /></th>
-          <th>Name</th><th>Type</th><th>Size</th><th>Modified</th><th></th>
+          ${dbxSortTh('name','Name')}${dbxSortTh('type','Type')}${dbxSortTh('size','Size')}${dbxSortTh('modified','Modified')}<th></th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table>${pager}`;
     }
   } catch (err) {
     const tokenIssue = /expired_access_token|invalid_access_token|no_dropbox_refresh_token|token/i.test(err.message || '');
@@ -979,6 +1039,37 @@ function renderDropboxShares(shares) {
     <div style="font-size:.75rem;color:#9aaabb;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">🔗 Shared folders (admin-set, persist after token expiry)</div>
     <table class="google-data-table"><tbody>${rows}</tbody></table>
   </div>`;
+}
+
+// Sort the current folder's entries by the active column. Folders always group
+// first (Dropbox's list_folder returns no timestamp/size for folders, so they
+// can't meaningfully compete on those columns); the chosen key sorts within
+// each group. Ties fall back to name for a stable order.
+function sortDropboxEntries(entries) {
+  const { key, dir } = dropboxSort;
+  const mul = dir === 'asc' ? 1 : -1;
+  const val = (e) => {
+    if (key === 'modified') return e.server_modified ? Date.parse(e.server_modified) : 0;
+    if (key === 'size')     return +e.size || 0;
+    if (key === 'type')     return e['.tag'] === 'folder' ? 'folder' : (String(e.name || '').split('.').pop() || '').toLowerCase();
+    return String(e.name || '').toLowerCase();
+  };
+  return entries.slice().sort((a, b) => {
+    const aFold = a['.tag'] === 'folder' ? 0 : 1;
+    const bFold = b['.tag'] === 'folder' ? 0 : 1;
+    if (aFold !== bFold) return aFold - bFold;
+    const av = val(a), bv = val(b);
+    const cmp = (typeof av === 'string') ? av.localeCompare(bv) : (av < bv ? -1 : av > bv ? 1 : 0);
+    if (cmp !== 0) return cmp * mul;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+}
+
+// A clickable column header with an active-direction arrow.
+function dbxSortTh(key, label) {
+  const active = dropboxSort.key === key;
+  const arrow  = active ? (dropboxSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  return `<th data-dbx-sort="${key}" title="Sort by ${label}" style="cursor:pointer;user-select:none${active ? ';color:#5b8def' : ''}">${label}${arrow}</th>`;
 }
 
 function renderDropboxEntryRow(e) {
@@ -1019,6 +1110,31 @@ function isDropboxImage(name) {
 }
 
 function attachDropboxHandlers(area) {
+  // Sortable column headers — click to sort by that column, click again to
+  // flip direction. Text columns default A→Z; size/date default largest/newest.
+  area.querySelectorAll('[data-dbx-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.dbxSort;
+      if (dropboxSort.key === key) {
+        dropboxSort.dir = dropboxSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        dropboxSort = { key, dir: (key === 'name' || key === 'type') ? 'asc' : 'desc' };
+      }
+      dropboxPage = 0;              // re-sorting starts from the top
+      loadGoogleData('dropbox');    // served from cache — no refetch
+    });
+  });
+
+  // Pager — sorting applies across the whole folder; this just moves the
+  // 200-row window through the sorted set.
+  area.querySelectorAll('[data-dbx-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dropboxPage += (btn.dataset.dbxPage === 'next' ? 1 : -1);
+      if (dropboxPage < 0) dropboxPage = 0;
+      loadGoogleData('dropbox');
+    });
+  });
+
   area.querySelectorAll('[data-dbx-folder]').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1248,6 +1364,7 @@ async function markDropboxShared(path, name, btn) {
     });
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
     dropboxSharedSet.add(path);
+    dropboxSharesCache = null;   // shares changed — force a refetch on re-render
     // Re-render to show the new row in the shares section + flip the button
     await loadGoogleData('dropbox');
   } catch (err) {
@@ -1265,6 +1382,7 @@ async function removeDropboxShareRow(shareId, btn) {
   try {
     const res = await adminFetch('POST', { action: 'remove-dropbox-share', share_id: shareId });
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`); }
+    dropboxSharesCache = null;   // shares changed — force a refetch on re-render
     await loadGoogleData('dropbox');
   } catch (err) {
     alert('Failed to remove share: ' + err.message);
